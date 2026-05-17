@@ -1,34 +1,37 @@
 package com.destinyai.astrology.ui.onboarding
 
+import androidx.annotation.DrawableRes
+import com.destinyai.astrology.R
+
 data class OnboardingSlide(
-    val titleKey: String,
-    val subtitleKey: String? = null,
-    val descriptionKey: String = "",
-    val iconName: String,
+    val titleRes: Int,
+    val subtitleRes: Int? = null,
+    val descriptionRes: Int? = null,
+    @DrawableRes val imageRes: Int? = null,
     val showStats: Boolean = false,
     val isFeatureSlide: Boolean = false,
 ) {
     companion object {
         val slides: List<OnboardingSlide> = listOf(
             OnboardingSlide(
-                iconName = "chatgpt",
-                titleKey = "onboarding_slide1_title",
-                subtitleKey = "onboarding_slide1_subtitle",
+                titleRes = R.string.onboarding_slide1_title,
+                subtitleRes = R.string.onboarding_slide1_subtitle,
+                imageRes = R.drawable.chat_gpt_logo,
                 showStats = true,
             ),
             OnboardingSlide(
-                iconName = "onboarding_clarity",
-                titleKey = "onboarding_slide2_title",
-                descriptionKey = "onboarding_slide2_description",
+                titleRes = R.string.onboarding_slide2_title,
+                descriptionRes = R.string.onboarding_slide2_description,
+                imageRes = R.drawable.onboarding_clarity,
             ),
             OnboardingSlide(
-                iconName = "onboarding_personalization",
-                titleKey = "onboarding_slide3_title",
-                descriptionKey = "onboarding_slide3_description",
+                titleRes = R.string.onboarding_slide3_title,
+                descriptionRes = R.string.onboarding_slide3_description,
+                imageRes = R.drawable.onboarding_personalization,
             ),
             OnboardingSlide(
-                iconName = "onboarding_features",
-                titleKey = "onboarding_slide4_title",
+                titleRes = R.string.onboarding_slide4_title,
+                imageRes = R.drawable.onboarding_features,
                 isFeatureSlide = true,
             ),
         )
