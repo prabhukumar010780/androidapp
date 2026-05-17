@@ -38,12 +38,11 @@ jobs:
           BRANCH: ${{ github.ref_name }}
         run: |
           if [ "$BRANCH" = "main" ]; then
-            echo "flavor=production" >> "$GITHUB_OUTPUT"
             echo "track=production" >> "$GITHUB_OUTPUT"
           else
-            echo "flavor=staging" >> "$GITHUB_OUTPUT"
             echo "track=internal" >> "$GITHUB_OUTPUT"
           fi
+          echo "flavor=production" >> "$GITHUB_OUTPUT"
           echo "package_name=com.destinyai.astrology" >> "$GITHUB_OUTPUT"
 
       - name: Build release AAB
