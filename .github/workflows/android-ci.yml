@@ -1,0 +1,48 @@
+name: Android CI
+
+on:
+  push:
+    branches: [ main, test, develop ]
+  pull_request:
+    branches: [ main, test ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Lint
+        run: ./gradlew lintProductionRelease --no-daemon
+
+      - name: Unit tests
+        run: ./gradlew testProductionReleaseUnitTest --no-daemon
+
+      - name: Build staging debug (smoke build)
+        run: ./gradlew assembleStagingDebug --no-daemon
+
+      - name: Upload lint report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-report
+          path: app/build/reports/lint-results-productionRelease.html
+
+      - name: Upload test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: app/build/reports/tests/
