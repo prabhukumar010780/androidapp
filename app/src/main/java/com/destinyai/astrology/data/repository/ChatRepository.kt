@@ -8,4 +8,5 @@ interface ChatRepository {
     suspend fun sendMessage(sessionId: String, text: String): Flow<Result<String>>
     suspend fun loadHistory(): List<ChatThread>
     suspend fun loadThread(threadId: String): List<ChatMessage>
+    suspend fun deleteThread(threadId: String)
 }

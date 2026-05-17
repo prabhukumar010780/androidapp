@@ -5,12 +5,14 @@ import androidx.lifecycle.viewModelScope
 import com.destinyai.astrology.data.repository.ChatRepository
 import com.destinyai.astrology.domain.model.ChatMessage
 import com.destinyai.astrology.domain.model.ChatThread
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
+import javax.inject.Inject
 
 data class ChatUiState(
     val sessionId: String? = null,
@@ -28,7 +30,8 @@ data class ChatUiState(
 
 class UpgradeRequiredException : Exception("upgrade_required")
 
-class ChatViewModel(
+@HiltViewModel
+class ChatViewModel @Inject constructor(
     private val repository: ChatRepository,
 ) : ViewModel() {
 

@@ -1,0 +1,91 @@
+package com.destinyai.astrology.ui.settings
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.destinyai.astrology.data.local.prefs.UserPreferences
+import com.destinyai.astrology.data.remote.AstroApiService
+import com.destinyai.astrology.data.remote.NotificationPrefsRequest
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+data class SettingsUiState(
+    val chartStyle: String = "north_indian",
+    val responseStyle: String = "balanced",
+    val selectedLanguage: String = "en",
+    val notifDailyInsight: Boolean = true,
+    val notifTransits: Boolean = true,
+    val notifCompatibility: Boolean = true,
+    val isLoading: Boolean = false,
+    val isSaved: Boolean = false,
+    val error: String? = null,
+)
+
+@HiltViewModel
+class SettingsViewModel @Inject constructor(
+    private val api: AstroApiService,
+    private val prefs: UserPreferences,
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(SettingsUiState())
+    val uiState: StateFlow<SettingsUiState> = _uiState
+
+    fun loadSettings() {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    chartStyle = prefs.getChartStyle(),
+                    responseStyle = prefs.getResponseStyle(),
+                    selectedLanguage = prefs.getSelectedLanguage(),
+                    notifDailyInsight = prefs.getNotifDailyInsight(),
+                    notifTransits = prefs.getNotifTransits(),
+                    notifCompatibility = prefs.getNotifCompatibility(),
+                )
+            }
+        }
+    }
+
+    fun setChartStyle(style: String) {
+        _uiState.update { it.copy(chartStyle = style) }
+        viewModelScope.launch { prefs.setChartStyle(style) }
+    }
+
+    fun setResponseStyle(style: String) {
+        _uiState.update { it.copy(responseStyle = style) }
+        viewModelScope.launch { prefs.setResponseStyle(style) }
+    }
+
+    fun setLanguage(lang: String) {
+        _uiState.update { it.copy(selectedLanguage = lang) }
+        viewModelScope.launch { prefs.setSelectedLanguage(lang) }
+    }
+
+    fun setNotifDailyInsight(enabled: Boolean) = _uiState.update { it.copy(notifDailyInsight = enabled) }
+    fun setNotifTransits(enabled: Boolean) = _uiState.update { it.copy(notifTransits = enabled) }
+    fun setNotifCompatibility(enabled: Boolean) = _uiState.update { it.copy(notifCompatibility = enabled) }
+
+    fun saveNotifPrefs() {
+        viewModelScope.launch {
+            val s = _uiState.value
+            val email = prefs.getUserEmail() ?: return@launch
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            try {
+                api.updateNotificationPrefs(
+                    email,
+                    NotificationPrefsRequest(
+                        dailyInsight = s.notifDailyInsight,
+                        transits = s.notifTransits,
+                        compatibility = s.notifCompatibility,
+                    )
+                )
+                prefs.setNotifPrefs(s.notifDailyInsight, s.notifTransits, s.notifCompatibility)
+                _uiState.update { it.copy(isLoading = false, isSaved = true) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, error = e.message ?: "Failed to save") }
+            }
+        }
+    }
+}
