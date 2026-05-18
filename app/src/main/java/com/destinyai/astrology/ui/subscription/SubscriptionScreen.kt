@@ -1,6 +1,7 @@
 package com.destinyai.astrology.ui.subscription
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,14 +12,23 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.destinyai.astrology.ui.theme.CanelaFontFamily
+import com.destinyai.astrology.ui.theme.CosmicBackground
+import com.destinyai.astrology.ui.theme.CreamDim
+import com.destinyai.astrology.ui.theme.CreamText
+import com.destinyai.astrology.ui.theme.Gold
+import com.destinyai.astrology.ui.theme.NavySurface
+import com.destinyai.astrology.ui.theme.NavyVariant
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SubscriptionScreen(
     onBack: () -> Unit,
@@ -31,138 +41,141 @@ fun SubscriptionScreen(
         viewModel.loadCurrentPlan()
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Premium") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-            )
-        },
-    ) { padding ->
-        if (state.isLoading) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-            }
-        } else {
-            LazyColumn(
+    CosmicBackground {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Header
+            Row(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
-                    .padding(padding),
-                contentPadding = PaddingValues(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                item {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Text(text = "✦", fontSize = 56.sp, color = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            text = "Unlock Unlimited Insights",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            textAlign = TextAlign.Center,
-                        )
-                        Text(
-                            text = "Get unlimited daily questions and exclusive features.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                        )
-                    }
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = CreamDim)
                 }
+                Text(
+                    text = "Choose Plan",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = CanelaFontFamily,
+                    color = Gold,
+                    modifier = Modifier.weight(1f),
+                )
+            }
 
-                if (state.isPremium) {
+            if (state.isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Gold, modifier = Modifier.size(28.dp))
+                }
+            } else {
+                LazyColumn(
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
                     item {
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            ),
+                        Column(
                             modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            Column(
-                                modifier = Modifier.padding(20.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
+                            Text(text = "✦", fontSize = 56.sp, color = Gold)
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = "Unlock Unlimited Insights",
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = CanelaFontFamily,
+                                color = Gold,
+                                textAlign = TextAlign.Center,
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = "Get unlimited daily questions and exclusive features.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = CreamDim,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    }
+
+                    if (state.isPremium) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(Brush.linearGradient(listOf(NavySurface, NavyVariant)))
+                                    .border(1.dp, Gold.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                                    .padding(24.dp),
+                                contentAlignment = Alignment.Center,
                             ) {
-                                Text(
-                                    text = "You're already Premium!",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
-                                Text(
-                                    text = "Plan: ${state.currentPlanId}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                )
-                            }
-                        }
-                    }
-                } else {
-                    items(state.plans) { plan ->
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surface,
-                            ),
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Text(
-                                        text = plan.displayName,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                    )
-                                    Text(
-                                        text = if (plan.isFree) "Free" else "$${plan.priceMonthly}/mo",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary,
-                                    )
-                                }
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    text = if (plan.dailyQuota < 0) "Unlimited questions" else "${plan.dailyQuota} questions/day",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Spacer(Modifier.height(12.dp))
-                                Button(
-                                    onClick = { /* in-app purchase — requires Google Play Billing */ },
-                                    modifier = Modifier.fillMaxWidth().height(44.dp),
-                                    shape = RoundedCornerShape(8.dp),
-                                ) {
-                                    Text("Subscribe", fontWeight = FontWeight.SemiBold)
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("✦  You're already Premium!", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Gold)
+                                    Spacer(Modifier.height(4.dp))
+                                    Text("Plan: ${state.currentPlanId}", fontSize = 13.sp, color = CreamDim)
                                 }
                             }
                         }
+                    } else {
+                        items(state.plans) { plan ->
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(NavySurface)
+                                    .border(0.5.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+                                    .padding(16.dp),
+                            ) {
+                                Column {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text(
+                                            text = plan.displayName,
+                                            fontSize = 17.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            fontFamily = CanelaFontFamily,
+                                            color = CreamText,
+                                        )
+                                        Text(
+                                            text = if (plan.isFree) "Free" else "$${plan.priceMonthly}/mo",
+                                            fontSize = 17.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Gold,
+                                        )
+                                    }
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        text = if (plan.dailyQuota < 0) "Unlimited questions" else "${plan.dailyQuota} questions/day",
+                                        fontSize = 13.sp,
+                                        color = CreamDim,
+                                    )
+                                    Spacer(Modifier.height(12.dp))
+                                    Button(
+                                        onClick = { /* Google Play Billing */ },
+                                        modifier = Modifier.fillMaxWidth().height(44.dp),
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Gold,
+                                            contentColor = Color(0xFF0D0D1A),
+                                        ),
+                                    ) {
+                                        Text("Subscribe", fontWeight = FontWeight.SemiBold)
+                                    }
+                                }
+                            }
+                        }
                     }
-                }
 
-                if (state.error != null) {
-                    item {
-                        Text(
-                            text = state.error ?: "",
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
-                        )
+                    if (state.error != null) {
+                        item {
+                            Text(text = state.error ?: "", color = Color(0xFFFF8A80), fontSize = 13.sp)
+                        }
                     }
+
+                    item { Spacer(Modifier.height(32.dp)) }
                 }
             }
         }
