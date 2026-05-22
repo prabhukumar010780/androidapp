@@ -8,6 +8,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - name: Checkout
@@ -29,20 +32,23 @@ jobs:
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
 
+      - name: Decode google-services.json
+        run: echo "$GOOGLE_SERVICES_JSON" > app/google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+
       - name: Set flavor and track (main=production, test=internal)
         id: config
         env:
           BRANCH: ${{ github.ref_name }}
         run: |
           if [ "$BRANCH" = "main" ]; then
-            echo "flavor=production" >> "$GITHUB_OUTPUT"
             echo "track=production" >> "$GITHUB_OUTPUT"
-            echo "package_name=com.destinyai.astrology" >> "$GITHUB_OUTPUT"
           else
-            echo "flavor=staging" >> "$GITHUB_OUTPUT"
             echo "track=internal" >> "$GITHUB_OUTPUT"
-            echo "package_name=com.destinyai.astrology.staging" >> "$GITHUB_OUTPUT"
           fi
+          echo "flavor=production" >> "$GITHUB_OUTPUT"
+          echo "package_name=com.destinyai.astrology" >> "$GITHUB_OUTPUT"
 
       - name: Build release AAB
         run: |
@@ -58,10 +64,16 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
+      - name: Authenticate to Google Cloud (WIF)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/668639087682/locations/global/workloadIdentityPools/github-actions-pool/providers/android-deploy
+          service_account: android-deploy@circular-genius-481518-v0.iam.gserviceaccount.com
+
       - name: Upload to Google Play
         uses: r0adkll/upload-google-play@v1
         with:
-          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          serviceAccountJson: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
           packageName: ${{ steps.config.outputs.package_name }}
           releaseFiles: app/build/outputs/bundle/${{ steps.config.outputs.flavor }}Release/*.aab
           track: ${{ steps.config.outputs.track }}

@@ -13,3 +13,9 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Firebase config — contains API key, never commit real version
+app/google-services.json
