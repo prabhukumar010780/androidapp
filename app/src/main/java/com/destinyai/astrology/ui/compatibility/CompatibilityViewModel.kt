@@ -7,6 +7,7 @@ import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.remote.BirthProfileDto
 import com.destinyai.astrology.data.remote.CompatibilityPersonDto
 import com.destinyai.astrology.data.remote.CompatibilityRequest
+import com.destinyai.astrology.domain.model.CompatibilityHistoryItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -107,4 +108,29 @@ class CompatibilityViewModel @Inject constructor(
     }
 
     fun clearResult() = _uiState.update { it.copy(result = "", score = null, error = null) }
+
+    // -- History — stubs to satisfy CompatibilityHistoryScreen scaffold.
+    // Real persistence + pinning + deletion to be implemented when the
+    // compatibility-history feature is fully wired (it's currently
+    // scaffolded UI without backing data flow). These stubs let the
+    // build compile so unrelated TDD work can proceed.
+    private val _historyItems = MutableStateFlow<List<CompatibilityHistoryItem>>(emptyList())
+    val historyItems: StateFlow<List<CompatibilityHistoryItem>> = _historyItems
+
+    fun loadHistory() {
+        // No-op stub. Implementation will read from Room when history
+        // persistence is added.
+    }
+
+    fun toggleHistoryPin(sessionId: String) {
+        _historyItems.update { current ->
+            current.map { item ->
+                if (item.sessionId == sessionId) item.copy(isPinned = !item.isPinned) else item
+            }
+        }
+    }
+
+    fun deleteHistoryItem(sessionId: String) {
+        _historyItems.update { current -> current.filterNot { it.sessionId == sessionId } }
+    }
 }
