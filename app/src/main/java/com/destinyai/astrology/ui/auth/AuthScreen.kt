@@ -1,5 +1,7 @@
 package com.destinyai.astrology.ui.auth
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -14,6 +16,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
@@ -28,11 +31,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.destinyai.astrology.R
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
-import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.CreamDim
+import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
+import com.destinyai.astrology.ui.theme.TextTertiary
+
+private const val TERMS_OF_SERVICE_URL = "https://www.destinyaiastrology.com/terms-of-service/"
+private const val PRIVACY_POLICY_URL = "https://www.destinyaiastrology.com/privacy-policy/"
 
 @Composable
 fun AuthScreen(
@@ -40,6 +47,7 @@ fun AuthScreen(
     onNavigateToBirthData: () -> Unit,
     onNavigateToWaitlist: () -> Unit,
     viewModel: AuthViewModel = hiltViewModel(),
+    allowGuest: Boolean = true,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -175,76 +183,122 @@ fun AuthScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            // "or" divider with gold fade lines
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(1.dp)
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(Color.Transparent, Gold.copy(alpha = 0.4f))
+            if (allowGuest) {
+                // "or" divider with gold fade lines
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(1.dp)
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(Color.Transparent, Gold.copy(alpha = 0.4f))
+                                )
                             )
-                        )
-                )
-                Text(
-                    text = "  or  ",
-                    color = Color(0xFF718096),
-                    fontSize = 14.sp,
-                )
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(1.dp)
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(Gold.copy(alpha = 0.4f), Color.Transparent)
-                            )
-                        )
-                )
-            }
-
-            Spacer(Modifier.height(20.dp))
-
-            // "Continue as Guest"
-            TextButton(
-                onClick = { viewModel.continueAsGuest() },
-                enabled = !state.isLoading,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                if (state.isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = Gold,
-                        strokeWidth = 2.dp,
                     )
-                } else {
                     Text(
-                        text = stringResource(R.string.continue_as_guest),
-                        color = Gold,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 16.sp,
+                        text = "  ${stringResource(R.string.or)}  ",
+                        color = TextTertiary,
+                        fontSize = 14.sp,
                     )
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(1.dp)
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(Gold.copy(alpha = 0.4f), Color.Transparent)
+                                )
+                            )
+                    )
+                }
+
+                Spacer(Modifier.height(20.dp))
+
+                // "Continue as Guest"
+                TextButton(
+                    onClick = { viewModel.continueAsGuest() },
+                    enabled = !state.isLoading,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    if (state.isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = Gold,
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        Text(
+                            text = stringResource(R.string.continue_as_guest),
+                            color = Gold,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 16.sp,
+                        )
+                    }
                 }
             }
 
             Spacer(Modifier.height(32.dp))
 
-            // Terms
-            Text(
-                text = buildAnnotatedString {
-                    append("By continuing, you agree to our ")
-                    withStyle(SpanStyle(color = Gold)) { append("Terms of Service") }
-                    append(" and ")
-                    withStyle(SpanStyle(color = Gold)) { append("Privacy Policy") }
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF718096),
-                textAlign = TextAlign.Center,
-            )
+            // Terms + Privacy footer — fully localized, with both links
+            // rendered as separate clickable TextButtons so each opens its
+            // own URL via Intent.ACTION_VIEW. Mirrors iOS AuthView terms
+            // section (AuthView.swift:283-314).
+            val context = LocalContext.current
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = stringResource(R.string.by_continuing),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextTertiary,
+                    textAlign = TextAlign.Center,
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    TextButton(
+                        onClick = {
+                            context.startActivity(
+                                Intent(Intent.ACTION_VIEW, Uri.parse(TERMS_OF_SERVICE_URL))
+                            )
+                        },
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.terms_of_service),
+                            color = Gold,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 12.sp,
+                        )
+                    }
+                    Text(
+                        text = stringResource(R.string.and),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextTertiary,
+                    )
+                    TextButton(
+                        onClick = {
+                            context.startActivity(
+                                Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_POLICY_URL))
+                            )
+                        },
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.privacy_policy),
+                            color = Gold,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 12.sp,
+                        )
+                    }
+                }
+            }
         }
 
         // Loading overlay

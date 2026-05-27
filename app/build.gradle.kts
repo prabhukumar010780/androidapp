@@ -157,13 +157,20 @@ dependencies {
     // --- Unit Tests ---
     testImplementation(libs.junit.jupiter.api)
     testRuntimeOnly(libs.junit.jupiter.engine)
+    testRuntimeOnly(libs.junit.vintage.engine)  // discovers JUnit 4 tests (Compose UI)
     testImplementation(libs.junit.jupiter.params)
+    testImplementation(libs.junit)              // JUnit 4 — required by Compose UI test rules
     testImplementation(libs.mockk)
     testImplementation(libs.turbine)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.robolectric)
     testImplementation(libs.room.testing)
     testImplementation(libs.mockwebserver)
+    // Compose UI tests under JVM (Robolectric-backed) — enables TDD red→green
+    // cycles for view-level structure tests without requiring an emulator.
+    testImplementation(platform(libs.compose.bom))
+    testImplementation(libs.compose.ui.test.junit4)
+    testImplementation(libs.androidx.junit)
 
     // --- Instrumented Tests ---
     androidTestImplementation(libs.androidx.junit)
@@ -171,4 +178,8 @@ dependencies {
     androidTestImplementation(libs.hilt.android.testing)
     kaptAndroidTest(libs.hilt.android.compiler.test)
     androidTestImplementation(libs.mockk.android)
+    // Compose UI tests on real devices/emulators
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.compose.ui.test.junit4)
+    debugImplementation(libs.compose.ui.test.manifest)
 }
