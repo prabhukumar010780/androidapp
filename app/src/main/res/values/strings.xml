@@ -132,6 +132,14 @@ chart and personalize your insights</string>
     <string name="cancel_anytime">Cancel anytime</string>
     <string name="restore_purchases">Restore Purchases</string>
     <string name="subscription_terms">Subscription automatically renews unless canceled at least 24 hours before the end of the current period.</string>
+    <string name="billing_best_value">Best Value</string>
+    <string name="billing_free_trial">7-day free trial</string>
+    <string name="billing_subscribe">Subscribe</string>
+    <string name="billing_loading_purchase">Processing purchase…</string>
+    <string name="billing_conflict_title">Subscription Conflict</string>
+    <string name="billing_conflict_message">Multiple active subscriptions detected. Please manage your subscriptions in Google Play.</string>
+    <string name="billing_conflict_dismiss">Dismiss</string>
+    <string name="billing_yearly_save_label">Save over 15%%</string>
     <string name="aligning_stars">Aligning the stars...</string>
     <string name="suggested_questions">Suggested questions</string>
     <string name="no_chat_history">Your conversations will appear here</string>

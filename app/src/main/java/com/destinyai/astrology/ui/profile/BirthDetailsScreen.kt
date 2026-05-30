@@ -35,7 +35,7 @@ fun BirthDetailsScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { viewModel.loadBirthData() }
-    LaunchedEffect(state.isSaved) { if (state.isSaved) onSaved() }
+    LaunchedEffect(state.saveSuccess) { if (state.saveSuccess) onSaved() }
 
     CosmicBackground {
         Column(modifier = Modifier.fillMaxSize()) {

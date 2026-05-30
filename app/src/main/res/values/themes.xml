@@ -6,4 +6,13 @@
     </style>
 
     <style name="Theme.Android_app" parent="Base.Theme.Android_app" />
+
+    <!-- Gold-tinted date/time picker dialog matching iOS cosmic theme -->
+    <style name="DestinyDatePickerTheme" parent="Theme.Material3.DayNight.Dialog">
+        <item name="colorPrimary">#D4AF37</item>
+        <item name="colorOnPrimary">#0D0D1A</item>
+        <item name="colorSurface">#151A29</item>
+        <item name="colorOnSurface">#FFFFFF</item>
+        <item name="android:colorBackground">#151A29</item>
+    </style>
 </resources>

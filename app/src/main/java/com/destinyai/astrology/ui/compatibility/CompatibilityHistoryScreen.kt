@@ -19,6 +19,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -26,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.destinyai.astrology.domain.model.CompatibilityHistoryItem
+import com.destinyai.astrology.domain.model.ComparisonGroup
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
@@ -38,22 +41,71 @@ import com.destinyai.astrology.ui.theme.NavyVariant
 fun CompatibilityHistoryScreen(
     viewModel: CompatibilityViewModel,
     onBack: () -> Unit,
+    onGroupSelect: ((ComparisonGroup) -> Unit)? = null,
+    onItemSelect: ((CompatibilityHistoryItem) -> Unit)? = null,
+    onOpenSettings: (() -> Unit)? = null,
 ) {
     val items by viewModel.historyItems.collectAsStateWithLifecycle()
+    val isHistoryEnabled by viewModel.isHistoryEnabled.collectAsStateWithLifecycle()
     var searchText by remember { mutableStateOf("") }
+    var pendingDeleteId by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) { viewModel.loadHistory() }
 
     val filtered = remember(items, searchText) {
         if (searchText.isBlank()) items
         else items.filter {
-            it.boyName.contains(searchText, ignoreCase = true) ||
-                it.girlName.contains(searchText, ignoreCase = true)
+            historySearchFilter(searchText, boyName = it.boyName, girlName = it.girlName, userName = it.boyName)
         }
     }
 
+    // Group items by comparisonGroupId (or boyName as fallback) — mirrors iOS ComparisonGroup logic
+    // Pinned groups float to top, then sorted by most recent timestamp
+    val groups = remember(filtered) {
+        filtered
+            .groupBy { it.comparisonGroupId ?: it.boyName }
+            .map { (_, groupItems) ->
+                ComparisonGroup(
+                    userName = groupItems.first().boyName,
+                    items = groupItems.sortedByDescending { it.totalScore },
+                    timestamp = groupItems.maxOf { it.timestampMs },
+                )
+            }
+            .sortedWith(
+                compareByDescending<ComparisonGroup> { g -> g.items.any { it.isPinned } }
+                    .thenByDescending { it.timestamp }
+            )
+    }
+
     CosmicBackground {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .semantics(mergeDescendants = true) { contentDescription = "history_screen" },
+        ) {
+            // Delete confirmation dialog
+            if (pendingDeleteId != null) {
+                AlertDialog(
+                    onDismissRequest = { pendingDeleteId = null },
+                    title = { Text("Delete Match?") },
+                    text = { Text("This will permanently remove this compatibility result from your history.") },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                viewModel.deleteHistoryItem(pendingDeleteId!!)
+                                pendingDeleteId = null
+                            },
+                        ) {
+                            Text("Delete", color = Color(0xFFFC8181))
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { pendingDeleteId = null }) {
+                            Text("Cancel")
+                        }
+                    },
+                )
+            }
             // Header
             Row(
                 modifier = Modifier
@@ -73,7 +125,12 @@ fun CompatibilityHistoryScreen(
                 )
             }
 
-            if (items.isEmpty()) {
+            if (!isHistoryEnabled) {
+                HistoryDisabledState(
+                    modifier = Modifier.weight(1f),
+                    onOpenSettings = onOpenSettings,
+                )
+            } else if (items.isEmpty()) {
                 HistoryEmptyState(modifier = Modifier.weight(1f))
             } else {
                 // Search bar
@@ -112,7 +169,7 @@ fun CompatibilityHistoryScreen(
 
                 if (filtered.isEmpty()) {
                     Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Text("No results found", style = MaterialTheme.typography.bodyMedium, color = CreamDim)
+                        Text(emptyHistoryMessage(searchText), style = MaterialTheme.typography.bodyMedium, color = CreamDim)
                     }
                 } else {
                     LazyColumn(
@@ -120,12 +177,23 @@ fun CompatibilityHistoryScreen(
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        items(filtered, key = { it.sessionId }) { item ->
-                            SwipeToDeleteHistoryItem(
-                                item = item,
-                                onPin = { viewModel.toggleHistoryPin(item.sessionId) },
-                                onDelete = { viewModel.deleteHistoryItem(item.sessionId) },
-                            )
+                        items(groups, key = { it.id }) { group ->
+                            if (group.partnerCount > 1) {
+                                SwipeToDeleteGroupRow(
+                                    group = group,
+                                    onTap = { onGroupSelect?.invoke(group) },
+                                    onDeleteRequest = { item -> pendingDeleteId = item.sessionId },
+                                    onPin = { item -> viewModel.toggleHistoryPin(item.sessionId) },
+                                )
+                            } else {
+                                val item = group.items.first()
+                                SwipeToDeleteHistoryItem(
+                                    item = item,
+                                    onTap = { onItemSelect?.invoke(item) },
+                                    onPin = { viewModel.toggleHistoryPin(item.sessionId) },
+                                    onDeleteRequest = { pendingDeleteId = item.sessionId },
+                                )
+                            }
                         }
                         item { Spacer(Modifier.height(32.dp)) }
                     }
@@ -139,15 +207,16 @@ fun CompatibilityHistoryScreen(
 @Composable
 private fun SwipeToDeleteHistoryItem(
     item: CompatibilityHistoryItem,
+    onTap: () -> Unit = {},
     onPin: () -> Unit,
-    onDelete: () -> Unit,
+    onDeleteRequest: () -> Unit,
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             if (value == SwipeToDismissBoxValue.EndToStart) {
-                onDelete()
-                true
-            } else false
+                onDeleteRequest()
+            }
+            false // Always return false — dialog handles actual deletion
         },
     )
 
@@ -167,7 +236,50 @@ private fun SwipeToDeleteHistoryItem(
             }
         },
     ) {
-        HistoryItemRow(item = item, onPin = onPin)
+        HistoryItemRow(item = item, onPin = onPin, onTap = onTap)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SwipeToDeleteGroupRow(
+    group: ComparisonGroup,
+    onTap: () -> Unit,
+    onDeleteRequest: (CompatibilityHistoryItem) -> Unit,
+    onPin: (CompatibilityHistoryItem) -> Unit,
+) {
+    val firstItem = group.items.firstOrNull()
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            if (value == SwipeToDismissBoxValue.EndToStart && firstItem != null) {
+                onDeleteRequest(firstItem)
+            }
+            false
+        },
+    )
+
+    SwipeToDismissBox(
+        state = dismissState,
+        enableDismissFromStartToEnd = false,
+        backgroundContent = {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFFC8181).copy(alpha = 0.85f))
+                    .padding(end = 20.dp),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                Icon(Icons.Filled.Delete, contentDescription = "Delete", tint = Color.White)
+            }
+        },
+    ) {
+        GroupHistoryRow(
+            group = group,
+            onTap = onTap,
+            onDeleteRequest = onDeleteRequest,
+            onPin = onPin,
+        )
     }
 }
 
@@ -175,6 +287,7 @@ private fun SwipeToDeleteHistoryItem(
 private fun HistoryItemRow(
     item: CompatibilityHistoryItem,
     onPin: () -> Unit,
+    onTap: () -> Unit = {},
 ) {
     val scoreColor = when {
         item.scorePercentage >= 70 -> Color(0xFF48BB78)
@@ -188,6 +301,7 @@ private fun HistoryItemRow(
             .clip(RoundedCornerShape(12.dp))
             .background(NavySurface)
             .border(1.dp, Gold.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+            .clickable(onClick = onTap)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -250,6 +364,59 @@ private fun HistoryItemRow(
                 modifier = Modifier.size(18.dp),
             )
         }
+
+        // Chat message count badge (iOS bubble.left.fill — user messages only)
+        val msgCount = userMessageCount(item.chatMessages)
+        if (msgCount > 0) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Gold.copy(alpha = 0.12f))
+                    .padding(horizontal = 6.dp, vertical = 3.dp),
+            ) {
+                Text(
+                    text = "$msgCount",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Gold,
+                )
+            }
+            Spacer(Modifier.width(4.dp))
+        }
+    }
+}
+
+@Composable
+private fun HistoryDisabledState(
+    modifier: Modifier = Modifier,
+    onOpenSettings: (() -> Unit)? = null,
+) {
+    Box(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("🕐", fontSize = 56.sp)
+            Text(
+                text = "History is Turned Off",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = CreamText,
+            )
+            Text(
+                text = "Match results are not being saved.\nEnable history in Settings to track your analyses.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = CreamDim,
+                textAlign = TextAlign.Center,
+                lineHeight = 22.sp,
+                modifier = Modifier.padding(horizontal = 32.dp),
+            )
+            if (onOpenSettings != null) {
+                OutlinedButton(
+                    onClick = onOpenSettings,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Gold.copy(alpha = 0.5f)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold),
+                ) {
+                    Text("Open Settings")
+                }
+            }
+        }
     }
 }
 
@@ -277,6 +444,81 @@ private fun HistoryEmptyState(modifier: Modifier = Modifier) {
     }
 }
 
+// ─── Group History Row (iOS GroupHistoryRow) ──────────────────────────────────
+
+@Composable
+private fun GroupHistoryRow(
+    group: ComparisonGroup,
+    onTap: () -> Unit = {},
+    onDeleteRequest: (CompatibilityHistoryItem) -> Unit = {},
+    onPin: (CompatibilityHistoryItem) -> Unit = {},
+) {
+    val best = group.bestMatch
+    val scoreColor = when {
+        (best?.scorePercentage ?: 0.0) >= 70 -> Color(0xFF48BB78)
+        (best?.scorePercentage ?: 0.0) >= 50 -> Color(0xFFED8936)
+        else -> Color(0xFFFC8181)
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(NavySurface)
+            .border(1.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+            .clickable(onClick = onTap)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(50.dp)
+                .clip(CircleShape)
+                .background(Gold.copy(alpha = 0.1f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("👥", fontSize = 22.sp)
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = group.displayTitle,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = CreamText,
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                text = "${group.partnerCount} partners • Best: ${best?.girlName ?: "—"}",
+                style = MaterialTheme.typography.labelSmall,
+                color = CreamDim,
+            )
+            Text(
+                text = group.displayDate,
+                style = MaterialTheme.typography.labelSmall,
+                color = CreamDim,
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        if (best != null) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(scoreColor.copy(alpha = 0.15f))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "${best.totalScore}/${best.maxScore}",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = scoreColor,
+                )
+            }
+        }
+    }
+}
+
 // Thin wrapper so LazyColumn doesn't need `androidx.compose.foundation.text` import
 @Composable
 private fun BasicTextField(
@@ -296,3 +538,23 @@ private fun BasicTextField(
         decorationBox = decorationBox,
     )
 }
+
+// Pure helpers — unit testable
+
+internal fun historySearchFilter(
+    query: String,
+    boyName: String,
+    girlName: String,
+    userName: String,
+): Boolean {
+    if (query.isBlank()) return true
+    return boyName.contains(query, ignoreCase = true) ||
+        girlName.contains(query, ignoreCase = true) ||
+        userName.contains(query, ignoreCase = true)
+}
+
+internal fun userMessageCount(messages: List<com.destinyai.astrology.domain.model.CompatChatMessageData>): Int =
+    messages.count { it.isUser }
+
+internal fun emptyHistoryMessage(searchText: String): String =
+    if (searchText.isBlank()) "No compatibility history yet" else "No results found"

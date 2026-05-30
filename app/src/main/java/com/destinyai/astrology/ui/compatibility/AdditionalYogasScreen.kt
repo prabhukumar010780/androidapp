@@ -4,9 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -16,27 +14,42 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.destinyai.astrology.domain.model.DestinyTileType
+import com.destinyai.astrology.domain.model.YogaDoshaData
+import com.destinyai.astrology.domain.model.YogaItem
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
-import com.destinyai.astrology.ui.theme.NavyVariant
 
 @Composable
 fun AdditionalYogasScreen(
-    boyYogas: Map<String, Any>?,
-    girlYogas: Map<String, Any>?,
+    boyYogaData: YogaDoshaData?,
+    girlYogaData: YogaDoshaData?,
     boyName: String,
     girlName: String,
     onBack: () -> Unit,
 ) {
     var selectedPartner by remember { mutableIntStateOf(0) }
-    val currentData = if (selectedPartner == 0) boyYogas else girlYogas
+    var selectedTile by remember { mutableStateOf(DestinyTileType.WEALTH) }
+
+    val currentData = if (selectedPartner == 0) boyYogaData else girlYogaData
     val currentName = if (selectedPartner == 0) boyName else girlName
+
+    val topicItems = remember(currentData, selectedTile) {
+        yogasSortedAlphabetically(currentData?.items(selectedTile) ?: emptyList())
+    }
+
+    val tileCounts = remember(currentData) {
+        DestinyTileType.topicTiles.associateWith { tile ->
+            currentData?.items(tile)?.size ?: 0
+        } + mapOf(DestinyTileType.DOSHA to allDoshaItems(currentData).size)
+    }
+
+    val allTiles = DestinyTileType.topicTiles + listOf(DestinyTileType.DOSHA)
 
     CosmicBackground {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -49,168 +62,103 @@ fun AdditionalYogasScreen(
                 IconButton(onClick = onBack) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Gold)
                 }
+                Text(
+                    "Yogas Analysis",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = CreamText,
+                )
             }
 
-            // Partner tab selector
-            PartnerTabRow(
+            // Topic tab row with counts (iOS: MagicTabbar is Tier 1, on top)
+            MagicTabbar(
+                tabs = allTiles,
+                selectedTab = selectedTile,
+                tileCounts = tileCounts,
+                onSelect = { selectedTile = it },
+            )
+
+            Spacer(Modifier.height(4.dp))
+
+            // Partner tab selector (iOS: ProfileSwitcher is Tier 2, below tabbar)
+            ProfileSwitcher(
                 selectedIndex = selectedPartner,
-                firstName = boyName,
-                secondName = girlName,
+                names = listOf(boyName, girlName),
                 onSelect = { selectedPartner = it },
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
 
             Spacer(Modifier.height(8.dp))
 
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                if (currentData == null) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 60.dp),
-                        contentAlignment = Alignment.Center,
+            if (topicItems.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("✨", fontSize = 48.sp)
-                            Spacer(Modifier.height(12.dp))
-                            Text(
-                                "No yoga data available for $currentName",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = CreamDim,
-                                textAlign = TextAlign.Center,
-                            )
-                        }
+                        Text("✨", fontSize = 36.sp)
+                        Text(
+                            "No yogas found for this category",
+                            fontSize = 14.sp,
+                            color = CreamDim,
+                        )
                     }
-                } else {
-                    YogaPersonSection(name = currentName, yogas = currentData)
                 }
-
-                Spacer(Modifier.height(32.dp))
-            }
-        }
-    }
-}
-
-// ─── Partner Tab Row ──────────────────────────────────────────────────────────
-
-@Composable
-private fun PartnerTabRow(
-    selectedIndex: Int,
-    firstName: String,
-    secondName: String,
-    onSelect: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(NavySurface)
-            .border(1.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
-            .padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        listOf(firstName, secondName).forEachIndexed { index, name ->
-            val isSelected = selectedIndex == index
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(if (isSelected) Gold else Color.Transparent)
-                    .clickable { onSelect(index) }
-                    .padding(vertical = 10.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = name.take(14),
-                    fontSize = 13.sp,
-                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                    color = if (isSelected) Color(0xFF0D0D1A) else CreamDim,
-                    maxLines = 1,
+            } else {
+                TopicListView(
+                    tile = selectedTile,
+                    items = topicItems,
+                    personName = currentName,
+                    modifier = Modifier.fillMaxSize(),
+                    key = "${selectedTile.name}_${selectedPartner}",
                 )
             }
         }
     }
 }
 
-// ─── Yoga Section ─────────────────────────────────────────────────────────────
+// MagicTabbar lives in MagicTabbar.kt
 
-@Composable
+// Pure helper — unit testable
+internal fun yogasSortedAlphabetically(items: List<com.destinyai.astrology.domain.model.YogaItem>): List<com.destinyai.astrology.domain.model.YogaItem> =
+    items.sortedBy { it.name.lowercase() }
+
+internal fun activeDoshaTileCount(doshas: List<com.destinyai.astrology.domain.model.YogaItem>): Int =
+    doshas.count { it.isActive }
+
+internal fun allDoshaItems(data: YogaDoshaData?): List<YogaItem> =
+    data?.doshas ?: emptyList()
+
+internal fun toYogaDoshaData(map: Map<String, Any>): YogaDoshaData = map.yogaDoshaDataFrom()
+
 @Suppress("UNCHECKED_CAST")
-private fun YogaPersonSection(name: String, yogas: Map<String, Any>) {
-    val activeYogas = yogas.entries.filter { (_, v) ->
-        when (v) {
-            is Map<*, *> -> v["yoga_present"] == true || v["is_active"] == true || v["active"] == true
-            is Boolean -> v
-            else -> false
-        }
+internal fun Map<String, Any>.yogaDoshaDataFrom(): YogaDoshaData {
+    val yogas = entries.mapNotNull { (key, value) ->
+        val map = value as? Map<*, *> ?: return@mapNotNull null
+        val isDosha = map["is_dosha"] as? Boolean ?: false
+        val isActive = map["yoga_present"] == true || map["is_active"] == true || map["active"] == true
+        val description = (map["description"] as? String) ?: (map["effect"] as? String) ?: ""
+        val strengthRaw = (map["strength"] as? Number)?.toDouble() ?: if (isActive) 100.0 else 0.0
+        val category = (map["category"] as? String)
+        YogaItem(
+            id = key,
+            name = key.replace("_", " ").split(" ").joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } },
+            yogaKey = key,
+            status = if (!isActive) "C" else "A",
+            strengthRaw = strengthRaw,
+            description = description,
+            category = category,
+            isDosha = isDosha,
+            outcome = map["outcome"] as? String,
+            formation = map["formation"] as? String,
+            reason = map["reason"] as? String,
+            planets = map["planets"] as? String,
+            houses = map["houses"] as? String,
+        )
     }
-
-    if (activeYogas.isEmpty()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 40.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("✨", fontSize = 40.sp)
-                Spacer(Modifier.height(10.dp))
-                Text("No active yogas detected for $name", color = CreamDim, textAlign = TextAlign.Center)
-            }
-        }
-    } else {
-        activeYogas.forEach { (key, value) ->
-            YogaRow(yogaKey = key, data = value)
-        }
-    }
-}
-
-@Composable
-@Suppress("UNCHECKED_CAST")
-private fun YogaRow(yogaKey: String, data: Any) {
-    val successColor = Color(0xFF48BB78)
-    val displayName = yogaKey.replace("_", " ").split(" ").joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(NavySurface)
-            .border(1.dp, Gold.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
-            .padding(14.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("✦ ", color = Gold, fontSize = 12.sp)
-            Text(
-                displayName,
-                style = MaterialTheme.typography.labelMedium,
-                color = CreamText,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.weight(1f),
-            )
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(successColor.copy(alpha = 0.15f))
-                    .border(1.dp, successColor.copy(alpha = 0.3f), RoundedCornerShape(50))
-                    .padding(horizontal = 8.dp, vertical = 3.dp),
-            ) {
-                Text("ACTIVE", style = MaterialTheme.typography.labelSmall, color = successColor, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-            }
-        }
-
-        val desc = (data as? Map<*, *>)?.get("description") as? String
-            ?: (data as? Map<*, *>)?.get("effect") as? String
-        if (!desc.isNullOrBlank()) {
-            Spacer(Modifier.height(6.dp))
-            Text(desc, style = MaterialTheme.typography.bodySmall, color = CreamDim, lineHeight = 18.sp)
-        }
-    }
+    val (doshas, normalYogas) = yogas.partition { it.isDosha == true }
+    return YogaDoshaData(yogas = normalYogas, doshas = doshas)
 }

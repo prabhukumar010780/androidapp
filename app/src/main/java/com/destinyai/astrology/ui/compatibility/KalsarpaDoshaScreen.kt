@@ -1,7 +1,10 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.destinyai.astrology.ui.compatibility
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -258,6 +261,7 @@ private fun SingleDoshaView(
                 fontSize = 20.sp, fontWeight = FontWeight.Bold, color = CreamText,
             )
             DoshaDetailsCard(data = affectedData)
+            DoshaRemediesCard(data = affectedData)
         }
     }
 }
@@ -312,6 +316,36 @@ private fun MutualDoshaView(
                     HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
                 }
                 if (girlData != null) CompactDoshaRow(name = girlName, data = girlData)
+            }
+        }
+
+        // Shared remedies (iOS combinedRemedies — union of both partners' remedies)
+        val sharedRemedies = kalsarpaSharedRemedies(boyData?.remedies ?: emptyList(), girlData?.remedies ?: emptyList())
+        if (sharedRemedies.isNotEmpty()) {
+            KalGlassCard {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text("🔶", fontSize = 16.sp)
+                    Text("Shared Remedies", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = CreamText)
+                }
+                Spacer(Modifier.height(12.dp))
+                sharedRemedies.forEachIndexed { i, remedy ->
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.padding(bottom = 8.dp),
+                    ) {
+                        Text(
+                            "${i + 1}.",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Gold,
+                            modifier = Modifier.width(20.dp),
+                        )
+                        Text(remedy, fontSize = 13.sp, color = CreamDim, lineHeight = 20.sp, modifier = Modifier.weight(1f))
+                    }
+                }
             }
         }
     }
@@ -413,6 +447,24 @@ private fun DoshaDetailsCard(data: KalaSarpaModel) {
             }
         }
 
+        // Named dosha description (iOS namedDoshaDescription card)
+        val doshaDesc = kalsarpaDoshaDescription(displayName)
+        if (doshaDesc.isNotBlank()) {
+            Spacer(Modifier.height(12.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.Black.copy(alpha = 0.2f))
+                    .border(1.dp, Gold.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+                    .padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text("📖", fontSize = 14.sp)
+                Text(doshaDesc, fontSize = 12.sp, color = CreamDim, lineHeight = 20.sp, modifier = Modifier.weight(1f))
+            }
+        }
+
         // Life areas
         if (data.lifeAreas.isNotEmpty()) {
             Spacer(Modifier.height(14.dp))
@@ -474,7 +526,7 @@ private fun DoshaDetailsCard(data: KalaSarpaModel) {
             }
         }
 
-        // Description
+        // Description / analysis
         if (!data.description.isNullOrBlank()) {
             Spacer(Modifier.height(12.dp))
             Row(
@@ -489,6 +541,116 @@ private fun DoshaDetailsCard(data: KalaSarpaModel) {
                 text = data.description,
                 fontSize = 13.sp, color = CreamDim, lineHeight = 20.sp,
             )
+        }
+
+        // Structured analysis notes (iOS analysisNotes: [String])
+        if (!data.analysisNotes.isNullOrEmpty()) {
+            Spacer(Modifier.height(12.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text("📝", fontSize = 14.sp)
+                Text("Analysis Notes", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CreamDim)
+            }
+            Spacer(Modifier.height(8.dp))
+            data.analysisNotes.forEach { note ->
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(bottom = 6.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Text("•", fontSize = 13.sp, color = Gold.copy(alpha = 0.7f))
+                    Text(note, fontSize = 13.sp, color = CreamDim, lineHeight = 20.sp, modifier = Modifier.weight(1f))
+                }
+            }
+        }
+
+        // Planets involved chips (iOS planetsInvolved)
+        if (!data.planetsInvolved.isNullOrEmpty()) {
+            Spacer(Modifier.height(12.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text("🪐", fontSize = 14.sp)
+                Text("Planets Involved", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CreamDim)
+            }
+            Spacer(Modifier.height(8.dp))
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                data.planetsInvolved.forEach { planet ->
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Gold.copy(alpha = 0.1f))
+                            .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                    ) {
+                        Text(planet, fontSize = 11.sp, color = Gold)
+                    }
+                }
+            }
+        }
+
+        // Peak period
+        if (!data.peakPeriod.isNullOrBlank()) {
+            Spacer(Modifier.height(14.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text("⏳", fontSize = 14.sp)
+                Text("Peak Period", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CreamDim)
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color.Black.copy(alpha = 0.3f))
+                    .border(1.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(10.dp))
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text("⚡", fontSize = 16.sp)
+                Text(data.peakPeriod, fontSize = 13.sp, color = CreamText, lineHeight = 20.sp, modifier = Modifier.weight(1f))
+            }
+        }
+
+        // Remedies (moved to separate card outside DoshaDetailsCard — iOS parity)
+    }
+}
+
+@Composable
+private fun DoshaRemediesCard(data: KalaSarpaModel) {
+    if (data.remedies.isEmpty()) return
+    KalGlassCard {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("🔶", fontSize = 14.sp)
+            Text("Remedies", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CreamDim)
+        }
+        Spacer(Modifier.height(8.dp))
+        data.remedies.forEachIndexed { i, remedy ->
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.padding(bottom = 8.dp),
+            ) {
+                Text(
+                    "${i + 1}.",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Gold,
+                    modifier = Modifier.width(20.dp),
+                )
+                Text(remedy, fontSize = 13.sp, color = CreamDim, lineHeight = 20.sp, modifier = Modifier.weight(1f))
+            }
         }
     }
 }
@@ -545,4 +707,24 @@ private fun KalGlassCard(
     ) {
         content()
     }
+}
+
+internal fun kalsarpaSharedRemedies(boyRemedies: List<String>, girlRemedies: List<String>): List<String> =
+    (boyRemedies + girlRemedies).distinct().take(3)
+
+// Pure helper — unit testable
+internal fun kalsarpaDoshaDescription(yogaName: String): String = when (yogaName) {
+    "Anant" -> "Anant Kalsarpa Yoga forms when Rahu is in the first house and Ketu in the seventh. It intensifies ambition and self-reliance, but can bring struggles in partnerships and a restless, driven nature."
+    "Kulik" -> "Kulik Kalsarpa Yoga arises when Rahu occupies the second house and Ketu the eighth. It creates challenges around accumulated wealth, family bonds, and speech, while deepening interest in hidden knowledge."
+    "Vasuki" -> "Vasuki Kalsarpa Yoga occurs with Rahu in the third house and Ketu in the ninth. It strengthens courage and determination but may bring tensions with siblings and test one's faith and higher beliefs."
+    "Shankhpal" -> "Shankhpal Kalsarpa Yoga forms with Rahu in the fourth house and Ketu in the tenth. Home life and inner peace may be disrupted, yet career can see unconventional rise through persistent effort."
+    "Padma" -> "Padma Kalsarpa Yoga arises when Rahu is in the fifth house and Ketu in the eleventh. Creativity and intelligence are heightened, but issues around children and speculative gains may surface."
+    "Mahapadma" -> "Mahapadma Kalsarpa Yoga occurs with Rahu in the sixth house and Ketu in the twelfth. Enemies and debts may prove challenging, yet strong capacity to overcome adversity and achieve spiritual liberation."
+    "Takshak" -> "Takshak Kalsarpa Yoga forms when Rahu occupies the seventh house and Ketu the first. Partnerships and marriage become central karmic lessons, often bringing repeated cycles of union and separation."
+    "Karkotak" -> "Karkotak Kalsarpa Yoga arises with Rahu in the eighth house and Ketu in the second. Sudden transformations, inheritance disputes, and hidden fears define the life path, alongside deep occult interest."
+    "Shankhachud" -> "Shankhachud Kalsarpa Yoga occurs when Rahu is in the ninth house and Ketu in the third. Karmic challenges with father, religion, and long journeys shape destiny, requiring persistent ethical effort."
+    "Ghatak" -> "Ghatak Kalsarpa Yoga forms with Rahu in the tenth house and Ketu in the fourth. Career ambitions can be thwarted by hidden enemies and erratic reputation shifts, demanding resilience and adaptability."
+    "Vishdhar" -> "Vishdhar Kalsarpa Yoga arises when Rahu is in the eleventh house and Ketu in the fifth. Gains and friendships are karmic themes; children and speculative ventures require careful attention and patience."
+    "Sheshnag" -> "Sheshnag Kalsarpa Yoga occurs with Rahu in the twelfth house and Ketu in the sixth. Losses, exile, and hidden expenses may recur, yet deep spiritual progress and liberation are strongly indicated."
+    else -> "This Kalsarpa Yoga pattern creates a specific karmic axis in the chart. All seven planets fall between Rahu and Ketu, focusing life themes intensely on the affected houses and calling for conscious karmic resolution."
 }

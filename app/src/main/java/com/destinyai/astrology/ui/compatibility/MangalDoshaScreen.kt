@@ -1,7 +1,10 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.destinyai.astrology.ui.compatibility
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -192,7 +195,7 @@ private fun CancelledScenarioView(
 ) {
     val cancelBlue = Color(0xFF4299E1)
     @Suppress("UNCHECKED_CAST")
-    val firstFactor = (mangalCompatibility?.get("cancellation_factors") as? List<String>)?.firstOrNull()
+    val cancellationFactors = (mangalCompatibility?.get("cancellation_factors") as? List<String>) ?: emptyList()
     val reason = mangalCompatibility?.get("cancellation_reason") as? String
 
     Column(
@@ -217,10 +220,27 @@ private fun CancelledScenarioView(
             }
             Text("Dosha Cancelled", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = cancelBlue)
             Text(
-                text = firstFactor ?: "The Mangal Dosha has been neutralized by classical exceptions",
+                text = cancellationFactors.firstOrNull() ?: "The Mangal Dosha has been neutralized by classical exceptions",
                 fontSize = 13.sp, color = CreamDim, textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
+        }
+
+        // All cancellation factors (iOS shows full list)
+        if (cancellationFactors.size > 1) {
+            MarsGlassCard {
+                Text("Cancellation Factors", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = CreamDim, letterSpacing = 0.5.sp)
+                Spacer(Modifier.height(8.dp))
+                cancellationFactors.forEach { factor ->
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(vertical = 2.dp),
+                    ) {
+                        Text("✓", fontSize = 12.sp, color = cancelBlue)
+                        Text(factor, fontSize = 12.sp, color = CreamText, lineHeight = 18.sp)
+                    }
+                }
+            }
         }
 
         // Cancellation reason card
@@ -235,8 +255,8 @@ private fun CancelledScenarioView(
                 }
                 Spacer(Modifier.height(10.dp))
 
-                val boyHasEx = boyData?.exceptions?.isNotEmpty() == true
-                val girlHasEx = girlData?.exceptions?.isNotEmpty() == true
+                val boyHasEx = boyData?.isCancelled ?: false
+                val girlHasEx = girlData?.isCancelled ?: false
 
                 if (boyHasEx || girlHasEx) {
                     Text(
@@ -244,13 +264,13 @@ private fun CancelledScenarioView(
                         fontSize = 13.sp, color = CreamDim, lineHeight = 20.sp,
                     )
                     Spacer(Modifier.height(10.dp))
-                    if (boyHasEx) ExceptionPersonBlock(name = boyName, exceptions = boyData!!.exceptions, isCancelled = true)
+                    if (boyHasEx) ExceptionPersonBlock(name = boyName, exceptions = boyData!!.exceptions, isCancelled = true, impactSummary = boyData.exceptionImpactSummary, intensityFactors = boyData.activeIntensityFactors)
                     if (girlHasEx) {
                         if (boyHasEx) HorizontalDivider(
                             modifier = Modifier.padding(vertical = 8.dp),
                             color = Color.White.copy(alpha = 0.1f),
                         )
-                        ExceptionPersonBlock(name = girlName, exceptions = girlData!!.exceptions, isCancelled = true)
+                        ExceptionPersonBlock(name = girlName, exceptions = girlData!!.exceptions, isCancelled = true, impactSummary = girlData.exceptionImpactSummary, intensityFactors = girlData.activeIntensityFactors)
                     }
                 } else {
                     Text(reason, fontSize = 13.sp, color = CreamText, lineHeight = 20.sp)
@@ -288,8 +308,8 @@ private fun EffectiveScenarioView(
     }
     val desc = mangalCompatibility?.get("description") as? String
         ?: mangalCompatibility?.get("analysis") as? String
-    val boyHasEx = boyData?.exceptions?.isNotEmpty() == true
-    val girlHasEx = girlData?.exceptions?.isNotEmpty() == true
+    val boyHasEx = boyData?.isCancelled ?: false
+    val girlHasEx = girlData?.isCancelled ?: false
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -297,6 +317,7 @@ private fun EffectiveScenarioView(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // Hero
+        val heroTitle = "Attention Required"
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -311,12 +332,53 @@ private fun EffectiveScenarioView(
             ) {
                 Text("⚠️", fontSize = 40.sp)
             }
-            Text("Attention Required", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = warningOrange)
+            Text(heroTitle, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = warningOrange)
             Text(
                 text = attentionDesc,
                 fontSize = 13.sp, color = CreamDim, textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
+        }
+
+        // Exception impact summary callout (iOS exceptionImpactSummary)
+        val impactSummary = listOfNotNull(boyData?.exceptionImpactSummary, girlData?.exceptionImpactSummary)
+            .firstOrNull()
+        if (!impactSummary.isNullOrBlank()) {
+            MarsGlassCard {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("💡", fontSize = 14.sp)
+                    Text(impactSummary, fontSize = 13.sp, color = CreamDim, lineHeight = 20.sp, modifier = Modifier.weight(1f))
+                }
+            }
+        }
+
+        // Intensity factors chips (iOS intensityDescriptions)
+        val allIntensityFactors = (boyData?.activeIntensityFactors ?: emptyList()) +
+            (girlData?.activeIntensityFactors ?: emptyList())
+        if (allIntensityFactors.isNotEmpty()) {
+            MarsGlassCard {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text("Intensity Factors", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = CreamDim, letterSpacing = 0.5.sp, modifier = Modifier.weight(1f))
+                    Text(intensityFactorCountLabel(allIntensityFactors.distinct().size), fontSize = 11.sp, color = warningOrange)
+                }
+                Spacer(Modifier.height(8.dp))
+                androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    allIntensityFactors.distinct().forEach { factor ->
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(warningOrange.copy(alpha = 0.12f))
+                                .border(1.dp, warningOrange.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                        ) {
+                            Text(factor, fontSize = 11.sp, color = warningOrange)
+                        }
+                    }
+                }
+            }
         }
 
         // Side-by-side person cards
@@ -344,13 +406,13 @@ private fun EffectiveScenarioView(
                     fontSize = 12.sp, color = CreamDim,
                 )
                 Spacer(Modifier.height(10.dp))
-                if (boyHasEx) ExceptionPersonBlock(name = boyName, exceptions = boyData!!.exceptions, isCancelled = false)
+                if (boyHasEx) ExceptionPersonBlock(name = boyName, exceptions = boyData!!.exceptions, isCancelled = false, impactSummary = boyData.exceptionImpactSummary, intensityFactors = boyData.activeIntensityFactors)
                 if (girlHasEx) {
                     if (boyHasEx) HorizontalDivider(
                         modifier = Modifier.padding(vertical = 8.dp),
                         color = Color.White.copy(alpha = 0.1f),
                     )
-                    ExceptionPersonBlock(name = girlName, exceptions = girlData!!.exceptions, isCancelled = false)
+                    ExceptionPersonBlock(name = girlName, exceptions = girlData!!.exceptions, isCancelled = false, impactSummary = girlData.exceptionImpactSummary, intensityFactors = girlData.activeIntensityFactors)
                 }
             }
         }
@@ -363,6 +425,36 @@ private fun EffectiveScenarioView(
                 Text(desc, fontSize = 13.sp, color = CreamDim, lineHeight = 20.sp)
             }
         }
+
+        // Remedies
+        val allRemedies = ((boyData?.remedies ?: emptyList()) + (girlData?.remedies ?: emptyList())).distinct()
+        if (allRemedies.isNotEmpty()) {
+            MarsGlassCard {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text("🔶", fontSize = 16.sp)
+                    Text("Remedies", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = CreamText)
+                }
+                Spacer(Modifier.height(10.dp))
+                allRemedies.forEachIndexed { i, remedy ->
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.padding(bottom = 8.dp),
+                    ) {
+                        Text(
+                            "${i + 1}.",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Gold,
+                            modifier = Modifier.width(20.dp),
+                        )
+                        Text(remedy, fontSize = 13.sp, color = CreamDim, lineHeight = 20.sp, modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -373,7 +465,8 @@ private fun MarsStatusPersonCard(name: String, data: MangalDoshaModel?, modifier
     val successColor = Color(0xFF48BB78)
     val hasDosha = data?.hasMangalDosha ?: false
     val severity = data?.severity?.lowercase()
-    val isCancelledByExceptions = hasDosha && data?.exceptions?.isNotEmpty() == true
+    val isCancelledByExceptions = data?.isCancelled ?: false
+    val isReduced = data?.isReduced ?: false
 
     val badgeBg = when {
         !hasDosha -> successColor
@@ -390,6 +483,7 @@ private fun MarsStatusPersonCard(name: String, data: MangalDoshaModel?, modifier
     val borderColor = when {
         !hasDosha -> Color.White
         isCancelledByExceptions -> successColor
+        isReduced -> Color.Yellow
         severity == "severe" || severity == "high" -> Color.Red
         else -> Color(0xFFFFA500)
     }
@@ -408,15 +502,16 @@ private fun MarsStatusPersonCard(name: String, data: MangalDoshaModel?, modifier
             ) {
                 Text(badgeText, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
             }
-            if (hasDosha && data?.marsHouse != null) {
-                Text(
-                    "Mars in House ${data.marsHouse}",
-                    fontSize = 10.sp, color = CreamDim, textAlign = TextAlign.Center,
-                )
+            if (hasDosha) {
+                val positionText = data?.activeDoshaSourcesDisplay
+                    ?: data?.marsHouse?.let { "Mars in House $it" }
+                if (positionText != null) {
+                    Text(positionText, fontSize = 10.sp, color = CreamDim, textAlign = TextAlign.Center)
+                }
             }
             if (hasDosha && !data?.description.isNullOrBlank()) {
                 Text(
-                    text = (data?.description ?: "").take(80),
+                    text = data?.description ?: "",
                     fontSize = 10.sp, color = CreamDim, textAlign = TextAlign.Center, lineHeight = 14.sp,
                 )
             }
@@ -425,9 +520,16 @@ private fun MarsStatusPersonCard(name: String, data: MangalDoshaModel?, modifier
 }
 
 @Composable
-private fun ExceptionPersonBlock(name: String, exceptions: List<String>, isCancelled: Boolean) {
+private fun ExceptionPersonBlock(
+    name: String,
+    exceptions: List<String>,
+    isCancelled: Boolean,
+    impactSummary: String? = null,
+    intensityFactors: List<String> = emptyList(),
+) {
     val successColor = Color(0xFF48BB78)
     val accentColor = if (isCancelled) successColor else Color(0xFFECC94B)
+    val warningOrange = Color(0xFFED8936)
 
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(
@@ -436,7 +538,8 @@ private fun ExceptionPersonBlock(name: String, exceptions: List<String>, isCance
         ) {
             Text(if (isCancelled) "✓" else "↓", fontSize = 13.sp, color = accentColor)
             Text(
-                text = "$name — ${if (isCancelled) "dosha cancelled" else "exceptions apply"}",
+                text = if (impactSummary != null) "$name: $impactSummary"
+                       else "$name — ${if (isCancelled) "dosha cancelled" else "exceptions apply"}",
                 fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = accentColor,
             )
         }
@@ -446,7 +549,24 @@ private fun ExceptionPersonBlock(name: String, exceptions: List<String>, isCance
                 modifier = Modifier.padding(start = 4.dp),
             ) {
                 Text("•", fontSize = 12.sp, color = Gold.copy(alpha = 0.7f))
-                Text(ex, fontSize = 12.sp, color = CreamText, lineHeight = 18.sp)
+                Text(localizeExceptionKey(ex), fontSize = 12.sp, color = CreamText, lineHeight = 18.sp)
+            }
+        }
+        if (intensityFactors.isNotEmpty()) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                intensityFactorCountLabel(intensityFactors.size),
+                fontSize = 11.sp, color = warningOrange,
+                modifier = Modifier.padding(start = 4.dp),
+            )
+            intensityFactors.forEach { factor ->
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(start = 4.dp),
+                ) {
+                    Text("•", fontSize = 11.sp, color = warningOrange.copy(alpha = 0.7f))
+                    Text(factor, fontSize = 11.sp, color = CreamDim, lineHeight = 17.sp)
+                }
             }
         }
     }
@@ -497,3 +617,34 @@ private fun MarsGlassCard(
         content()
     }
 }
+
+// Pure helper — unit testable
+internal fun localizeExceptionKey(key: String): String = when (key) {
+    "same_dosha_match" -> "Same Dosha Match"
+    "jupiter_in_1_2_4_7" -> "Jupiter in Key House"
+    "mars_with_jupiter" -> "Mars with Jupiter"
+    "mars_with_moon" -> "Mars with Moon"
+    "venus_in_1_2_4_7" -> "Venus in Key House"
+    "mars_in_capricorn" -> "Mars Exalted in Capricorn"
+    "ascendant_aries_scorpio" -> "Aries or Scorpio Ascendant"
+    "moon_aries_scorpio" -> "Moon in Aries or Scorpio"
+    "mars_in_own_sign" -> "Mars in Own Sign"
+    "mars_aspects_own_house" -> "Mars Aspects Own House"
+    "both_have_dosha" -> "Both Partners Have Dosha"
+    "no_dosha" -> "No Dosha Present"
+    else -> key.split("_").joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+}
+
+internal fun localizeExceptionKeysInText(text: String): String {
+    val knownKeys = listOf(
+        "same_dosha_match", "jupiter_in_1_2_4_7", "mars_with_jupiter", "mars_with_moon",
+        "venus_in_1_2_4_7", "mars_in_capricorn", "ascendant_aries_scorpio", "moon_aries_scorpio",
+        "mars_in_own_sign", "mars_aspects_own_house", "both_have_dosha", "no_dosha",
+    )
+    var result = text
+    knownKeys.forEach { key -> result = result.replace(key, localizeExceptionKey(key)) }
+    return result
+}
+
+internal fun intensityFactorCountLabel(count: Int): String =
+    if (count == 1) "1 intensifying factor" else "$count intensifying factors"

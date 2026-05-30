@@ -50,10 +50,10 @@ class HomeRepositoryImpl @Inject constructor(
             val resp = api.predict(
                 com.destinyai.astrology.data.remote.PredictRequest(
                     query = "Give me a brief daily insight for today",
-                    userId = email,
+                    userEmail = email,
                     birthData = PredictBirthDataDto(
-                        dateOfBirth = birth.dateOfBirth,
-                        timeOfBirth = birth.timeOfBirth,
+                        dob = birth.dateOfBirth,
+                        time = birth.timeOfBirth,
                         cityOfBirth = birth.cityOfBirth,
                         latitude = birth.latitude,
                         longitude = birth.longitude,

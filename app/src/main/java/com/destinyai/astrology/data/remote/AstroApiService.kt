@@ -42,21 +42,27 @@ data class BirthProfileDto(
     @SerializedName("birth_time_unknown") val birthTimeUnknown: Boolean = false,
 )
 
-// Predict endpoint uses different field names than the subscription/profile endpoint
+// Predict endpoint BirthData — matches backend BirthData schema exactly
 data class PredictBirthDataDto(
-    @SerializedName("dob") val dateOfBirth: String,
-    @SerializedName("time") val timeOfBirth: String,
-    @SerializedName("city") val cityOfBirth: String,
+    @SerializedName("dob") val dob: String,
+    @SerializedName("time") val time: String,
+    @SerializedName("city_of_birth") val cityOfBirth: String? = null,
     @SerializedName("latitude") val latitude: Double,
     @SerializedName("longitude") val longitude: Double,
+    @SerializedName("ayanamsa") val ayanamsa: String = "lahiri",
+    @SerializedName("house_system") val houseSystem: String = "whole_sign",
 )
 
 data class PredictRequest(
     @SerializedName("query") val query: String,
-    @SerializedName("user_id") val userId: String,
+    @SerializedName("user_email") val userEmail: String,
     @SerializedName("birth_data") val birthData: PredictBirthDataDto,
     @SerializedName("session_id") val sessionId: String? = null,
-    @SerializedName("domain") val domain: String? = null,
+    @SerializedName("conversation_id") val conversationId: String? = null,
+    @SerializedName("language") val language: String = "en",
+    @SerializedName("response_style") val responseStyle: String? = null,
+    @SerializedName("response_length") val responseLength: String? = null,
+    @SerializedName("platform") val platform: String = "android",
 )
 
 data class DeviceTokenRequest(
@@ -88,26 +94,71 @@ data class CreatePartnerRequest(
     @SerializedName("consent_given") val consentGiven: Boolean = true,
 )
 
-data class CompatibilityPersonDto(
-    @SerializedName("email") val email: String? = null,
-    @SerializedName("name") val name: String? = null,
-    @SerializedName("birth_profile") val birthProfile: BirthProfileDto,
+// Compatibility birth details — matches backend BirthDetails / iOS BirthDetails exactly
+data class CompatibilityBirthDetailsDto(
+    @SerializedName("dob") val dob: String,
+    @SerializedName("time") val time: String,
+    @SerializedName("lat") val lat: Double,
+    @SerializedName("lon") val lon: Double,
+    @SerializedName("name") val name: String = "Native",
+    @SerializedName("place") val place: String = "",
 )
 
-data class CompatibilityRequest(
-    @SerializedName("person_a") val personA: CompatibilityPersonDto,
-    @SerializedName("person_b") val personB: CompatibilityPersonDto,
+data class CompatibilityRequestDto(
+    @SerializedName("boy") val boy: CompatibilityBirthDetailsDto,
+    @SerializedName("girl") val girl: CompatibilityBirthDetailsDto,
     @SerializedName("session_id") val sessionId: String? = null,
+    @SerializedName("user_email") val userEmail: String? = null,
+    @SerializedName("comparison_group_id") val comparisonGroupId: String? = null,
+    @SerializedName("partner_index") val partnerIndex: Int? = null,
+    @SerializedName("language") val language: String = "en",
 )
 
-data class CompatibilityResponse(
-    @SerializedName("score") val score: Int? = null,
-    @SerializedName("content") val content: String? = null,
-    @SerializedName("analysis") val analysis: String? = null,
-    @SerializedName("prediction") val prediction: String? = null,
-) {
-    val text: String get() = content ?: analysis ?: prediction ?: ""
-}
+data class HardNoFlagsDto(
+    @SerializedName("is_recommended") val isRecommended: Boolean = true,
+    @SerializedName("rejection_reasons") val rejectionReasons: List<String> = emptyList(),
+    @SerializedName("cancelled_doshas_summary") val cancelledDoshasSummary: String? = null,
+)
+
+data class DoshaSummaryDto(
+    @SerializedName("total_doshas") val totalDoshas: Int? = null,
+    @SerializedName("cancelled_count") val cancelledCount: Int? = null,
+    @SerializedName("active_count") val activeCount: Int? = null,
+)
+
+data class CompatibilityResponseDto(
+    @SerializedName("session_id") val sessionId: String? = null,
+    @SerializedName("status") val status: String = "",
+    @SerializedName("prediction_id") val predictionId: String? = null,
+    @SerializedName("llm_analysis") val llmAnalysis: String? = null,
+    @SerializedName("hard_no_flags") val hardNoFlags: HardNoFlagsDto? = null,
+    @SerializedName("adjusted_total_score") val adjustedTotalScore: Double? = null,
+    @SerializedName("adjusted_category") val adjustedCategory: String? = null,
+    @SerializedName("dosha_summary") val doshaSummary: DoshaSummaryDto? = null,
+    @SerializedName("comparison_group_id") val comparisonGroupId: String? = null,
+    @SerializedName("partner_index") val partnerIndex: Int? = null,
+    @SerializedName("follow_up_suggestions") val followUpSuggestions: List<String>? = null,
+    @SerializedName("analysis_data") val analysisData: Map<String, Any>? = null,
+)
+
+data class CompatibilityFollowUpRequest(
+    @SerializedName("query") val query: String,
+    @SerializedName("session_id") val sessionId: String,
+    @SerializedName("user_email") val userEmail: String,
+    @SerializedName("language") val language: String = "en",
+    @SerializedName("response_style") val responseStyle: String? = null,
+    @SerializedName("response_length") val responseLength: String? = null,
+)
+
+data class CompatibilityFollowUpResponse(
+    @SerializedName("status") val status: String? = null,
+    @SerializedName("target") val target: String? = null,
+    @SerializedName("answer") val answer: String? = null,
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("redirect_query") val redirectQuery: String? = null,
+    @SerializedName("reason") val reason: String? = null,
+    @SerializedName("follow_up_suggestions") val followUpSuggestions: List<String>? = null,
+)
 
 data class NotificationListResponse(
     @SerializedName("notifications") val notifications: List<NotificationDto> = emptyList(),
@@ -122,6 +173,20 @@ data class NotificationPrefsRequest(
 
 data class ReadAllRequest(
     @SerializedName("user_email") val userEmail: String,
+)
+
+data class VerifyRequest(
+    @SerializedName("signed_transaction") val signedTransaction: String,
+    @SerializedName("platform") val platform: String = "android",
+    @SerializedName("user_email") val userEmail: String,
+    @SerializedName("product_id") val productId: String,
+)
+
+data class VerifyResponse(
+    @SerializedName("success") val success: Boolean = false,
+    @SerializedName("plan_id") val planId: String? = null,
+    @SerializedName("is_premium") val isPremium: Boolean = false,
+    @SerializedName("message") val message: String? = null,
 )
 
 // ── Response DTOs ─────────────────────────────────────────────────────────────
@@ -213,6 +278,13 @@ data class PlanDto(
     @SerializedName("daily_quota") val dailyQuota: Int,
 )
 
+data class LocationResult(
+    @SerializedName("city") val city: String,
+    @SerializedName("latitude") val latitude: Double,
+    @SerializedName("longitude") val longitude: Double,
+    @SerializedName("display_name") val displayName: String,
+)
+
 // ── API Service Interface ─────────────────────────────────────────────────────
 
 interface AstroApiService {
@@ -242,6 +314,10 @@ interface AstroApiService {
     // Subscription Plans
     @GET("subscription/plans")
     suspend fun getPlans(): List<PlanDto>
+
+    // Purchase Verification (Google Play Billing)
+    @POST("subscription/verify")
+    suspend fun verifyPurchase(@Body req: VerifyRequest): VerifyResponse
 
     // Prediction
     @POST("vedic/api/predict/")
@@ -309,8 +385,12 @@ interface AstroApiService {
     ): SuccessResponse
 
     // Compatibility
-    @POST("vedic/api/compatibility/analyze")
-    suspend fun analyzeCompatibility(@Body request: CompatibilityRequest): CompatibilityResponse
+    @POST("vedic/api/compatibility/analyze/stream")
+    @Streaming
+    suspend fun streamCompatibilityAnalysis(@Body request: CompatibilityRequestDto): okhttp3.ResponseBody
+
+    @POST("vedic/api/compatibility/follow-up")
+    suspend fun compatibilityFollowUp(@Body request: CompatibilityFollowUpRequest): CompatibilityFollowUpResponse
 
     // Feedback
     @POST("feedback/submit")
@@ -322,4 +402,12 @@ interface AstroApiService {
 
     @GET("subscription/profiles/active")
     suspend fun getActiveProfile(@Query("email") email: String): RegisterResponse
+
+    // Location Search
+    @GET("api/v2/location/search")
+    suspend fun searchLocations(@Query("query") query: String): List<LocationResult>
+
+    // Chart Data (Vedic birth chart with planets, houses, nakshatra, D9)
+    @POST("vedic/api/chart-data/")
+    suspend fun getChartData(@Body request: com.destinyai.astrology.ui.charts.ChartDataRequest): com.destinyai.astrology.ui.charts.ChartApiResponse
 }

@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -14,6 +15,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,9 +30,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -41,15 +47,21 @@ import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlinx.coroutines.launch
 
 @Composable
 fun CompatibilityResultScreen(
     result: CompatibilityResult,
     onBack: () -> Unit,
     onNewAnalysis: () -> Unit,
+    isFromComparison: Boolean = false,
+    onCharts: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     var showFullReport by remember { mutableStateOf(false) }
@@ -57,17 +69,29 @@ fun CompatibilityResultScreen(
     var showKalsarpaDetail by remember { mutableStateOf(false) }
     var showYogasDetail by remember { mutableStateOf(false) }
     var showAskDestiny by remember { mutableStateOf(false) }
+    var showHistorySheet by remember { mutableStateOf(false) }
     var askDestinyPrompt by remember { mutableStateOf<String?>(null) }
     var selectedKuta by remember { mutableStateOf<KutaDetail?>(null) }
 
-    CosmicBackground(modifier = modifier) {
+    var contentVisible by remember { mutableStateOf(false) }
+    val contentAlpha by animateFloatAsState(
+        targetValue = if (contentVisible) 1f else 0f,
+        animationSpec = tween(durationMillis = 400),
+        label = "content_fade_in",
+    )
+    LaunchedEffect(Unit) { contentVisible = true }
+
+    CosmicBackground(modifier = modifier.graphicsLayer { alpha = contentAlpha }) {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize()) {
                 ResultHeader(
                     boyName = result.boyName,
                     girlName = result.girlName,
+                    subtitle = resultScreenSubtitle(result.boyCity ?: "", result.girlCity ?: ""),
                     onBack = onBack,
-                    onNewAnalysis = onNewAnalysis,
+                    onNewAnalysis = if (isFromComparison) null else onNewAnalysis,
+                    onHistoryTap = { showHistorySheet = true },
+                    onChartTap = onCharts,
                 )
 
                 Column(
@@ -226,11 +250,20 @@ fun CompatibilityResultScreen(
 
     if (showYogasDetail) {
         AdditionalYogasScreen(
-            boyYogas = result.yogasBoyData,
-            girlYogas = result.yogasGirlData,
+            boyYogaData = result.boyYogaDoshaData
+                ?: result.yogasBoyData?.let { com.destinyai.astrology.ui.compatibility.toYogaDoshaData(it) },
+            girlYogaData = result.girlYogaDoshaData
+                ?: result.yogasGirlData?.let { com.destinyai.astrology.ui.compatibility.toYogaDoshaData(it) },
             boyName = result.boyName,
             girlName = result.girlName,
             onBack = { showYogasDetail = false },
+        )
+    }
+
+    if (showHistorySheet) {
+        CompatibilityHistoryScreen(
+            viewModel = androidx.hilt.navigation.compose.hiltViewModel(),
+            onBack = { showHistorySheet = false },
         )
     }
 
@@ -246,8 +279,9 @@ fun CompatibilityResultScreen(
             boyName = result.boyName,
             girlName = result.girlName,
             summary = result.summary,
-            suggestions = result.followUpSuggestions,
+            suggestions = if (isFromComparison) emptyList() else result.followUpSuggestions,
             initialPrompt = askDestinyPrompt,
+            result = result,
             onDismiss = { showAskDestiny = false },
         )
     }
@@ -259,364 +293,64 @@ fun CompatibilityResultScreen(
 private fun ResultHeader(
     boyName: String,
     girlName: String,
+    subtitle: String = "",
     onBack: () -> Unit,
-    onNewAnalysis: () -> Unit,
+    onNewAnalysis: (() -> Unit)? = null,
+    onHistoryTap: (() -> Unit)? = null,
+    onChartTap: (() -> Unit)? = null,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = CreamText)
-        }
-        Text(
-            text = "$boyName ♡ $girlName",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = CreamText,
-            modifier = Modifier.weight(1f),
-            textAlign = TextAlign.Center,
-        )
-        TextButton(onClick = onNewAnalysis) {
-            Text("New", color = Gold, style = MaterialTheme.typography.labelMedium)
-        }
-    }
-}
-
-// ─── Orbit Ashtakoot View ─────────────────────────────────────────────────────
-
-@Composable
-fun OrbitAshtakootView(
-    kutas: List<KutaDetail>,
-    totalScore: Int,
-    rawScore: Int,
-    maxScore: Int,
-    boyName: String,
-    girlName: String,
-    selectedKuta: KutaDetail? = null,
-    onKutaSelected: (KutaDetail?) -> Unit = {},
-    modifier: Modifier = Modifier,
-) {
-    val orbitRadius = 155.dp
-    val bubbleSize = 64.dp
-    val density = LocalDensity.current
-    val orbitRadiusPx = with(density) { orbitRadius.toPx() }
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height((orbitRadius * 2) + bubbleSize + 24.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        // Orbit ring decorations
-        Box(
+    Column {
+        Row(
             modifier = Modifier
-                .size(orbitRadius * 2)
-                .drawBehind {
-                    drawCircle(
-                        color = Gold.copy(alpha = 0.15f),
-                        radius = size.minDimension / 2,
-                        style = Stroke(width = 1.dp.toPx()),
-                    )
-                    drawCircle(
-                        color = Gold.copy(alpha = 0.05f),
-                        radius = size.minDimension / 2,
-                        style = Stroke(width = 40.dp.toPx()),
-                    )
-                },
-        )
-
-        SynergyGaugeView(
-            score = totalScore,
-            rawScore = rawScore,
-            maxScore = maxScore,
-            boyName = boyName,
-            girlName = girlName,
-            size = 160.dp,
-        )
-
-        kutas.forEachIndexed { index, kuta ->
-            val angleDeg = index * (360.0 / 8.0) - 90.0
-            val angleRad = (angleDeg * PI / 180.0).toFloat()
-            val xOffset = with(density) { (orbitRadiusPx * cos(angleRad)).toDp() }
-            val yOffset = with(density) { (orbitRadiusPx * sin(angleRad)).toDp() }
-
-            PlanetBubble(
-                kuta = kuta,
-                isSelected = selectedKuta?.key == kuta.key,
-                onSelect = {
-                    onKutaSelected(if (selectedKuta?.key == kuta.key) null else kuta)
-                },
-                modifier = Modifier.offset(x = xOffset, y = yOffset),
-            )
-        }
-    }
-}
-
-// ─── Planet Bubble ────────────────────────────────────────────────────────────
-
-private val kutaIcons = mapOf(
-    "varna" to "🏛️",
-    "vashya" to "❤️",
-    "tara" to "⭐",
-    "yoni" to "🔥",
-    "maitri" to "🤝",
-    "gana" to "🎭",
-    "bhakoot" to "💕",
-    "nadi" to "💗",
-)
-
-@Composable
-private fun PlanetBubble(
-    kuta: KutaDetail,
-    isSelected: Boolean,
-    onSelect: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val successColor = Color(0xFF48BB78)
-    val errorColor = Color(0xFFFC8181)
-    val statusColor = when (kuta.statusTier) { 1 -> successColor; 2 -> errorColor; else -> Gold }
-
-    val displayScore = if (kuta.doshaPresent && kuta.doshaCancelled && kuta.adjustedScore != null)
-        kuta.adjustedScore else kuta.score
-    val scoreText = "${formatScore(displayScore)}/${formatScore(kuta.maxScore)}"
-
-    val bubbleScale by animateFloatAsState(
-        targetValue = if (isSelected) 1.12f else 1.0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium,
-        ),
-        label = "bubble_scale",
-    )
-
-    Box(
-        modifier = modifier
-            .size(64.dp)
-            .scale(bubbleScale)
-            .clickable(
-                indication = null,
-                interactionSource = remember { MutableInteractionSource() },
-                onClick = onSelect,
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        // Glow aura (outer)
-        Box(
-            modifier = Modifier
-                .size(76.dp)
-                .drawBehind {
-                    drawCircle(
-                        color = statusColor.copy(alpha = if (isSelected) 0.5f else 0.25f),
-                        radius = size.minDimension / 2,
-                        style = Stroke(width = 1.5.dp.toPx()),
-                    )
-                    if (isSelected) {
-                        drawCircle(
-                            color = statusColor.copy(alpha = 0.12f),
-                            radius = size.minDimension / 2,
-                        )
-                    }
-                },
-        )
-        // Glass sphere body
-        Box(
-            modifier = Modifier
-                .size(64.dp)
-                .clip(CircleShape)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            Color(0xFF2E3342),
-                            Color(0xFF1E2233),
-                            Color(0xFF141824).copy(alpha = 0.6f),
-                        ),
-                        radius = 96f,
-                    )
-                )
-                .border(
-                    width = if (isSelected) 2.dp else 1.5.dp,
-                    brush = Brush.linearGradient(
-                        colors = if (isSelected)
-                            listOf(statusColor, statusColor.copy(alpha = 0.5f))
-                        else
-                            listOf(Gold.copy(alpha = 0.6f), Gold.copy(alpha = 0.3f)),
-                    ),
-                    shape = CircleShape,
-                ),
-        )
-        // Inner highlight
-        Box(
-            modifier = Modifier
-                .size(56.dp)
-                .clip(CircleShape)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.08f),
-                            Color.Transparent,
-                        ),
-                        center = Offset(20f, 12f),
-                        radius = 36f,
-                    )
-                ),
-        )
-        // Content: icon + score + label
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier.offset(y = (-2).dp),
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = kutaIcons[kuta.key] ?: "✦",
-                fontSize = 11.sp,
-            )
-            Text(
-                text = scoreText,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = if (kuta.doshaCancelled) Color(0xFF48BB78) else Gold.copy(alpha = 0.9f),
-                fontSize = 9.sp,
-                lineHeight = 11.sp,
-            )
-            Text(
-                text = kuta.label.uppercase(),
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.White.copy(alpha = 0.9f),
-                fontSize = 6.sp,
-                maxLines = 1,
-            )
-        }
-        // Dosha badge (top-right)
-        if (kuta.doshaPresent) {
-            val badgeColor = if (kuta.doshaCancelled) Color(0xFF48BB78) else errorColor
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .size(14.dp)
-                    .clip(CircleShape)
-                    .background(badgeColor),
-                contentAlignment = Alignment.Center,
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Gold)
+            }
+            if (onHistoryTap != null) {
+                IconButton(onClick = onHistoryTap) {
+                    Icon(Icons.Filled.History, contentDescription = "History", tint = Gold)
+                }
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    text = if (kuta.doshaCancelled) "✓" else "!",
-                    fontSize = 8.sp,
-                    color = Color.White,
+                    text = "${firstNameFrom(boyName)} ♡ ${firstNameFrom(girlName)}",
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
+                    color = Gold,
+                    textAlign = TextAlign.Center,
                 )
-            }
-        }
-    }
-}
-
-// ─── Synergy Gauge ────────────────────────────────────────────────────────────
-
-@Composable
-fun SynergyGaugeView(
-    score: Int,
-    rawScore: Int,
-    maxScore: Int,
-    boyName: String,
-    girlName: String,
-    size: Dp = 160.dp,
-    modifier: Modifier = Modifier,
-) {
-    val hasAdjustment = score != rawScore
-    val progress = if (maxScore > 0) score.toFloat() / maxScore.toFloat() else 0f
-
-    val arcColor = when {
-        progress >= 0.75f -> Color(0xFF48BB78)
-        progress >= 0.5f -> Gold
-        else -> Color(0xFFFC8181)
-    }
-
-    val animatedProgress by animateFloatAsState(
-        targetValue = progress,
-        animationSpec = tween(durationMillis = 1200, easing = EaseOut),
-        label = "arc_progress",
-    )
-
-    Box(
-        modifier = modifier.size(size),
-        contentAlignment = Alignment.Center,
-    ) {
-        val strokeWidth = size.value * 0.08f
-        androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-            val sweepAngle = 270f
-            val startAngle = 135f
-            val inset = strokeWidth / 2
-
-            drawArc(
-                color = Gold.copy(alpha = 0.15f),
-                startAngle = startAngle,
-                sweepAngle = sweepAngle,
-                useCenter = false,
-                topLeft = Offset(inset, inset),
-                size = Size(this.size.width - inset * 2, this.size.height - inset * 2),
-                style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
-            )
-            drawArc(
-                color = arcColor,
-                startAngle = startAngle,
-                sweepAngle = sweepAngle * animatedProgress,
-                useCenter = false,
-                topLeft = Offset(inset, inset),
-                size = Size(this.size.width - inset * 2, this.size.height - inset * 2),
-                style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
-            )
-        }
-
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = "$score",
-                style = MaterialTheme.typography.displaySmall,
-                fontWeight = FontWeight.Bold,
-                color = Gold,
-                fontSize = (size.value * 0.28f).sp,
-            )
-            Text(
-                text = "/ $maxScore",
-                style = MaterialTheme.typography.bodySmall,
-                color = CreamDim,
-                fontSize = (size.value * 0.08f).sp,
-            )
-            if (hasAdjustment) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                if (subtitle.isNotBlank()) {
                     Text(
-                        text = "$rawScore",
+                        text = subtitle,
                         style = MaterialTheme.typography.labelSmall,
-                        color = CreamDim.copy(alpha = 0.7f),
-                        fontSize = (size.value * 0.065f).sp,
-                        textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough,
-                    )
-                    Text(
-                        text = " → $score",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = Gold.copy(alpha = 0.8f),
-                        fontSize = (size.value * 0.065f).sp,
+                        color = CreamDim,
+                        textAlign = TextAlign.Center,
                     )
                 }
             }
-            Text(
-                text = if (hasAdjustment) "ADJUSTED" else "COMPATIBILITY",
-                style = MaterialTheme.typography.labelSmall,
-                color = Gold.copy(alpha = 0.7f),
-                fontSize = (size.value * 0.05f).sp,
-                letterSpacing = 1.sp,
-            )
-            Text(
-                text = "SCORE",
-                style = MaterialTheme.typography.labelSmall,
-                color = Gold.copy(alpha = 0.7f),
-                fontSize = (size.value * 0.05f).sp,
-                letterSpacing = 1.sp,
-            )
+            if (onChartTap != null) {
+                IconButton(onClick = onChartTap) {
+                    Icon(Icons.Filled.Public, contentDescription = "Charts", tint = Gold)
+                }
+            }
+            if (onNewAnalysis != null) {
+                IconButton(onClick = onNewAnalysis) {
+                    Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = "New Analysis", tint = Gold)
+                }
+            }
         }
     }
 }
+
+// OrbitAshtakootView and PlanetBubble live in OrbitAshtakootView.kt
+
+// SynergyGaugeView lives in SynergyGaugeView.kt
 
 // ─── Orbit Tooltip View ───────────────────────────────────────────────────────
 
@@ -703,7 +437,7 @@ private fun OrbitTooltipView(
 
         // Description
         Text(
-            text = KutaTextBuilder.description(kuta.key),
+            text = kutaRichDescription(kuta, boyName, girlName),
             style = MaterialTheme.typography.bodySmall,
             color = CreamDim,
             lineHeight = 20.sp,
@@ -715,7 +449,7 @@ private fun OrbitTooltipView(
         // Classical analysis CTA
         TextButton(
             onClick = {
-                val prompt = "Tell me more about the ${kuta.label} compatibility between $boyName and $girlName"
+                val prompt = kutaClassicalPrompt(kuta, boyName, girlName)
                 onClassicalAnalysis(prompt)
             },
             modifier = Modifier
@@ -732,93 +466,7 @@ private fun OrbitTooltipView(
     }
 }
 
-// ─── Ashtakoot Glass Grid ─────────────────────────────────────────────────────
-
-@Composable
-private fun AshtakootGlassGrid(
-    kutas: List<KutaDetail>,
-    selectedKuta: KutaDetail?,
-    onKutaSelected: (KutaDetail?) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier = modifier) {
-        Text(
-            text = "Ashtakoot Kutas",
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = Gold.copy(alpha = 0.7f),
-            modifier = Modifier.padding(bottom = 10.dp),
-        )
-        kutas.chunked(2).forEach { row ->
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(bottom = 8.dp),
-            ) {
-                row.forEach { kuta ->
-                    GlassPill(
-                        kuta = kuta,
-                        isSelected = selectedKuta?.key == kuta.key,
-                        onClick = {
-                            onKutaSelected(if (selectedKuta?.key == kuta.key) null else kuta)
-                        },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                if (row.size == 1) Spacer(Modifier.weight(1f))
-            }
-        }
-    }
-}
-
-@Composable
-private fun GlassPill(
-    kuta: KutaDetail,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val successColor = Color(0xFF48BB78)
-    val errorColor = Color(0xFFFC8181)
-    val statusColor = when (kuta.statusTier) { 1 -> successColor; 2 -> errorColor; else -> Gold }
-    val borderColor = if (isSelected) statusColor else statusColor.copy(alpha = 0.2f)
-    val bgColor = if (isSelected) statusColor.copy(alpha = 0.08f) else NavySurface
-
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(bgColor)
-            .border(1.dp, borderColor, RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(7.dp)
-                .clip(CircleShape)
-                .background(statusColor),
-        )
-        Spacer(Modifier.width(6.dp))
-        Text(kutaIcons[kuta.key] ?: "✦", fontSize = 13.sp)
-        Spacer(Modifier.width(5.dp))
-        Text(
-            text = kuta.label,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Medium,
-            color = CreamText,
-            fontSize = 11.sp,
-            modifier = Modifier.weight(1f),
-        )
-        Text(
-            text = "${formatScore(kuta.displayScore)}/${formatScore(kuta.maxScore)}",
-            style = MaterialTheme.typography.labelSmall,
-            color = statusColor,
-            fontWeight = FontWeight.Bold,
-            fontSize = 11.sp,
-        )
-    }
-}
+// AshtakootGlassGrid and GlassPill live in AshtakootGlassGrid.kt
 
 // ─── Recommendation Banner ────────────────────────────────────────────────────
 
@@ -863,6 +511,7 @@ fun RecommendationBanner(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = CreamText,
+                modifier = Modifier.semantics { contentDescription = "compat_result_score" },
             )
         }
 
@@ -880,28 +529,70 @@ fun RecommendationBanner(
                 )
             } else {
                 if (result.rejectionReasons.isNotEmpty()) {
-                    Text(
-                        text = "Not recommended because:",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = errorColor,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    result.rejectionReasons.forEach { reason ->
-                        Row(
-                            modifier = Modifier.padding(bottom = 6.dp),
-                            verticalAlignment = Alignment.Top,
-                        ) {
-                            Text("⚠ ", color = errorColor, fontSize = 11.sp)
-                            Text(
-                                text = reason,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = CreamDim,
-                                lineHeight = 18.sp,
-                            )
+                        Text(
+                            text = "Not recommended because:",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = errorColor,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        result.rejectionReasons.forEach { reason ->
+                            Row(
+                                modifier = Modifier.padding(bottom = 6.dp),
+                                verticalAlignment = Alignment.Top,
+                            ) {
+                                Text("⚠ ", color = errorColor, fontSize = 11.sp)
+                                val prefix = rejectionReasonPrefix(reason)
+                                val scoreHighlight = rejectionReasonScoreHighlight(reason)
+                                if (prefix != null) {
+                                    val suffix = reason.removePrefix(prefix).trimStart(' ', '—', ' ')
+                                    val scoreInSuffix = scoreHighlight?.second
+                                    androidx.compose.foundation.text.BasicText(
+                                        text = buildAnnotatedString {
+                                            withStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold, color = CreamText)) {
+                                                append(prefix)
+                                            }
+                                            if (suffix.isNotEmpty()) {
+                                                if (scoreInSuffix != null && suffix.contains(scoreInSuffix)) {
+                                                    val parts = suffix.split(scoreInSuffix, limit = 2)
+                                                    append(" — ${parts[0]}")
+                                                    withStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold, color = Color(0xFFED8936))) {
+                                                        append(scoreInSuffix)
+                                                    }
+                                                    if (parts.size > 1) append(parts[1])
+                                                } else {
+                                                    append(" — $suffix")
+                                                }
+                                            }
+                                        },
+                                        style = MaterialTheme.typography.bodySmall.copy(color = CreamDim, lineHeight = 18.sp),
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                } else if (scoreHighlight != null) {
+                                    val (before, score) = scoreHighlight
+                                    val after = reason.removePrefix(before + score)
+                                    androidx.compose.foundation.text.BasicText(
+                                        text = buildAnnotatedString {
+                                            append(before)
+                                            withStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold, color = Color(0xFFED8936))) {
+                                                append(score)
+                                            }
+                                            append(after)
+                                        },
+                                        style = MaterialTheme.typography.bodySmall.copy(color = CreamDim, lineHeight = 18.sp),
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                } else {
+                                    Text(
+                                        text = reason,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = CreamDim,
+                                        lineHeight = 18.sp,
+                                    )
+                                }
+                            }
                         }
                     }
-                }
             }
 
             val cancelledCount = result.doshaSummary?.cancelledCount ?: 0
@@ -911,9 +602,13 @@ fun RecommendationBanner(
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.Top) {
                     Text("✓ ", color = successColor, fontSize = 12.sp)
+                    val cancelledDoshaText = result.cancelledDoshasSummary
+                        ?: fallbackCancelledDoshaText(
+                            cancelledDetails = result.doshaSummary?.details?.mapValues { it.value.cancelled } ?: emptyMap(),
+                            cancelledCount = cancelledCount,
+                        )
                     Text(
-                        text = result.cancelledDoshasSummary
-                            ?: "$cancelledCount dosha${if (cancelledCount == 1) "" else "s"} found and cancelled — ${if (cancelledCount == 1) "it doesn't" else "they don't"} affect this match.",
+                        text = cancelledDoshaText,
                         style = MaterialTheme.typography.bodySmall,
                         color = successColor.copy(alpha = 0.85f),
                         lineHeight = 18.sp,
@@ -924,75 +619,7 @@ fun RecommendationBanner(
     }
 }
 
-// ─── Dosha Status Row ─────────────────────────────────────────────────────────
-
-@Composable
-fun DoshaStatusRow(
-    title: String,
-    iconLabel: String,
-    statusText: String,
-    statusColor: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color.White.copy(alpha = 0.03f))
-            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(CircleShape)
-                .background(Gold.copy(alpha = 0.1f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(iconLabel, fontSize = 18.sp)
-        }
-
-        Spacer(Modifier.width(12.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = CreamText,
-            )
-            Spacer(Modifier.height(4.dp))
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(statusColor.copy(alpha = 0.15f))
-                    .border(1.dp, statusColor.copy(alpha = 0.3f), RoundedCornerShape(50))
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(6.dp)
-                        .clip(CircleShape)
-                        .background(statusColor),
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    text = statusText.uppercase(),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = statusColor,
-                    fontSize = 10.sp,
-                )
-            }
-        }
-
-        Text("›", color = CreamDim, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-    }
-}
+// DoshaStatusRow and DoshaStatusRowLabel live in DoshaStatusRow.kt
 
 // ─── Shimmer Button ───────────────────────────────────────────────────────────
 
@@ -1032,74 +659,7 @@ fun ShimmerButton(
     }
 }
 
-// ─── Floating Context Button ──────────────────────────────────────────────────
-
-@Composable
-fun FloatingContextButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val buttonScale by animateFloatAsState(
-        targetValue = if (isPressed) 0.88f else 1.0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium,
-        ),
-        label = "fab_scale",
-    )
-
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center,
-    ) {
-        // Glow aura behind button
-        Box(
-            modifier = Modifier
-                .size(72.dp)
-                .drawBehind {
-                    drawCircle(color = Gold.copy(alpha = 0.20f), radius = size.minDimension / 2)
-                    drawCircle(color = Gold.copy(alpha = 0.10f), radius = size.minDimension / 2 * 0.75f)
-                },
-        )
-
-        // Main gold circle button
-        Box(
-            modifier = Modifier
-                .scale(buttonScale)
-                .size(56.dp)
-                .clip(CircleShape)
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(Color(0xFFF5D060), Gold),
-                        start = Offset(0f, 0f),
-                        end = Offset(100f, 100f),
-                    )
-                )
-                .clickable(
-                    indication = null,
-                    interactionSource = interactionSource,
-                    onClick = onClick,
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.Chat,
-                contentDescription = "Ask Destiny",
-                tint = Color(0xFF0D0D1A),
-                modifier = Modifier.size(24.dp),
-            )
-        }
-
-        // Outer ring
-        Box(
-            modifier = Modifier
-                .size(68.dp)
-                .border(1.dp, Gold.copy(alpha = 0.3f), CircleShape),
-        )
-    }
-}
+// FloatingContextButton lives in FloatingContextButton.kt
 
 // ─── Ask Destiny Dialog ───────────────────────────────────────────────────────
 
@@ -1110,76 +670,324 @@ fun AskDestinyDialog(
     summary: String,
     suggestions: List<String>,
     initialPrompt: String?,
+    result: CompatibilityResult? = null,
     onDismiss: () -> Unit,
+    viewModel: CompatibilityViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
 ) {
+    val vmMessages by viewModel.followUpMessages.collectAsState()
+    val isLoading by viewModel.isFollowUpLoading.collectAsState()
+    var inputText by remember { mutableStateOf("") }
+    val scrollState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    var scrollJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+
+    val cosmicMessages = remember {
+        listOf(
+            "✦ Reading the stars…",
+            "✦ Aligning planetary positions…",
+            "✦ Calculating karmic bonds…",
+            "✦ Consulting ancient wisdom…",
+            "✦ Mapping celestial influences…",
+            "✦ Analyzing doshas…",
+            "✦ Weighing ashtakoot…",
+            "✦ Tracing destiny threads…",
+            "✦ Synthesizing cosmic signals…",
+            "✦ Preparing your answer…",
+        )
+    }
+    var cosmicStepIndex by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(isLoading) {
+        if (isLoading) {
+            cosmicStepIndex = 0
+            while (true) {
+                kotlinx.coroutines.delay(1500)
+                cosmicStepIndex++
+            }
+        }
+    }
+
+    fun requestScroll() {
+        scrollJob?.cancel()
+        scrollJob = scope.launch {
+            kotlinx.coroutines.delay(80)
+            if (vmMessages.isNotEmpty()) scrollState.animateScrollToItem(vmMessages.size - 1)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.clearFollowUpMessages()
+        if (result != null) viewModel.setCompatibilityResult(result)
+        if (initialPrompt != null) {
+            viewModel.sendFollowUp(initialPrompt)
+        }
+    }
+
+    LaunchedEffect(vmMessages.size, isLoading) {
+        requestScroll()
+    }
+
+    val displaySuggestions = remember(vmMessages) {
+        val lastAiSuggestions = vmMessages.lastOrNull { !it.isUser }?.suggestions ?: emptyList()
+        followUpSuggestionsToDisplay(
+            apiSuggestions = lastAiSuggestions,
+            defaultSuggestions = suggestions.ifEmpty {
+                listOf(
+                    "What are the strongest points in this match?",
+                    "What challenges should they watch out for?",
+                    "How compatible are they for marriage?",
+                )
+            },
+        )
+    }
+
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .fillMaxHeight(0.85f)
                 .clip(RoundedCornerShape(20.dp))
                 .background(NavySurface)
-                .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
-                .padding(20.dp),
+                .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(20.dp)),
         ) {
-            Text(
-                text = if (initialPrompt != null) "Ask Destiny" else "Ask About $boyName & $girlName",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = CreamText,
-            )
-            Spacer(Modifier.height(12.dp))
-
-            if (initialPrompt != null) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(NavyVariant)
-                        .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
-                        .padding(12.dp),
-                ) {
-                    Text(text = initialPrompt, style = MaterialTheme.typography.bodySmall, color = CreamText)
-                }
-            } else if (suggestions.isNotEmpty()) {
+            // Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
-                    text = "Suggested questions:",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = CreamDim,
+                    text = "Ask About $boyName & $girlName",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = CreamText,
+                    modifier = Modifier.weight(1f),
                 )
-                Spacer(Modifier.height(8.dp))
-                suggestions.take(4).forEach { suggestion ->
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(NavyVariant)
-                            .border(1.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(10.dp))
-                            .padding(12.dp),
-                    ) {
-                        Text(text = suggestion, style = MaterialTheme.typography.bodySmall, color = CreamText)
+                TextButton(onClick = onDismiss) {
+                    Text("Done", color = Gold)
+                }
+            }
+
+            HorizontalDivider(color = Gold.copy(alpha = 0.15f))
+
+            // Messages list
+            androidx.compose.foundation.lazy.LazyColumn(
+                state = scrollState,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(vertical = 12.dp),
+            ) {
+                if (vmMessages.isEmpty() && !isLoading) {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                "Ask anything about this compatibility match.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = CreamDim,
+                                modifier = Modifier.padding(bottom = 4.dp),
+                            )
+                            displaySuggestions.forEach { suggestion ->
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(NavyVariant)
+                                        .border(1.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(10.dp))
+                                        .clickable { viewModel.sendFollowUp(suggestion) }
+                                        .padding(12.dp),
+                                ) {
+                                    Text(
+                                        text = suggestion,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = CreamText,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    items(vmMessages) { msg ->
+                        AskChatBubble(isUser = msg.isUser, text = msg.text)
+                    }
+                    if (isLoading) {
+                        item {
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.CenterStart,
+                            ) {
+                                Text(
+                                    cosmicProgressKey(cosmicStepIndex, cosmicMessages),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Gold.copy(alpha = 0.7f),
+                                    modifier = Modifier.padding(start = 8.dp, top = 4.dp),
+                                )
+                            }
+                        }
                     }
                 }
-            } else {
-                Text(
-                    text = summary.take(300),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = CreamDim,
-                    lineHeight = 20.sp,
-                )
+                // Follow-up suggestion chips after last AI reply
+                if (vmMessages.isNotEmpty() && !isLoading) {
+                    item {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.padding(top = 8.dp),
+                        ) {
+                            displaySuggestions.forEach { suggestion ->
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(NavyVariant)
+                                        .border(1.dp, Gold.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+                                        .clickable { viewModel.sendFollowUp(suggestion) }
+                                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                                ) {
+                                    Text(
+                                        text = suggestion,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = CreamDim,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
-            Spacer(Modifier.height(16.dp))
-            TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
-                Text("Close", color = Gold)
+            HorizontalDivider(color = Gold.copy(alpha = 0.1f))
+
+            // Input bar
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedTextField(
+                    value = inputText,
+                    onValueChange = { inputText = it },
+                    placeholder = { Text("Ask a question…", color = CreamDim.copy(alpha = 0.5f)) },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Gold,
+                        unfocusedBorderColor = Gold.copy(alpha = 0.2f),
+                        focusedTextColor = CreamText,
+                        unfocusedTextColor = CreamText,
+                        cursorColor = Gold,
+                        unfocusedContainerColor = NavyVariant,
+                        focusedContainerColor = NavyVariant,
+                    ),
+                    maxLines = 3,
+                    singleLine = false,
+                    enabled = !isLoading,
+                )
+                IconButton(
+                    onClick = {
+                        val trimmed = inputText.trim()
+                        if (trimmed.isNotEmpty()) {
+                            viewModel.sendFollowUp(trimmed)
+                            inputText = ""
+                        }
+                    },
+                    enabled = inputText.isNotBlank() && !isLoading,
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(if (inputText.isNotBlank() && !isLoading) Gold else NavyVariant),
+                ) {
+                    Text("↑", fontSize = 20.sp, color = if (inputText.isNotBlank() && !isLoading) Color(0xFF0D0D1A) else CreamDim.copy(alpha = 0.4f))
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun AskChatBubble(isUser: Boolean, text: String) {
+    Box(
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = if (isUser) Alignment.CenterEnd else Alignment.CenterStart,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.85f)
+                .clip(
+                    RoundedCornerShape(
+                        topStart = 14.dp,
+                        topEnd = 14.dp,
+                        bottomStart = if (isUser) 14.dp else 4.dp,
+                        bottomEnd = if (isUser) 4.dp else 14.dp,
+                    )
+                )
+                .background(if (isUser) Gold.copy(alpha = 0.15f) else NavyVariant)
+                .border(
+                    1.dp,
+                    if (isUser) Gold.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.06f),
+                    RoundedCornerShape(
+                        topStart = 14.dp,
+                        topEnd = 14.dp,
+                        bottomStart = if (isUser) 14.dp else 4.dp,
+                        bottomEnd = if (isUser) 4.dp else 14.dp,
+                    )
+                )
+                .padding(12.dp),
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (isUser) Gold else CreamText,
+                lineHeight = 20.sp,
+            )
         }
     }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-private fun formatScore(value: Double): String =
+internal fun compatibilityScoreLabel(score: Int, maxScore: Int): String = "$score/$maxScore"
+
+internal fun adjustedScoreNote(totalScore: Int, maxScore: Int, adjustedScore: Int): String =
+    "Raw: $totalScore/$maxScore · Adjusted: $adjustedScore"
+
+internal fun rejectionReasonPrefix(reason: String): String? = when {
+    reason.startsWith("Nadi Dosha is active") -> "Nadi Dosha is active"
+    reason.startsWith("Bhakoot Dosha is active") -> "Bhakoot Dosha is active"
+    reason.startsWith("Mangal Dosha incompatibility") -> "Mangal Dosha incompatibility"
+    reason.startsWith("Adjusted Ashtakoot score") -> "Adjusted Ashtakoot score"
+    else -> null
+}
+
+private val doshaDisplayNames = mapOf(
+    "nadi" to "Nadi", "bhakoot" to "Bhakoot", "gana" to "Gana",
+    "maitri" to "Maitri", "yoni" to "Yoni", "tara" to "Tara",
+    "vashya" to "Vashya", "varna" to "Varna",
+)
+
+private val doshaKeyOrder = listOf("nadi", "bhakoot", "gana", "maitri", "yoni", "tara", "vashya", "varna")
+
+internal fun fallbackCancelledDoshaText(
+    cancelledDetails: Map<String, Boolean>,
+    cancelledCount: Int,
+): String {
+    val names = doshaKeyOrder.mapNotNull { key ->
+        if (cancelledDetails[key] == true) doshaDisplayNames[key] else null
+    }
+    return when {
+        names.isEmpty() -> "$cancelledCount ${if (cancelledCount == 1) "dosha" else "doshas"} found and cancelled — ${if (cancelledCount == 1) "it doesn't" else "they don't"} affect this match."
+        names.size == 1 -> "${names[0]} Dosha found and cancelled — it doesn't count against this match."
+        else -> {
+            val joined = names.dropLast(1).joinToString(", ") + " and ${names.last()}"
+            "$joined Doshas found and cancelled — they don't count against this match."
+        }
+    }
+}
+
+internal fun formatScore(value: Double): String =
     if (value % 1.0 == 0.0) value.toInt().toString() else "%.1f".format(value)
 
 private fun deriveMangalStatus(result: CompatibilityResult): Pair<String, Color> {
@@ -1211,77 +1019,19 @@ private fun deriveKalsarpaStatus(result: CompatibilityResult): Pair<String, Colo
     }
 }
 
-// ─── Affirmation Builder ──────────────────────────────────────────────────────
+// AffirmationBuilder lives in AffirmationBuilder.kt
 
-private object AffirmationBuilder {
+// ─── Pure accessibility helpers ───────────────────────────────────────────────
 
-    private val weightOrder = listOf("nadi", "bhakoot", "gana", "maitri", "yoni", "tara", "vashya")
+internal fun doshaRowContentDescription(title: String): String = when (title) {
+    "Mangal Dosha" -> "mangal_dosha_row"
+    "Kaal Sarp Dosha" -> "kalsarpa_dosha_row"
+    else -> "dosha_row"
+}
 
-    private val displayNames = mapOf(
-        "nadi" to "Nadi", "bhakoot" to "Bhakoot", "gana" to "Gana",
-        "maitri" to "Graha Maitri", "yoni" to "Yoni", "tara" to "Tara", "vashya" to "Vashya",
-    )
-
-    private val themes = mapOf(
-        "nadi" to "health & progeny",
-        "bhakoot" to "love & mutual respect",
-        "gana" to "temperament & nature",
-        "maitri" to "mental compatibility",
-        "yoni" to "physical intimacy",
-        "tara" to "destiny & fortune",
-        "vashya" to "attraction & influence",
-    )
-
-    data class PerfectKoota(val displayName: String, val theme: String)
-
-    fun affirmationText(kutas: List<KutaDetail>, adjustedScore: Int?, totalScore: Int): String {
-        val score = adjustedScore ?: totalScore
-        val perfect = topPerfectKootas(kutas)
-
-        return when {
-            perfect.size >= 3 -> {
-                val top = perfect.take(3)
-                val names = "${top[0].displayName}, ${top[1].displayName}, and ${top[2].displayName}"
-                val t = "${top[0].theme}, ${top[1].theme}, and ${top[2].theme}"
-                "$names all score perfectly — $t are exceptionally well aligned."
-            }
-            perfect.size == 2 -> {
-                val names = "${perfect[0].displayName} and ${perfect[1].displayName}"
-                val t = "${perfect[0].theme} and ${perfect[1].theme}"
-                "$names both score perfectly — $t are strong foundations for this match."
-            }
-            perfect.size == 1 -> {
-                val k = perfect[0]
-                "${k.displayName} scores perfectly — strong ${k.theme}. Scoring $score/36, this is a solid match by Vedic standards."
-            }
-            else -> scoreTierSentence(score)
-        }
-    }
-
-    private fun topPerfectKootas(kutas: List<KutaDetail>): List<PerfectKoota> {
-        val result = mutableListOf<PerfectKoota>()
-        for (key in weightOrder) {
-            if (result.size >= 3) break
-            val kuta = kutas.firstOrNull { it.key.lowercase() == key } ?: continue
-            if (kuta.maxScore < 3 || kuta.score != kuta.maxScore) continue
-            result.add(
-                PerfectKoota(
-                    displayName = displayNames[key] ?: key.replaceFirstChar { it.uppercase() },
-                    theme = themes[key] ?: key,
-                )
-            )
-        }
-        return result
-    }
-
-    private fun scoreTierSentence(score: Int): String = when (score) {
-        in 28..Int.MAX_VALUE -> "Scoring $score/36 — an excellent match by all Vedic standards."
-        in 24..27 -> "Scoring $score/36 — a very good match with strong astrological foundations."
-        in 20..23 -> "Scoring $score/36 — a good match with positive compatibility indicators."
-        in 16..19 -> "Scoring $score/36 — an average match. Specific areas require mindful attention."
-        in 12..15 -> "Scoring $score/36 — below average. Strong commitment and understanding needed."
-        else -> "Scoring $score/36 — challenging match. Professional guidance is recommended."
-    }
+internal fun resultScreenSubtitle(boyCity: String, girlCity: String): String {
+    val parts = listOf(boyCity, girlCity).filter { it.isNotBlank() }
+    return parts.joinToString(" · ")
 }
 
 // ─── Kuta Text Builder ────────────────────────────────────────────────────────
@@ -1299,3 +1049,46 @@ private object KutaTextBuilder {
         else -> "This kuta measures a key dimension of compatibility in the ancient Vedic tradition of Ashtakoot matching."
     }
 }
+
+// ─── Follow-Up Pure Helpers ───────────────────────────────────────────────────
+
+enum class FollowUpResponseStatus { SUCCESS, REDIRECT, BLOCKED, ERROR }
+
+internal fun followUpResponseStatus(status: String?): FollowUpResponseStatus = when (status) {
+    "success" -> FollowUpResponseStatus.SUCCESS
+    "redirect" -> FollowUpResponseStatus.REDIRECT
+    "blocked" -> FollowUpResponseStatus.BLOCKED
+    else -> FollowUpResponseStatus.ERROR
+}
+
+internal fun followUpDisplayAnswer(status: String?, answer: String?, message: String?): String =
+    when (followUpResponseStatus(status)) {
+        FollowUpResponseStatus.SUCCESS -> answer ?: message ?: "No response received."
+        FollowUpResponseStatus.BLOCKED -> message ?: "This topic is outside the scope of astrology compatibility."
+        FollowUpResponseStatus.REDIRECT -> message ?: "Let me look up individual chart details."
+        FollowUpResponseStatus.ERROR -> message ?: "Something went wrong. Please try again."
+    }
+
+internal fun followUpSuggestionsToDisplay(
+    apiSuggestions: List<String>,
+    defaultSuggestions: List<String>,
+): List<String> {
+    val source = if (apiSuggestions.isNotEmpty()) apiSuggestions else defaultSuggestions
+    return source.take(4)
+}
+
+internal fun affirmationWeightOrder(): List<String> = AffirmationBuilder.weightOrder
+
+internal fun cosmicProgressKey(index: Int, messages: List<String>): String =
+    if (messages.isEmpty()) "" else messages[index % messages.size]
+
+internal fun redirectTargetName(target: String?, boyName: String, girlName: String): String {
+    if (target == null) return boyName
+    val t = target.lowercase()
+    return when {
+        t.contains(girlName.lowercase()) || t.contains("girl") -> girlName
+        else -> boyName
+    }
+}
+
+// kutaRichDescription and kutaClassicalPrompt live in KutaTextBuilder.kt

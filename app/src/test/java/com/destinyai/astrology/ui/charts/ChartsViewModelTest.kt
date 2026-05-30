@@ -2,6 +2,7 @@ package com.destinyai.astrology.ui.charts
 
 import app.cash.turbine.test
 import com.destinyai.astrology.data.local.prefs.UserPreferences
+import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.remote.BirthProfileDto
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -40,7 +41,7 @@ class ChartsViewModelTest {
     fun setUp() {
         prefs = mockk(relaxed = true)
         coEvery { prefs.getChartStyle() } returns "north_indian"
-        vm = ChartsViewModel(prefs)
+        vm = ChartsViewModel(prefs, mockk(relaxed = true))
     }
 
     @Test

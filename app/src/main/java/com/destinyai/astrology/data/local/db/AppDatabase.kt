@@ -1,6 +1,7 @@
 package com.destinyai.astrology.data.local.db
 
 import androidx.room.*
+import kotlinx.coroutines.flow.Flow
 
 // ── Entities ──────────────────────────────────────────────────────────────────
 
@@ -32,6 +33,27 @@ data class PartnerProfileEntity(
     @ColumnInfo(name = "city_of_birth") val cityOfBirth: String,
     @ColumnInfo(name = "latitude") val latitude: Double,
     @ColumnInfo(name = "longitude") val longitude: Double,
+)
+
+@Entity(tableName = "compatibility_history")
+data class CompatibilityHistoryEntity(
+    @PrimaryKey @ColumnInfo(name = "session_id") val sessionId: String,
+    @ColumnInfo(name = "owner_email") val ownerEmail: String,
+    @ColumnInfo(name = "timestamp_ms") val timestampMs: Long,
+    @ColumnInfo(name = "boy_name") val boyName: String,
+    @ColumnInfo(name = "boy_dob") val boyDob: String,
+    @ColumnInfo(name = "boy_city") val boyCity: String,
+    @ColumnInfo(name = "boy_time") val boyTime: String,
+    @ColumnInfo(name = "girl_name") val girlName: String,
+    @ColumnInfo(name = "girl_dob") val girlDob: String,
+    @ColumnInfo(name = "girl_city") val girlCity: String,
+    @ColumnInfo(name = "girl_time") val girlTime: String,
+    @ColumnInfo(name = "total_score") val totalScore: Int,
+    @ColumnInfo(name = "max_score") val maxScore: Int,
+    @ColumnInfo(name = "is_pinned") val isPinned: Boolean = false,
+    @ColumnInfo(name = "comparison_group_id") val comparisonGroupId: String? = null,
+    @ColumnInfo(name = "partner_index") val partnerIndex: Int? = null,
+    @ColumnInfo(name = "result_json") val resultJson: String = "",
 )
 
 // ── DAOs ──────────────────────────────────────────────────────────────────────
@@ -81,6 +103,21 @@ interface PartnerDao {
     suspend fun delete(id: String)
 }
 
+@Dao
+interface CompatibilityHistoryDao {
+    @Query("SELECT * FROM compatibility_history WHERE owner_email = :ownerEmail ORDER BY is_pinned DESC, timestamp_ms DESC")
+    fun observeAll(ownerEmail: String): Flow<List<CompatibilityHistoryEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(entity: CompatibilityHistoryEntity)
+
+    @Query("UPDATE compatibility_history SET is_pinned = :pinned WHERE session_id = :sessionId")
+    suspend fun setPin(sessionId: String, pinned: Boolean)
+
+    @Query("DELETE FROM compatibility_history WHERE session_id = :sessionId")
+    suspend fun delete(sessionId: String)
+}
+
 // ── Database ──────────────────────────────────────────────────────────────────
 
 @Database(
@@ -88,12 +125,14 @@ interface PartnerDao {
         LocalChatThreadEntity::class,
         LocalChatMessageEntity::class,
         PartnerProfileEntity::class,
+        CompatibilityHistoryEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun chatThreadDao(): ChatThreadDao
     abstract fun chatMessageDao(): ChatMessageDao
     abstract fun partnerDao(): PartnerDao
+    abstract fun compatibilityHistoryDao(): CompatibilityHistoryDao
 }

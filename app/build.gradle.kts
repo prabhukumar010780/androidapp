@@ -41,11 +41,13 @@ android {
             applicationIdSuffix = ".staging"
             versionNameSuffix = "-staging"
             buildConfigField("String", "API_BASE_URL", "\"https://astroapi-test-dsqvza5jza-ul.a.run.app\"")
+            buildConfigField("String", "API_KEY", "\"astro_live_e7-TG6TTi14WaYxIwiyxes-aGdhlUrQ8gVUIj5STVnE\"")
             buildConfigField("String", "ENV", "\"staging\"")
         }
         create("production") {
             dimension = "env"
             buildConfigField("String", "API_BASE_URL", "\"https://astroapi-prod-dsqvza5jza-ul.a.run.app\"")
+            buildConfigField("String", "API_KEY", "\"astro_live_e7-TG6TTi14WaYxIwiyxes-aGdhlUrQ8gVUIj5STVnE\"")
             buildConfigField("String", "ENV", "\"production\"")
         }
     }

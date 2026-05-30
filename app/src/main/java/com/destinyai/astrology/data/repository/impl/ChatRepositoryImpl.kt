@@ -11,6 +11,7 @@ import com.destinyai.astrology.data.remote.PredictRequest
 import com.destinyai.astrology.data.repository.ChatRepository
 import com.destinyai.astrology.domain.model.ChatMessage
 import com.destinyai.astrology.domain.model.ChatThread
+import com.google.gson.JsonParser
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import java.io.BufferedReader
@@ -39,26 +40,43 @@ class ChatRepositoryImpl @Inject constructor(
             val body = api.streamPredict(
                 PredictRequest(
                     query = text,
-                    userId = email,
+                    userEmail = email,
                     birthData = PredictBirthDataDto(
-                        dateOfBirth = birthProfile.dateOfBirth,
-                        timeOfBirth = birthProfile.timeOfBirth,
+                        dob = birthProfile.dateOfBirth,
+                        time = birthProfile.timeOfBirth,
                         cityOfBirth = birthProfile.cityOfBirth,
                         latitude = birthProfile.latitude,
                         longitude = birthProfile.longitude,
                     ),
                     sessionId = sessionId,
+                    conversationId = sessionId,
                 )
             )
             val reader = BufferedReader(InputStreamReader(body.byteStream()))
             var line: String?
+            var currentEvent = ""
             while (reader.readLine().also { line = it } != null) {
                 val raw = line ?: continue
                 when {
-                    raw.startsWith("data: [DONE]") -> break
+                    raw.startsWith("event: ") -> currentEvent = raw.removePrefix("event: ").trim()
                     raw.startsWith("data: ") -> {
-                        val chunk = raw.removePrefix("data: ").trim()
-                        if (chunk.isNotBlank()) emit(Result.success(chunk))
+                        val data = raw.removePrefix("data: ").trim()
+                        when (currentEvent) {
+                            "answer" -> {
+                                val answer = try {
+                                    JsonParser.parseString(data).asJsonObject.get("answer")?.asString ?: ""
+                                } catch (_: Exception) { data }
+                                if (answer.isNotBlank()) emit(Result.success(answer))
+                            }
+                            "done" -> return@flow
+                            "error" -> {
+                                val msg = try {
+                                    JsonParser.parseString(data).asJsonObject.get("error")?.asString ?: data
+                                } catch (_: Exception) { data }
+                                emit(Result.failure(Exception(msg)))
+                                return@flow
+                            }
+                        }
                     }
                 }
             }

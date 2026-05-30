@@ -2,19 +2,26 @@ package com.destinyai.astrology.di
 
 import android.content.Context
 import androidx.room.Room
+import com.android.billingclient.api.BillingClient
+import com.android.billingclient.api.PendingPurchasesParams
+import com.android.billingclient.api.PurchasesUpdatedListener
 import com.destinyai.astrology.BuildConfig
+import com.destinyai.astrology.data.billing.BillingManager
 import com.destinyai.astrology.data.local.db.AppDatabase
 import com.destinyai.astrology.data.local.db.ChatMessageDao
 import com.destinyai.astrology.data.local.db.ChatThreadDao
+import com.destinyai.astrology.data.local.db.CompatibilityHistoryDao
 import com.destinyai.astrology.data.local.db.PartnerDao
 import com.destinyai.astrology.data.local.prefs.SecureStorage
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.repository.AuthRepository
 import com.destinyai.astrology.data.repository.ChatRepository
+import com.destinyai.astrology.data.repository.CompatibilityRepository
 import com.destinyai.astrology.data.repository.HomeRepository
 import com.destinyai.astrology.data.repository.impl.AuthRepositoryImpl
 import com.destinyai.astrology.data.repository.impl.ChatRepositoryImpl
+import com.destinyai.astrology.data.repository.impl.CompatibilityRepositoryImpl
 import com.destinyai.astrology.data.repository.impl.HomeRepositoryImpl
 import dagger.Binds
 import dagger.Module
@@ -42,9 +49,8 @@ object NetworkModule {
         }
         return OkHttpClient.Builder()
             .addInterceptor { chain ->
-                val apiKey = "astro_live_e7-TG6TTi14WaYxIwiyxes-aGdhlUrQ8gVUIj5STVnE"
                 val req = chain.request().newBuilder()
-                    .addHeader("Authorization", "Bearer $apiKey")
+                    .addHeader("Authorization", "Bearer ${BuildConfig.API_KEY}")
                     .build()
                 chain.proceed(req)
             }
@@ -89,6 +95,9 @@ object DatabaseModule {
 
     @Provides
     fun providePartnerDao(db: AppDatabase): PartnerDao = db.partnerDao()
+
+    @Provides
+    fun provideCompatibilityHistoryDao(db: AppDatabase): CompatibilityHistoryDao = db.compatibilityHistoryDao()
 }
 
 @Module
@@ -106,4 +115,42 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindChatRepository(impl: ChatRepositoryImpl): ChatRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindCompatibilityRepository(impl: CompatibilityRepositoryImpl): CompatibilityRepository
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+object BillingModule {
+
+    @Provides
+    @Singleton
+    fun provideBillingManager(
+        @ApplicationContext context: Context,
+        api: AstroApiService,
+        prefs: UserPreferences,
+    ): BillingManager {
+        // PurchasesUpdatedListener is wired after BillingManager is created
+        // to avoid circular dependency — BillingManager exposes a factory helper.
+        lateinit var manager: BillingManager
+        val listener = PurchasesUpdatedListener { result, purchases ->
+            if (result.responseCode == BillingClient.BillingResponseCode.OK && purchases != null) {
+                manager.processPurchases(purchases)
+            } else {
+                // delegate to the manager's own handler for other states
+                manager.buildPurchasesUpdatedListener().onPurchasesUpdated(result, purchases)
+            }
+        }
+        val billingClient = BillingClient.newBuilder(context)
+            .setListener(listener)
+            .enablePendingPurchases(
+                PendingPurchasesParams.newBuilder().enableOneTimeProducts().build(),
+            )
+            .build()
+        manager = BillingManager(billingClient, api, prefs)
+        manager.startConnection()
+        return manager
+    }
 }

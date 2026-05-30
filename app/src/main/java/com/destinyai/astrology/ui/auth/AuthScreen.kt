@@ -2,6 +2,8 @@ package com.destinyai.astrology.ui.auth
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -29,6 +31,9 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.destinyai.astrology.R
+import com.destinyai.astrology.ui.components.GoldGradientText
+import com.destinyai.astrology.ui.components.auth.AuthLogo
+import com.destinyai.astrology.ui.theme.AuthDimens
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamText
@@ -59,6 +64,19 @@ fun AuthScreen(
         if (state.forceLogout) viewModel.logout()
     }
 
+    // Logo entrance spring (scale 0.6 -> 1.0 once at first composition).
+    // Mirrors iOS `AppTheme.Auth.logoSpring` (response: 0.7, dampingFraction: 0.65).
+    val logoScaleAnim = remember { Animatable(0.6f) }
+    LaunchedEffect(Unit) {
+        logoScaleAnim.animateTo(
+            targetValue = 1f,
+            animationSpec = spring(
+                dampingRatio = AuthDimens.logoSpringDampingRatio,
+                stiffness = AuthDimens.logoSpringStiffness,
+            ),
+        )
+    }
+
     CosmicBackground {
         Column(
             modifier = Modifier
@@ -67,42 +85,21 @@ fun AuthScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            // Logo circle with real logo image
-            Box(
-                modifier = Modifier.size(96.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(Color(0xFF2C2C4E), Color(0xFF1A1A2E)),
-                            )
-                        )
-                        .border(1.5.dp, Gold.copy(alpha = 0.6f), CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    androidx.compose.foundation.Image(
-                        painter = painterResource(R.drawable.logo_gold),
-                        contentDescription = "Destiny Logo",
-                        modifier = Modifier.size(56.dp),
-                        contentScale = ContentScale.Fit,
-                    )
-                }
-            }
+            // Animated logo (radial glow + rotating ring + orbiting dot
+            // + bioRhythm-pulsing logo image). 1:1 with iOS AuthView
+            // `logoSection`.
+            AuthLogo(
+                entranceScale = logoScaleAnim.value,
+                bioRhythmActive = !state.isLoading,
+            )
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(AuthDimens.logoToTextSpacing))
 
-            // "Welcome to Destiny" — Canela font
-            Text(
+            // "Welcome to Destiny" — gold gradient title (Canela font),
+            // matches iOS `goldGradient()` text style.
+            GoldGradientText(
                 text = stringResource(R.string.welcome_to_destiny),
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = CanelaFontFamily,
-                color = Gold,
-                textAlign = TextAlign.Center,
+                fontSize = AuthDimens.titleSize,
             )
 
             Spacer(Modifier.height(8.dp))
@@ -110,7 +107,7 @@ fun AuthScreen(
             // "Sign in to save your birth chart and chats"
             Text(
                 text = stringResource(R.string.sign_in_save),
-                fontSize = 16.sp,
+                fontSize = AuthDimens.subtitleSize,
                 color = CreamDim,
                 textAlign = TextAlign.Center,
             )

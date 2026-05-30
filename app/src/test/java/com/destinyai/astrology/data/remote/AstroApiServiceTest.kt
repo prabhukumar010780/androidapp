@@ -154,10 +154,10 @@ class AstroApiServiceTest {
 
         service.predict(PredictRequest(
             query = "What is my sun sign?",
-            userId = "u@x.com",
+            userEmail = "u@x.com",
             birthData = PredictBirthDataDto(
-                dateOfBirth = "1980-07-01",
-                timeOfBirth = "06:32",
+                dob = "1980-07-01",
+                time = "06:32",
                 cityOfBirth = "Bhilai",
                 latitude = 21.21,
                 longitude = 81.39,
@@ -179,8 +179,8 @@ class AstroApiServiceTest {
 
         val resp = service.predict(PredictRequest(
             query = "Tell me about Saturn",
-            userId = "u@x.com",
-            birthData = PredictBirthDataDto("1980-07-01", "06:32", "Bhilai", 21.21, 81.39),
+            userEmail = "u@x.com",
+            birthData = PredictBirthDataDto(dob = "1980-07-01", time = "06:32", cityOfBirth = "Bhilai", latitude = 21.21, longitude = 81.39),
         ))
 
         assertNotNull(resp.content)

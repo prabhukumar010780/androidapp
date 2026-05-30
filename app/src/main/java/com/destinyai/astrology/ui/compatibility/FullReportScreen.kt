@@ -3,12 +3,16 @@ package com.destinyai.astrology.ui.compatibility
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.IosShare
+import androidx.compose.material.icons.filled.SaveAlt
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,6 +38,8 @@ import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
+import com.destinyai.astrology.ui.theme.NavyVariant
+import android.content.Intent
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -47,11 +53,18 @@ fun FullReportScreen(
 ) {
     var showAskDestiny by remember { mutableStateOf(false) }
     val sections = remember(result.summary) { parseSections(result.summary) }
+    val context = LocalContext.current
+
+    val shareText = remember(result) {
+        val score = result.adjustedScore ?: result.totalScore
+        val pct = (score.toDouble() / result.maxScore * 100).toInt()
+        "✨ ${result.boyName} & ${result.girlName} — Compatibility score: ${result.totalScore}/${result.maxScore} ($pct%)\n\nAnalyzed with Destiny AI Astrology\n🔗 destinyaiastrology.com"
+    }
 
     CosmicBackground {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize()) {
-                // Back toolbar
+                // Back + Share toolbar
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -60,6 +73,16 @@ fun FullReportScreen(
                 ) {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Gold)
+                    }
+                    Spacer(Modifier.weight(1f))
+                    IconButton(onClick = {
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, shareText)
+                        }
+                        context.startActivity(Intent.createChooser(intent, "Share Report"))
+                    }) {
+                        Icon(Icons.Filled.IosShare, contentDescription = "Share", tint = Gold)
                     }
                 }
 
@@ -76,7 +99,30 @@ fun FullReportScreen(
                     // 1. Branded header card
                     BrandedHeaderCard(result = result)
 
-                    // 2. Section cards (parsed from LLM output)
+                    // 2. Action bar — share report
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(NavySurface)
+                            .border(1.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+                            .clickable(onClick = {
+                                val intent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, shareText)
+                                }
+                                context.startActivity(Intent.createChooser(intent, "Share Report"))
+                            })
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Filled.SaveAlt, contentDescription = null, tint = CreamText, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text("Share Report", fontSize = 16.sp, color = CreamText, modifier = Modifier.weight(1f))
+                        Icon(Icons.Filled.IosShare, contentDescription = null, tint = CreamDim, modifier = Modifier.size(14.dp))
+                    }
+
+                    // 3. Section cards (parsed from LLM output)
                     if (sections.isEmpty()) {
                         SectionCard(emoji = "📋", title = "Analysis", content = result.summary)
                     } else {
@@ -89,7 +135,7 @@ fun FullReportScreen(
                         }
                     }
 
-                    // 3. AI Disclaimer Footer
+                    // 4. AI Disclaimer Footer
                     DisclaimerFooter()
 
                     Spacer(Modifier.height(80.dp))
@@ -249,7 +295,7 @@ private fun BrandedHeaderCard(result: CompatibilityResult) {
         // Score transparency note
         if (result.adjustedScore != null && result.adjustedScore != result.totalScore) {
             Text(
-                text = "Ashtakoot: ${result.totalScore}/${result.maxScore} → Adjusted: ${result.adjustedScore}/${result.maxScore}",
+                text = adjustedScoreNote(result.totalScore, result.maxScore, result.adjustedScore),
                 fontSize = 10.sp,
                 color = CreamDim.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center,
@@ -450,11 +496,12 @@ private fun extractEmojiAndTitle(text: String): Pair<String, String> {
     return if (firstToken.codePointAt(0) > 127) firstToken to rest else "📋" to trimmed
 }
 
-private fun replaceGenericLabels(text: String, boyName: String, girlName: String): String =
+internal fun replaceGenericLabels(text: String, boyName: String, girlName: String): String =
     text
         .replace("**Boy's ", "**$boyName's ")
         .replace("**Boy:**", "**$boyName:**")
         .replace("**Boy:", "**$boyName:")
+        .replace("**Boy (", "**$boyName (")
         .replace("Boy's Key", "$boyName's Key")
         .replace("Boy's Yogas", "$boyName's Yogas")
         .replace("Boy's Dasha", "$boyName's Dasha")
@@ -464,6 +511,7 @@ private fun replaceGenericLabels(text: String, boyName: String, girlName: String
         .replace("**Girl's ", "**$girlName's ")
         .replace("**Girl:**", "**$girlName:**")
         .replace("**Girl:", "**$girlName:")
+        .replace("**Girl (", "**$girlName (")
         .replace("Girl's Key", "$girlName's Key")
         .replace("Girl's Yogas", "$girlName's Yogas")
         .replace("Girl's Dasha", "$girlName's Dasha")

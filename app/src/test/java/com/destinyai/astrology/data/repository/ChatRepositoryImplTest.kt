@@ -98,7 +98,7 @@ class ChatRepositoryImplTest {
             longitude = 81.39,
         )
         coEvery { api.streamPredict(any()) } returns
-            "data: Hello\n\ndata: World\n\n"
+            "event: answer\ndata: {\"answer\":\"Hello World\"}\n\nevent: done\ndata: {}\n\n"
                 .toByteArray()
                 .toResponseBody("text/event-stream".toMediaType())
 

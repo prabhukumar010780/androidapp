@@ -26,6 +26,8 @@ data class ChatUiState(
     val copiedMessageId: String? = null,
     val showPaywall: Boolean = false,
     val errorMessage: String? = null,
+    val suggestedQuestions: List<String> = emptyList(),
+    val interruptedQuestion: String? = null,
 )
 
 class UpgradeRequiredException : Exception("upgrade_required")
@@ -70,6 +72,7 @@ class ChatViewModel @Inject constructor(
             id = UUID.randomUUID().toString(),
             role = ChatMessage.Role.USER,
             content = input,
+            createdAtMs = System.currentTimeMillis(),
         )
         _uiState.update {
             it.copy(
@@ -78,6 +81,7 @@ class ChatViewModel @Inject constructor(
                 canSend = false,
                 isStreaming = true,
                 errorMessage = null,
+                suggestedQuestions = emptyList(),
             )
         }
 
@@ -93,6 +97,8 @@ class ChatViewModel @Inject constructor(
                             id = assistantId,
                             role = ChatMessage.Role.ASSISTANT,
                             content = accumulated,
+                            isStreaming = true,
+                            createdAtMs = System.currentTimeMillis(),
                         )
                         _uiState.update { state ->
                             val msgs = state.messages.filterNot { it.id == assistantId } + assistantMsg
@@ -108,7 +114,15 @@ class ChatViewModel @Inject constructor(
                     }
             }
 
-            _uiState.update { it.copy(isStreaming = false) }
+            // Mark last assistant message as no longer streaming
+            _uiState.update { state ->
+                state.copy(
+                    isStreaming = false,
+                    messages = state.messages.map { msg ->
+                        if (msg.id == assistantId) msg.copy(isStreaming = false) else msg
+                    },
+                )
+            }
         }
     }
 
@@ -143,6 +157,41 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             val messages = repository.loadThread(threadId)
             _uiState.update { it.copy(activeThreadId = threadId, messages = messages) }
+        }
+    }
+
+    fun setSuggestedQuestions(questions: List<String>) {
+        _uiState.update { it.copy(suggestedQuestions = questions) }
+    }
+
+    fun dismissSuggestedQuestions() {
+        _uiState.update { it.copy(suggestedQuestions = emptyList()) }
+    }
+
+    fun setInterruptedQuestion(question: String) {
+        _uiState.update { it.copy(interruptedQuestion = question) }
+    }
+
+    fun retryInterruptedQuestion() {
+        val question = _uiState.value.interruptedQuestion ?: return
+        _uiState.update { it.copy(interruptedQuestion = null) }
+        updateInput(question)
+        sendMessage()
+    }
+
+    fun pinThread(threadId: String) {
+        _uiState.update { state ->
+            state.copy(
+                threads = state.threads.map { thread ->
+                    if (thread.id == threadId) thread.copy(isPinned = !thread.isPinned) else thread
+                },
+            )
+        }
+    }
+
+    fun deleteThread(threadId: String) {
+        _uiState.update { state ->
+            state.copy(threads = state.threads.filterNot { it.id == threadId })
         }
     }
 }

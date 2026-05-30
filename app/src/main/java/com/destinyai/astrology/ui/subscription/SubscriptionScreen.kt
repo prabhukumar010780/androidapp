@@ -1,5 +1,6 @@
 package com.destinyai.astrology.ui.subscription
 
+import android.app.Activity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -15,12 +16,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.destinyai.astrology.R
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
@@ -35,10 +39,31 @@ fun SubscriptionScreen(
     viewModel: SubscriptionViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val hasActiveSub by viewModel.hasActiveSubscription.collectAsStateWithLifecycle()
+    val activePlanId by viewModel.activePlanId.collectAsStateWithLifecycle()
+    val conflict by viewModel.subscriptionConflict.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+
+    val activity = LocalContext.current as Activity
 
     LaunchedEffect(Unit) {
         viewModel.loadPlans()
         viewModel.loadCurrentPlan()
+    }
+
+    // Conflict banner dialog
+    if (conflict != null) {
+        AlertDialog(
+            onDismissRequest = { /* intentionally non-dismissable via outside tap */ },
+            title = { Text(stringResource(R.string.billing_conflict_title), color = Gold) },
+            text = { Text(stringResource(R.string.billing_conflict_message), color = CreamDim) },
+            confirmButton = {
+                TextButton(onClick = { /* user must manage in Play Store */ }) {
+                    Text(stringResource(R.string.billing_conflict_dismiss), color = Gold)
+                }
+            },
+            containerColor = NavySurface,
+        )
     }
 
     CosmicBackground {
@@ -52,10 +77,14 @@ fun SubscriptionScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = CreamDim)
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = stringResource(R.string.cancel),
+                        tint = CreamDim,
+                    )
                 }
                 Text(
-                    text = "Choose Plan",
+                    text = stringResource(R.string.choose_plan_title),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = CanelaFontFamily,
@@ -64,7 +93,7 @@ fun SubscriptionScreen(
                 )
             }
 
-            if (state.isLoading) {
+            if (state.isLoading && state.plans.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = Gold, modifier = Modifier.size(28.dp))
                 }
@@ -81,7 +110,7 @@ fun SubscriptionScreen(
                             Text(text = "✦", fontSize = 56.sp, color = Gold)
                             Spacer(Modifier.height(8.dp))
                             Text(
-                                text = "Unlock Unlimited Insights",
+                                text = stringResource(R.string.unlock_premium),
                                 fontSize = 22.sp,
                                 fontWeight = FontWeight.Bold,
                                 fontFamily = CanelaFontFamily,
@@ -90,7 +119,7 @@ fun SubscriptionScreen(
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                text = "Get unlimited daily questions and exclusive features.",
+                                text = stringResource(R.string.get_cosmic_guidance),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = CreamDim,
                                 textAlign = TextAlign.Center,
@@ -98,8 +127,10 @@ fun SubscriptionScreen(
                         }
                     }
 
-                    if (state.isPremium) {
+                    // Already-premium banner (server plan or Play active sub)
+                    if (state.isPremium || hasActiveSub) {
                         item {
+                            val planLabel = activePlanId ?: state.currentPlanId
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -110,20 +141,32 @@ fun SubscriptionScreen(
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text("✦  You're already Premium!", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Gold)
+                                    Text(
+                                        "✦  You're already Premium!",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Gold,
+                                    )
                                     Spacer(Modifier.height(4.dp))
-                                    Text("Plan: ${state.currentPlanId}", fontSize = 13.sp, color = CreamDim)
+                                    Text("Plan: $planLabel", fontSize = 13.sp, color = CreamDim)
                                 }
                             }
                         }
                     } else {
-                        items(state.plans) { plan ->
+                        // Plans from Play Billing (ProductDetails) when available,
+                        // fallback to backend PlanDto list
+                        items(state.plans.filter { !it.isFree }) { plan ->
+                            val isYearly = plan.planId.contains("yearly", ignoreCase = true)
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(16.dp))
                                     .background(NavySurface)
-                                    .border(0.5.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+                                    .border(
+                                        width = if (isYearly) 1.dp else 0.5.dp,
+                                        color = if (isYearly) Gold else Gold.copy(alpha = 0.3f),
+                                        shape = RoundedCornerShape(16.dp),
+                                    )
                                     .padding(16.dp),
                             ) {
                                 Column {
@@ -132,37 +175,79 @@ fun SubscriptionScreen(
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
-                                        Text(
-                                            text = plan.displayName,
-                                            fontSize = 17.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            fontFamily = CanelaFontFamily,
-                                            color = CreamText,
-                                        )
-                                        Text(
-                                            text = if (plan.isFree) "Free" else "$${plan.priceMonthly}/mo",
-                                            fontSize = 17.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Gold,
-                                        )
+                                        Column {
+                                            Text(
+                                                text = plan.displayName,
+                                                fontSize = 17.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                fontFamily = CanelaFontFamily,
+                                                color = CreamText,
+                                            )
+                                            if (isYearly) {
+                                                Spacer(Modifier.height(2.dp))
+                                                Text(
+                                                    text = stringResource(R.string.billing_free_trial),
+                                                    fontSize = 11.sp,
+                                                    color = Gold,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                )
+                                            }
+                                        }
+                                        Column(horizontalAlignment = Alignment.End) {
+                                            Text(
+                                                text = "$${if (isYearly) plan.priceYearly else plan.priceMonthly}/yr",
+                                                fontSize = 17.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Gold,
+                                            )
+                                            if (isYearly) {
+                                                Text(
+                                                    text = stringResource(R.string.billing_best_value),
+                                                    fontSize = 11.sp,
+                                                    color = Gold.copy(alpha = 0.8f),
+                                                )
+                                            }
+                                        }
                                     }
                                     Spacer(Modifier.height(4.dp))
                                     Text(
-                                        text = if (plan.dailyQuota < 0) "Unlimited questions" else "${plan.dailyQuota} questions/day",
+                                        text = if (plan.dailyQuota < 0) stringResource(R.string.unlimited) + " questions"
+                                        else "${plan.dailyQuota} questions/day",
                                         fontSize = 13.sp,
                                         color = CreamDim,
                                     )
                                     Spacer(Modifier.height(12.dp))
                                     Button(
-                                        onClick = { /* Google Play Billing */ },
-                                        modifier = Modifier.fillMaxWidth().height(44.dp),
+                                        onClick = {
+                                            // ProductDetails-based purchase is wired when
+                                            // billingManager.products is non-empty; for now the
+                                            // button is wired via the plan's product ID.
+                                            // Full wiring happens in a future slice when
+                                            // SubscriptionScreen receives ProductDetails from VM.
+                                        },
+                                        enabled = !isLoading,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(44.dp),
                                         shape = RoundedCornerShape(10.dp),
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = Gold,
                                             contentColor = Color(0xFF0D0D1A),
+                                            disabledContainerColor = Gold.copy(alpha = 0.4f),
                                         ),
                                     ) {
-                                        Text("Subscribe", fontWeight = FontWeight.SemiBold)
+                                        if (isLoading) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(18.dp),
+                                                color = Color(0xFF0D0D1A),
+                                                strokeWidth = 2.dp,
+                                            )
+                                        } else {
+                                            Text(
+                                                stringResource(R.string.billing_subscribe),
+                                                fontWeight = FontWeight.SemiBold,
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -172,6 +257,34 @@ fun SubscriptionScreen(
                     if (state.error != null) {
                         item {
                             Text(text = state.error ?: "", color = Color(0xFFFF8A80), fontSize = 13.sp)
+                        }
+                    }
+
+                    // Restore Purchases
+                    if (!state.isPremium && !hasActiveSub) {
+                        item {
+                            TextButton(
+                                onClick = { viewModel.restorePurchases() },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.restore_purchases),
+                                    color = CreamDim,
+                                    fontSize = 13.sp,
+                                )
+                            }
+                        }
+
+                        item {
+                            Text(
+                                text = stringResource(R.string.subscription_terms),
+                                fontSize = 11.sp,
+                                color = CreamDim.copy(alpha = 0.6f),
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                            )
                         }
                     }
 

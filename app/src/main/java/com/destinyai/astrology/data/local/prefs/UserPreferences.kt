@@ -52,6 +52,9 @@ class UserPreferences @Inject constructor(
         val NOTIF_COMPATIBILITY = booleanPreferencesKey("notif_compatibility")
         val FCM_TOKEN = stringPreferencesKey("fcm_token")
         val FCM_TOKEN_REGISTERED = booleanPreferencesKey("fcm_token_registered")
+        val IS_HISTORY_ENABLED = booleanPreferencesKey("isHistoryEnabled")
+        val AYANAMSA = stringPreferencesKey("ayanamsa")
+        val HOUSE_SYSTEM = stringPreferencesKey("house_system")
     }
 
     suspend fun getUserEmail(): String? =
@@ -226,5 +229,29 @@ class UserPreferences @Inject constructor(
 
     suspend fun clearAll() {
         store.edit { it.clear() }
+    }
+
+    // History opt-in — mirrors iOS HistorySettingsManager.isHistoryEnabled
+    val isHistoryEnabledFlow get() = store.data.map { it[Keys.IS_HISTORY_ENABLED] ?: true }
+
+    suspend fun isHistoryEnabled(): Boolean =
+        store.data.map { it[Keys.IS_HISTORY_ENABLED] ?: true }.first()
+
+    suspend fun setHistoryEnabled(enabled: Boolean) {
+        store.edit { it[Keys.IS_HISTORY_ENABLED] = enabled }
+    }
+
+    suspend fun getAyanamsa(): String =
+        store.data.map { it[Keys.AYANAMSA] ?: "lahiri" }.first()
+
+    suspend fun saveAyanamsa(ayanamsa: String) {
+        store.edit { it[Keys.AYANAMSA] = ayanamsa }
+    }
+
+    suspend fun getHouseSystem(): String =
+        store.data.map { it[Keys.HOUSE_SYSTEM] ?: "whole_sign" }.first()
+
+    suspend fun saveHouseSystem(system: String) {
+        store.edit { it[Keys.HOUSE_SYSTEM] = system }
     }
 }
