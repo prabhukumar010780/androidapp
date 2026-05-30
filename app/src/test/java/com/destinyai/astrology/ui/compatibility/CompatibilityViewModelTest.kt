@@ -427,6 +427,65 @@ class CompatibilityViewModelTest {
         assertFalse(vm.uiState.value.showPartnerPicker)
     }
 
+    @Test
+    fun `reset clears partner form`() = runTest {
+        vm.setPartnerName("Priya")
+        vm.setPartnerDob("1985-03-15")
+        vm.setPartnerTime("08:00")
+        vm.setPartnerLocation("Mumbai", 19.076, 72.877)
+        vm.setPartnerGender("female")
+
+        vm.resetPartnerForm()
+
+        val s = vm.uiState.value
+        assertEquals("", s.partnerName)
+        assertEquals("", s.partnerDob)
+        assertEquals("", s.partnerTime)
+        assertEquals("", s.partnerCity)
+        assertEquals("", s.partnerGender)
+        assertFalse(s.partnerTimeUnknown)
+    }
+
+    @Test
+    fun `addPartner blocks at 3`() {
+        vm.addPartner()
+        vm.addPartner()
+        vm.addPartner() // 4th attempt — must be ignored
+        assertEquals(3, vm.partners.value.size)
+    }
+
+    @Test
+    fun `duplicate detection finds existing`() = runTest {
+        // Seed history with a matching entry via DAO mock
+        val matchingEntity = com.destinyai.astrology.data.local.db.CompatibilityHistoryEntity(
+            sessionId = "sess_dup",
+            ownerEmail = "u@x.com",
+            timestampMs = System.currentTimeMillis(),
+            boyName = "Prabhu",
+            boyDob = "1980-07-01",
+            boyCity = "Bhilai",
+            boyTime = "06:32",
+            girlName = "Priya",
+            girlDob = "1985-03-15",
+            girlCity = "Mumbai",
+            girlTime = "08:00",
+            totalScore = 28,
+            maxScore = 36,
+        )
+        every { historyDao.observeAll(any()) } returns flowOf(listOf(matchingEntity))
+
+        // loadUserData sets personAEmail so loadHistory can proceed
+        vm.loadUserData()
+        vm.loadHistory()
+
+        vm.setPartnerDob("1985-03-15")
+        vm.setPartnerTime("08:00")
+        vm.setPartnerLocation("Mumbai", 19.076, 72.877)
+
+        val duplicateId = vm.checkForDuplicate()
+        assertEquals("sess_dup", duplicateId)
+    }
+
     private fun fakeBirthProfile() = BirthProfileDto(
         dateOfBirth = "1980-07-01",
         timeOfBirth = "06:32",

@@ -30,6 +30,8 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -52,6 +54,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.destinyai.astrology.R
 import com.destinyai.astrology.ui.components.GoldGradientText
+import com.destinyai.astrology.ui.components.ShimmerButton
 import com.destinyai.astrology.ui.onboarding.ResponseStyleOnboardingScreen
 import com.destinyai.astrology.ui.theme.BirthDataDimens
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
@@ -77,6 +80,17 @@ fun BirthDataScreen(
 
     LaunchedEffect(Unit) { viewModel.loadSaved() }
     LaunchedEffect(state.isSaved) { if (state.isSaved) onSaved() }
+
+    // R2-A9: suppress user-cancel errors
+    LaunchedEffect(state.error) {
+        val err = state.error ?: return@LaunchedEffect
+        if (err.contains("cancelled", ignoreCase = true) ||
+            err.contains("canceled", ignoreCase = true) ||
+            err.contains("user_cancel", ignoreCase = true)
+        ) {
+            viewModel.clearError()
+        }
+    }
 
     // Date picker dialog
     val calendar = Calendar.getInstance()
@@ -132,6 +146,41 @@ fun BirthDataScreen(
                         Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = null,
                         tint = Gold,
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+                // R2-A4: Sound toggle
+                IconToggleButton(
+                    checked = state.isSoundEnabled,
+                    onCheckedChange = { viewModel.toggleSound() },
+                ) {
+                    Icon(
+                        imageVector = if (state.isSoundEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
+                        contentDescription = if (state.isSoundEnabled) "Mute sound" else "Unmute sound",
+                        tint = Gold.copy(alpha = 0.8f),
+                    )
+                }
+            }
+
+            // R2-A6: Refreshed banner
+            AnimatedVisibility(
+                visible = state.showRefreshedBanner,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut(),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFB8860B).copy(alpha = 0.15f))
+                        .clickable { viewModel.dismissRefreshedBanner() }
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.backend_data_refreshed_banner),
+                        color = Gold,
+                        fontSize = 13.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }
@@ -295,36 +344,48 @@ fun BirthDataScreen(
 
                 Spacer(Modifier.height(28.dp))
 
-                // ── Submit button (ShimmerButton equivalent) ──────────────────
-                Button(
+                // R2-A5: Analytics consent checkbox
+                val isUsLocale = remember {
+                    java.util.Locale.getDefault().country.equals("US", ignoreCase = true)
+                }
+                // Default false for US, true otherwise — but honour stored value after first load
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { viewModel.setAnalyticsConsent(!state.analyticsConsent) }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Checkbox(
+                        checked = state.analyticsConsent,
+                        onCheckedChange = { viewModel.setAnalyticsConsent(it) },
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = Gold,
+                            uncheckedColor = TextTertiary,
+                            checkmarkColor = Color(0xFF0D0D1A),
+                        ),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.analytics_consent_label),
+                        fontSize = 13.sp,
+                        color = CreamDim,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                // R2-A8: ShimmerButton replaces solid gold Button
+                ShimmerButton(
+                    text = if (state.isLoading) "…" else stringResource(R.string.action_continue),
                     onClick = { viewModel.save() },
                     enabled = viewModel.isValid && !state.isLoading,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(54.dp)
                         .semantics { contentDescription = "Continue" },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Gold,
-                        disabledContainerColor = NavyVariant,
-                        contentColor = Color(0xFF0D0D1A),
-                        disabledContentColor = CreamDim,
-                    ),
-                ) {
-                    if (state.isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = Color(0xFF0D0D1A),
-                            strokeWidth = 2.dp,
-                        )
-                    } else {
-                        Text(
-                            text = stringResource(R.string.action_continue),
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 16.sp,
-                        )
-                    }
-                }
+                )
 
                 Spacer(Modifier.height(40.dp))
             }

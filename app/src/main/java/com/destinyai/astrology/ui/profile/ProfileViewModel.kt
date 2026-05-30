@@ -3,6 +3,7 @@ package com.destinyai.astrology.ui.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.destinyai.astrology.data.local.prefs.UserPreferences
+import com.destinyai.astrology.data.remote.AnalyticsConsentRequest
 import com.destinyai.astrology.data.remote.AstroApiService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,10 +22,15 @@ data class ProfileUiState(
     val isLoading: Boolean = false,
     val isDeleted: Boolean = false,
     val showDeleteConfirmation: Boolean = false,
+    val showDeleteSheet: Boolean = false,
     val error: String? = null,
+    val snackbarMessage: String? = null,
     val historyEnabled: Boolean = true,
     val analyticsConsent: Boolean = true,
     val showProfileSwitcher: Boolean = false,
+    val pendingUpgradePlanId: String? = null,
+    val pendingUpgradeDate: String? = null,
+    val hasActiveSubscription: Boolean = false,
 )
 
 @HiltViewModel
@@ -54,12 +60,17 @@ class ProfileViewModel @Inject constructor(
                         dailyUsed = status.dailyUsed,
                         isLoading = false,
                         historyEnabled = historyEnabled,
+                        hasActiveSubscription = status.isPremium,
                     )
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message ?: "Failed to load profile") }
             }
         }
+    }
+
+    fun refreshAll() {
+        loadProfile()
     }
 
     fun toggleHistory(enabled: Boolean) {
@@ -70,21 +81,46 @@ class ProfileViewModel @Inject constructor(
     }
 
     fun toggleAnalytics(enabled: Boolean) {
-        _uiState.update { it.copy(analyticsConsent = enabled) }
+        viewModelScope.launch {
+            val email = prefs.getUserEmail() ?: run {
+                _uiState.update { it.copy(analyticsConsent = enabled) }
+                return@launch
+            }
+            _uiState.update { it.copy(analyticsConsent = enabled) }
+            try {
+                api.updateAnalyticsConsent(AnalyticsConsentRequest(email = email, consent = enabled))
+            } catch (_: Exception) {
+                // best-effort; state already flipped locally
+            }
+        }
     }
+
+    fun clearChatHistory() {
+        viewModelScope.launch {
+            val email = prefs.getUserEmail() ?: return@launch
+            try {
+                api.deleteAllChatHistory(email)
+                _uiState.update { it.copy(snackbarMessage = "Chat history cleared") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackbarMessage = "Failed to clear history") }
+            }
+        }
+    }
+
+    fun clearSnackbar() = _uiState.update { it.copy(snackbarMessage = null) }
 
     fun showProfileSwitcher() = _uiState.update { it.copy(showProfileSwitcher = true) }
 
     fun dismissProfileSwitcher() = _uiState.update { it.copy(showProfileSwitcher = false) }
 
-    fun showDeleteConfirmation() = _uiState.update { it.copy(showDeleteConfirmation = true) }
+    fun showDeleteConfirmation() = _uiState.update { it.copy(showDeleteSheet = true, showDeleteConfirmation = true) }
 
-    fun dismissDeleteConfirmation() = _uiState.update { it.copy(showDeleteConfirmation = false) }
+    fun dismissDeleteConfirmation() = _uiState.update { it.copy(showDeleteSheet = false, showDeleteConfirmation = false) }
 
     fun confirmDeleteAccount() {
         viewModelScope.launch {
             val email = prefs.getUserEmail() ?: return@launch
-            _uiState.update { it.copy(isLoading = true, showDeleteConfirmation = false, error = null) }
+            _uiState.update { it.copy(isLoading = true, showDeleteSheet = false, showDeleteConfirmation = false, error = null) }
             try {
                 api.deleteAccount(email)
                 prefs.clearAll()

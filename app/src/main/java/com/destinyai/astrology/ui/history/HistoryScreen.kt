@@ -214,6 +214,8 @@ private fun CompatibilityHistoryTab(
     state: HistoryUiState,
     viewModel: HistoryViewModel,
 ) {
+    var searchText by remember { mutableStateOf("") }
+
     if (state.isCompatibilityLoading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(color = Gold, modifier = Modifier.size(28.dp))
@@ -232,11 +234,55 @@ private fun CompatibilityHistoryTab(
         return
     }
 
+    // R2-CM18: Search bar above compatibility list
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+            .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.08f))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Filled.Search, contentDescription = null, tint = CreamDim, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(8.dp))
+        Box(modifier = Modifier.weight(1f)) {
+            BasicTextField(
+                value = searchText,
+                onValueChange = { searchText = it },
+                textStyle = TextStyle(color = CreamText, fontSize = 15.sp),
+                cursorBrush = SolidColor(Gold),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            if (searchText.isEmpty()) {
+                Text("Search by partner name…", color = CreamDim.copy(alpha = 0.6f), fontSize = 15.sp)
+            }
+        }
+    }
+
+    Spacer(Modifier.height(4.dp))
+
+    val filtered = remember(state.compatibilityItems, searchText) {
+        if (searchText.isBlank()) state.compatibilityItems
+        else state.compatibilityItems.filter {
+            it.boyName.contains(searchText, ignoreCase = true) ||
+                it.girlName.contains(searchText, ignoreCase = true)
+        }
+    }
+
+    if (filtered.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(text = "No results found", color = CreamDim, fontSize = 16.sp)
+        }
+        return
+    }
+
     LazyColumn(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        items(state.compatibilityItems, key = { it.sessionId }) { item ->
+        items(filtered, key = { it.sessionId }) { item ->
             CompatibilityHistoryItemRow(
                 item = item,
                 onDelete = { viewModel.deleteCompatibilityItem(item.sessionId) },

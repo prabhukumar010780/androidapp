@@ -83,15 +83,18 @@ class HomeRepositoryImpl @Inject constructor(
                 )
             )
 
-            // Extract transits from planet positions — build simple transit list
-            val transits = chartResponse.planets.entries.take(5).map { (planet, data) ->
-                HomeTransit(
-                    planet = planet,
-                    sign = data.sign,
-                    influence = if (data.isRetrograde == true) "Retrograde" else "Direct",
-                    isFavorable = data.isRetrograde != true,
-                )
-            }
+            // R2-H22: only keep major planets in transits
+            val majorPlanets = setOf("Saturn", "Jupiter", "Rahu", "Ketu", "Mars")
+            val transits = chartResponse.planets.entries
+                .filter { (planet, _) -> planet in majorPlanets }
+                .map { (planet, data) ->
+                    HomeTransit(
+                        planet = planet,
+                        sign = data.sign,
+                        influence = if (data.isRetrograde == true) "Retrograde" else "Direct",
+                        isFavorable = data.isRetrograde != true,
+                    )
+                }
 
             // Yoga detection from chart data — placeholder using combust/vargottama flags
             val yogas = buildList {

@@ -6,6 +6,7 @@ import com.destinyai.astrology.data.remote.*
 import com.destinyai.astrology.data.repository.AuthRepository
 import com.destinyai.astrology.domain.model.User
 import com.destinyai.astrology.ui.auth.AccountDeletedException
+import com.destinyai.astrology.ui.auth.ArchivedGuestError
 import com.destinyai.astrology.ui.auth.ConflictException
 import retrofit2.HttpException
 import java.util.UUID
@@ -24,8 +25,11 @@ class AuthRepositoryImpl @Inject constructor(
         return try {
             api.getStatus(email).toUser()
         } catch (e: HttpException) {
-            if (e.code() == 404) throw AccountDeletedException()
-            null
+            when (e.code()) {
+                404 -> throw AccountDeletedException()
+                403 -> throw ArchivedGuestError("guest_archived")
+                else -> null
+            }
         }
     }
 

@@ -11,11 +11,27 @@ data class HomeDashaInfo(
     val mahadasha: String,
     val antardasha: String,
     val endsAt: String,
+    // R2-H12: upcoming antardasha for "Next Up" line
+    val upcomingAntardasha: String? = null,
+    // R2-H13/14: progress ring fields
+    val periodStartIso: String? = null,
+    val periodEndIso: String? = null,
+    // R2-H21: theme
+    val theme: String? = null,
+    // R2-H19: quality label ("Good", "Steady", "Caution")
+    val quality: String? = null,
 )
 
 data class HomeYoga(
     val name: String,
     val description: String,
+    // R2-H24/25: category and status
+    val category: String = "Other",
+    val isActive: Boolean = true,
+    // R2-H31: status for detail popup ("active", "reduced", "cancelled")
+    val status: String = "active",
+    // R2-H33: cancellation reason key for localized lookup
+    val cancellationKey: String? = null,
 )
 
 data class HomeDoshaStatus(
@@ -29,7 +45,13 @@ data class HomeLifeArea(
     val name: String,
     val emoji: String,
     val questions: List<String>,
+    // R2-H10: status dot color
+    val status: LifeAreaStatus = LifeAreaStatus.Neutral,
+    // R2-H28: one-line brief description
+    val briefDescription: String = "",
 )
+
+enum class LifeAreaStatus { Positive, Neutral }
 
 data class HomeRichData(
     val transits: List<HomeTransit> = emptyList(),
@@ -43,6 +65,7 @@ fun defaultLifeAreas(): List<HomeLifeArea> = listOf(
     HomeLifeArea(
         name = "Career",
         emoji = "💼",
+        briefDescription = "Work, ambition and professional growth",
         questions = listOf(
             "What career path aligns with my chart?",
             "Will I get a promotion this year?",
@@ -52,6 +75,7 @@ fun defaultLifeAreas(): List<HomeLifeArea> = listOf(
     HomeLifeArea(
         name = "Love",
         emoji = "❤️",
+        briefDescription = "Romance, relationships and partnerships",
         questions = listOf(
             "What does my chart say about romance?",
             "When will I meet my life partner?",
@@ -61,6 +85,7 @@ fun defaultLifeAreas(): List<HomeLifeArea> = listOf(
     HomeLifeArea(
         name = "Finance",
         emoji = "💰",
+        briefDescription = "Wealth, investments and financial flow",
         questions = listOf(
             "Will my financial situation improve this year?",
             "Is this a good time to invest?",
@@ -70,6 +95,7 @@ fun defaultLifeAreas(): List<HomeLifeArea> = listOf(
     HomeLifeArea(
         name = "Health",
         emoji = "🏥",
+        briefDescription = "Vitality, wellbeing and body signals",
         questions = listOf(
             "What health areas should I watch?",
             "How can I improve my energy levels?",
@@ -79,6 +105,7 @@ fun defaultLifeAreas(): List<HomeLifeArea> = listOf(
     HomeLifeArea(
         name = "Spiritual",
         emoji = "🕉️",
+        briefDescription = "Inner growth, dharma and higher purpose",
         questions = listOf(
             "What is my spiritual path according to my chart?",
             "Which practices will deepen my spiritual growth?",
@@ -88,6 +115,7 @@ fun defaultLifeAreas(): List<HomeLifeArea> = listOf(
     HomeLifeArea(
         name = "Family",
         emoji = "👨‍👩‍👧",
+        briefDescription = "Harmony, lineage and home environment",
         questions = listOf(
             "What does my chart say about family harmony?",
             "How are my family relationships influenced this year?",

@@ -1,8 +1,10 @@
 package com.destinyai.astrology.ui.auth
 
 import app.cash.turbine.test
+import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.repository.AuthRepository
 import com.destinyai.astrology.domain.model.User
+import com.destinyai.astrology.services.HapticManager
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -11,9 +13,7 @@ import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.*
 
 /**
- * TDD test shell for AuthViewModel.
- * These tests define the contract. All fail until AuthViewModel is implemented.
- *
+ * Unit tests for AuthViewModel.
  * Mirrors: iOS AuthViewModelTests.swift
  */
 @ExperimentalCoroutinesApi
@@ -22,6 +22,8 @@ class AuthViewModelTest {
 
     private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var repository: AuthRepository
+    private lateinit var haptic: HapticManager
+    private lateinit var prefs: UserPreferences
     private lateinit var viewModel: AuthViewModel
 
     @BeforeAll
@@ -37,7 +39,10 @@ class AuthViewModelTest {
     @BeforeEach
     fun setUp() {
         repository = mockk(relaxed = true)
-        viewModel = AuthViewModel(repository)
+        haptic = mockk(relaxed = true)
+        prefs = mockk(relaxed = true)
+        coEvery { prefs.isSoundEnabled() } returns true
+        viewModel = AuthViewModel(repository, haptic, prefs)
     }
 
     // --- Session state ---
@@ -47,7 +52,7 @@ class AuthViewModelTest {
         val savedUser = User(email = "test@example.com", isGuestEmail = false)
         coEvery { repository.getSavedUser() } returns savedUser
 
-        val vm = AuthViewModel(repository)
+        val vm = AuthViewModel(repository, haptic, prefs)
 
         vm.uiState.test {
             val state = awaitItem()
@@ -59,7 +64,7 @@ class AuthViewModelTest {
     fun `unauthenticated state shown when no saved session`() = runTest {
         coEvery { repository.getSavedUser() } returns null
 
-        val vm = AuthViewModel(repository)
+        val vm = AuthViewModel(repository, haptic, prefs)
 
         vm.uiState.test {
             val state = awaitItem()
@@ -191,11 +196,23 @@ class AuthViewModelTest {
     fun `403 account_deleted on any call forces logout`() = runTest {
         coEvery { repository.getSavedUser() } throws AccountDeletedException()
 
-        val vm = AuthViewModel(repository)
+        val vm = AuthViewModel(repository, haptic, prefs)
 
         vm.uiState.test {
             val state = awaitItem()
             assertTrue(state.forceLogout)
         }
+    }
+
+    // --- R2-A10 Haptic on success ---
+
+    @Test
+    fun `signInWithGoogle calls haptic success on success`() = runTest {
+        val user = User(email = "haptic@test.com", isGuestEmail = false)
+        coEvery { repository.signInWithGoogle(any()) } returns Result.success(user)
+
+        viewModel.signInWithGoogle("test-token")
+
+        verify(exactly = 1) { haptic.success() }
     }
 }

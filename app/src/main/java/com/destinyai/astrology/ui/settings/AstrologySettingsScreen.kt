@@ -42,6 +42,9 @@ private val houseSystemOptions = listOf(
     "koch" to "Koch",
     "regiomontanus" to "Regiomontanus",
     "campanus" to "Campanus",
+    "morinus" to "Morinus",
+    "alcabitus" to "Alcabitus",
+    "porphyrius" to "Porphyrius",
 )
 
 private val chartStyleOptions = listOf(
@@ -95,6 +98,7 @@ fun AstrologySettingsScreen(
                     options = ayanamsaOptions,
                     selected = state.ayanamsa,
                     onSelect = viewModel::setAyanamsa,
+                    footer = "The reference point used to calculate planetary positions",
                 )
 
                 AstroPickerSection(
@@ -102,6 +106,7 @@ fun AstrologySettingsScreen(
                     options = houseSystemOptions,
                     selected = state.houseSystem,
                     onSelect = viewModel::setHouseSystem,
+                    footer = "The method for dividing the zodiac into 12 houses",
                 )
 
                 AstroPickerSection(
@@ -109,6 +114,7 @@ fun AstrologySettingsScreen(
                     options = chartStyleOptions,
                     selected = state.chartStyle,
                     onSelect = viewModel::setChartStyle,
+                    footer = "How your birth chart is visualised",
                 )
 
                 if (state.isSaved) {
@@ -147,44 +153,55 @@ private fun AstroPickerSection(
     options: List<Pair<String, String>>,
     selected: String,
     onSelect: (String) -> Unit,
+    footer: String? = null,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(NavySurface)
-            .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(14.dp)),
-    ) {
-        Text(
-            text = title,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Gold.copy(alpha = 0.7f),
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-        )
-        HorizontalDivider(color = Gold.copy(alpha = 0.1f), thickness = 0.5.dp)
-        options.forEach { (key, label) ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onSelect(key) }
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(text = label, fontSize = 15.sp, color = CreamText)
-                if (selected == key) {
-                    Icon(
-                        Icons.Filled.Check,
-                        contentDescription = null,
-                        tint = Gold,
-                        modifier = Modifier.size(18.dp),
-                    )
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(NavySurface)
+                .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(14.dp)),
+        ) {
+            Text(
+                text = title,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Gold.copy(alpha = 0.7f),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            )
+            HorizontalDivider(color = Gold.copy(alpha = 0.1f), thickness = 0.5.dp)
+            options.forEach { (key, label) ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSelect(key) }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(text = label, fontSize = 15.sp, color = CreamText)
+                    if (selected == key) {
+                        Icon(
+                            Icons.Filled.Check,
+                            contentDescription = null,
+                            tint = Gold,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
+                if (key != options.last().first) {
+                    HorizontalDivider(color = Gold.copy(alpha = 0.08f), thickness = 0.5.dp)
                 }
             }
-            if (key != options.last().first) {
-                HorizontalDivider(color = Gold.copy(alpha = 0.08f), thickness = 0.5.dp)
-            }
+        }
+        if (footer != null) {
+            Text(
+                text = footer,
+                fontSize = 12.sp,
+                color = CreamDim,
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp),
+            )
         }
     }
 }

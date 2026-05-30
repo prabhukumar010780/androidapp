@@ -285,6 +285,11 @@ data class LocationResult(
     @SerializedName("display_name") val displayName: String,
 )
 
+data class AnalyticsConsentRequest(
+    @SerializedName("email") val email: String,
+    @SerializedName("consent") val consent: Boolean,
+)
+
 // ── API Service Interface ─────────────────────────────────────────────────────
 
 interface AstroApiService {
@@ -402,6 +407,10 @@ interface AstroApiService {
 
     @GET("subscription/profiles/active")
     suspend fun getActiveProfile(@Query("email") email: String): RegisterResponse
+
+    // Analytics Consent
+    @POST("subscription/analytics-consent")
+    suspend fun updateAnalyticsConsent(@Body request: AnalyticsConsentRequest): SuccessResponse
 
     // Location Search
     @GET("api/v2/location/search")

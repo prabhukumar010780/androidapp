@@ -3,6 +3,7 @@ package com.destinyai.astrology.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.destinyai.astrology.data.local.prefs.UserPreferences
+import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.repository.HomeRepository
 import com.destinyai.astrology.domain.model.User
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -36,12 +37,22 @@ data class HomeUiState(
     val lifeAreas: List<HomeLifeArea> = defaultLifeAreas(),
     val isRichDataLoading: Boolean = false,
     val selectedLifeArea: HomeLifeArea? = null,
+    // R2-H3: notification badge unread count
+    val unreadCount: Int = 0,
+    // R2-H28: brief popup before full sheet
+    val briefLifeArea: HomeLifeArea? = null,
+    // R2-H24: yoga filter tab
+    val yogaFilter: YogaFilter = YogaFilter.All,
 )
+
+// R2-H24: yoga filter enum
+enum class YogaFilter { All, Raja, Dhana, Spiritual }
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val repository: HomeRepository,
     private val prefs: UserPreferences,
+    private val api: AstroApiService,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -91,11 +102,24 @@ class HomeViewModel @Inject constructor(
                     dailyInsight = insight,
                 )
             }
+            // R2-H3: fetch unread notification count
+            fetchUnreadCount()
             loadRichHomeData()
         }
     }
 
-    private fun loadRichHomeData() {
+    // R2-H3: fetch unread count from API
+    private fun fetchUnreadCount() {
+        viewModelScope.launch {
+            val email = prefs.getUserEmail() ?: return@launch
+            runCatching {
+                val resp = api.getUnreadCount(email)
+                _uiState.update { it.copy(unreadCount = resp.count) }
+            }
+        }
+    }
+
+    fun loadRichHomeData() {
         viewModelScope.launch {
             val email = prefs.getUserEmail() ?: return@launch
             val birth = prefs.getBirthProfile() ?: return@launch
@@ -119,11 +143,26 @@ class HomeViewModel @Inject constructor(
     }
 
     fun selectLifeArea(area: HomeLifeArea) {
-        _uiState.update { it.copy(selectedLifeArea = area) }
+        // R2-H28: show brief popup first, not the full sheet directly
+        _uiState.update { it.copy(briefLifeArea = area, selectedLifeArea = null) }
+    }
+
+    fun confirmLifeAreaBrief() {
+        val brief = _uiState.value.briefLifeArea ?: return
+        _uiState.update { it.copy(briefLifeArea = null, selectedLifeArea = brief) }
+    }
+
+    fun dismissLifeAreaBrief() {
+        _uiState.update { it.copy(briefLifeArea = null) }
     }
 
     fun dismissLifeArea() {
         _uiState.update { it.copy(selectedLifeArea = null) }
+    }
+
+    // R2-H24: yoga filter
+    fun setYogaFilter(filter: YogaFilter) {
+        _uiState.update { it.copy(yogaFilter = filter) }
     }
 
     fun decrementQuota() {

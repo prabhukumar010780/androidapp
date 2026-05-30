@@ -1,6 +1,7 @@
 package com.destinyai.astrology.ui.notifications
 
 import app.cash.turbine.test
+import com.destinyai.astrology.data.local.prefs.AlertItem
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.remote.NotificationPrefsDto
@@ -44,6 +45,10 @@ class NotificationPreferencesViewModelTest {
         api = mockk(relaxed = true)
         prefs = mockk(relaxed = true)
         coEvery { prefs.getUserEmail() } returns "u@x.com"
+        coEvery { prefs.getAlertItems() } returns emptyList()
+        coEvery { prefs.getNotifPushEnabled() } returns true
+        coEvery { prefs.getNotifEmailEnabled() } returns true
+        coEvery { prefs.getNotifInAppEnabled() } returns true
         vm = NotificationPreferencesViewModel(api, prefs)
     }
 
@@ -146,5 +151,67 @@ class NotificationPreferencesViewModelTest {
         vm.save()
 
         coVerify(exactly = 0) { api.updateNotificationPrefs(any(), any()) }
+    }
+
+    // ── R2-S13h: custom alert tests ───────────────────────────────────────────
+
+    @Test
+    fun `addAlert appends item`() = runTest {
+        vm.addAlert("Check my transits", "Daily")
+
+        vm.uiState.test {
+            val s = awaitItem()
+            assertEquals(1, s.alertItems.size)
+            assertEquals("Check my transits", s.alertItems[0].text)
+            assertEquals("Daily", s.alertItems[0].frequency)
+            assertTrue(s.canAddMore)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `addAlert blocked at 5 items`() = runTest {
+        // Fill up to 5
+        repeat(5) { i -> vm.addAlert("Alert $i", "Daily") }
+
+        // 6th add should be blocked
+        vm.addAlert("Alert 6", "Weekly")
+
+        vm.uiState.test {
+            val s = awaitItem()
+            assertEquals(5, s.alertItems.size)
+            assertFalse(s.canAddMore)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `deleteAlert removes item`() = runTest {
+        vm.addAlert("To be deleted", "Weekly")
+        val id = vm.uiState.value.alertItems.first().id
+
+        vm.deleteAlert(id)
+
+        vm.uiState.test {
+            val s = awaitItem()
+            assertTrue(s.alertItems.isEmpty())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `updateAlert mutates by id`() = runTest {
+        vm.addAlert("Original text", "Daily")
+        val id = vm.uiState.value.alertItems.first().id
+
+        vm.updateAlert(id, "Updated text", "Monthly")
+
+        vm.uiState.test {
+            val s = awaitItem()
+            assertEquals(1, s.alertItems.size)
+            assertEquals("Updated text", s.alertItems[0].text)
+            assertEquals("Monthly", s.alertItems[0].frequency)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 }

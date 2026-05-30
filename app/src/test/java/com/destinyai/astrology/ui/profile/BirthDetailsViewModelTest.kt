@@ -213,6 +213,37 @@ class BirthDetailsViewModelTest {
         coVerify(exactly = 0) { api.saveProfile(any()) }
     }
 
+    // ── hasChanges ─────────────────────────────────────────────────────────────
+
+    @Test
+    fun `saveName disabled when no changes after load`() = runTest {
+        coEvery { prefs.getBirthProfile() } returns fakeBirthProfile()
+        coEvery { prefs.getUserName() } returns "Prabhu"
+
+        vm.loadBirthData()
+
+        vm.uiState.test {
+            val s = awaitItem()
+            // hasChanges should be false: name and gender match originals
+            assertFalse(s.hasChanges)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `hasChanges true when name edited`() = runTest {
+        coEvery { prefs.getBirthProfile() } returns fakeBirthProfile()
+        coEvery { prefs.getUserName() } returns "Prabhu"
+
+        vm.loadBirthData()
+        vm.setName("Ravi")
+
+        vm.uiState.test {
+            assertTrue(awaitItem().hasChanges)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     // ── helpers ────────────────────────────────────────────────────────────────
 
     private fun fakeBirthProfile() = BirthProfileDto(

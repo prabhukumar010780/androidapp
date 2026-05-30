@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.remote.NotificationPrefsRequest
+import com.destinyai.astrology.services.LocaleManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +29,7 @@ data class SettingsUiState(
 class SettingsViewModel @Inject constructor(
     private val api: AstroApiService,
     private val prefs: UserPreferences,
+    private val localeManager: LocaleManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -61,6 +63,15 @@ class SettingsViewModel @Inject constructor(
     fun setLanguage(lang: String) {
         _uiState.update { it.copy(selectedLanguage = lang) }
         viewModelScope.launch { prefs.setSelectedLanguage(lang) }
+    }
+
+    /** R2-S6: persist + trigger live re-localisation via LocaleManager. */
+    fun setLanguageWithLocale(lang: String) {
+        _uiState.update { it.copy(selectedLanguage = lang) }
+        viewModelScope.launch {
+            prefs.setSelectedLanguage(lang)
+            localeManager.applyLocale(lang)
+        }
     }
 
     fun setNotifDailyInsight(enabled: Boolean) = _uiState.update { it.copy(notifDailyInsight = enabled) }

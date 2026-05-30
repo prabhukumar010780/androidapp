@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AstroApiService
+import com.destinyai.astrology.services.ProfileChangeBus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,10 +18,15 @@ data class ProfileEntry(
     val isSelf: Boolean,
 )
 
+data class ProfileSwitcherUiState(
+    val upgradeRequiredPrompt: Boolean = false,
+)
+
 @HiltViewModel
 class ProfileSwitcherViewModel @Inject constructor(
     private val api: AstroApiService,
     private val prefs: UserPreferences,
+    private val profileChangeBus: ProfileChangeBus,
 ) : ViewModel() {
 
     private val _profiles = MutableStateFlow<List<ProfileEntry>>(emptyList())
@@ -31,6 +37,9 @@ class ProfileSwitcherViewModel @Inject constructor(
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _uiState = MutableStateFlow(ProfileSwitcherUiState())
+    val uiState: StateFlow<ProfileSwitcherUiState> = _uiState.asStateFlow()
 
     init {
         loadProfiles()
@@ -68,14 +77,26 @@ class ProfileSwitcherViewModel @Inject constructor(
             _isLoading.value = true
             try {
                 val selfEmail = prefs.getUserEmail() ?: return@launch
+                // Check access state before switching
+                val status = api.getStatus(selfEmail)
+                if (status.accessState == "upgrade_required") {
+                    _uiState.value = ProfileSwitcherUiState(upgradeRequiredPrompt = true)
+                    _isLoading.value = false
+                    return@launch
+                }
                 api.switchProfile(mapOf("user_email" to selfEmail, "target_email" to email))
                 prefs.setActiveProfileEmail(email)
                 _activeEmail.value = email
+                profileChangeBus.emit(email)
             } catch (_: Exception) {
                 // Silently ignore — active email not updated
             } finally {
                 _isLoading.value = false
             }
         }
+    }
+
+    fun dismissUpgradePrompt() {
+        _uiState.value = ProfileSwitcherUiState(upgradeRequiredPrompt = false)
     }
 }

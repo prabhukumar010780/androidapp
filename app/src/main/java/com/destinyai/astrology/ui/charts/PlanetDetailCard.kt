@@ -27,28 +27,12 @@ import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 
-// ── Planet color by code (matches iOS) ───────────────────────────────────────
-
-private fun planetColor(code: String): Color = when (code) {
-    "Su" -> Color(0xFFFF8C00) // Orange
-    "Mo" -> Color(0xFFCCDDE8) // Moon silver
-    "Ma" -> Color.Red
-    "Me" -> Color(0xFF4CAF50) // Green
-    "Ju" -> Color(0xFFFFEB3B) // Yellow
-    "Ve" -> Color(0xFFE91E63) // Pink
-    "Sa" -> Color(0xFF4D4D80) // Indigo-gray
-    "Ra" -> Color(0xFF666699)
-    "Ke" -> Color(0xFF806653)
-    else -> Color.Gray
-}
-
 // ── PlanetDetailCard ──────────────────────────────────────────────────────────
 
 @Composable
 fun PlanetDetailCard(planet: PlanetDisplayInfo, signAbbrev: String?) {
-    val code = planet.code
     val symbol = ChartConstants.planetSymbol(planet.id)
-    val color = planetColor(code)
+    val color = ChartConstants.planetColor(planet.id)
 
     Column(
         modifier = Modifier
@@ -56,7 +40,7 @@ fun PlanetDetailCard(planet: PlanetDisplayInfo, signAbbrev: String?) {
             .clip(RoundedCornerShape(12.dp))
             .background(
                 Brush.linearGradient(
-                    listOf(Color(0xE61A1A38), Color(0xF20D0D1E))
+                    listOf(color.copy(alpha = 0.12f), Color(0xF20D0D1E))
                 )
             )
             .border(
@@ -71,7 +55,7 @@ fun PlanetDetailCard(planet: PlanetDisplayInfo, signAbbrev: String?) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(symbol, fontSize = 14.sp, color = color)
             Spacer(Modifier.width(4.dp))
-            Text(code, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Gold)
+            Text(planet.code, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Gold)
             Spacer(Modifier.weight(1f))
             Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                 if (planet.isRetrograde) StatusDot("R", Color.Red)

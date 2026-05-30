@@ -11,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CompareArrows
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Warning
@@ -45,6 +46,7 @@ fun ChartsScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showStyleMenu by remember { mutableStateOf(false) }
     var showComparison by remember { mutableStateOf(false) }
+    var showPlanetaryPositions by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { viewModel.loadChartData() }
 
@@ -58,6 +60,16 @@ fun ChartsScreen(
             girlAscendant = null,
             onDismiss = { showComparison = false },
             initialChartStyle = state.chartStyle,
+        )
+    }
+
+    // R2-C1: Planetary Positions bottom sheet
+    if (showPlanetaryPositions && state.chartApiData != null) {
+        PlanetaryPositionsSheet(
+            chartApiData = state.chartApiData!!,
+            currentChartStyle = state.chartStyle,
+            onChartStyleChanged = { viewModel.setChartStyle(it) },
+            onDismiss = { showPlanetaryPositions = false },
         )
     }
 
@@ -89,6 +101,13 @@ fun ChartsScreen(
                 // Compare button
                 IconButton(onClick = { showComparison = true }) {
                     Icon(Icons.Default.CompareArrows, contentDescription = "Compare charts", tint = Gold)
+                }
+                // Planet positions sheet button (R2-C1)
+                IconButton(
+                    onClick = { showPlanetaryPositions = true },
+                    enabled = state.chartApiData != null,
+                ) {
+                    Icon(Icons.Default.GridView, contentDescription = "Planet positions", tint = Gold)
                 }
                 // Chart style menu (North / South toggle)
                 Box {

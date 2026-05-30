@@ -5,6 +5,8 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import com.destinyai.astrology.data.remote.BirthProfileDto
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -12,6 +14,13 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "destiny_prefs")
+
+/** R2-S13f: custom notification alert item. */
+data class AlertItem(
+    val id: String,
+    val text: String,
+    val frequency: String, // "Daily" | "Weekly" | "Monthly"
+)
 
 @Singleton
 class UserPreferences @Inject constructor(
@@ -53,8 +62,15 @@ class UserPreferences @Inject constructor(
         val FCM_TOKEN = stringPreferencesKey("fcm_token")
         val FCM_TOKEN_REGISTERED = booleanPreferencesKey("fcm_token_registered")
         val IS_HISTORY_ENABLED = booleanPreferencesKey("isHistoryEnabled")
+        val SOUND_ENABLED = booleanPreferencesKey("sound_enabled")
         val AYANAMSA = stringPreferencesKey("ayanamsa")
         val HOUSE_SYSTEM = stringPreferencesKey("house_system")
+        val BACKEND_DATA_REFRESHED = booleanPreferencesKey("backend_data_refreshed")
+        val ANALYTICS_CONSENT = booleanPreferencesKey("analytics_consent")
+        val NOTIF_PUSH_ENABLED = booleanPreferencesKey("notif_push_enabled")
+        val NOTIF_EMAIL_ENABLED = booleanPreferencesKey("notif_email_enabled")
+        val NOTIF_IN_APP_ENABLED = booleanPreferencesKey("notif_in_app_enabled")
+        val NOTIF_ALERT_ITEMS_JSON = stringPreferencesKey("notif_alert_items_json")
     }
 
     suspend fun getUserEmail(): String? =
@@ -260,5 +276,69 @@ class UserPreferences @Inject constructor(
 
     suspend fun saveHouseSystem(system: String) {
         store.edit { it[Keys.HOUSE_SYSTEM] = system }
+    }
+
+    // Sound feedback — R2-Z2
+    suspend fun isSoundEnabled(): Boolean =
+        store.data.map { it[Keys.SOUND_ENABLED] ?: true }.first()
+
+    suspend fun setSoundEnabled(enabled: Boolean) {
+        store.edit { it[Keys.SOUND_ENABLED] = enabled }
+    }
+
+    // Backend data refreshed banner — R2-A6
+    suspend fun getBackendDataRefreshed(): Boolean =
+        store.data.map { it[Keys.BACKEND_DATA_REFRESHED] ?: false }.first()
+
+    suspend fun setBackendDataRefreshed(refreshed: Boolean) {
+        store.edit { it[Keys.BACKEND_DATA_REFRESHED] = refreshed }
+    }
+
+    // Analytics consent — R2-A5
+    suspend fun getAnalyticsConsent(): Boolean =
+        store.data.map { it[Keys.ANALYTICS_CONSENT] ?: false }.first()
+
+    suspend fun setAnalyticsConsent(consent: Boolean) {
+        store.edit { it[Keys.ANALYTICS_CONSENT] = consent }
+    }
+
+    // ── Notification channel toggles — R2-S7 ─────────────────────────────────
+
+    suspend fun getNotifPushEnabled(): Boolean =
+        store.data.map { it[Keys.NOTIF_PUSH_ENABLED] ?: true }.first()
+
+    suspend fun setNotifPushEnabled(enabled: Boolean) {
+        store.edit { it[Keys.NOTIF_PUSH_ENABLED] = enabled }
+    }
+
+    suspend fun getNotifEmailEnabled(): Boolean =
+        store.data.map { it[Keys.NOTIF_EMAIL_ENABLED] ?: true }.first()
+
+    suspend fun setNotifEmailEnabled(enabled: Boolean) {
+        store.edit { it[Keys.NOTIF_EMAIL_ENABLED] = enabled }
+    }
+
+    suspend fun getNotifInAppEnabled(): Boolean =
+        store.data.map { it[Keys.NOTIF_IN_APP_ENABLED] ?: true }.first()
+
+    suspend fun setNotifInAppEnabled(enabled: Boolean) {
+        store.edit { it[Keys.NOTIF_IN_APP_ENABLED] = enabled }
+    }
+
+    // ── Custom alert items — R2-S13f ──────────────────────────────────────────
+
+    suspend fun getAlertItems(): List<AlertItem> {
+        val json = store.data.map { it[Keys.NOTIF_ALERT_ITEMS_JSON] }.first() ?: return emptyList()
+        return try {
+            val type = object : TypeToken<List<AlertItem>>() {}.type
+            Gson().fromJson(json, type) ?: emptyList()
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun saveAlertItems(items: List<AlertItem>) {
+        val json = Gson().toJson(items)
+        store.edit { it[Keys.NOTIF_ALERT_ITEMS_JSON] = json }
     }
 }

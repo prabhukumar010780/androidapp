@@ -17,6 +17,7 @@ import com.destinyai.astrology.ui.onboarding.LanguageSelectionScreen
 import com.destinyai.astrology.ui.onboarding.OnboardingScreen
 import com.destinyai.astrology.ui.onboarding.ResponseStyleOnboardingScreen
 import com.destinyai.astrology.ui.partners.PartnersScreen
+import com.destinyai.astrology.ui.profile.FaqHelpScreen
 import com.destinyai.astrology.ui.profile.ProfileScreen
 import com.destinyai.astrology.ui.settings.AstrologySettingsScreen
 import com.destinyai.astrology.ui.settings.SettingsScreen
@@ -84,6 +85,7 @@ fun AppNav() {
                 onNavigateToLanguage = { navController.navigate(Routes.LANGUAGE_SELECTION) },
                 onNavigateToResponseStyle = { navController.navigate(Routes.RESPONSE_STYLE) },
                 onNavigateToNotificationPrefs = { navController.navigate(Routes.NOTIFICATION_PREFS) },
+                onNavigateToFaq = { navController.navigate(Routes.FAQ_HELP) },
             )
         }
 
@@ -126,7 +128,14 @@ fun AppNav() {
                 onNavigateToLanguage = { navController.navigate(Routes.LANGUAGE_SELECTION) },
                 onNavigateToResponseStyle = { navController.navigate(Routes.RESPONSE_STYLE) },
                 onNavigateToNotificationPrefs = { navController.navigate(Routes.NOTIFICATION_PREFS) },
+                onNavigateToCharts = { navController.navigate(Routes.CHARTS) },
+                onNavigateToPartners = { navController.navigate(Routes.PARTNERS) },
+                onNavigateToFaq = { navController.navigate(Routes.FAQ_HELP) },
             )
+        }
+
+        composable(Routes.FAQ_HELP) {
+            FaqHelpScreen(onBack = { navController.popBackStack() })
         }
 
         composable(Routes.SETTINGS) {

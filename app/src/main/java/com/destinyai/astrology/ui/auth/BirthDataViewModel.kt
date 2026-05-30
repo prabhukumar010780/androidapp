@@ -38,6 +38,9 @@ data class BirthDataUiState(
     val locationResults: List<LocationResult> = emptyList(),
     val isSearchingLocation: Boolean = false,
     val showResponseStyleSheet: Boolean = false,
+    val analyticsConsent: Boolean = false,
+    val showRefreshedBanner: Boolean = false,
+    val isSoundEnabled: Boolean = true,
 )
 
 @HiltViewModel
@@ -99,27 +102,65 @@ class BirthDataViewModel @Inject constructor(
 
     fun dismissResponseStyle() = _uiState.update { it.copy(showResponseStyleSheet = false) }
 
+    fun dismissRefreshedBanner() {
+        viewModelScope.launch {
+            prefs.setBackendDataRefreshed(false)
+            _uiState.update { it.copy(showRefreshedBanner = false) }
+        }
+    }
+
+    fun setAnalyticsConsent(consent: Boolean) {
+        viewModelScope.launch {
+            prefs.setAnalyticsConsent(consent)
+            _uiState.update { it.copy(analyticsConsent = consent) }
+        }
+    }
+
+    fun toggleSound() {
+        viewModelScope.launch {
+            val newVal = !_uiState.value.isSoundEnabled
+            prefs.setSoundEnabled(newVal)
+            _uiState.update { it.copy(isSoundEnabled = newVal) }
+        }
+    }
+
     // Test helpers — allow clearing selection state without re-triggering setters
     internal fun clearDateSelected() = _uiState.update { it.copy(isDateSelected = false) }
     internal fun clearTimeSelected() = _uiState.update { it.copy(isTimeSelected = false) }
 
     fun loadSaved() {
         viewModelScope.launch {
-            val profile = prefs.getBirthProfile() ?: return@launch
+            val refreshed = prefs.getBackendDataRefreshed()
+            val savedConsent = prefs.getAnalyticsConsent()
+            val soundEnabled = prefs.isSoundEnabled()
+            val profile = prefs.getBirthProfile()
             val name = prefs.getUserName() ?: ""
-            _uiState.update {
-                it.copy(
-                    userName = name,
-                    dateOfBirth = profile.dateOfBirth,
-                    timeOfBirth = profile.timeOfBirth,
-                    cityOfBirth = profile.cityOfBirth,
-                    latitude = profile.latitude,
-                    longitude = profile.longitude,
-                    gender = profile.gender ?: "",
-                    timeUnknown = profile.birthTimeUnknown,
-                    isDateSelected = profile.dateOfBirth.isNotBlank(),
-                    isTimeSelected = profile.timeOfBirth.isNotBlank() && !profile.birthTimeUnknown,
-                )
+            if (profile != null) {
+                _uiState.update {
+                    it.copy(
+                        userName = name,
+                        dateOfBirth = profile.dateOfBirth,
+                        timeOfBirth = profile.timeOfBirth,
+                        cityOfBirth = profile.cityOfBirth,
+                        latitude = profile.latitude,
+                        longitude = profile.longitude,
+                        gender = profile.gender ?: "",
+                        timeUnknown = profile.birthTimeUnknown,
+                        isDateSelected = profile.dateOfBirth.isNotBlank(),
+                        isTimeSelected = profile.timeOfBirth.isNotBlank() && !profile.birthTimeUnknown,
+                        showRefreshedBanner = refreshed,
+                        analyticsConsent = savedConsent,
+                        isSoundEnabled = soundEnabled,
+                    )
+                }
+            } else {
+                _uiState.update {
+                    it.copy(
+                        showRefreshedBanner = refreshed,
+                        analyticsConsent = savedConsent,
+                        isSoundEnabled = soundEnabled,
+                    )
+                }
             }
         }
     }
@@ -174,17 +215,26 @@ class BirthDataViewModel @Inject constructor(
                     )
                 }
             } catch (e: retrofit2.HttpException) {
-                if (e.code() == 409) {
-                    val errorJson = e.response()?.errorBody()?.string() ?: ""
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            birthDataTakenEmail = extractJsonField(errorJson, "existing_email"),
-                            birthDataTakenProvider = extractJsonField(errorJson, "provider"),
-                        )
+                when (e.code()) {
+                    409 -> {
+                        val errorJson = e.response()?.errorBody()?.string() ?: ""
+                        val conflictEmail = extractJsonField(errorJson, "existing_email") ?: ""
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                birthDataTakenEmail = conflictEmail.ifEmpty { null },
+                                birthDataTakenProvider = extractJsonField(errorJson, "provider"),
+                            )
+                        }
+                        // RegisteredUserConflictError is the typed signal — state already updated
                     }
-                } else {
-                    _uiState.update { it.copy(isLoading = false, error = "Failed to save profile") }
+                    403 -> {
+                        _uiState.update { it.copy(isLoading = false, error = "Account archived") }
+                        // AccountDeletedError is the typed signal — state already updated
+                    }
+                    else -> {
+                        _uiState.update { it.copy(isLoading = false, error = "Failed to save profile") }
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message ?: "Failed to save profile") }

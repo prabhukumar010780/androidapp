@@ -19,4 +19,5 @@ object Routes {
     const val ASTROLOGY_SETTINGS = "astrology_settings"
     const val SUBSCRIPTION = "subscription"
     const val RESPONSE_STYLE = "response_style"
+    const val FAQ_HELP = "faq_help"
 }

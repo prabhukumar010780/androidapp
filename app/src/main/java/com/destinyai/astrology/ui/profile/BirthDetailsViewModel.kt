@@ -23,7 +23,13 @@ data class BirthDetailsUiState(
     val isSaving: Boolean = false,
     val saveSuccess: Boolean = false,
     val error: String? = null,
-)
+    // snapshot for hasChanges
+    val originalName: String = "",
+    val originalGender: String = "",
+) {
+    val hasChanges: Boolean
+        get() = name != originalName || gender != originalGender
+}
 
 @HiltViewModel
 class BirthDetailsViewModel @Inject constructor(
@@ -39,13 +45,16 @@ class BirthDetailsViewModel @Inject constructor(
             val profile = prefs.getBirthProfile()
             val name = prefs.getUserName() ?: ""
             if (profile != null) {
+                val gender = profile.gender ?: ""
                 _uiState.update {
                     it.copy(
                         name = name,
-                        gender = profile.gender ?: "",
+                        gender = gender,
                         dateOfBirth = profile.dateOfBirth,
                         timeOfBirth = profile.timeOfBirth,
                         cityOfBirth = profile.cityOfBirth,
+                        originalName = name,
+                        originalGender = gender,
                     )
                 }
             }
@@ -79,7 +88,7 @@ class BirthDetailsViewModel @Inject constructor(
                 )
                 prefs.setUserName(s.name)
                 prefs.setBirthProfile(updatedProfile)
-                _uiState.update { it.copy(isSaving = false, saveSuccess = true) }
+                _uiState.update { it.copy(isSaving = false, saveSuccess = true, originalName = s.name, originalGender = s.gender) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isSaving = false, error = e.message ?: "Save failed") }
             }

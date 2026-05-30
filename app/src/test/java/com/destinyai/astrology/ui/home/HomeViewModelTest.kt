@@ -2,6 +2,7 @@ package com.destinyai.astrology.ui.home
 
 import app.cash.turbine.test
 import com.destinyai.astrology.data.local.prefs.UserPreferences
+import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.remote.BirthProfileDto
 import com.destinyai.astrology.data.repository.HomeRepository
 import com.destinyai.astrology.domain.model.User
@@ -26,6 +27,7 @@ class HomeViewModelTest {
     private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var repository: HomeRepository
     private lateinit var prefs: UserPreferences
+    private lateinit var api: AstroApiService
     private lateinit var viewModel: HomeViewModel
 
     @BeforeAll
@@ -42,9 +44,10 @@ class HomeViewModelTest {
     fun setUp() {
         repository = mockk(relaxed = true)
         prefs = mockk(relaxed = true)
+        api = mockk(relaxed = true)
         coEvery { prefs.getUserEmail() } returns null
         coEvery { prefs.getBirthProfile() } returns null
-        viewModel = HomeViewModel(repository, prefs)
+        viewModel = HomeViewModel(repository, prefs, api)
     }
 
     // --- Defaults ---
@@ -53,7 +56,7 @@ class HomeViewModelTest {
     fun `init sets quota to plan default (10 for free registered)`() = runTest {
         coEvery { repository.getDailyQuota() } returns 10
 
-        val vm = HomeViewModel(repository, prefs)
+        val vm = HomeViewModel(repository, prefs, api)
 
         vm.uiState.test {
             assertEquals(10, awaitItem().dailyQuota)
@@ -96,7 +99,7 @@ class HomeViewModelTest {
             isGuestEmail = true,
         )
 
-        val vm = HomeViewModel(repository, prefs)
+        val vm = HomeViewModel(repository, prefs, api)
 
         vm.uiState.test {
             assertEquals("Guest", awaitItem().displayName)
@@ -111,7 +114,7 @@ class HomeViewModelTest {
             name = "Prabhu Kushwaha",
         )
 
-        val vm = HomeViewModel(repository, prefs)
+        val vm = HomeViewModel(repository, prefs, api)
 
         vm.uiState.test {
             assertEquals("Prabhu", awaitItem().displayName)
@@ -125,7 +128,7 @@ class HomeViewModelTest {
         coEvery { repository.getDailyQuota() } returns 10
         coEvery { repository.getDailyUsed() } returns 5
 
-        val vm = HomeViewModel(repository, prefs)
+        val vm = HomeViewModel(repository, prefs, api)
 
         vm.uiState.test {
             assertEquals(0.5f, awaitItem().quotaProgress, 0.001f)
@@ -165,7 +168,7 @@ class HomeViewModelTest {
         )
         coEvery { repository.getDailyQuota() } returns -1
 
-        val vm = HomeViewModel(repository, prefs)
+        val vm = HomeViewModel(repository, prefs, api)
 
         vm.uiState.test {
             assertTrue(awaitItem().isUnlimited)
@@ -242,14 +245,30 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `selectLifeArea sets selectedLifeArea`() = runTest {
+    fun `selectLifeArea sets briefLifeArea (R2-H28 two-step)`() = runTest {
         val area = HomeLifeArea(name = "Career", emoji = "💼", questions = listOf("Question?"))
 
         viewModel.selectLifeArea(area)
 
         viewModel.uiState.test {
             val state = awaitItem()
+            assertEquals(area, state.briefLifeArea)
+            assertNull(state.selectedLifeArea)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `confirmLifeAreaBrief promotes briefLifeArea to selectedLifeArea`() = runTest {
+        val area = HomeLifeArea(name = "Career", emoji = "💼", questions = listOf("Question?"))
+
+        viewModel.selectLifeArea(area)
+        viewModel.confirmLifeAreaBrief()
+
+        viewModel.uiState.test {
+            val state = awaitItem()
             assertEquals(area, state.selectedLifeArea)
+            assertNull(state.briefLifeArea)
             cancelAndIgnoreRemainingEvents()
         }
     }

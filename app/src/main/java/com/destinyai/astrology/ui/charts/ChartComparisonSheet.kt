@@ -1,14 +1,11 @@
 package com.destinyai.astrology.ui.charts
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,9 +17,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.destinyai.astrology.ui.components.GlassSegmentedControl
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
-import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 
@@ -38,9 +35,9 @@ fun ChartComparisonSheet(
     initialChartStyle: String = "north_indian",
     onChartStyleChanged: (String) -> Unit = {},
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
+    // R2-C3: D1/D9 tab state
+    var selectedDivisional by remember { mutableIntStateOf(0) }
     var chartStyle by remember { mutableStateOf(initialChartStyle) }
-    var showStyleMenu by remember { mutableStateOf(false) }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -53,37 +50,9 @@ fun ChartComparisonSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .statusBarsPadding()
-                        .padding(horizontal = 8.dp, vertical = 8.dp),
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Box {
-                        IconButton(onClick = { showStyleMenu = true }) {
-                            Icon(Icons.Default.Tune, contentDescription = "Chart style", tint = Gold)
-                        }
-                        DropdownMenu(
-                            expanded = showStyleMenu,
-                            onDismissRequest = { showStyleMenu = false },
-                        ) {
-                            listOf("north_indian" to "North Indian", "south_indian" to "South Indian").forEach { (key, label) ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Row {
-                                            Text(label)
-                                            if (chartStyle == key) {
-                                                Spacer(Modifier.width(8.dp))
-                                                Text("✓", color = Gold)
-                                            }
-                                        }
-                                    },
-                                    onClick = {
-                                        chartStyle = key
-                                        onChartStyleChanged(key)
-                                        showStyleMenu = false
-                                    },
-                                )
-                            }
-                        }
-                    }
                     Text(
                         "Birth Charts",
                         fontSize = 18.sp,
@@ -96,8 +65,15 @@ fun ChartComparisonSheet(
                     }
                 }
 
-                // Tab selector
-                ChartTabSelector(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
+                // R2-C3: GlassSegmentedControl for D1 / D9 switching
+                GlassSegmentedControl(
+                    options = listOf("D1", "D9"),
+                    selectedIndex = selectedDivisional,
+                    onSelect = { selectedDivisional = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                )
 
                 // Charts
                 Column(
@@ -107,85 +83,34 @@ fun ChartComparisonSheet(
                         .padding(horizontal = 16.dp, vertical = 20.dp),
                     verticalArrangement = Arrangement.spacedBy(24.dp),
                 ) {
-                    if (selectedTab == 0) {
-                        // D1
-                        if (boyChartData != null) {
-                            PersonChartSection(
-                                chartData = boyChartData,
-                                chartType = ChartType.D1,
-                                personName = boyName,
-                                ascendant = boyAscendant,
-                                chartStyle = chartStyle,
-                            )
-                        } else {
-                            Text("Boy chart not available", color = CreamDim)
-                        }
-                        if (girlChartData != null) {
-                            PersonChartSection(
-                                chartData = girlChartData,
-                                chartType = ChartType.D1,
-                                personName = girlName,
-                                ascendant = girlAscendant,
-                                chartStyle = chartStyle,
-                            )
-                        } else {
-                            Text("Girl chart not available", color = CreamDim)
-                        }
-                        BadgeLegend()
-                    } else {
-                        // D9
-                        if (boyChartData != null) {
-                            PersonChartSection(
-                                chartData = boyChartData,
-                                chartType = ChartType.D9,
-                                personName = boyName,
-                                ascendant = boyAscendant,
-                                chartStyle = chartStyle,
-                            )
-                        }
-                        if (girlChartData != null) {
-                            PersonChartSection(
-                                chartData = girlChartData,
-                                chartType = ChartType.D9,
-                                personName = girlName,
-                                ascendant = girlAscendant,
-                                chartStyle = chartStyle,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
+                    val chartType = if (selectedDivisional == 0) ChartType.D1 else ChartType.D9
 
-@Composable
-private fun ChartTabSelector(selectedTab: Int, onTabSelected: (Int) -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color.Black.copy(alpha = 0.3f))
-            .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)),
-    ) {
-        listOf("D1 Rashi", "D9 Navamsa").forEachIndexed { idx, label ->
-            val selected = selectedTab == idx
-            val bgColor by animateColorAsState(if (selected) Gold else Color.Transparent)
-            val textColor by animateColorAsState(if (selected) Color(0xFF0D0D1A) else Color.White.copy(alpha = 0.8f))
-            Button(
-                onClick = { onTabSelected(idx) },
-                modifier = Modifier.weight(1f).padding(4.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = bgColor),
-                contentPadding = PaddingValues(vertical = 10.dp),
-                elevation = ButtonDefaults.buttonElevation(0.dp),
-            ) {
-                Text(
-                    label,
-                    fontSize = 14.sp,
-                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                    color = textColor,
-                )
+                    if (boyChartData != null) {
+                        PersonChartSection(
+                            chartData = boyChartData,
+                            chartType = chartType,
+                            personName = boyName,
+                            ascendant = boyAscendant,
+                            chartStyle = chartStyle,
+                        )
+                    } else {
+                        Text("Boy chart not available", color = CreamDim)
+                    }
+
+                    if (girlChartData != null) {
+                        PersonChartSection(
+                            chartData = girlChartData,
+                            chartType = chartType,
+                            personName = girlName,
+                            ascendant = girlAscendant,
+                            chartStyle = chartStyle,
+                        )
+                    } else {
+                        Text("Girl chart not available", color = CreamDim)
+                    }
+
+                    if (selectedDivisional == 0) BadgeLegend()
+                }
             }
         }
     }
@@ -200,33 +125,41 @@ private fun PersonChartSection(
     chartStyle: String,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(modifier = Modifier.padding(horizontal = 4.dp)) {
+        // R2-C5: Per-person ascendant header in gold
+        Row(
+            modifier = Modifier.padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
             Text(personName, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Gold)
             if (ascendant != null) {
-                Spacer(Modifier.width(6.dp))
+                val ascFull = ChartConstants.signFullNames[ascendant] ?: ascendant
                 Text(
-                    "• Asc: ${ChartConstants.signFullNames[ascendant] ?: ascendant}",
+                    "Ascendant: $ascFull",
                     fontSize = 13.sp,
-                    color = CreamText.copy(alpha = 0.7f),
+                    fontWeight = FontWeight.SemiBold,
+                    color = Gold,
                 )
             }
         }
+
+        // Chart visualization
         if (chartStyle == "north_indian") {
             NorthIndianChartView(chartData = chartData, ascendantSign = ascendant)
         } else {
             SouthIndianChartView(chartData = chartData, chartType = chartType, ascendantSign = ascendant)
         }
-        if (chartType == ChartType.D1) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(horizontal = 8.dp)) {
-                Text(
-                    "Planet Details",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Gold.copy(alpha = 0.9f),
-                    modifier = Modifier.padding(horizontal = 4.dp),
-                )
-                PlanetCardsGrid(chartData = chartData, chartType = chartType)
-            }
+
+        // R2-C4: 3x3 planet grid for both D1 and D9
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(horizontal = 4.dp)) {
+            Text(
+                "Planet Details",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Gold.copy(alpha = 0.9f),
+                modifier = Modifier.padding(horizontal = 4.dp),
+            )
+            PlanetCardsGrid(chartData = chartData, chartType = chartType)
         }
     }
 }

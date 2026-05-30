@@ -4,6 +4,8 @@ import app.cash.turbine.test
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.remote.StatusResponse
+import com.destinyai.astrology.data.remote.AnalyticsConsentRequest
+import com.destinyai.astrology.data.remote.SuccessResponse
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -195,6 +197,37 @@ class ProfileViewModelTest {
         vm.uiState.test {
             assertFalse(awaitItem().historyEnabled)
             cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // ── refreshAll ─────────────────────────────────────────────────────────────
+
+    @Test
+    fun `refreshAll calls api getStatus`() = runTest {
+        coEvery { api.getStatus("u@x.com") } returns StatusResponse(
+            userEmail = "u@x.com",
+            planId = "free_registered",
+            isGeneratedEmail = false,
+            isPremium = false,
+        )
+
+        vm.refreshAll()
+
+        coVerify { api.getStatus("u@x.com") }
+    }
+
+    // ── toggleAnalytics backed by api ──────────────────────────────────────────
+
+    @Test
+    fun `toggleAnalytics calls api updateAnalyticsConsent`() = runTest {
+        coEvery { api.updateAnalyticsConsent(any()) } returns SuccessResponse(success = true)
+
+        vm.toggleAnalytics(false)
+
+        coVerify {
+            api.updateAnalyticsConsent(match { req ->
+                req.email == "u@x.com" && !req.consent
+            })
         }
     }
 }

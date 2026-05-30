@@ -12,6 +12,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.destinyai.astrology.BuildConfig
 import com.destinyai.astrology.R
 import com.destinyai.astrology.ui.components.GoldGradientText
+import com.destinyai.astrology.ui.components.ShimmerButton
 import com.destinyai.astrology.ui.components.auth.AuthLogo
 import com.destinyai.astrology.ui.theme.AuthDimens
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
@@ -92,6 +96,17 @@ fun AuthScreen(
         if (state.forceLogout) viewModel.logout()
     }
 
+    LaunchedEffect(state.error) {
+        // R2-A9: ignore user-cancel errors
+        val err = state.error ?: return@LaunchedEffect
+        if (err.contains("cancelled", ignoreCase = true) ||
+            err.contains("canceled", ignoreCase = true) ||
+            err.contains("user_cancel", ignoreCase = true)
+        ) {
+            viewModel.clearError()
+        }
+    }
+
     // Logo entrance spring (scale 0.6 -> 1.0 once at first composition).
     // Mirrors iOS `AppTheme.Auth.logoSpring` (response: 0.7, dampingFraction: 0.65).
     val logoScaleAnim = remember { Animatable(0.6f) }
@@ -106,6 +121,7 @@ fun AuthScreen(
     }
 
     CosmicBackground {
+        Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -158,23 +174,13 @@ fun AuthScreen(
                 }
             }
 
-            // Button 1: Continue with Apple (gold filled)
-            Button(
+            // Button 1: Continue with Apple — R2-A8 ShimmerButton
+            ShimmerButton(
+                text = stringResource(R.string.continue_with_apple),
                 onClick = { /* Apple Sign In — launches intent */ },
                 modifier = Modifier.fillMaxWidth().height(54.dp),
-                shape = RoundedCornerShape(14.dp),
                 enabled = !state.isLoading,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Gold,
-                    contentColor = Color(0xFF0D0D1A),
-                ),
-            ) {
-                Text(
-                    text = "  " + stringResource(R.string.continue_with_apple),
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 16.sp,
-                )
-            }
+            )
 
             Spacer(Modifier.height(12.dp))
 
@@ -356,5 +362,22 @@ fun AuthScreen(
                 }
             }
         }
+
+        // R2-A1: Sound toggle — top-right corner overlay
+        IconToggleButton(
+            checked = state.isSoundEnabled,
+            onCheckedChange = { viewModel.toggleSound() },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .statusBarsPadding()
+                .padding(end = 8.dp, top = 4.dp),
+        ) {
+            Icon(
+                imageVector = if (state.isSoundEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
+                contentDescription = if (state.isSoundEnabled) "Mute sound" else "Unmute sound",
+                tint = Gold.copy(alpha = 0.8f),
+            )
+        }
+        } // end wrapping Box
     }
 }

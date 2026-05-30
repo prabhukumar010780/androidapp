@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.net.Uri
+import android.view.View
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -37,7 +38,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.buildAnnotatedString
@@ -45,6 +49,8 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.FileProvider
 import com.destinyai.astrology.domain.model.CompatibilityResult
 import com.destinyai.astrology.domain.model.KutaDetail
 import com.destinyai.astrology.ui.theme.CosmicBackground
@@ -54,13 +60,16 @@ import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
 import androidx.compose.runtime.collectAsState
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
-import kotlinx.coroutines.launch
 
 @Composable
 fun CompatibilityResultScreen(
@@ -80,6 +89,7 @@ fun CompatibilityResultScreen(
     var askDestinyPrompt by remember { mutableStateOf<String?>(null) }
     var selectedKuta by remember { mutableStateOf<KutaDetail?>(null) }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     var contentVisible by remember { mutableStateOf(false) }
     val contentAlpha by animateFloatAsState(
@@ -88,6 +98,53 @@ fun CompatibilityResultScreen(
         label = "content_fade_in",
     )
     LaunchedEffect(Unit) { contentVisible = true }
+
+    // R2-CM12+CM13: Bitmap share helper
+    fun shareBitmap() {
+        scope.launch {
+            val shareView = ComposeView(context).apply {
+                setContent {
+                    ShareCardView(
+                        boyName = result.boyName,
+                        girlName = result.girlName,
+                        totalScore = result.totalScore,
+                        maxScore = result.maxScore,
+                        percentage = result.adjustedPercentage,
+                        isRecommended = result.isRecommended,
+                        adjustedScore = result.adjustedScore,
+                    )
+                }
+            }
+            val width = 1080
+            val height = 1080
+            shareView.measure(
+                View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY),
+            )
+            shareView.layout(0, 0, width, height)
+            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            val canvas = android.graphics.Canvas(bitmap)
+            shareView.draw(canvas)
+
+            val sessionTag = result.boyName.take(4) + result.girlName.take(4)
+            val file = File(context.cacheDir, "share-$sessionTag.png")
+            withContext(Dispatchers.IO) {
+                FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 90, it) }
+            }
+            val uri: Uri = FileProvider.getUriForFile(
+                context,
+                "com.destinyai.astrology.fileprovider",
+                file,
+            )
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "image/png"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                putExtra(Intent.EXTRA_TEXT, "${result.boyName} ♡ ${result.girlName} — Analysed with Destiny AI Astrology")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(Intent.createChooser(intent, "Share compatibility report"))
+        }
+    }
 
     CosmicBackground(modifier = modifier.graphicsLayer { alpha = contentAlpha }) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -100,20 +157,7 @@ fun CompatibilityResultScreen(
                     onNewAnalysis = if (isFromComparison) null else onNewAnalysis,
                     onHistoryTap = { showHistorySheet = true },
                     onChartTap = onCharts,
-                    onShareTap = {
-                        val score = result.adjustedScore ?: result.totalScore
-                        val text = "✦ Destiny AI Compatibility Report\n\n" +
-                            "${result.boyName} ♡ ${result.girlName}\n" +
-                            "Match Score: $score / ${result.maxScore}\n" +
-                            "Category: ${result.adjustedCategory ?: ""}\n\n" +
-                            result.summary.take(300) + "\n\n" +
-                            "Analysed with Destiny AI Astrology"
-                        val intent = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, text)
-                        }
-                        context.startActivity(Intent.createChooser(intent, "Share compatibility report"))
-                    },
+                    onShareTap = { shareBitmap() },
                 )
 
                 Column(
@@ -656,14 +700,18 @@ fun ShimmerButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     Button(
         onClick = onClick,
+        enabled = enabled,
         modifier = modifier.height(52.dp),
         shape = RoundedCornerShape(26.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = Color.Transparent,
             contentColor = Color(0xFF0D0D1A),
+            disabledContainerColor = NavyVariant,
+            disabledContentColor = Color(0xFF718096),
         ),
         contentPadding = PaddingValues(0.dp),
     ) {
@@ -671,7 +719,8 @@ fun ShimmerButton(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
-                    Brush.linearGradient(listOf(Gold, Color(0xFFF5D060), Gold)),
+                    if (enabled) Brush.linearGradient(listOf(Gold, Color(0xFFF5D060), Gold))
+                    else Brush.linearGradient(listOf(NavyVariant, NavyVariant)),
                     RoundedCornerShape(26.dp),
                 ),
             contentAlignment = Alignment.Center,
@@ -680,7 +729,7 @@ fun ShimmerButton(
                 text = text,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF0D0D1A),
+                color = if (enabled) Color(0xFF0D0D1A) else Color(0xFF718096),
                 fontSize = 16.sp,
             )
         }

@@ -4,6 +4,8 @@ import app.cash.turbine.test
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.remote.PartnerDto
+import com.destinyai.astrology.data.remote.StatusResponse
+import com.destinyai.astrology.services.ProfileChangeBus
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -27,6 +29,7 @@ class ProfileSwitcherViewModelTest {
     private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var api: AstroApiService
     private lateinit var prefs: UserPreferences
+    private lateinit var bus: ProfileChangeBus
     private lateinit var vm: ProfileSwitcherViewModel
 
     @BeforeAll
@@ -43,11 +46,12 @@ class ProfileSwitcherViewModelTest {
     fun setUp() {
         api = mockk(relaxed = true)
         prefs = mockk(relaxed = true)
+        bus = ProfileChangeBus()
         coEvery { prefs.getUserEmail() } returns "self@example.com"
         coEvery { prefs.getUserName() } returns "Prabhu"
         coEvery { prefs.getActiveProfileEmail() } returns null
         coEvery { api.listPartners(any()) } returns emptyList()
-        vm = ProfileSwitcherViewModel(api, prefs)
+        vm = ProfileSwitcherViewModel(api, prefs, bus)
     }
 
     @Test
@@ -75,7 +79,7 @@ class ProfileSwitcherViewModelTest {
                 longitude = 77.2090,
             ),
         )
-        vm = ProfileSwitcherViewModel(api, prefs)
+        vm = ProfileSwitcherViewModel(api, prefs, bus)
 
         vm.profiles.test {
             val profiles = awaitItem()
@@ -97,7 +101,7 @@ class ProfileSwitcherViewModelTest {
     @Test
     fun `activeEmail uses stored active profile email`() = runTest {
         coEvery { prefs.getActiveProfileEmail() } returns "partner@example.com"
-        vm = ProfileSwitcherViewModel(api, prefs)
+        vm = ProfileSwitcherViewModel(api, prefs, bus)
 
         vm.activeEmail.test {
             assertEquals("partner@example.com", awaitItem())
@@ -130,5 +134,33 @@ class ProfileSwitcherViewModelTest {
             assertEquals("self@example.com", awaitItem())
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    // ── R2-P22 upgrade_required blocking ──────────────────────────────────────
+
+    @Test
+    fun `switchProfile blocks on upgrade_required access state`() = runTest {
+        coEvery { api.getStatus("self@example.com") } returns StatusResponse(
+            userEmail = "self@example.com",
+            planId = "free_registered",
+            isGeneratedEmail = false,
+            isPremium = false,
+            accessState = "upgrade_required",
+        )
+
+        vm.switchProfile("partner@example.com")
+
+        // activeEmail should remain self — not updated
+        vm.activeEmail.test {
+            assertEquals("self@example.com", awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+        // upgradeRequiredPrompt flag raised
+        vm.uiState.test {
+            assertTrue(awaitItem().upgradeRequiredPrompt)
+            cancelAndIgnoreRemainingEvents()
+        }
+        // api.switchProfile should NOT have been called
+        coVerify(exactly = 0) { api.switchProfile(any()) }
     }
 }

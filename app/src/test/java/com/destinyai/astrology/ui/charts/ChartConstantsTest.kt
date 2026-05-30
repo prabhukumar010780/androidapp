@@ -1,5 +1,6 @@
 package com.destinyai.astrology.ui.charts
 
+import androidx.compose.ui.graphics.Color
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
@@ -168,5 +169,25 @@ class ChartConstantsTest {
     fun `formatDegree rounds minutes correctly`() {
         // 10.75 → 10°45'
         assertEquals("10°45'", ChartConstants.formatDegree(10.75))
+    }
+
+    // ── Planet color ──────────────────────────────────────────────────────────
+
+    @Test
+    fun `planetColor returns mapped color for all 9 planets`() {
+        assertEquals(Color(0xFFFFCC00), ChartConstants.planetColor("Sun"))
+        assertEquals(Color(0xFFC0C0C0), ChartConstants.planetColor("Moon"))
+        assertEquals(Color(0xFFFF3B30), ChartConstants.planetColor("Mars"))
+        assertEquals(Color(0xFF34C759), ChartConstants.planetColor("Mercury"))
+        assertEquals(Color(0xFFFF9500), ChartConstants.planetColor("Jupiter"))
+        assertEquals(Color(0xFFFF2D55), ChartConstants.planetColor("Venus"))
+        assertEquals(Color(0xFF1C2A5E), ChartConstants.planetColor("Saturn"))
+        assertEquals(Color(0xFF6E5CB6), ChartConstants.planetColor("Rahu"))
+        assertEquals(Color(0xFF8B6343), ChartConstants.planetColor("Ketu"))
+    }
+
+    @Test
+    fun `planetColor returns gray for unknown planet`() {
+        assertEquals(Color.Gray, ChartConstants.planetColor("Unknown"))
     }
 }

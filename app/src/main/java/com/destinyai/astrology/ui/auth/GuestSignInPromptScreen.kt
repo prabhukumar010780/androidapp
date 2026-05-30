@@ -38,6 +38,7 @@ fun GuestSignInPromptScreen(
     message: String = "Sign in to access this feature",
     onSignIn: () -> Unit,
     onBack: () -> Unit,
+    provider: String? = null,
 ) {
     var isSigningIn by remember { mutableStateOf(false) }
 
@@ -156,7 +157,12 @@ fun GuestSignInPromptScreen(
 
             Spacer(Modifier.weight(1f))
 
+            // R2-A11: Provider filter — hide button if provider doesn't match
+            val showApple = provider == null || provider.equals("apple", ignoreCase = true)
+            val showGoogle = provider == null || provider.equals("google", ignoreCase = true)
+
             // Continue with Apple (goldSlab — gradient fill)
+            if (showApple) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -185,10 +191,12 @@ fun GuestSignInPromptScreen(
                     )
                 }
             }
+            } // end showApple
 
-            Spacer(Modifier.height(12.dp))
+            if (showApple && showGoogle) Spacer(Modifier.height(12.dp))
 
             // Continue with Google (glassSlab — outlined)
+            if (showGoogle) {
             OutlinedButton(
                 onClick = onSignIn,
                 modifier = Modifier.fillMaxWidth().height(54.dp),
@@ -218,6 +226,7 @@ fun GuestSignInPromptScreen(
                     )
                 }
             }
+            } // end showGoogle
 
             Spacer(Modifier.height(24.dp))
 

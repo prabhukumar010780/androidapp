@@ -11,12 +11,33 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.destinyai.astrology.R
 import com.destinyai.astrology.ui.theme.Gold
+
+// R2-C6: map planet names to string resource IDs
+private val planetNameResMap: Map<String, Int> = mapOf(
+    "Sun" to R.string.planet_sun,
+    "Moon" to R.string.planet_moon,
+    "Mars" to R.string.planet_mars,
+    "Mercury" to R.string.planet_mercury,
+    "Jupiter" to R.string.planet_jupiter,
+    "Venus" to R.string.planet_venus,
+    "Saturn" to R.string.planet_saturn,
+    "Rahu" to R.string.planet_rahu,
+    "Ketu" to R.string.planet_ketu,
+)
+
+@Composable
+private fun localPlanetName(name: String): String {
+    val res = planetNameResMap[name] ?: return name
+    return stringResource(res)
+}
 
 @Composable
 fun DashaView(dashaResponse: DashaResponse?) {
@@ -70,13 +91,13 @@ private fun DashaRow(period: DashaPeriod) {
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                "${period.mahadasha} - ${period.antardasha}",
+                "${localPlanetName(period.mahadasha)} - ${localPlanetName(period.antardasha)}",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = Color(0xFF0B0F19),
             )
             Text(
-                period.pratyantardasha,
+                localPlanetName(period.pratyantardasha),
                 fontSize = 12.sp,
                 color = Color.Gray,
             )

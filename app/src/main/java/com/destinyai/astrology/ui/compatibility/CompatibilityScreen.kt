@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
@@ -32,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -153,6 +155,7 @@ fun CompatibilityScreen(
                     viewModel.loadHistory()
                     onNavigateToHistory?.invoke()
                 },
+                onReset = { viewModel.resetPartnerForm() },
             )
 
             Column(
@@ -324,9 +327,10 @@ fun CompatibilityScreen(
 
                     if (state.partnerTimeUnknown) {
                         Text(
-                            text = "⚠ Analysis accuracy is reduced without birth time.",
+                            text = "Compatibility uses sun-sign approximation when time unknown.",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFFF6AD55),
+                            fontStyle = FontStyle.Italic,
+                            color = CreamDim,
                         )
                     }
                 }
@@ -355,7 +359,61 @@ fun CompatibilityScreen(
                     }
                 }
 
-                // Analyze button — dynamic title mirrors iOS
+                // R2-CM5: Save partner to birth charts checkbox
+                // Hidden if user is Free plan OR partner was loaded from saved charts
+                if (state.isPlus && !state.partnerFromSaved) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable {
+                            viewModel.setSavePartnerToBirthCharts(!state.savePartnerToBirthCharts)
+                        },
+                    ) {
+                        Checkbox(
+                            checked = state.savePartnerToBirthCharts,
+                            onCheckedChange = { viewModel.setSavePartnerToBirthCharts(it) },
+                            colors = CheckboxDefaults.colors(checkedColor = Gold),
+                        )
+                        Text(
+                            text = "Save partner to my birth charts",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = CreamDim,
+                        )
+                    }
+                }
+
+                // R2-CM6: Duplicate alert dialog
+                if (state.showDuplicateAlert) {
+                    AlertDialog(
+                        onDismissRequest = { viewModel.dismissDuplicateAlert() },
+                        containerColor = NavySurface,
+                        title = {
+                            Text(
+                                "Partner already saved",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = CreamText,
+                            )
+                        },
+                        text = {
+                            Text(
+                                "This partner is already in your history. Would you like to use the saved entry or continue?",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = CreamDim,
+                            )
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { viewModel.dismissDuplicateAlert(); viewModel.analyze() }) {
+                                Text("Save anyway", color = Gold)
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { viewModel.dismissDuplicateAlert() }) {
+                                Text("Use saved", color = CreamDim)
+                            }
+                        },
+                    )
+                }
+
+                // R2-CM7: ShimmerButton replaces plain Button
                 val completedCount = partners.count { it.isComplete }
                 val ageWarning = ageBlockMessage(
                     userDob = state.personADob,
@@ -380,34 +438,37 @@ fun CompatibilityScreen(
                         )
                     }
                 }
-                Button(
-                    onClick = { viewModel.analyze() },
-                    enabled = state.canAnalyze && !state.isAnalyzing && ageWarning == null,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp)
-                        .semantics { contentDescription = analyzeButtonContentDescription() },
-                    shape = RoundedCornerShape(26.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Gold,
-                        disabledContainerColor = NavyVariant,
-                        contentColor = Color(0xFF0D0D1A),
-                        disabledContentColor = Color(0xFF718096),
-                    ),
-                ) {
-                    if (state.isAnalyzing) {
+                if (state.isAnalyzing) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
                         CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = Color(0xFF0D0D1A),
+                            modifier = Modifier.size(24.dp),
+                            color = Gold,
                             strokeWidth = 2.dp,
                         )
-                    } else {
-                        Text(
-                            analyzeButtonTitle(completedCount, isAnalyzing = false),
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 16.sp,
-                        )
                     }
+                } else {
+                    ShimmerButton(
+                        text = analyzeButtonTitle(completedCount, isAnalyzing = false),
+                        onClick = {
+                            if (state.canAnalyze && ageWarning == null) {
+                                val dupId = viewModel.checkForDuplicate()
+                                if (dupId != null) {
+                                    viewModel.showDuplicateAlert(dupId)
+                                } else {
+                                    viewModel.analyze()
+                                }
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics { contentDescription = analyzeButtonContentDescription() },
+                        enabled = state.canAnalyze && ageWarning == null,
+                    )
                 }
 
                 Spacer(Modifier.height(32.dp))
@@ -446,6 +507,7 @@ fun CompatibilityScreen(
 private fun CompatibilityHeader(
     onNavigateToPartners: () -> Unit,
     onHistory: () -> Unit,
+    onReset: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -453,21 +515,32 @@ private fun CompatibilityHeader(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = "❤️  Compatibility",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = CreamText,
-            modifier = Modifier.weight(1f),
-        )
+        // History icon — left
         IconButton(
             onClick = onHistory,
             modifier = Modifier.semantics { contentDescription = "compat_history_button" },
         ) {
             Icon(Icons.Filled.History, contentDescription = null, tint = Gold.copy(alpha = 0.8f))
         }
+        // Title — centre
+        Text(
+            text = "❤️  Compatibility",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = CreamText,
+            modifier = Modifier.weight(1f),
+            textAlign = TextAlign.Center,
+        )
+        // Partners icon
         IconButton(onClick = onNavigateToPartners) {
             Icon(Icons.Filled.People, contentDescription = "Partners", tint = Gold.copy(alpha = 0.8f))
+        }
+        // Reset icon — right
+        IconButton(
+            onClick = onReset,
+            modifier = Modifier.semantics { contentDescription = "compat_reset_button" },
+        ) {
+            Icon(Icons.Filled.Refresh, contentDescription = "Reset form", tint = Gold.copy(alpha = 0.8f))
         }
     }
 }

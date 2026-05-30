@@ -113,6 +113,7 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material3)
+    implementation(libs.compose.material)
     implementation(libs.compose.material.icons)
     implementation(libs.compose.runtime)
     implementation(libs.compose.foundation)
@@ -129,6 +130,7 @@ dependencies {
     // Retrofit + OkHttp
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.gson)
+    implementation(libs.gson)
     implementation(platform(libs.okhttp.bom))
     implementation(libs.okhttp.core)
     implementation(libs.okhttp.logging)

@@ -177,7 +177,8 @@ history will appear here.</string>
     <string name="continue_with_google">Continue with Google</string>
     <string name="continue_with_email">Continue with Email</string>
     <string name="i_dont_know_birth_time">I don\'t know my birth time</string>
-    <string name="analytics_consent_label">Help improve the app by sharing usage analytics</string>
+    <string name="analytics_consent_label">Help improve Destiny AI by sharing anonymised usage</string>
+    <string name="backend_data_refreshed_banner">Your profile was updated from the cloud</string>
     <string name="profile_data_refreshed">Your profile data was refreshed on the server. Please re-enter your birth details.</string>
     <string name="sign_up">Sign up</string>
     <string name="account_deleted_error">This account has been permanently deleted and can no longer be used. The email associated with this account cannot be reused. If you believe this is an error, please contact support.</string>

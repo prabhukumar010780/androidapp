@@ -3,6 +3,7 @@ package com.destinyai.astrology.ui.compatibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,8 +13,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -187,11 +190,13 @@ fun CompatibilityHistoryScreen(
                                 )
                             } else {
                                 val item = group.items.first()
+                                val maxGroupScore = group.items.maxOfOrNull { it.totalScore } ?: 0
                                 SwipeToDeleteHistoryItem(
                                     item = item,
                                     onTap = { onItemSelect?.invoke(item) },
                                     onPin = { viewModel.toggleHistoryPin(item.sessionId) },
                                     onDeleteRequest = { pendingDeleteId = item.sessionId },
+                                    isBestInGroup = item.totalScore >= maxGroupScore && maxGroupScore > 0,
                                 )
                             }
                         }
@@ -210,6 +215,7 @@ private fun SwipeToDeleteHistoryItem(
     onTap: () -> Unit = {},
     onPin: () -> Unit,
     onDeleteRequest: () -> Unit,
+    isBestInGroup: Boolean = false,
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
@@ -236,7 +242,7 @@ private fun SwipeToDeleteHistoryItem(
             }
         },
     ) {
-        HistoryItemRow(item = item, onPin = onPin, onTap = onTap)
+        HistoryItemRow(item = item, onPin = onPin, onTap = onTap, isBestInGroup = isBestInGroup, onDeleteRequest = onDeleteRequest)
     }
 }
 
@@ -283,17 +289,21 @@ private fun SwipeToDeleteGroupRow(
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun HistoryItemRow(
     item: CompatibilityHistoryItem,
     onPin: () -> Unit,
     onTap: () -> Unit = {},
+    isBestInGroup: Boolean = false,
+    onDeleteRequest: () -> Unit = {},
 ) {
     val scoreColor = when {
         item.scorePercentage >= 70 -> Color(0xFF48BB78)
         item.scorePercentage >= 50 -> Color(0xFFED8936)
         else -> Color(0xFFFC8181)
     }
+    var showContextMenu by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier
@@ -301,7 +311,10 @@ private fun HistoryItemRow(
             .clip(RoundedCornerShape(12.dp))
             .background(NavySurface)
             .border(1.dp, Gold.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
-            .clickable(onClick = onTap)
+            .combinedClickable(
+                onClick = onTap,
+                onLongClick = { showContextMenu = true },
+            )
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -338,6 +351,11 @@ private fun HistoryItemRow(
                     Icon(Icons.Filled.PushPin, contentDescription = null, tint = Gold, modifier = Modifier.size(11.dp))
                     Spacer(Modifier.width(4.dp))
                 }
+                // R2-CM15: Best-score star indicator
+                if (isBestInGroup) {
+                    Icon(Icons.Filled.Star, contentDescription = "Best match", tint = Gold, modifier = Modifier.size(13.dp))
+                    Spacer(Modifier.width(4.dp))
+                }
                 Text(
                     text = item.displayTitle,
                     style = MaterialTheme.typography.labelLarge,
@@ -365,7 +383,7 @@ private fun HistoryItemRow(
             )
         }
 
-        // Chat message count badge (iOS bubble.left.fill — user messages only)
+        // R2-CM17: Chat message count bubble (follow-up questions)
         val msgCount = userMessageCount(item.chatMessages)
         if (msgCount > 0) {
             Box(
@@ -381,6 +399,27 @@ private fun HistoryItemRow(
                 )
             }
             Spacer(Modifier.width(4.dp))
+        }
+
+        // R2-CM16: Long-press context menu (pin/unpin)
+        DropdownMenu(
+            expanded = showContextMenu,
+            onDismissRequest = { showContextMenu = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text(if (item.isPinned) "Unpin" else "Pin") },
+                onClick = {
+                    showContextMenu = false
+                    onPin()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("Delete", color = Color(0xFFFC8181)) },
+                onClick = {
+                    showContextMenu = false
+                    onDeleteRequest()
+                },
+            )
         }
     }
 }
@@ -470,6 +509,7 @@ private fun GroupHistoryRow(
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // R2-CM14: Group icon with partner count overlay
         Box(
             modifier = Modifier
                 .size(50.dp)
@@ -477,7 +517,29 @@ private fun GroupHistoryRow(
                 .background(Gold.copy(alpha = 0.1f)),
             contentAlignment = Alignment.Center,
         ) {
-            Text("👥", fontSize = 22.sp)
+            Icon(
+                Icons.Filled.Group,
+                contentDescription = null,
+                tint = Gold,
+                modifier = Modifier.size(26.dp),
+            )
+            // Count badge overlay
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .size(18.dp)
+                    .clip(CircleShape)
+                    .background(Gold),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "${group.partnerCount}",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0D0D1A),
+                    fontSize = 9.sp,
+                )
+            }
         }
         Spacer(Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {

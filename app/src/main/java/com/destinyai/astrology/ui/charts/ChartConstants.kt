@@ -1,5 +1,7 @@
 package com.destinyai.astrology.ui.charts
 
+import androidx.compose.ui.graphics.Color
+
 object ChartConstants {
 
     val signFullNames: Map<String, String> = mapOf(
@@ -76,5 +78,19 @@ object ChartConstants {
     fun northIndianSignForHouse(house: Int, ascNum: Int): Int {
         val signIndex = (ascNum + house - 2) % 12
         return signIndex + 1
+    }
+
+    // R2-C10: Per-planet color — mirrors the iOS palette
+    fun planetColor(planet: String): Color = when (planet) {
+        "Sun" -> Color(0xFFFFCC00)   // gold
+        "Moon" -> Color(0xFFC0C0C0)  // silver
+        "Mars" -> Color(0xFFFF3B30)  // red
+        "Mercury" -> Color(0xFF34C759) // green
+        "Jupiter" -> Color(0xFFFF9500) // yellow-orange
+        "Venus" -> Color(0xFFFF2D55)  // pink
+        "Saturn" -> Color(0xFF1C2A5E) // dark blue
+        "Rahu" -> Color(0xFF6E5CB6)  // purple
+        "Ketu" -> Color(0xFF8B6343)  // brown
+        else -> Color.Gray
     }
 }

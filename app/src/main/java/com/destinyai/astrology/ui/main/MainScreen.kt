@@ -46,6 +46,7 @@ fun MainScreen(
     onNavigateToLanguage: () -> Unit = {},
     onNavigateToResponseStyle: () -> Unit = {},
     onNavigateToNotificationPrefs: () -> Unit = {},
+    onNavigateToFaq: () -> Unit = {},
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
 
@@ -73,6 +74,9 @@ fun MainScreen(
                 onNavigateToLanguage = onNavigateToLanguage,
                 onNavigateToResponseStyle = onNavigateToResponseStyle,
                 onNavigateToNotificationPrefs = onNavigateToNotificationPrefs,
+                onNavigateToCharts = onNavigateToCharts,
+                onNavigateToPartners = onNavigateToPartners,
+                onNavigateToFaq = onNavigateToFaq,
             )
         }
 

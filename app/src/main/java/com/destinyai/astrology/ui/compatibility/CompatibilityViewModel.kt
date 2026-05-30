@@ -49,6 +49,8 @@ data class CompatibilityUiState(
     val partnerLongitude: Double = 0.0,
     val partnerGender: String = "",
     val partnerTimeUnknown: Boolean = false,
+    val savePartnerToBirthCharts: Boolean = false,
+    val partnerFromSaved: Boolean = false,
     val showDatePicker: Boolean = false,
     val showTimePicker: Boolean = false,
     val showLocationSearch: Boolean = false,
@@ -56,11 +58,14 @@ data class CompatibilityUiState(
     val showComparisonOverview: Boolean = false,
     val showPaywall: Boolean = false,
     val showPartnerPicker: Boolean = false,
+    val showDuplicateAlert: Boolean = false,
+    val duplicateSessionId: String? = null,
     val result: String = "",
     val score: Int? = null,
     val isAnalyzing: Boolean = false,
     val error: String? = null,
     val isLoadingFromSaved: Boolean = false,
+    val isPlus: Boolean = false,
 ) {
     val canAnalyze: Boolean
         get() = personALoaded &&
@@ -131,6 +136,44 @@ class CompatibilityViewModel @Inject constructor(
     fun setShowLocationSearch(show: Boolean) = _uiState.update { it.copy(showLocationSearch = show) }
     fun setShowComparisonOverview(show: Boolean) = _uiState.update { it.copy(showComparisonOverview = show) }
     fun dismissPaywall() = _uiState.update { it.copy(showPaywall = false) }
+    fun setSavePartnerToBirthCharts(save: Boolean) = _uiState.update { it.copy(savePartnerToBirthCharts = save) }
+    fun dismissDuplicateAlert() = _uiState.update { it.copy(showDuplicateAlert = false, duplicateSessionId = null) }
+    fun showDuplicateAlert(sessionId: String) = _uiState.update { it.copy(showDuplicateAlert = true, duplicateSessionId = sessionId) }
+
+    /** Reset the partner form back to its blank state. */
+    fun resetPartnerForm() {
+        _uiState.update {
+            it.copy(
+                partnerName = "",
+                partnerDob = "",
+                partnerTime = "",
+                partnerCity = "",
+                partnerLatitude = 0.0,
+                partnerLongitude = 0.0,
+                partnerGender = "",
+                partnerTimeUnknown = false,
+                savePartnerToBirthCharts = false,
+                partnerFromSaved = false,
+                result = "",
+                score = null,
+                error = null,
+            )
+        }
+    }
+
+    /**
+     * Check whether the current partner form values match an already-saved history entry.
+     * Returns the matching sessionId or null when there is no duplicate.
+     */
+    fun checkForDuplicate(): String? {
+        val s = _uiState.value
+        if (s.partnerFromSaved) return null
+        return _historyItems.value.firstOrNull { item ->
+            item.girlDob == s.partnerDob &&
+                item.girlTime == s.partnerTime &&
+                item.girlCity.equals(s.partnerCity, ignoreCase = true)
+        }?.sessionId
+    }
 
     fun showPartnerPicker() = _uiState.update { it.copy(showPartnerPicker = true) }
 
@@ -147,6 +190,7 @@ class CompatibilityViewModel @Inject constructor(
                 partnerLongitude = partner.longitude,
                 partnerGender = "",
                 partnerTimeUnknown = false,
+                partnerFromSaved = true,
                 showPartnerPicker = false,
             )
         }

@@ -323,6 +323,41 @@ class BirthDataViewModelTest {
         }
     }
 
+    @Test
+    fun `save raises RegisteredUserConflictError on 409`() = runTest {
+        setValidState()
+        val errorJson = """{"detail":{"existing_email":"conflict@example.com","provider":"google"}}"""
+        val errorBody = errorJson.toResponseBody("application/json".toMediaType())
+        coEvery { api.saveProfile(any()) } throws HttpException(Response.error<Any>(409, errorBody))
+
+        vm.save()
+
+        // RegisteredUserConflictError path: state reflects conflict email
+        vm.uiState.test {
+            val state = awaitItem()
+            assertEquals("conflict@example.com", state.birthDataTakenEmail)
+            assertFalse(state.isLoading)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `save raises AccountDeletedError on 403 archived`() = runTest {
+        setValidState()
+        val errorBody = "{}".toResponseBody("application/json".toMediaType())
+        coEvery { api.saveProfile(any()) } throws HttpException(Response.error<Any>(403, errorBody))
+
+        vm.save()
+
+        // AccountDeletedError path: error is set
+        vm.uiState.test {
+            val state = awaitItem()
+            assertEquals("Account archived", state.error)
+            assertFalse(state.isLoading)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     // ── searchLocation ─────────────────────────────────────────────────────────
 
     @Test
