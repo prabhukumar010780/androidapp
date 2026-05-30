@@ -107,6 +107,18 @@ class HistoryViewModel @Inject constructor(
         }
     }
 
+    fun pinThread(threadId: String) {
+        viewModelScope.launch {
+            _uiState.update { state ->
+                state.copy(
+                    threads = state.threads.map { thread ->
+                        if (thread.id == threadId) thread.copy(isPinned = !thread.isPinned) else thread
+                    },
+                )
+            }
+        }
+    }
+
     fun setSearchText(text: String) = _uiState.update { it.copy(searchText = text) }
 
     private fun CompatibilityHistoryEntity.toDisplayItem() = CompatibilityHistoryDisplayItem(

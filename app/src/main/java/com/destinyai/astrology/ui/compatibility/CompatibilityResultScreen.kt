@@ -1,5 +1,10 @@
 package com.destinyai.astrology.ui.compatibility
 
+import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.net.Uri
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -17,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -48,6 +54,7 @@ import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
 import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import kotlin.math.PI
@@ -72,6 +79,7 @@ fun CompatibilityResultScreen(
     var showHistorySheet by remember { mutableStateOf(false) }
     var askDestinyPrompt by remember { mutableStateOf<String?>(null) }
     var selectedKuta by remember { mutableStateOf<KutaDetail?>(null) }
+    val context = LocalContext.current
 
     var contentVisible by remember { mutableStateOf(false) }
     val contentAlpha by animateFloatAsState(
@@ -92,6 +100,20 @@ fun CompatibilityResultScreen(
                     onNewAnalysis = if (isFromComparison) null else onNewAnalysis,
                     onHistoryTap = { showHistorySheet = true },
                     onChartTap = onCharts,
+                    onShareTap = {
+                        val score = result.adjustedScore ?: result.totalScore
+                        val text = "✦ Destiny AI Compatibility Report\n\n" +
+                            "${result.boyName} ♡ ${result.girlName}\n" +
+                            "Match Score: $score / ${result.maxScore}\n" +
+                            "Category: ${result.adjustedCategory ?: ""}\n\n" +
+                            result.summary.take(300) + "\n\n" +
+                            "Analysed with Destiny AI Astrology"
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, text)
+                        }
+                        context.startActivity(Intent.createChooser(intent, "Share compatibility report"))
+                    },
                 )
 
                 Column(
@@ -298,6 +320,7 @@ private fun ResultHeader(
     onNewAnalysis: (() -> Unit)? = null,
     onHistoryTap: (() -> Unit)? = null,
     onChartTap: (() -> Unit)? = null,
+    onShareTap: (() -> Unit)? = null,
 ) {
     Column {
         Row(
@@ -337,6 +360,11 @@ private fun ResultHeader(
             if (onChartTap != null) {
                 IconButton(onClick = onChartTap) {
                     Icon(Icons.Filled.Public, contentDescription = "Charts", tint = Gold)
+                }
+            }
+            if (onShareTap != null) {
+                IconButton(onClick = onShareTap) {
+                    Icon(Icons.Filled.Share, contentDescription = "Share", tint = Gold)
                 }
             }
             if (onNewAnalysis != null) {

@@ -11,7 +11,9 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -169,11 +171,29 @@ private fun ChatHistoryTab(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = thread.title.ifEmpty { "Conversation" },
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = CreamText,
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (thread.isPinned) {
+                                Icon(
+                                    Icons.Filled.PushPin,
+                                    contentDescription = null,
+                                    tint = Gold,
+                                    modifier = Modifier.size(12.dp),
+                                )
+                                Spacer(Modifier.width(4.dp))
+                            }
+                            Text(
+                                text = thread.title.ifEmpty { "Conversation" },
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = CreamText,
+                            )
+                        }
+                    }
+                    IconButton(onClick = { viewModel.pinThread(thread.id) }) {
+                        Icon(
+                            if (thread.isPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
+                            contentDescription = if (thread.isPinned) "Unpin" else "Pin",
+                            tint = if (thread.isPinned) Gold else CreamDim.copy(alpha = 0.5f),
                         )
                     }
                     IconButton(onClick = { viewModel.deleteThread(thread.id) }) {
