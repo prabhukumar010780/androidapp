@@ -2,6 +2,7 @@ package com.destinyai.astrology.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.migration.Migration
 import com.android.billingclient.api.BillingClient
 import com.android.billingclient.api.PendingPurchasesParams
 import com.android.billingclient.api.PurchasesUpdatedListener
@@ -44,7 +45,7 @@ object NetworkModule {
     @Singleton
     fun provideOkHttpClient(secure: SecureStorage): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply {
-            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY
+            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.HEADERS
             else HttpLoggingInterceptor.Level.NONE
         }
         return OkHttpClient.Builder()
@@ -80,11 +81,18 @@ object NetworkModule {
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
 
+    private val MIGRATION_1_2 = object : Migration(1, 2) {
+        override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+            // No-op placeholder; replace with real ALTER TABLE statements when schema bumps
+        }
+    }
+
     @Provides
     @Singleton
     fun provideAppDatabase(@ApplicationContext ctx: Context): AppDatabase =
         Room.databaseBuilder(ctx, AppDatabase::class.java, "destiny_db")
-            .fallbackToDestructiveMigration()
+            .addMigrations(MIGRATION_1_2)
+            .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
             .build()
 
     @Provides

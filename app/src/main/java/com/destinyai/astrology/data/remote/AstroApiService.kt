@@ -30,6 +30,9 @@ data class ProfileRequest(
     @SerializedName("user_type") val userType: String = "registered",
     @SerializedName("is_generated_email") val isGeneratedEmail: Boolean,
     @SerializedName("birth_profile") val birthProfile: BirthProfileDto,
+    // Backend ProfileRequest also accepts apple_id/google_id for user lookup by SSO ID
+    @SerializedName("apple_id") val appleId: String? = null,
+    @SerializedName("google_id") val googleId: String? = null,
 )
 
 data class BirthProfileDto(
@@ -79,19 +82,29 @@ data class FeedbackRequest(
     @SerializedName("comment") val comment: String? = null,
 )
 
+// Matches backend PartnerProfileData exactly (subscription_router.py)
 data class PartnerRequest(
     @SerializedName("name") val name: String,
+    // gender is required by backend (male/female); default empty string for backward compat
+    @SerializedName("gender") val gender: String = "",
     @SerializedName("date_of_birth") val dateOfBirth: String,
-    @SerializedName("time_of_birth") val timeOfBirth: String,
-    @SerializedName("city_of_birth") val cityOfBirth: String,
-    @SerializedName("latitude") val latitude: Double,
-    @SerializedName("longitude") val longitude: Double,
+    @SerializedName("time_of_birth") val timeOfBirth: String? = null,
+    @SerializedName("city_of_birth") val cityOfBirth: String? = null,
+    @SerializedName("latitude") val latitude: Double? = null,
+    @SerializedName("longitude") val longitude: Double? = null,
+    @SerializedName("timezone") val timezone: Double? = null,
+    @SerializedName("birth_time_unknown") val birthTimeUnknown: Boolean = false,
+    @SerializedName("is_self") val isSelf: Boolean = false,
+    @SerializedName("for_compatibility") val forCompatibility: Boolean = false,
+    @SerializedName("guardian_consent_given") val guardianConsentGiven: Boolean = false,
 )
 
+// Matches backend CreatePartnerRequest exactly (subscription_router.py)
 data class CreatePartnerRequest(
     @SerializedName("user_email") val userEmail: String,
     @SerializedName("profile") val profile: PartnerRequest,
     @SerializedName("consent_given") val consentGiven: Boolean = true,
+    @SerializedName("guardian_consent_given") val guardianConsentGiven: Boolean = false,
 )
 
 // Compatibility birth details — matches backend BirthDetails / iOS BirthDetails exactly
@@ -165,10 +178,26 @@ data class NotificationListResponse(
     @SerializedName("total") val total: Int = 0,
 )
 
+// Matches backend NotificationPreferencesRequest (notification_router.py)
+// The 3 legacy booleans (daily_insight/transits/compatibility) are Android-internal
+// and not part of the backend schema — kept here for ViewModel layer compatibility.
+// Backend fields: is_enabled, email_enabled, push_enabled, in_app_enabled,
+//   custom_instruction, alert_items, frequency, frequency_day, preferred_time_utc, timezone
 data class NotificationPrefsRequest(
     @SerializedName("daily_insight") val dailyInsight: Boolean = true,
     @SerializedName("transits") val transits: Boolean = true,
     @SerializedName("compatibility") val compatibility: Boolean = true,
+    // Backend channel toggles
+    @SerializedName("is_enabled") val isEnabled: Boolean? = null,
+    @SerializedName("push_enabled") val pushEnabled: Boolean? = null,
+    @SerializedName("email_enabled") val emailEnabled: Boolean? = null,
+    @SerializedName("in_app_enabled") val inAppEnabled: Boolean? = null,
+    @SerializedName("custom_instruction") val customInstruction: String? = null,
+    @SerializedName("alert_items") val alertItems: List<AlertItemDto>? = null,
+    @SerializedName("frequency") val frequency: String? = null,
+    @SerializedName("frequency_day") val frequencyDay: Int? = null,
+    @SerializedName("preferred_time_utc") val preferredTimeUtc: String? = null,
+    @SerializedName("timezone") val timezone: String? = null,
 )
 
 data class ReadAllRequest(
@@ -190,6 +219,81 @@ data class VerifyResponse(
 )
 
 // ── Response DTOs ─────────────────────────────────────────────────────────────
+
+// Matches backend AlertItemRequest (notification_router.py)
+data class AlertItemDto(
+    @SerializedName("id") val id: String? = null,
+    @SerializedName("text") val text: String,
+    @SerializedName("frequency") val frequency: String = "DAILY",
+    @SerializedName("frequency_day") val frequencyDay: Int? = null,
+)
+
+// Matches backend ProfileResponse (subscription_router.py)
+// Returned by POST /subscription/profile and GET /subscription/profile
+data class ProfileResponse(
+    @SerializedName("user_email") val userEmail: String,
+    @SerializedName("user_name") val userName: String? = null,
+    @SerializedName("plan_id") val planId: String? = null,
+    @SerializedName("is_generated_email") val isGeneratedEmail: Boolean = false,
+    @SerializedName("feature_usage") val featureUsage: Map<String, Any>? = null,
+    @SerializedName("is_premium") val isPremium: Boolean = false,
+    @SerializedName("subscription_status") val subscriptionStatus: String? = null,
+    @SerializedName("subscription_expires_at") val subscriptionExpiresAt: String? = null,
+    @SerializedName("birth_profile") val birthProfile: BirthProfileDto? = null,
+)
+
+// Matches backend PartnerProfileResponse (subscription_router.py)
+// Returned by GET /subscription/profiles/active and POST /subscription/partners
+data class PartnerProfileResponse(
+    @SerializedName("id") val id: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("gender") val gender: String = "",
+    @SerializedName("date_of_birth") val dateOfBirth: String? = null,
+    @SerializedName("time_of_birth") val timeOfBirth: String? = null,
+    @SerializedName("city_of_birth") val cityOfBirth: String? = null,
+    @SerializedName("latitude") val latitude: Double? = null,
+    @SerializedName("longitude") val longitude: Double? = null,
+    @SerializedName("timezone") val timezone: Double? = null,
+    @SerializedName("birth_time_unknown") val birthTimeUnknown: Boolean = false,
+    @SerializedName("consent_given") val consentGiven: Boolean = true,
+    @SerializedName("guardian_consent_given") val guardianConsentGiven: Boolean = false,
+    @SerializedName("for_compatibility") val forCompatibility: Boolean = false,
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("updated_at") val updatedAt: String? = null,
+    @SerializedName("last_matched_at") val lastMatchedAt: String? = null,
+    @SerializedName("is_self") val isSelf: Boolean = false,
+    @SerializedName("is_active") val isActive: Boolean = false,
+    @SerializedName("first_switched_at") val firstSwitchedAt: String? = null,
+)
+
+// Typed request for POST /subscription/profiles/switch (subscription_router.py)
+// Backend expects: user_email (owner's email for plan validation) + profile_id (not email)
+data class SwitchProfileRequest(
+    @SerializedName("user_email") val userEmail: String,
+    @SerializedName("profile_id") val profileId: String,
+)
+
+// Matches backend SwitchProfileResponse (subscription_router.py)
+data class SwitchProfileResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("active_profile_id") val activeProfileId: String,
+    @SerializedName("active_profile_name") val activeProfileName: String,
+    @SerializedName("message") val message: String? = null,
+)
+
+// Matches backend DeleteAccountRequest (subscription_router.py)
+// POST /subscription/account/delete requires a body with confirmation = "DELETE"
+data class DeleteAccountRequest(
+    @SerializedName("user_email") val userEmail: String,
+    @SerializedName("confirmation") val confirmation: String = "DELETE",
+)
+
+// Matches backend PreferencesResponse (notification_router.py)
+// The preferences field is an untyped dict; Android layer maps it to NotificationPrefsDto
+data class NotificationPreferencesResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("preferences") val preferences: Map<String, Any?> = emptyMap(),
+)
 
 data class RegisterResponse(
     @SerializedName("user_email") val userEmail: String,
@@ -308,13 +412,15 @@ interface AstroApiService {
     suspend fun upgradeGuest(@Body request: UpgradeRequest): RegisterResponse
 
     @POST("subscription/profile")
-    suspend fun saveProfile(@Body request: ProfileRequest): RegisterResponse
+    suspend fun saveProfile(@Body request: ProfileRequest): ProfileResponse
 
-    @GET("subscription/profile/{email}")
-    suspend fun getProfile(@Path("email") email: String): RegisterResponse
+    // Backend GET /subscription/profile uses query param, not path segment
+    @GET("subscription/profile")
+    suspend fun getProfile(@Query("email") email: String): ProfileResponse
 
-    @DELETE("subscription/account/delete")
-    suspend fun deleteAccount(@Query("email") email: String): SuccessResponse
+    // Backend uses POST /subscription/account/delete with body (not DELETE + query param)
+    @POST("subscription/account/delete")
+    suspend fun deleteAccount(@Body request: DeleteAccountRequest): SuccessResponse
 
     // Subscription Plans
     @GET("subscription/plans")
@@ -355,12 +461,14 @@ interface AstroApiService {
     @POST("notifications/device-token")
     suspend fun registerDeviceToken(@Body request: DeviceTokenRequest): SuccessResponse
 
-    @GET("notifications/preferences/{email}")
-    suspend fun getNotificationPrefs(@Path("email") email: String): NotificationPrefsDto
+    // Backend uses query param (not path param): GET /notifications/preferences?user_email=...
+    @GET("notifications/preferences")
+    suspend fun getNotificationPrefs(@Query("user_email") email: String): NotificationPrefsDto
 
-    @POST("notifications/preferences/{email}")
+    // Backend uses PUT (not POST) and query param: PUT /notifications/preferences?user_email=...
+    @PUT("notifications/preferences")
     suspend fun updateNotificationPrefs(
-        @Path("email") email: String,
+        @Query("user_email") email: String,
         @Body request: NotificationPrefsRequest,
     ): SuccessResponse
 
@@ -402,11 +510,13 @@ interface AstroApiService {
     suspend fun submitFeedback(@Body request: FeedbackRequest): SuccessResponse
 
     // Profiles (multi-profile)
+    // Backend SwitchProfileRequest: { user_email, profile_id } — not target_email
     @POST("subscription/profiles/switch")
-    suspend fun switchProfile(@Body request: Map<String, String>): RegisterResponse
+    suspend fun switchProfile(@Body request: SwitchProfileRequest): SwitchProfileResponse
 
+    // Backend returns PartnerProfileResponse (not RegisterResponse)
     @GET("subscription/profiles/active")
-    suspend fun getActiveProfile(@Query("email") email: String): RegisterResponse
+    suspend fun getActiveProfile(@Query("email") email: String): PartnerProfileResponse
 
     // Analytics Consent
     @POST("subscription/analytics-consent")

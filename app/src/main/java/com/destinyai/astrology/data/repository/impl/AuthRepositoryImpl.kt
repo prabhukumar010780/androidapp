@@ -6,7 +6,6 @@ import com.destinyai.astrology.data.remote.*
 import com.destinyai.astrology.data.repository.AuthRepository
 import com.destinyai.astrology.domain.model.User
 import com.destinyai.astrology.ui.auth.AccountDeletedException
-import com.destinyai.astrology.ui.auth.ArchivedGuestError
 import com.destinyai.astrology.ui.auth.ConflictException
 import retrofit2.HttpException
 import java.util.UUID
@@ -26,8 +25,11 @@ class AuthRepositoryImpl @Inject constructor(
             api.getStatus(email).toUser()
         } catch (e: HttpException) {
             when (e.code()) {
+                // 404: user not found in DB (deleted or never existed)
                 404 -> throw AccountDeletedException()
-                403 -> throw ArchivedGuestError("guest_archived")
+                // 403: backend returns this for account_deleted on register/upgrade, not getStatus.
+                // Mapped conservatively to AccountDeletedException rather than ArchivedGuestError.
+                403 -> throw AccountDeletedException()
                 else -> null
             }
         }
@@ -61,8 +63,13 @@ class AuthRepositoryImpl @Inject constructor(
             prefs.setSubscription(resp.isPremium, resp.planId)
             resp.toUser()
         } catch (e: HttpException) {
-            if (e.code() == 409) throw ConflictException("email_conflict")
-            throw e
+            // 409: email already registered (ConflictException)
+            // 403: target account was soft-deleted (AccountDeletedException)
+            when (e.code()) {
+                409 -> throw ConflictException("email_conflict")
+                403 -> throw AccountDeletedException()
+                else -> throw e
+            }
         }
     }
 

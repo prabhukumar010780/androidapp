@@ -3,6 +3,7 @@ package com.destinyai.astrology.ui.profile
 import app.cash.turbine.test
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AstroApiService
+import com.destinyai.astrology.data.remote.DeleteAccountRequest
 import com.destinyai.astrology.data.remote.StatusResponse
 import com.destinyai.astrology.data.remote.AnalyticsConsentRequest
 import com.destinyai.astrology.data.remote.SuccessResponse
@@ -136,7 +137,7 @@ class ProfileViewModelTest {
     fun `confirmDeleteAccount calls api and clears prefs then sets isDeleted`() = runTest {
         vm.confirmDeleteAccount()
 
-        coVerify { api.deleteAccount("u@x.com") }
+        coVerify { api.deleteAccount(match { it.userEmail == "u@x.com" && it.confirmation == "DELETE" }) }
         coVerify { prefs.clearAll() }
         vm.uiState.test {
             assertTrue(awaitItem().isDeleted)
@@ -146,7 +147,7 @@ class ProfileViewModelTest {
 
     @Test
     fun `confirmDeleteAccount sets error on api failure`() = runTest {
-        coEvery { api.deleteAccount(any()) } throws RuntimeException("api error")
+        coEvery { api.deleteAccount(any<DeleteAccountRequest>()) } throws RuntimeException("api error")
 
         vm.confirmDeleteAccount()
 
@@ -164,7 +165,7 @@ class ProfileViewModelTest {
 
         vm.confirmDeleteAccount()
 
-        coVerify(exactly = 0) { api.deleteAccount(any()) }
+        coVerify(exactly = 0) { api.deleteAccount(any<DeleteAccountRequest>()) }
     }
 
     // ── toggleHistory ──────────────────────────────────────────────────────────

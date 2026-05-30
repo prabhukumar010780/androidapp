@@ -14,8 +14,6 @@ import com.destinyai.astrology.domain.model.ChatThread
 import com.google.gson.JsonParser
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import java.io.BufferedReader
-import java.io.InputStreamReader
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -52,29 +50,30 @@ class ChatRepositoryImpl @Inject constructor(
                     conversationId = sessionId,
                 )
             )
-            val reader = BufferedReader(InputStreamReader(body.byteStream()))
-            var line: String?
-            var currentEvent = ""
-            while (reader.readLine().also { line = it } != null) {
-                val raw = line ?: continue
-                when {
-                    raw.startsWith("event: ") -> currentEvent = raw.removePrefix("event: ").trim()
-                    raw.startsWith("data: ") -> {
-                        val data = raw.removePrefix("data: ").trim()
-                        when (currentEvent) {
-                            "answer" -> {
-                                val answer = try {
-                                    JsonParser.parseString(data).asJsonObject.get("answer")?.asString ?: ""
-                                } catch (_: Exception) { data }
-                                if (answer.isNotBlank()) emit(Result.success(answer))
-                            }
-                            "done" -> return@flow
-                            "error" -> {
-                                val msg = try {
-                                    JsonParser.parseString(data).asJsonObject.get("error")?.asString ?: data
-                                } catch (_: Exception) { data }
-                                emit(Result.failure(Exception(msg)))
-                                return@flow
+            body.byteStream().bufferedReader().use { reader ->
+                var line: String?
+                var currentEvent = ""
+                while (reader.readLine().also { line = it } != null) {
+                    val raw = line ?: continue
+                    when {
+                        raw.startsWith("event: ") -> currentEvent = raw.removePrefix("event: ").trim()
+                        raw.startsWith("data: ") -> {
+                            val data = raw.removePrefix("data: ").trim()
+                            when (currentEvent) {
+                                "answer" -> {
+                                    val answer = try {
+                                        JsonParser.parseString(data).asJsonObject.get("answer")?.asString ?: ""
+                                    } catch (_: Exception) { data }
+                                    if (answer.isNotBlank()) emit(Result.success(answer))
+                                }
+                                "done" -> return@flow
+                                "error" -> {
+                                    val msg = try {
+                                        JsonParser.parseString(data).asJsonObject.get("error")?.asString ?: data
+                                    } catch (_: Exception) { data }
+                                    emit(Result.failure(Exception(msg)))
+                                    return@flow
+                                }
                             }
                         }
                     }

@@ -1,3 +1,7 @@
+val apiKey: String = (project.findProperty("API_KEY") as? String)
+    ?: System.getenv("DESTINY_API_KEY")
+    ?: "" // empty in unconfigured environments — calls will fail fast at runtime
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -41,14 +45,14 @@ android {
             applicationIdSuffix = ".staging"
             versionNameSuffix = "-staging"
             buildConfigField("String", "API_BASE_URL", "\"https://astroapi-test-dsqvza5jza-ul.a.run.app\"")
-            buildConfigField("String", "API_KEY", "\"astro_live_e7-TG6TTi14WaYxIwiyxes-aGdhlUrQ8gVUIj5STVnE\"")
+            buildConfigField("String", "API_KEY", "\"$apiKey\"")
             buildConfigField("String", "ENV", "\"staging\"")
             buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"\"")
         }
         create("production") {
             dimension = "env"
             buildConfigField("String", "API_BASE_URL", "\"https://astroapi-prod-dsqvza5jza-ul.a.run.app\"")
-            buildConfigField("String", "API_KEY", "\"astro_live_e7-TG6TTi14WaYxIwiyxes-aGdhlUrQ8gVUIj5STVnE\"")
+            buildConfigField("String", "API_KEY", "\"$apiKey\"")
             buildConfigField("String", "ENV", "\"production\"")
             buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"\"")
         }
@@ -61,6 +65,7 @@ android {
         }
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -70,6 +75,7 @@ android {
     }
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
@@ -94,6 +100,8 @@ android {
 }
 
 dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+
     // Core Android
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

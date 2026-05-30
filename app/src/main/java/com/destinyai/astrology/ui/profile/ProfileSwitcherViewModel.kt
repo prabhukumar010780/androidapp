@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AstroApiService
+import com.destinyai.astrology.data.remote.SwitchProfileRequest
 import com.destinyai.astrology.services.ProfileChangeBus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -84,7 +85,7 @@ class ProfileSwitcherViewModel @Inject constructor(
                     _isLoading.value = false
                     return@launch
                 }
-                api.switchProfile(mapOf("user_email" to selfEmail, "target_email" to email))
+                api.switchProfile(SwitchProfileRequest(userEmail = selfEmail, profileId = email))
                 prefs.setActiveProfileEmail(email)
                 _activeEmail.value = email
                 profileChangeBus.emit(email)

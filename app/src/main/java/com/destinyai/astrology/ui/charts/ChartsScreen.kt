@@ -65,12 +65,14 @@ fun ChartsScreen(
 
     // R2-C1: Planetary Positions bottom sheet
     if (showPlanetaryPositions && state.chartApiData != null) {
-        PlanetaryPositionsSheet(
-            chartApiData = state.chartApiData!!,
-            currentChartStyle = state.chartStyle,
-            onChartStyleChanged = { viewModel.setChartStyle(it) },
-            onDismiss = { showPlanetaryPositions = false },
-        )
+        state.chartApiData?.let { chartData ->
+            PlanetaryPositionsSheet(
+                chartApiData = chartData,
+                currentChartStyle = state.chartStyle,
+                onChartStyleChanged = { viewModel.setChartStyle(it) },
+                onDismiss = { showPlanetaryPositions = false },
+            )
+        }
     }
 
     CosmicBackground {
@@ -156,7 +158,7 @@ fun ChartsScreen(
                             Spacer(Modifier.height(12.dp))
                             Text("Failed to load chart", color = CreamText, fontWeight = FontWeight.SemiBold)
                             Spacer(Modifier.height(4.dp))
-                            Text(state.errorMessage!!, color = CreamDim, fontSize = 12.sp)
+                            Text(state.errorMessage.orEmpty(), color = CreamDim, fontSize = 12.sp)
                             Spacer(Modifier.height(16.dp))
                             Button(
                                 onClick = { viewModel.retry() },
@@ -200,7 +202,7 @@ fun ChartsScreen(
                     }
                 }
                 state.chartApiData != null -> {
-                    val chart = state.chartApiData!!
+                    val chart = state.chartApiData ?: return@Column
                     Column(
                         modifier = Modifier
                             .fillMaxSize()

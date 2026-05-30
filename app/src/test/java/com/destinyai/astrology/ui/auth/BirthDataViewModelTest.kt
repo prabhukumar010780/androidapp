@@ -6,6 +6,7 @@ import com.destinyai.astrology.data.location.LocationSearchService
 import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.remote.BirthProfileDto
 import com.destinyai.astrology.data.remote.LocationResult
+import com.destinyai.astrology.data.remote.ProfileResponse
 import com.destinyai.astrology.data.remote.RegisterResponse
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -209,7 +210,7 @@ class BirthDataViewModelTest {
     @Test
     fun `save calls api saveProfile with correct fields`() = runTest {
         setValidState()
-        coEvery { api.saveProfile(any()) } returns fakeRegisterResponse()
+        coEvery { api.saveProfile(any()) } returns fakeProfileResponse()
 
         vm.save()
 
@@ -226,7 +227,7 @@ class BirthDataViewModelTest {
     @Test
     fun `save stores birth profile in prefs`() = runTest {
         setValidState()
-        coEvery { api.saveProfile(any()) } returns fakeRegisterResponse()
+        coEvery { api.saveProfile(any()) } returns fakeProfileResponse()
 
         vm.save()
 
@@ -236,7 +237,7 @@ class BirthDataViewModelTest {
     @Test
     fun `save sets hasBirthData to true`() = runTest {
         setValidState()
-        coEvery { api.saveProfile(any()) } returns fakeRegisterResponse()
+        coEvery { api.saveProfile(any()) } returns fakeProfileResponse()
 
         vm.save()
 
@@ -246,7 +247,7 @@ class BirthDataViewModelTest {
     @Test
     fun `save stores userName in prefs`() = runTest {
         setValidState()
-        coEvery { api.saveProfile(any()) } returns fakeRegisterResponse()
+        coEvery { api.saveProfile(any()) } returns fakeProfileResponse()
 
         vm.save()
 
@@ -256,7 +257,7 @@ class BirthDataViewModelTest {
     @Test
     fun `save sets isSaved true on success`() = runTest {
         setValidState()
-        coEvery { api.saveProfile(any()) } returns fakeRegisterResponse()
+        coEvery { api.saveProfile(any()) } returns fakeProfileResponse()
 
         vm.save()
 
@@ -450,5 +451,12 @@ class BirthDataViewModelTest {
         isGeneratedEmail = false,
         isPremium = false,
         accessState = "granted",
+    )
+
+    private fun fakeProfileResponse() = ProfileResponse(
+        userEmail = "test@example.com",
+        planId = "free_registered",
+        isGeneratedEmail = false,
+        isPremium = false,
     )
 }

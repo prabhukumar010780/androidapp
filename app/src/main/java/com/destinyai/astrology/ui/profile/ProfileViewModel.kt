@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AnalyticsConsentRequest
 import com.destinyai.astrology.data.remote.AstroApiService
+import com.destinyai.astrology.data.remote.DeleteAccountRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -122,7 +123,7 @@ class ProfileViewModel @Inject constructor(
             val email = prefs.getUserEmail() ?: return@launch
             _uiState.update { it.copy(isLoading = true, showDeleteSheet = false, showDeleteConfirmation = false, error = null) }
             try {
-                api.deleteAccount(email)
+                api.deleteAccount(DeleteAccountRequest(userEmail = email))
                 prefs.clearAll()
                 _uiState.update { it.copy(isLoading = false, isDeleted = true) }
             } catch (e: Exception) {

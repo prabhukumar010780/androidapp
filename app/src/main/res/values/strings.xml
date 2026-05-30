@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">Destiny</string>
     <string name="done">Done</string>
     <string name="view_daily_update">View Today\'s Update</string>
@@ -132,14 +132,14 @@ chart and personalize your insights</string>
     <string name="cancel_anytime">Cancel anytime</string>
     <string name="restore_purchases">Restore Purchases</string>
     <string name="subscription_terms">Subscription automatically renews unless canceled at least 24 hours before the end of the current period.</string>
-    <string name="billing_best_value">Best Value</string>
-    <string name="billing_free_trial">7-day free trial</string>
-    <string name="billing_subscribe">Subscribe</string>
-    <string name="billing_loading_purchase">Processing purchase…</string>
-    <string name="billing_conflict_title">Subscription Conflict</string>
-    <string name="billing_conflict_message">Multiple active subscriptions detected. Please manage your subscriptions in Google Play.</string>
-    <string name="billing_conflict_dismiss">Dismiss</string>
-    <string name="billing_yearly_save_label">Save over 15%%</string>
+    <string name="billing_best_value" tools:ignore="MissingTranslation">Best Value</string>
+    <string name="billing_free_trial" tools:ignore="MissingTranslation">7-day free trial</string>
+    <string name="billing_subscribe" tools:ignore="MissingTranslation">Subscribe</string>
+    <string name="billing_loading_purchase" tools:ignore="MissingTranslation">Processing purchase…</string>
+    <string name="billing_conflict_title" tools:ignore="MissingTranslation">Subscription Conflict</string>
+    <string name="billing_conflict_message" tools:ignore="MissingTranslation">Multiple active subscriptions detected. Please manage your subscriptions in Google Play.</string>
+    <string name="billing_conflict_dismiss" tools:ignore="MissingTranslation">Dismiss</string>
+    <string name="billing_yearly_save_label" tools:ignore="MissingTranslation">Save over 15%%</string>
     <string name="aligning_stars">Aligning the stars...</string>
     <string name="suggested_questions">Suggested questions</string>
     <string name="no_chat_history">Your conversations will appear here</string>
@@ -178,7 +178,7 @@ history will appear here.</string>
     <string name="continue_with_email">Continue with Email</string>
     <string name="i_dont_know_birth_time">I don\'t know my birth time</string>
     <string name="analytics_consent_label">Help improve Destiny AI by sharing anonymised usage</string>
-    <string name="backend_data_refreshed_banner">Your profile was updated from the cloud</string>
+    <string name="backend_data_refreshed_banner" tools:ignore="MissingTranslation">Your profile was updated from the cloud</string>
     <string name="profile_data_refreshed">Your profile data was refreshed on the server. Please re-enter your birth details.</string>
     <string name="sign_up">Sign up</string>
     <string name="account_deleted_error">This account has been permanently deleted and can no longer be used. The email associated with this account cannot be reused. If you believe this is an error, please contact support.</string>
@@ -2118,43 +2118,43 @@ Until then: Use this period for strategic positioning.</string>
     <string name="switch_profile_birth_chart">Switch Profile / Birth Chart</string>
     <string name="dosha_active_badge">Dosha Active</string>
 
-    <!-- Zodiac signs -->
-    <string name="aries">Aries</string>
-    <string name="taurus">Taurus</string>
-    <string name="gemini">Gemini</string>
-    <string name="cancer">Cancer</string>
-    <string name="leo">Leo</string>
-    <string name="virgo">Virgo</string>
-    <string name="libra">Libra</string>
-    <string name="scorpio">Scorpio</string>
-    <string name="sagittarius">Sagittarius</string>
-    <string name="capricorn">Capricorn</string>
-    <string name="aquarius">Aquarius</string>
-    <string name="pisces">Pisces</string>
+    <!-- Zodiac signs — proper nouns, not translated -->
+    <string name="aries" translatable="false">Aries</string>
+    <string name="taurus" translatable="false">Taurus</string>
+    <string name="gemini" translatable="false">Gemini</string>
+    <string name="cancer" translatable="false">Cancer</string>
+    <string name="leo" translatable="false">Leo</string>
+    <string name="virgo" translatable="false">Virgo</string>
+    <string name="libra" translatable="false">Libra</string>
+    <string name="scorpio" translatable="false">Scorpio</string>
+    <string name="sagittarius" translatable="false">Sagittarius</string>
+    <string name="capricorn" translatable="false">Capricorn</string>
+    <string name="aquarius" translatable="false">Aquarius</string>
+    <string name="pisces" translatable="false">Pisces</string>
 
-    <!-- Planets -->
-    <string name="sun">Sun</string>
-    <string name="moon">Moon</string>
-    <string name="mars">Mars</string>
-    <string name="mercury">Mercury</string>
-    <string name="jupiter">Jupiter</string>
-    <string name="venus">Venus</string>
-    <string name="saturn">Saturn</string>
-    <string name="rahu">Rahu</string>
-    <string name="ketu">Ketu</string>
+    <!-- Planets — proper nouns, not translated -->
+    <string name="sun" translatable="false">Sun</string>
+    <string name="moon" translatable="false">Moon</string>
+    <string name="mars" translatable="false">Mars</string>
+    <string name="mercury" translatable="false">Mercury</string>
+    <string name="jupiter" translatable="false">Jupiter</string>
+    <string name="venus" translatable="false">Venus</string>
+    <string name="saturn" translatable="false">Saturn</string>
+    <string name="rahu" translatable="false">Rahu</string>
+    <string name="ketu" translatable="false">Ketu</string>
 
     <!-- Astrology terms -->
     <string name="house">House</string>
     <string name="transit">Transit</string>
 
     <!-- Contextual prompt templates -->
-    <string name="sign_context_life_area_question">In today\'s forecast: \'%1$s\' was mentioned for my %2$s. Can you explain what this means for me?</string>
+    <string name="sign_context_life_area_question" tools:ignore="MissingTranslation">In today\'s forecast: \'%1$s\' was mentioned for my %2$s. Can you explain what this means for me?</string>
 
     <!-- Navigation tabs -->
-    <string name="tab_home">Home</string>
-    <string name="tab_chat">Chat</string>
-    <string name="tab_match">Match</string>
+    <string name="tab_home" tools:ignore="MissingTranslation">Home</string>
+    <string name="tab_chat" tools:ignore="MissingTranslation">Chat</string>
+    <string name="tab_match" tools:ignore="MissingTranslation">Match</string>
 
     <!-- Onboarding -->
-    <string name="onboarding_subtitle">Your cosmic guide</string>
+    <string name="onboarding_subtitle" tools:ignore="MissingTranslation">Your cosmic guide</string>
 </resources>

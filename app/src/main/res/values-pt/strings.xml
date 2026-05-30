@@ -1641,9 +1641,9 @@ Por favor, compartilhe percepções mais profundas sobre como este trânsito inf
     <string name="bhakoot_effect_59">5/9: Textos clássicos indicam preocupação com descendência</string>
     <string name="bhakoot_effect_212">2/12: Textos clássicos indicam dificuldades financeiras</string>
     <string name="bhakoot_severity_label">Gravidade: %@</string>
-    <string name="bhakoot_severity_high">Alta (estudo: 54% bons resultados)</string>
-    <string name="bhakoot_severity_medium">Média (estudo: 77% bons resultados)</string>
-    <string name="bhakoot_severity_low">Baixa (estudo: 74% bons resultados)</string>
+    <string name="bhakoot_severity_high">Alta (estudo: 54%% bons resultados)</string>
+    <string name="bhakoot_severity_medium">Média (estudo: 77%% bons resultados)</string>
+    <string name="bhakoot_severity_low">Baixa (estudo: 74%% bons resultados)</string>
     <string name="bhakoot_sadbhakoot_warning">Atenção: Este par tem um aviso clássico de viuvez</string>
     <string name="bhakoot_nav_pancham_auspicious">Nav Pancham: Noiva 5ª do noivo — tradicionalmente auspicioso para descendência</string>
     <string name="bhakoot_house_positions">Posições das casas: %@</string>

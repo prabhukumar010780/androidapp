@@ -53,9 +53,9 @@ fun HomeScreen(
     val greeting = timeBasedGreeting()
 
     // Life area questions bottom sheet
-    if (state.selectedLifeArea != null) {
+    state.selectedLifeArea?.let { lifeArea ->
         LifeAreaQuestionsSheet(
-            lifeArea = state.selectedLifeArea!!,
+            lifeArea = lifeArea,
             onDismiss = { viewModel.dismissLifeArea() },
         )
     }
@@ -97,14 +97,14 @@ fun HomeScreen(
                 // Daily Insight card
                 if (state.dailyInsight != null) {
                     item {
-                        InsightCard(insight = state.dailyInsight!!)
+                        InsightCard(insight = state.dailyInsight.orEmpty())
                     }
                 }
 
                 // Dasha insight card
                 if (state.dashaInfo != null) {
                     item {
-                        DashaInsightCard(dashaInfo = state.dashaInfo!!)
+                        state.dashaInfo?.let { DashaInsightCard(dashaInfo = it) }
                     }
                 }
 

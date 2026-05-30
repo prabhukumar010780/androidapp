@@ -4,6 +4,7 @@ import app.cash.turbine.test
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.remote.BirthProfileDto
+import com.destinyai.astrology.data.remote.ProfileResponse
 import com.destinyai.astrology.data.remote.RegisterResponse
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -132,7 +133,7 @@ class BirthDetailsViewModelTest {
     @Test
     fun `saveName calls api saveProfile`() = runTest {
         coEvery { prefs.getBirthProfile() } returns fakeBirthProfile()
-        coEvery { api.saveProfile(any()) } returns fakeRegisterResponse()
+        coEvery { api.saveProfile(any()) } returns fakeProfileResponse()
 
         vm.loadBirthData()
         vm.setName("Ravi")
@@ -149,7 +150,7 @@ class BirthDetailsViewModelTest {
     @Test
     fun `saveName sets isSaving true during call and false after`() = runTest {
         coEvery { prefs.getBirthProfile() } returns fakeBirthProfile()
-        coEvery { api.saveProfile(any()) } returns fakeRegisterResponse()
+        coEvery { api.saveProfile(any()) } returns fakeProfileResponse()
 
         vm.loadBirthData()
         vm.saveName()
@@ -164,7 +165,7 @@ class BirthDetailsViewModelTest {
     @Test
     fun `saveName sets saveSuccess true on success`() = runTest {
         coEvery { prefs.getBirthProfile() } returns fakeBirthProfile()
-        coEvery { api.saveProfile(any()) } returns fakeRegisterResponse()
+        coEvery { api.saveProfile(any()) } returns fakeProfileResponse()
 
         vm.loadBirthData()
         vm.saveName()
@@ -262,5 +263,12 @@ class BirthDetailsViewModelTest {
         isGeneratedEmail = false,
         isPremium = false,
         accessState = "granted",
+    )
+
+    private fun fakeProfileResponse() = ProfileResponse(
+        userEmail = "u@x.com",
+        planId = "free_registered",
+        isGeneratedEmail = false,
+        isPremium = false,
     )
 }

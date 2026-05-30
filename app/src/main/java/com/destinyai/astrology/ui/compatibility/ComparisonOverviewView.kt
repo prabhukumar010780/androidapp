@@ -70,7 +70,7 @@ fun ComparisonOverviewView(
             result.kutaDetails.entries
                 .filter { (_, kuta) -> kuta.doshaPresent && kuta.doshaCancelled && !kuta.cancellationReason.isNullOrBlank() }
                 .map { (key, kuta) ->
-                    Triple(result.partner.name, kootaDisplayNames[key] ?: key, kuta.cancellationReason!!)
+                    Triple(result.partner.name, kootaDisplayNames[key] ?: key, kuta.cancellationReason.orEmpty())
                 }
         }
     }
