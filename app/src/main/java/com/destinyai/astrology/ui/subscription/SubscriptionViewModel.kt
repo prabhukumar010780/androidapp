@@ -72,6 +72,9 @@ class SubscriptionViewModel @Inject constructor(
     /** Passthrough loading from BillingManager for UI spinner. */
     val isLoading: StateFlow<Boolean> = billingManager.isLoading
 
+    /** True when a Plus free trial offer is available. */
+    val isPlusTrialEligible: StateFlow<Boolean> = billingManager.isPlusTrialEligible
+
     fun loadPlans() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }

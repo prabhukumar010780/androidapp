@@ -2,9 +2,17 @@ package com.destinyai.astrology.data.repository.impl
 
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AstroApiService
+import com.destinyai.astrology.data.remote.BirthProfileDto
 import com.destinyai.astrology.data.remote.PredictBirthDataDto
 import com.destinyai.astrology.data.repository.HomeRepository
 import com.destinyai.astrology.domain.model.User
+import com.destinyai.astrology.ui.charts.ChartDataRequest
+import com.destinyai.astrology.ui.home.HomeDashaInfo
+import com.destinyai.astrology.ui.home.HomeDoshaStatus
+import com.destinyai.astrology.ui.home.HomeRichData
+import com.destinyai.astrology.ui.home.HomeTransit
+import com.destinyai.astrology.ui.home.HomeYoga
+import com.destinyai.astrology.ui.home.defaultLifeAreas
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -62,5 +70,59 @@ class HomeRepositoryImpl @Inject constructor(
             )
             resp.text
         }.getOrDefault("")
+    }
+
+    override suspend fun getRichHomeData(email: String, birthProfile: BirthProfileDto): HomeRichData? {
+        return runCatching {
+            val chartResponse = api.getChartData(
+                ChartDataRequest(
+                    dob = birthProfile.dateOfBirth,
+                    time = birthProfile.timeOfBirth,
+                    latitude = birthProfile.latitude,
+                    longitude = birthProfile.longitude,
+                )
+            )
+
+            // Extract transits from planet positions — build simple transit list
+            val transits = chartResponse.planets.entries.take(5).map { (planet, data) ->
+                HomeTransit(
+                    planet = planet,
+                    sign = data.sign,
+                    influence = if (data.isRetrograde == true) "Retrograde" else "Direct",
+                    isFavorable = data.isRetrograde != true,
+                )
+            }
+
+            // Yoga detection from chart data — placeholder using combust/vargottama flags
+            val yogas = buildList {
+                val hasCombust = chartResponse.planets.values.any { it.isCombust == true }
+                if (!hasCombust) add(HomeYoga("Shubha Yoga", "Benefic planets strong and uncombust"))
+                val hasVargottama = chartResponse.planets.values.any { it.vargottama == true }
+                if (hasVargottama) add(HomeYoga("Vargottama Yoga", "Planet strong in same sign in D9"))
+            }
+
+            // Dosha detection — Mars in 1/4/7/8/12 indicates Mangal Dosha
+            val marsHouse = chartResponse.planets["Mars"]?.house ?: 0
+            val mangalDoshaHouses = setOf(1, 4, 7, 8, 12)
+            val hasMangal = marsHouse in mangalDoshaHouses
+
+            // Kalasarpa — Rahu and Ketu on opposite sides, all planets between them
+            val rahuHouse = chartResponse.planets["Rahu"]?.house ?: 0
+            val ketuHouse = chartResponse.planets["Ketu"]?.house ?: 0
+            val hasKalasarpa = rahuHouse != 0 && ketuHouse != 0 &&
+                Math.abs(rahuHouse - ketuHouse) == 6
+
+            HomeRichData(
+                transits = transits,
+                yogas = yogas,
+                doshas = HomeDoshaStatus(
+                    hasMangalDosha = hasMangal,
+                    hasKalasarpa = hasKalasarpa,
+                    mangalSeverity = if (hasMangal) "Moderate" else "",
+                    kalasarpaType = if (hasKalasarpa) "Full" else "",
+                ),
+                lifeAreas = defaultLifeAreas(),
+            )
+        }.getOrNull()
     }
 }

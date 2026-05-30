@@ -47,6 +47,7 @@ class SubscriptionViewModelTest {
     private val loadingFlow = MutableStateFlow(false)
     private val errorFlow = MutableStateFlow<String?>(null)
     private val conflictFlow = MutableStateFlow<SubscriptionConflict?>(null)
+    private val isPlusTrialEligibleFlow = MutableStateFlow(false)
 
     @BeforeAll
     fun setMainDispatcher() {
@@ -70,12 +71,14 @@ class SubscriptionViewModelTest {
         every { billingManager.isLoading } returns loadingFlow
         every { billingManager.errorMessage } returns errorFlow
         every { billingManager.subscriptionConflict } returns conflictFlow
+        every { billingManager.isPlusTrialEligible } returns isPlusTrialEligibleFlow
 
         productsFlow.value = emptyList()
         purchasedIdsFlow.value = emptySet()
         loadingFlow.value = false
         errorFlow.value = null
         conflictFlow.value = null
+        isPlusTrialEligibleFlow.value = false
 
         vm = SubscriptionViewModel(api, prefs, billingManager)
     }

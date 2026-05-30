@@ -22,6 +22,9 @@ data class ProfileUiState(
     val isDeleted: Boolean = false,
     val showDeleteConfirmation: Boolean = false,
     val error: String? = null,
+    val historyEnabled: Boolean = true,
+    val analyticsConsent: Boolean = true,
+    val showProfileSwitcher: Boolean = false,
 )
 
 @HiltViewModel
@@ -40,6 +43,7 @@ class ProfileViewModel @Inject constructor(
             try {
                 val status = api.getStatus(email)
                 val name = prefs.getUserName() ?: status.name ?: ""
+                val historyEnabled = prefs.isHistoryEnabled()
                 _uiState.update {
                     it.copy(
                         userName = name,
@@ -49,6 +53,7 @@ class ProfileViewModel @Inject constructor(
                         dailyQuota = status.dailyQuota,
                         dailyUsed = status.dailyUsed,
                         isLoading = false,
+                        historyEnabled = historyEnabled,
                     )
                 }
             } catch (e: Exception) {
@@ -56,6 +61,21 @@ class ProfileViewModel @Inject constructor(
             }
         }
     }
+
+    fun toggleHistory(enabled: Boolean) {
+        viewModelScope.launch {
+            prefs.setHistoryEnabled(enabled)
+            _uiState.update { it.copy(historyEnabled = enabled) }
+        }
+    }
+
+    fun toggleAnalytics(enabled: Boolean) {
+        _uiState.update { it.copy(analyticsConsent = enabled) }
+    }
+
+    fun showProfileSwitcher() = _uiState.update { it.copy(showProfileSwitcher = true) }
+
+    fun dismissProfileSwitcher() = _uiState.update { it.copy(showProfileSwitcher = false) }
 
     fun showDeleteConfirmation() = _uiState.update { it.copy(showDeleteConfirmation = true) }
 

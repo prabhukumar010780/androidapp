@@ -40,6 +40,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.destinyai.astrology.domain.model.ChatMessage
 import com.destinyai.astrology.ui.theme.*
+import com.destinyai.astrology.ui.subscription.SubscriptionScreen
 import kotlinx.coroutines.delay
 
 private val defaultStarterQuestions = listOf(
@@ -186,6 +187,12 @@ fun ChatScreen(
         ChatHistorySheet(
             viewModel = viewModel,
             onDismiss = { showHistory = false },
+        )
+    }
+
+    if (state.showPaywall) {
+        SubscriptionScreen(
+            onBack = { viewModel.dismissPaywall() },
         )
     }
 }

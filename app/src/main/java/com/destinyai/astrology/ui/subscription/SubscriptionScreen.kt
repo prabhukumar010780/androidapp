@@ -43,6 +43,7 @@ fun SubscriptionScreen(
     val activePlanId by viewModel.activePlanId.collectAsStateWithLifecycle()
     val conflict by viewModel.subscriptionConflict.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val isPlusTrialEligible by viewModel.isPlusTrialEligible.collectAsStateWithLifecycle()
 
     val activity = LocalContext.current as Activity
 
@@ -191,6 +192,25 @@ fun SubscriptionScreen(
                                                     color = Gold,
                                                     fontWeight = FontWeight.SemiBold,
                                                 )
+                                            } else if (
+                                                plan.planId.contains("plus", ignoreCase = true) &&
+                                                isPlusTrialEligible
+                                            ) {
+                                                Spacer(Modifier.height(4.dp))
+                                                Box(
+                                                    modifier = Modifier
+                                                        .clip(RoundedCornerShape(6.dp))
+                                                        .background(Gold.copy(alpha = 0.15f))
+                                                        .border(0.5.dp, Gold.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                                                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                                                ) {
+                                                    Text(
+                                                        text = "✦ Free Trial Available",
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        color = Gold,
+                                                    )
+                                                }
                                             }
                                         }
                                         Column(horizontalAlignment = Alignment.End) {

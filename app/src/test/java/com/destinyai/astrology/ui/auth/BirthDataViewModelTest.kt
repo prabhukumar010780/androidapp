@@ -2,8 +2,10 @@ package com.destinyai.astrology.ui.auth
 
 import app.cash.turbine.test
 import com.destinyai.astrology.data.local.prefs.UserPreferences
+import com.destinyai.astrology.data.location.LocationSearchService
 import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.remote.BirthProfileDto
+import com.destinyai.astrology.data.remote.LocationResult
 import com.destinyai.astrology.data.remote.RegisterResponse
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -29,6 +31,7 @@ class BirthDataViewModelTest {
     private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var api: AstroApiService
     private lateinit var prefs: UserPreferences
+    private lateinit var locationSearchService: LocationSearchService
     private lateinit var vm: BirthDataViewModel
 
     @BeforeAll
@@ -45,9 +48,11 @@ class BirthDataViewModelTest {
     fun setUp() {
         api = mockk(relaxed = true)
         prefs = mockk(relaxed = true)
+        locationSearchService = mockk(relaxed = true)
         coEvery { prefs.getUserEmail() } returns "test@example.com"
         coEvery { prefs.isGuestUser() } returns false
-        vm = BirthDataViewModel(api, prefs)
+        coEvery { prefs.getResponseStyle() } returns "detailed" // not "balanced" → no response style sheet
+        vm = BirthDataViewModel(api, prefs, locationSearchService)
     }
 
     // ── Initial state ──────────────────────────────────────────────────────────
@@ -318,8 +323,43 @@ class BirthDataViewModelTest {
         }
     }
 
-    // ── loadSaved ──────────────────────────────────────────────────────────────
+    // ── searchLocation ─────────────────────────────────────────────────────────
 
+    @Test
+    fun `searchLocation calls LocationSearchService and updates results`() = runTest {
+        val results = listOf(
+            LocationResult(city = "Mumbai", latitude = 19.07, longitude = 72.87, displayName = "Mumbai, India"),
+            LocationResult(city = "Mysore", latitude = 12.29, longitude = 76.63, displayName = "Mysore, India"),
+        )
+        coEvery { locationSearchService.search("mum") } returns results
+
+        vm.searchLocation("mum")
+        advanceUntilIdle()
+
+        vm.uiState.test {
+            val state = awaitItem()
+            assertEquals(2, state.locationResults.size)
+            assertEquals("Mumbai, India", state.locationResults[0].displayName)
+            assertFalse(state.isSearchingLocation)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `searchLocation with short query returns empty list`() = runTest {
+        vm.searchLocation("m")
+
+        vm.uiState.test {
+            val state = awaitItem()
+            assertTrue(state.locationResults.isEmpty())
+            assertFalse(state.isSearchingLocation)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        coVerify(exactly = 0) { locationSearchService.search(any()) }
+    }
+
+    // ── loadSaved ──────────────────────────────────────────────────────────────
     @Test
     fun `loadSaved populates form fields from prefs`() = runTest {
         coEvery { prefs.getBirthProfile() } returns BirthProfileDto(

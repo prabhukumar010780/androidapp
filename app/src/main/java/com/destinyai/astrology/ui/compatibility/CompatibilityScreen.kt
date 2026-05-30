@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Warning
@@ -42,6 +43,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.ExperimentalMaterial3Api
 import com.destinyai.astrology.domain.model.AnalysisStep
 import com.destinyai.astrology.domain.model.PartnerData
+import com.destinyai.astrology.ui.subscription.SubscriptionScreen
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.CreamText
@@ -216,14 +218,30 @@ fun CompatibilityScreen(
 
                     SectionHeader(title = "Partner Details")
 
-                    // Name + Gender row
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    // Name + Gender row (with saved partner picker icon)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         CosmicTextField(
                             value = state.partnerName,
                             onValueChange = viewModel::setPartnerName,
                             label = "Name",
                             modifier = Modifier.weight(1f),
                         )
+                        IconButton(
+                            onClick = { viewModel.showPartnerPicker() },
+                            modifier = Modifier
+                                .size(48.dp)
+                                .border(1.dp, Gold.copy(alpha = 0.4f), RoundedCornerShape(10.dp)),
+                        ) {
+                            Icon(
+                                Icons.Filled.PersonAdd,
+                                contentDescription = "Load saved partner",
+                                tint = Gold,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
                         // Gender picker button
                         PickerField(
                             icon = Icons.Filled.Person,
@@ -406,6 +424,20 @@ fun CompatibilityScreen(
                 showGenderSheet = false
             },
             onDismiss = { showGenderSheet = false },
+        )
+    }
+
+    // Saved partner picker sheet
+    if (state.showPartnerPicker) {
+        PartnerPickerSheet(
+            viewModel = viewModel,
+            onDismiss = { viewModel.dismissPartnerPicker() },
+        )
+    }
+
+    if (state.showPaywall) {
+        SubscriptionScreen(
+            onBack = { viewModel.dismissPaywall() },
         )
     }
 }

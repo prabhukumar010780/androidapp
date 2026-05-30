@@ -164,4 +164,37 @@ class ProfileViewModelTest {
 
         coVerify(exactly = 0) { api.deleteAccount(any()) }
     }
+
+    // ── toggleHistory ──────────────────────────────────────────────────────────
+
+    @Test
+    fun `toggleHistory updates historyEnabled`() = runTest {
+        vm.toggleHistory(false)
+
+        vm.uiState.test {
+            assertFalse(awaitItem().historyEnabled)
+            cancelAndIgnoreRemainingEvents()
+        }
+        coVerify { prefs.setHistoryEnabled(false) }
+    }
+
+    // ── loadProfile reads historyEnabled ───────────────────────────────────────
+
+    @Test
+    fun `loadProfile reads historyEnabled from prefs`() = runTest {
+        coEvery { prefs.isHistoryEnabled() } returns false
+        coEvery { api.getStatus("u@x.com") } returns StatusResponse(
+            userEmail = "u@x.com",
+            planId = "free_registered",
+            isGeneratedEmail = false,
+            isPremium = false,
+        )
+
+        vm.loadProfile()
+
+        vm.uiState.test {
+            assertFalse(awaitItem().historyEnabled)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 }

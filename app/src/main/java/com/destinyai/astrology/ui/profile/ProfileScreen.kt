@@ -2,6 +2,7 @@ package com.destinyai.astrology.ui.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -9,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,6 +37,9 @@ fun ProfileScreen(
     onNavigateToSettings: () -> Unit,
     onNavigateToSubscription: () -> Unit,
     onDeletedAccount: () -> Unit,
+    onNavigateToLanguage: () -> Unit = {},
+    onNavigateToResponseStyle: () -> Unit = {},
+    onNavigateToNotificationPrefs: () -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -212,6 +217,47 @@ fun ProfileScreen(
                         Text("Settings", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
                     }
 
+                    // Preferences section
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "Preferences",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Gold.copy(alpha = 0.7f),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(8.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(NavySurface)
+                            .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(14.dp)),
+                    ) {
+                        Column {
+                            PreferenceArrowRow(label = "Switch Profile", onClick = { viewModel.showProfileSwitcher() })
+                            HorizontalDivider(color = Gold.copy(alpha = 0.08f))
+                            PreferenceArrowRow(label = "Language", onClick = onNavigateToLanguage)
+                            HorizontalDivider(color = Gold.copy(alpha = 0.08f))
+                            PreferenceArrowRow(label = "Response Style", onClick = onNavigateToResponseStyle)
+                            HorizontalDivider(color = Gold.copy(alpha = 0.08f))
+                            PreferenceArrowRow(label = "Notification Preferences", onClick = onNavigateToNotificationPrefs)
+                            HorizontalDivider(color = Gold.copy(alpha = 0.08f))
+                            PreferenceToggleRow(
+                                label = "Chat History",
+                                checked = state.historyEnabled,
+                                onCheckedChange = { viewModel.toggleHistory(!state.historyEnabled) },
+                            )
+                            HorizontalDivider(color = Gold.copy(alpha = 0.08f))
+                            PreferenceToggleRow(
+                                label = "Analytics",
+                                checked = state.analyticsConsent,
+                                onCheckedChange = { viewModel.toggleAnalytics(!state.analyticsConsent) },
+                            )
+                        }
+                    }
+
                     // Upgrade button (non-premium only)
                     if (!state.isPremium) {
                         Button(
@@ -251,6 +297,87 @@ fun ProfileScreen(
                     Spacer(Modifier.height(32.dp))
                 }
             }
+        }
+    }
+
+    // ── Profile switcher sheet ─────────────────────────────────────────────────
+    if (state.showProfileSwitcher) {
+        ProfileSwitcherSheet(
+            onDismiss = { viewModel.dismissProfileSwitcher() },
+        )
+    }
+}
+
+@Composable
+private fun PreferenceArrowRow(label: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            fontSize = 15.sp,
+            color = CreamText,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+            contentDescription = null,
+            tint = CreamDim.copy(alpha = 0.5f),
+            modifier = Modifier.size(14.dp),
+        )
+    }
+}
+
+@Composable
+private fun PreferenceToggleRow(label: String, checked: Boolean, onCheckedChange: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            fontSize = 15.sp,
+            color = CreamText,
+            modifier = Modifier.weight(1f),
+        )
+        Switch(
+            checked = checked,
+            onCheckedChange = { onCheckedChange() },
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color(0xFF0D0D1A),
+                checkedTrackColor = Gold,
+                uncheckedTrackColor = NavyVariant,
+            ),
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ProfileSwitcherSheet(onDismiss: () -> Unit) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = NavySurface,
+    ) {
+        Column(modifier = androidx.compose.ui.Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
+            Text(
+                text = "Switch Profile",
+                style = MaterialTheme.typography.titleMedium,
+                color = CreamText,
+            )
+            Spacer(androidx.compose.ui.Modifier.height(16.dp))
+            Text(
+                text = "Profile switching coming soon.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = CreamDim,
+            )
+            Spacer(androidx.compose.ui.Modifier.height(24.dp))
         }
     }
 }

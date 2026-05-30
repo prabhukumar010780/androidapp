@@ -52,6 +52,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.destinyai.astrology.R
 import com.destinyai.astrology.ui.components.GoldGradientText
+import com.destinyai.astrology.ui.onboarding.ResponseStyleOnboardingScreen
 import com.destinyai.astrology.ui.theme.BirthDataDimens
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
@@ -64,6 +65,7 @@ import com.destinyai.astrology.ui.theme.NavyVariant
 import com.destinyai.astrology.ui.theme.TextTertiary
 import java.util.Calendar
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BirthDataScreen(
     onSaved: () -> Unit,
@@ -368,12 +370,33 @@ fun BirthDataScreen(
     // ── Location search sheet ──────────────────────────────────────────────────
     if (showLocationSearch) {
         LocationSearchSheet(
+            results = state.locationResults,
+            isSearching = state.isSearchingLocation,
+            onQueryChange = { viewModel.searchLocation(it) },
             onSelect = { city, lat, lng ->
                 viewModel.setLocation(city, lat, lng)
+                viewModel.clearLocationResults()
                 showLocationSearch = false
             },
-            onDismiss = { showLocationSearch = false },
+            onDismiss = {
+                viewModel.clearLocationResults()
+                showLocationSearch = false
+            },
         )
+    }
+
+    // ── Response style onboarding sheet (shown on first save) ─────────────────
+    if (state.showResponseStyleSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { viewModel.dismissResponseStyle(); onSaved() },
+            containerColor = androidx.compose.ui.graphics.Color.Transparent,
+        ) {
+            ResponseStyleOnboardingScreen(
+                isSettingsMode = false,
+                onContinue = { viewModel.dismissResponseStyle(); onSaved() },
+                onBack = { viewModel.dismissResponseStyle(); onSaved() },
+            )
+        }
     }
 }
 
@@ -629,37 +652,13 @@ private fun GenderSelectionSheet(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LocationSearchSheet(
+    results: List<com.destinyai.astrology.data.remote.LocationResult>,
+    isSearching: Boolean,
+    onQueryChange: (String) -> Unit,
     onSelect: (city: String, lat: Double, lng: Double) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
-    // Static city list — mirrors iOS LocationSearchView fallback
-    val cities = remember {
-        listOf(
-            Triple("Mumbai, Maharashtra, India", 19.0760, 72.8777),
-            Triple("Delhi, India", 28.6139, 77.2090),
-            Triple("Bengaluru, Karnataka, India", 12.9716, 77.5946),
-            Triple("Chennai, Tamil Nadu, India", 13.0827, 80.2707),
-            Triple("Kolkata, West Bengal, India", 22.5726, 88.3639),
-            Triple("Hyderabad, Telangana, India", 17.3850, 78.4867),
-            Triple("Pune, Maharashtra, India", 18.5204, 73.8567),
-            Triple("Ahmedabad, Gujarat, India", 23.0225, 72.5714),
-            Triple("Jaipur, Rajasthan, India", 26.9124, 75.7873),
-            Triple("Bhilai, Chhattisgarh, India", 21.2138, 81.3943),
-            Triple("New York, NY, USA", 40.7128, -74.0060),
-            Triple("Los Angeles, CA, USA", 34.0522, -118.2437),
-            Triple("London, England, UK", 51.5074, -0.1278),
-            Triple("Paris, France", 48.8566, 2.3522),
-            Triple("Dubai, UAE", 25.2048, 55.2708),
-            Triple("Singapore", 1.3521, 103.8198),
-            Triple("Sydney, NSW, Australia", -33.8688, 151.2093),
-            Triple("Toronto, ON, Canada", 43.6532, -79.3832),
-        )
-    }
-    val filtered = remember(query) {
-        if (query.length < 2) cities
-        else cities.filter { it.first.contains(query, ignoreCase = true) }
-    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -689,7 +688,7 @@ private fun LocationSearchSheet(
 
             OutlinedTextField(
                 value = query,
-                onValueChange = { query = it },
+                onValueChange = { query = it; onQueryChange(it) },
                 placeholder = { Text(stringResource(R.string.select_birth_city), color = TextTertiary) },
                 leadingIcon = {
                     Icon(
@@ -715,30 +714,36 @@ private fun LocationSearchSheet(
 
             Spacer(Modifier.height(8.dp))
 
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 320.dp)
-                    .verticalScroll(rememberScrollState()),
-            ) {
-                filtered.forEach { (city, lat, lng) ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onSelect(city, lat, lng) }
-                            .padding(vertical = 12.dp, horizontal = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            Icons.Default.LocationOn,
-                            contentDescription = null,
-                            tint = Gold.copy(alpha = 0.6f),
-                            modifier = Modifier.size(16.dp),
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(text = city, fontSize = 15.sp, color = CreamText)
+            if (isSearching) {
+                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Gold, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 320.dp)
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    results.forEach { result ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onSelect(result.displayName, result.latitude, result.longitude) }
+                                .padding(vertical = 12.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                Icons.Default.LocationOn,
+                                contentDescription = null,
+                                tint = Gold.copy(alpha = 0.6f),
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(text = result.displayName, fontSize = 15.sp, color = CreamText)
+                        }
+                        HorizontalDivider(color = Gold.copy(alpha = 0.08f))
                     }
-                    HorizontalDivider(color = Gold.copy(alpha = 0.08f))
                 }
             }
         }

@@ -2,6 +2,7 @@ package com.destinyai.astrology.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.repository.HomeRepository
 import com.destinyai.astrology.domain.model.User
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -27,11 +28,20 @@ data class HomeUiState(
     val suggestedQuestions: List<String> = emptyList(),
     val dailyInsight: String? = null,
     val renewalDateString: String? = null,
+    // Rich astrology data
+    val transits: List<HomeTransit> = emptyList(),
+    val dashaInfo: HomeDashaInfo? = null,
+    val yogas: List<HomeYoga> = emptyList(),
+    val doshas: HomeDoshaStatus = HomeDoshaStatus(),
+    val lifeAreas: List<HomeLifeArea> = defaultLifeAreas(),
+    val isRichDataLoading: Boolean = false,
+    val selectedLifeArea: HomeLifeArea? = null,
 )
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val repository: HomeRepository,
+    private val prefs: UserPreferences,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -81,7 +91,39 @@ class HomeViewModel @Inject constructor(
                     dailyInsight = insight,
                 )
             }
+            loadRichHomeData()
         }
+    }
+
+    private fun loadRichHomeData() {
+        viewModelScope.launch {
+            val email = prefs.getUserEmail() ?: return@launch
+            val birth = prefs.getBirthProfile() ?: return@launch
+            _uiState.update { it.copy(isRichDataLoading = true) }
+            val richData = repository.getRichHomeData(email, birth)
+            if (richData != null) {
+                _uiState.update {
+                    it.copy(
+                        isRichDataLoading = false,
+                        transits = richData.transits,
+                        dashaInfo = richData.dashaInfo,
+                        yogas = richData.yogas,
+                        doshas = richData.doshas,
+                        lifeAreas = richData.lifeAreas,
+                    )
+                }
+            } else {
+                _uiState.update { it.copy(isRichDataLoading = false) }
+            }
+        }
+    }
+
+    fun selectLifeArea(area: HomeLifeArea) {
+        _uiState.update { it.copy(selectedLifeArea = area) }
+    }
+
+    fun dismissLifeArea() {
+        _uiState.update { it.copy(selectedLifeArea = null) }
     }
 
     fun decrementQuota() {

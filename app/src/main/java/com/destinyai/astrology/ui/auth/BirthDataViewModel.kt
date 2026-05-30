@@ -3,10 +3,14 @@ package com.destinyai.astrology.ui.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.destinyai.astrology.data.local.prefs.UserPreferences
+import com.destinyai.astrology.data.location.LocationSearchService
 import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.remote.BirthProfileDto
+import com.destinyai.astrology.data.remote.LocationResult
 import com.destinyai.astrology.data.remote.ProfileRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -31,16 +35,22 @@ data class BirthDataUiState(
     val birthDataTakenEmail: String? = null,
     val birthDataTakenProvider: String? = null,
     val isSaved: Boolean = false,
+    val locationResults: List<LocationResult> = emptyList(),
+    val isSearchingLocation: Boolean = false,
+    val showResponseStyleSheet: Boolean = false,
 )
 
 @HiltViewModel
 class BirthDataViewModel @Inject constructor(
     private val api: AstroApiService,
     private val prefs: UserPreferences,
+    private val locationSearchService: LocationSearchService,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BirthDataUiState())
     val uiState: StateFlow<BirthDataUiState> = _uiState
+
+    private var locationSearchJob: Job? = null
 
     val isValid: Boolean
         get() {
@@ -70,6 +80,24 @@ class BirthDataViewModel @Inject constructor(
     fun toggleLocationSearch() = _uiState.update { it.copy(showLocationSearch = !it.showLocationSearch) }
 
     fun clearError() = _uiState.update { it.copy(error = null) }
+
+    fun searchLocation(query: String) {
+        locationSearchJob?.cancel()
+        if (query.length < 2) {
+            _uiState.update { it.copy(locationResults = emptyList(), isSearchingLocation = false) }
+            return
+        }
+        locationSearchJob = viewModelScope.launch {
+            delay(300)
+            _uiState.update { it.copy(isSearchingLocation = true) }
+            val results = locationSearchService.search(query)
+            _uiState.update { it.copy(locationResults = results, isSearchingLocation = false) }
+        }
+    }
+
+    fun clearLocationResults() = _uiState.update { it.copy(locationResults = emptyList(), isSearchingLocation = false) }
+
+    fun dismissResponseStyle() = _uiState.update { it.copy(showResponseStyleSheet = false) }
 
     // Test helpers — allow clearing selection state without re-triggering setters
     internal fun clearDateSelected() = _uiState.update { it.copy(isDateSelected = false) }
@@ -137,7 +165,14 @@ class BirthDataViewModel @Inject constructor(
                 prefs.setHasBirthData(true)
                 if (s.userName.isNotBlank()) prefs.setUserName(s.userName.trim())
 
-                _uiState.update { it.copy(isLoading = false, isSaved = true) }
+                val isFirstSave = prefs.getResponseStyle() == "balanced"
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        isSaved = !isFirstSave,
+                        showResponseStyleSheet = isFirstSave,
+                    )
+                }
             } catch (e: retrofit2.HttpException) {
                 if (e.code() == 409) {
                     val errorJson = e.response()?.errorBody()?.string() ?: ""

@@ -15,8 +15,10 @@ import com.destinyai.astrology.ui.notifications.NotificationPreferencesScreen
 import com.destinyai.astrology.ui.notifications.NotificationsScreen
 import com.destinyai.astrology.ui.onboarding.LanguageSelectionScreen
 import com.destinyai.astrology.ui.onboarding.OnboardingScreen
+import com.destinyai.astrology.ui.onboarding.ResponseStyleOnboardingScreen
 import com.destinyai.astrology.ui.partners.PartnersScreen
 import com.destinyai.astrology.ui.profile.ProfileScreen
+import com.destinyai.astrology.ui.settings.AstrologySettingsScreen
 import com.destinyai.astrology.ui.settings.SettingsScreen
 import com.destinyai.astrology.ui.splash.SplashScreen
 import com.destinyai.astrology.ui.subscription.SubscriptionScreen
@@ -73,11 +75,15 @@ fun AppNav() {
 
         composable(Routes.MAIN) {
             MainScreen(
-                onNavigateToHistory = { navController.navigate(Routes.HISTORY) },
                 onNavigateToCharts = { navController.navigate(Routes.CHARTS) },
                 onNavigateToNotifications = { navController.navigate(Routes.NOTIFICATIONS) },
-                onNavigateToProfile = { navController.navigate(Routes.PROFILE) },
                 onNavigateToPartners = { navController.navigate(Routes.PARTNERS) },
+                onNavigateToSettings = { navController.navigate(Routes.SETTINGS) },
+                onNavigateToSubscription = { navController.navigate(Routes.SUBSCRIPTION) },
+                onDeletedAccount = { navController.navigate(Routes.AUTH) { popUpTo(0) { inclusive = true } } },
+                onNavigateToLanguage = { navController.navigate(Routes.LANGUAGE_SELECTION) },
+                onNavigateToResponseStyle = { navController.navigate(Routes.RESPONSE_STYLE) },
+                onNavigateToNotificationPrefs = { navController.navigate(Routes.NOTIFICATION_PREFS) },
             )
         }
 
@@ -117,15 +123,33 @@ fun AppNav() {
                 onNavigateToSettings = { navController.navigate(Routes.SETTINGS) },
                 onNavigateToSubscription = { navController.navigate(Routes.SUBSCRIPTION) },
                 onDeletedAccount = { navController.navigate(Routes.AUTH) { popUpTo(0) { inclusive = true } } },
+                onNavigateToLanguage = { navController.navigate(Routes.LANGUAGE_SELECTION) },
+                onNavigateToResponseStyle = { navController.navigate(Routes.RESPONSE_STYLE) },
+                onNavigateToNotificationPrefs = { navController.navigate(Routes.NOTIFICATION_PREFS) },
             )
         }
 
         composable(Routes.SETTINGS) {
-            SettingsScreen(onBack = { navController.popBackStack() })
+            SettingsScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToAstrologySettings = { navController.navigate(Routes.ASTROLOGY_SETTINGS) },
+            )
+        }
+
+        composable(Routes.ASTROLOGY_SETTINGS) {
+            AstrologySettingsScreen(onBack = { navController.popBackStack() })
         }
 
         composable(Routes.SUBSCRIPTION) {
             SubscriptionScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Routes.RESPONSE_STYLE) {
+            ResponseStyleOnboardingScreen(
+                isSettingsMode = true,
+                onContinue = { navController.popBackStack() },
+                onBack = { navController.popBackStack() },
+            )
         }
     }
 }

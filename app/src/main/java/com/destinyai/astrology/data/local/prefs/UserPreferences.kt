@@ -241,6 +241,13 @@ class UserPreferences @Inject constructor(
         store.edit { it[Keys.IS_HISTORY_ENABLED] = enabled }
     }
 
+    suspend fun getActiveProfileEmail(): String? =
+        store.data.map { it[Keys.ACTIVE_PROFILE_EMAIL] }.first()
+
+    suspend fun setActiveProfileEmail(email: String) {
+        store.edit { it[Keys.ACTIVE_PROFILE_EMAIL] = email }
+    }
+
     suspend fun getAyanamsa(): String =
         store.data.map { it[Keys.AYANAMSA] ?: "lahiri" }.first()
 

@@ -37,6 +37,7 @@ import com.destinyai.astrology.ui.theme.NavyVariant
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import java.util.Calendar
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
@@ -50,6 +51,14 @@ fun HomeScreen(
     LaunchedEffect(Unit) { viewModel.loadHomeData() }
 
     val greeting = timeBasedGreeting()
+
+    // Life area questions bottom sheet
+    if (state.selectedLifeArea != null) {
+        LifeAreaQuestionsSheet(
+            lifeArea = state.selectedLifeArea!!,
+            onDismiss = { viewModel.dismissLifeArea() },
+        )
+    }
 
     CosmicBackground(modifier = modifier) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -78,13 +87,53 @@ fun HomeScreen(
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
                     Spacer(Modifier.height(12.dp))
-                    LifeAreaOrbs(onNavigateToCharts = onNavigateToCharts)
+                    LifeAreaOrbs(
+                        lifeAreas = state.lifeAreas,
+                        onAreaTap = { area -> viewModel.selectLifeArea(area) },
+                        onNavigateToCharts = onNavigateToCharts,
+                    )
                 }
 
                 // Daily Insight card
                 if (state.dailyInsight != null) {
                     item {
                         InsightCard(insight = state.dailyInsight!!)
+                    }
+                }
+
+                // Dasha insight card
+                if (state.dashaInfo != null) {
+                    item {
+                        DashaInsightCard(dashaInfo = state.dashaInfo!!)
+                    }
+                }
+
+                // Transit alerts (horizontal scroll)
+                if (state.transits.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = "Current Transits",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Gold.copy(alpha = 0.7f),
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        TransitAlertsRow(transits = state.transits)
+                    }
+                }
+
+                // Yoga highlights
+                if (state.yogas.isNotEmpty()) {
+                    item {
+                        YogaHighlightRow(yogas = state.yogas)
+                    }
+                }
+
+                // Dosha status chips
+                if (state.doshas.hasMangalDosha || state.doshas.hasKalasarpa) {
+                    item {
+                        DoshaStatusRow(doshas = state.doshas)
                     }
                 }
 
@@ -130,7 +179,7 @@ fun HomeScreen(
                     }
                 }
 
-                if (state.isLoading) {
+                if (state.isLoading || state.isRichDataLoading) {
                     item {
                         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator(color = Gold, modifier = Modifier.size(24.dp))
@@ -202,27 +251,36 @@ private fun HomeHeader(
     }
 }
 
-private val lifeAreas = listOf(
-    Pair("💰", "Wealth"),
-    Pair("❤️", "Love"),
-    Pair("💼", "Career"),
-    Pair("🏥", "Health"),
-    Pair("👨‍👩‍👧", "Family"),
-    Pair("🎓", "Education"),
-    Pair("🕉️", "Spiritual"),
-    Pair("✦", "Destiny"),
-)
-
 @Composable
-private fun LifeAreaOrbs(onNavigateToCharts: () -> Unit) {
+private fun LifeAreaOrbs(
+    lifeAreas: List<HomeLifeArea>,
+    onAreaTap: (HomeLifeArea) -> Unit,
+    onNavigateToCharts: () -> Unit,
+) {
+    // Fall back to static list if state is still empty on first render
+    val areas = lifeAreas.ifEmpty {
+        listOf(
+            HomeLifeArea("Wealth", "💰", emptyList()),
+            HomeLifeArea("Love", "❤️", emptyList()),
+            HomeLifeArea("Career", "💼", emptyList()),
+            HomeLifeArea("Health", "🏥", emptyList()),
+            HomeLifeArea("Family", "👨‍👩‍👧", emptyList()),
+            HomeLifeArea("Education", "🎓", emptyList()),
+            HomeLifeArea("Spiritual", "🕉️", emptyList()),
+            HomeLifeArea("Destiny", "✦", emptyList()),
+        )
+    }
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        items(lifeAreas) { (emoji, label) ->
+        items(areas) { area ->
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.clickable { onNavigateToCharts() },
+                modifier = Modifier.clickable {
+                    if (area.questions.isNotEmpty()) onAreaTap(area)
+                    else onNavigateToCharts()
+                },
             ) {
                 Box(
                     modifier = Modifier
@@ -236,15 +294,275 @@ private fun LifeAreaOrbs(onNavigateToCharts: () -> Unit) {
                         .border(1.dp, Gold.copy(alpha = 0.25f), CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(text = emoji, fontSize = 26.sp)
+                    Text(text = area.emoji, fontSize = 26.sp)
                 }
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = label,
+                    text = area.name,
                     fontSize = 11.sp,
                     color = CreamDim,
                     textAlign = TextAlign.Center,
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DashaInsightCard(dashaInfo: HomeDashaInfo) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = NavySurface),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.linearGradient(listOf(Color(0xFF1A1040), Color(0xFF0D0826)))
+                )
+                .padding(16.dp)
+        ) {
+            Column {
+                Text(
+                    text = "♈  Dasha Period",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Gold,
+                    fontWeight = FontWeight.Bold,
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    DashaChip(label = "Maha", value = dashaInfo.mahadasha)
+                    DashaChip(label = "Antar", value = dashaInfo.antardasha)
+                }
+                if (dashaInfo.endsAt.isNotEmpty()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = "Period ends: ${dashaInfo.endsAt}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CreamDim,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DashaChip(label: String, value: String) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(Gold.copy(alpha = 0.12f))
+            .border(0.5.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(text = label, fontSize = 10.sp, color = CreamDim)
+            Text(text = value, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Gold)
+        }
+    }
+}
+
+@Composable
+private fun TransitAlertsRow(transits: List<HomeTransit>) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        items(transits) { transit ->
+            TransitAlertCard(transit = transit)
+        }
+    }
+}
+
+@Composable
+private fun TransitAlertCard(transit: HomeTransit) {
+    val chipColor = if (transit.isFavorable) Color(0xFF48BB78) else Color(0xFFFC8181)
+    Card(
+        modifier = Modifier.width(140.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = NavySurface),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(0.5.dp, Gold.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+                .padding(12.dp),
+        ) {
+            Text(
+                text = transit.planet,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = CreamText,
+            )
+            Text(
+                text = "in ${transit.sign}",
+                fontSize = 12.sp,
+                color = CreamDim,
+            )
+            Spacer(Modifier.height(6.dp))
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(chipColor.copy(alpha = 0.15f))
+                    .padding(horizontal = 6.dp, vertical = 3.dp),
+            ) {
+                Text(
+                    text = transit.influence,
+                    fontSize = 10.sp,
+                    color = chipColor,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun YogaHighlightRow(yogas: List<HomeYoga>) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+        Text(
+            text = "Active Yogas",
+            style = MaterialTheme.typography.labelLarge,
+            color = Gold.copy(alpha = 0.7f),
+            fontWeight = FontWeight.SemiBold,
+        )
+        Spacer(Modifier.height(8.dp))
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(yogas) { yoga ->
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color(0xFF2D1F5E).copy(alpha = 0.8f))
+                        .border(0.5.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
+                        .padding(horizontal = 12.dp, vertical = 7.dp),
+                ) {
+                    Text(
+                        text = yoga.name,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Gold,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DoshaStatusRow(doshas: HomeDoshaStatus) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+        Text(
+            text = "Dosha Alerts",
+            style = MaterialTheme.typography.labelLarge,
+            color = Gold.copy(alpha = 0.7f),
+            fontWeight = FontWeight.SemiBold,
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (doshas.hasMangalDosha) {
+                DoshaChip(
+                    label = "Mangal Dosha",
+                    severity = doshas.mangalSeverity,
+                    color = Color(0xFFED8936),
+                )
+            }
+            if (doshas.hasKalasarpa) {
+                DoshaChip(
+                    label = "Kala Sarpa",
+                    severity = doshas.kalasarpaType,
+                    color = Color(0xFFFC8181),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DoshaChip(label: String, severity: String, color: Color) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(color.copy(alpha = 0.12f))
+            .border(0.5.dp, color.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+    ) {
+        Column {
+            Text(text = label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = color)
+            if (severity.isNotEmpty()) {
+                Text(text = severity, fontSize = 10.sp, color = color.copy(alpha = 0.8f))
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LifeAreaQuestionsSheet(
+    lifeArea: HomeLifeArea,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = Color(0xFF0D0826),
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .padding(top = 12.dp, bottom = 4.dp)
+                    .size(36.dp, 4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(Gold.copy(alpha = 0.3f)),
+            )
+        },
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 36.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = lifeArea.emoji, fontSize = 28.sp)
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = lifeArea.name,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = CanelaFontFamily,
+                    color = CreamText,
+                )
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = "Tap a question to ask the stars",
+                fontSize = 13.sp,
+                color = CreamDim,
+            )
+            Spacer(Modifier.height(16.dp))
+            lifeArea.questions.forEach { question ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 5.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(NavySurface)
+                        .border(0.5.dp, Gold.copy(alpha = 0.15f), RoundedCornerShape(10.dp))
+                        .clickable { onDismiss() }
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = "→", color = Gold, fontSize = 14.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = question,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = CreamText,
+                        )
+                    }
+                }
             }
         }
     }

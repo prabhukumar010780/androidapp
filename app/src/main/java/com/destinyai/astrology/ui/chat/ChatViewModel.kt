@@ -179,6 +179,10 @@ class ChatViewModel @Inject constructor(
         sendMessage()
     }
 
+    fun dismissPaywall() {
+        _uiState.update { it.copy(showPaywall = false) }
+    }
+
     fun pinThread(threadId: String) {
         _uiState.update { state ->
             state.copy(

@@ -16,5 +16,7 @@ object Routes {
     const val COMPATIBILITY = "compatibility"
     const val PROFILE = "profile"
     const val SETTINGS = "settings"
+    const val ASTROLOGY_SETTINGS = "astrology_settings"
     const val SUBSCRIPTION = "subscription"
+    const val RESPONSE_STYLE = "response_style"
 }

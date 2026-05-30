@@ -8,7 +8,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,7 +27,9 @@ import androidx.compose.ui.unit.sp
 import com.destinyai.astrology.R
 import com.destinyai.astrology.ui.chat.ChatScreen
 import com.destinyai.astrology.ui.compatibility.CompatibilityScreen
+import com.destinyai.astrology.ui.history.HistoryScreen
 import com.destinyai.astrology.ui.home.HomeScreen
+import com.destinyai.astrology.ui.profile.ProfileScreen
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.GoldGradient
@@ -33,11 +37,15 @@ import com.destinyai.astrology.ui.theme.NavyDeep
 
 @Composable
 fun MainScreen(
-    onNavigateToHistory: () -> Unit,
     onNavigateToCharts: () -> Unit,
     onNavigateToNotifications: () -> Unit,
-    onNavigateToProfile: () -> Unit,
     onNavigateToPartners: () -> Unit,
+    onNavigateToSettings: () -> Unit,
+    onNavigateToSubscription: () -> Unit,
+    onDeletedAccount: () -> Unit,
+    onNavigateToLanguage: () -> Unit = {},
+    onNavigateToResponseStyle: () -> Unit = {},
+    onNavigateToNotificationPrefs: () -> Unit = {},
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
 
@@ -46,15 +54,25 @@ fun MainScreen(
             0 -> HomeScreen(
                 modifier = Modifier.fillMaxSize(),
                 onNavigateToCharts = onNavigateToCharts,
-                onNavigateToHistory = onNavigateToHistory,
+                onNavigateToHistory = { selectedTab = 3 },
                 onNavigateToNotifications = onNavigateToNotifications,
-                onNavigateToProfile = onNavigateToProfile,
+                onNavigateToProfile = { selectedTab = 4 },
             )
             1 -> ChatScreen(modifier = Modifier.fillMaxSize())
             2 -> CompatibilityScreen(
                 modifier = Modifier.fillMaxSize(),
                 onBack = {},
                 onNavigateToPartners = onNavigateToPartners,
+            )
+            3 -> HistoryScreen(onBack = { selectedTab = 0 })
+            4 -> ProfileScreen(
+                onBack = { selectedTab = 0 },
+                onNavigateToSettings = onNavigateToSettings,
+                onNavigateToSubscription = onNavigateToSubscription,
+                onDeletedAccount = onDeletedAccount,
+                onNavigateToLanguage = onNavigateToLanguage,
+                onNavigateToResponseStyle = onNavigateToResponseStyle,
+                onNavigateToNotificationPrefs = onNavigateToNotificationPrefs,
             )
         }
 
@@ -157,6 +175,24 @@ private fun DestinyTabBar(
                 label = stringResource(R.string.match),
                 selected = selectedTab == 2,
                 onClick = { onTabSelected(2) },
+                modifier = Modifier.weight(1f),
+            )
+
+            // History tab
+            TabBarItem(
+                icon = { Icon(Icons.Filled.History, contentDescription = null, tint = if (selectedTab == 3) CreamText else Gold.copy(alpha = 0.4f), modifier = Modifier.size(22.dp)) },
+                label = stringResource(R.string.history),
+                selected = selectedTab == 3,
+                onClick = { onTabSelected(3) },
+                modifier = Modifier.weight(1f),
+            )
+
+            // Profile tab
+            TabBarItem(
+                icon = { Icon(Icons.Filled.Person, contentDescription = null, tint = if (selectedTab == 4) CreamText else Gold.copy(alpha = 0.4f), modifier = Modifier.size(22.dp)) },
+                label = stringResource(R.string.profile),
+                selected = selectedTab == 4,
+                onClick = { onTabSelected(4) },
                 modifier = Modifier.weight(1f),
             )
         }

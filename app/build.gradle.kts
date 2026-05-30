@@ -43,12 +43,14 @@ android {
             buildConfigField("String", "API_BASE_URL", "\"https://astroapi-test-dsqvza5jza-ul.a.run.app\"")
             buildConfigField("String", "API_KEY", "\"astro_live_e7-TG6TTi14WaYxIwiyxes-aGdhlUrQ8gVUIj5STVnE\"")
             buildConfigField("String", "ENV", "\"staging\"")
+            buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"\"")
         }
         create("production") {
             dimension = "env"
             buildConfigField("String", "API_BASE_URL", "\"https://astroapi-prod-dsqvza5jza-ul.a.run.app\"")
             buildConfigField("String", "API_KEY", "\"astro_live_e7-TG6TTi14WaYxIwiyxes-aGdhlUrQ8gVUIj5STVnE\"")
             buildConfigField("String", "ENV", "\"production\"")
+            buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"\"")
         }
     }
 

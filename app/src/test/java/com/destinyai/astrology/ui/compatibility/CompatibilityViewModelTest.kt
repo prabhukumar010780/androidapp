@@ -387,6 +387,46 @@ class CompatibilityViewModelTest {
         assertFalse(title.contains("2"))
     }
 
+    @Test
+    fun `selectSavedPartner populates all partner fields`() = runTest {
+        val partner = com.destinyai.astrology.data.remote.PartnerDto(
+            id = "p1",
+            name = "Priya Sharma",
+            dateOfBirth = "1988-06-15",
+            timeOfBirth = "10:30",
+            cityOfBirth = "Bangalore",
+            latitude = 12.97,
+            longitude = 77.59,
+        )
+
+        vm.selectSavedPartner(partner)
+
+        vm.uiState.test {
+            val s = awaitItem()
+            assertEquals("Priya Sharma", s.partnerName)
+            assertEquals("1988-06-15", s.partnerDob)
+            assertEquals("10:30", s.partnerTime)
+            assertEquals("Bangalore", s.partnerCity)
+            assertEquals(12.97, s.partnerLatitude, 0.001)
+            assertEquals(77.59, s.partnerLongitude, 0.001)
+            assertFalse(s.showPartnerPicker)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `showPartnerPicker sets showPartnerPicker true`() {
+        vm.showPartnerPicker()
+        assertTrue(vm.uiState.value.showPartnerPicker)
+    }
+
+    @Test
+    fun `dismissPartnerPicker clears showPartnerPicker`() {
+        vm.showPartnerPicker()
+        vm.dismissPartnerPicker()
+        assertFalse(vm.uiState.value.showPartnerPicker)
+    }
+
     private fun fakeBirthProfile() = BirthProfileDto(
         dateOfBirth = "1980-07-01",
         timeOfBirth = "06:32",

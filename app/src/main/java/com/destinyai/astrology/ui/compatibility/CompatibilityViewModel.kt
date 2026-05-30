@@ -54,6 +54,8 @@ data class CompatibilityUiState(
     val showLocationSearch: Boolean = false,
     val showStreamingView: Boolean = false,
     val showComparisonOverview: Boolean = false,
+    val showPaywall: Boolean = false,
+    val showPartnerPicker: Boolean = false,
     val result: String = "",
     val score: Int? = null,
     val isAnalyzing: Boolean = false,
@@ -128,6 +130,48 @@ class CompatibilityViewModel @Inject constructor(
     fun setShowTimePicker(show: Boolean) = _uiState.update { it.copy(showTimePicker = show) }
     fun setShowLocationSearch(show: Boolean) = _uiState.update { it.copy(showLocationSearch = show) }
     fun setShowComparisonOverview(show: Boolean) = _uiState.update { it.copy(showComparisonOverview = show) }
+    fun dismissPaywall() = _uiState.update { it.copy(showPaywall = false) }
+
+    fun showPartnerPicker() = _uiState.update { it.copy(showPartnerPicker = true) }
+
+    fun dismissPartnerPicker() = _uiState.update { it.copy(showPartnerPicker = false) }
+
+    fun selectSavedPartner(partner: com.destinyai.astrology.data.remote.PartnerDto) {
+        _uiState.update {
+            it.copy(
+                partnerName = partner.name,
+                partnerDob = partner.dateOfBirth,
+                partnerTime = partner.timeOfBirth,
+                partnerCity = partner.cityOfBirth,
+                partnerLatitude = partner.latitude,
+                partnerLongitude = partner.longitude,
+                partnerGender = "",
+                partnerTimeUnknown = false,
+                showPartnerPicker = false,
+            )
+        }
+    }
+
+    // Saved partners list for picker sheet
+    private val _savedPartners = MutableStateFlow<List<com.destinyai.astrology.data.remote.PartnerDto>>(emptyList())
+    val savedPartners: StateFlow<List<com.destinyai.astrology.data.remote.PartnerDto>> = _savedPartners
+
+    private val _isSavedPartnersLoading = MutableStateFlow(false)
+    val isSavedPartnersLoading: StateFlow<Boolean> = _isSavedPartnersLoading
+
+    fun loadSavedPartners() {
+        viewModelScope.launch {
+            val email = personAEmail ?: prefs.getUserEmail() ?: return@launch
+            _isSavedPartnersLoading.value = true
+            try {
+                _savedPartners.value = api.listPartners(email)
+            } catch (_: Exception) {
+                // Silently fail — empty list shown
+            } finally {
+                _isSavedPartnersLoading.value = false
+            }
+        }
+    }
 
     fun loadSavedPartner(item: CompatibilityHistoryItem) {
         viewModelScope.launch {

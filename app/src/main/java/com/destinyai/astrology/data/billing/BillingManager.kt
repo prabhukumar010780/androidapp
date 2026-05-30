@@ -22,8 +22,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import javax.inject.Inject
@@ -50,6 +54,19 @@ class BillingManager @Inject constructor(
 
     private val _products = MutableStateFlow<List<ProductDetails>>(emptyList())
     val products: StateFlow<List<ProductDetails>> = _products.asStateFlow()
+
+    /** True when any Plus product has a trial offer available. */
+    val isPlusTrialEligible: StateFlow<Boolean> = combine(
+        _products,
+        flowOf(Unit),
+    ) { products, _ ->
+        products.any { product ->
+            product.productId.contains("plus", ignoreCase = true) &&
+                product.subscriptionOfferDetails?.any { offer ->
+                    offer.offerId?.contains("trial", ignoreCase = true) == true
+                } == true
+        }
+    }.stateIn(scope, SharingStarted.WhileSubscribed(5_000), false)
 
     private val _purchasedProductIds = MutableStateFlow<Set<String>>(emptySet())
     val purchasedProductIds: StateFlow<Set<String>> = _purchasedProductIds.asStateFlow()

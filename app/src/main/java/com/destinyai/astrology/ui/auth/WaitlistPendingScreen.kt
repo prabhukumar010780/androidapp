@@ -7,10 +7,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Intent
+import android.net.Uri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
@@ -25,6 +28,7 @@ fun WaitlistPendingScreen(
     viewModel: WaitlistPendingViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) { viewModel.loadEmail() }
     LaunchedEffect(state.isSignedOut) { if (state.isSignedOut) onSignedOut() }
@@ -72,7 +76,10 @@ fun WaitlistPendingScreen(
 
                 // Outlined gold CTA
                 OutlinedButton(
-                    onClick = { },
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://tally.so/r/destinyai"))
+                        context.startActivity(intent)
+                    },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape = RoundedCornerShape(14.dp),
                     border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(width = 1.dp),

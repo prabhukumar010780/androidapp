@@ -1,7 +1,10 @@
 package com.destinyai.astrology.ui.auth
 
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -30,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.destinyai.astrology.BuildConfig
 import com.destinyai.astrology.R
 import com.destinyai.astrology.ui.components.GoldGradientText
 import com.destinyai.astrology.ui.components.auth.AuthLogo
@@ -42,6 +46,9 @@ import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
 import com.destinyai.astrology.ui.theme.TextTertiary
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 
 private const val TERMS_OF_SERVICE_URL = "https://www.destinyaiastrology.com/terms-of-service/"
 private const val PRIVACY_POLICY_URL = "https://www.destinyaiastrology.com/privacy-policy/"
@@ -55,6 +62,27 @@ fun AuthScreen(
     allowGuest: Boolean = true,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    val context = LocalContext.current
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            try {
+                val account = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                    .getResult(ApiException::class.java)
+                account.idToken?.let { viewModel.signInWithGoogle(it) }
+            } catch (_: ApiException) {
+                // sign-in cancelled or failed — ViewModel error state not updated here
+            }
+        }
+    }
+    val googleSignInOptions = remember {
+        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(BuildConfig.GOOGLE_SERVER_CLIENT_ID)
+            .requestEmail()
+            .build()
+    }
 
     LaunchedEffect(state.isAuthenticated) {
         if (state.isAuthenticated) onNavigateToMain()
@@ -152,7 +180,10 @@ fun AuthScreen(
 
             // Button 2: Continue with Google (glass/outlined style)
             OutlinedButton(
-                onClick = { /* Google sign-in launches activity */ },
+                onClick = {
+                    val client = GoogleSignIn.getClient(context, googleSignInOptions)
+                    googleSignInLauncher.launch(client.signInIntent)
+                },
                 modifier = Modifier.fillMaxWidth().height(54.dp),
                 shape = RoundedCornerShape(14.dp),
                 enabled = !state.isLoading,
@@ -244,7 +275,6 @@ fun AuthScreen(
             // rendered as separate clickable TextButtons so each opens its
             // own URL via Intent.ACTION_VIEW. Mirrors iOS AuthView terms
             // section (AuthView.swift:283-314).
-            val context = LocalContext.current
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth(),

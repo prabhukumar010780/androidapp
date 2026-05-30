@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CompareArrows
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Warning
@@ -43,8 +44,22 @@ fun ChartsScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showStyleMenu by remember { mutableStateOf(false) }
+    var showComparison by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { viewModel.loadChartData() }
+
+    if (showComparison) {
+        ChartComparisonSheet(
+            boyName = "You",
+            girlName = "Partner",
+            boyChartData = state.chartApiData?.let { mapToChartData(it) },
+            girlChartData = null,
+            boyAscendant = state.ascendantSign,
+            girlAscendant = null,
+            onDismiss = { showComparison = false },
+            initialChartStyle = state.chartStyle,
+        )
+    }
 
     CosmicBackground {
         Column(modifier = Modifier.fillMaxSize().semantics { contentDescription = "chart_screen" }) {
@@ -71,6 +86,10 @@ fun ChartsScreen(
                     color = Gold,
                     modifier = Modifier.weight(1f),
                 )
+                // Compare button
+                IconButton(onClick = { showComparison = true }) {
+                    Icon(Icons.Default.CompareArrows, contentDescription = "Compare charts", tint = Gold)
+                }
                 // Chart style menu (North / South toggle)
                 Box {
                     IconButton(onClick = { showStyleMenu = true }) {

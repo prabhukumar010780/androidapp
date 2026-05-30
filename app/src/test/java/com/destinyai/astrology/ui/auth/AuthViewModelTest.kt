@@ -71,6 +71,22 @@ class AuthViewModelTest {
     // --- Google Sign-In ---
 
     @Test
+    fun `signInWithGoogle calls repository and updates state on success`() = runTest {
+        val user = User(email = "google@example.com", isGuestEmail = false, googleId = "gid_abc")
+        coEvery { repository.signInWithGoogle("valid-id-token") } returns Result.success(user)
+
+        viewModel.signInWithGoogle("valid-id-token")
+
+        coVerify(exactly = 1) { repository.signInWithGoogle("valid-id-token") }
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertTrue(state.isAuthenticated)
+            assertEquals(user.email, state.currentUser?.email)
+            assertFalse(state.isLoading)
+        }
+    }
+
+    @Test
     fun `google sign-in success sets authenticated state`() = runTest {
         val user = User(email = "prabhu@gmail.com", isGuestEmail = false, googleId = "gid123")
         coEvery { repository.signInWithGoogle(any()) } returns Result.success(user)
