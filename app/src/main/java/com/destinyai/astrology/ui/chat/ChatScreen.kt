@@ -551,18 +551,20 @@ private fun StarterQuestionsView(questions: List<String>, onQuestionTap: (String
 
         Column(
             modifier = Modifier.padding(top = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             questions.forEach { q ->
                 Box(
                     modifier = Modifier
+                        .wrapContentWidth()
                         .clip(RoundedCornerShape(20.dp))
                         .background(Gold.copy(alpha = 0.1f))
                         .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
                         .clickable { onQuestionTap(q) }
                         .padding(horizontal = 20.dp, vertical = 10.dp),
                 ) {
-                    Text(q, fontSize = 13.sp, color = Gold)
+                    Text(q, fontSize = 13.sp, color = Gold, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 }
             }
         }
