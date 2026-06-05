@@ -59,19 +59,20 @@ jobs:
         run: |
           # Branch → flavor + Play Console track mapping.
           # "local" flavor is local-dev only and is never built in CI.
-          # Both flavors upload to the same Play Console app (com.destinyai.astrology).
-          # NOTE: both tracks use 'internal' until the app has been manually published
-          # to production once in Play Console (required before CI can push to production track).
-          # To switch production → release track after first manual publish, change track=internal below.
+          # Staging and production are SEPARATE Play Console apps (different package names)
+          # so staging rollouts never block production releases on the same internal track.
+          # NOTE: production track currently 'internal' until the app has been manually
+          # published to production once in Play Console.
           if [ "$BRANCH" = "main" ]; then
             echo "flavor=production" >> "$GITHUB_OUTPUT"
             echo "track=internal" >> "$GITHUB_OUTPUT"
+            echo "package_name=com.destinyai.astrology" >> "$GITHUB_OUTPUT"
           else
-            # test branch and any feature/* branch → staging flavor + internal track
+            # test branch and any feature/* branch → staging flavor + separate Play app
             echo "flavor=staging" >> "$GITHUB_OUTPUT"
             echo "track=internal" >> "$GITHUB_OUTPUT"
+            echo "package_name=com.destinyai.astrology.staging" >> "$GITHUB_OUTPUT"
           fi
-          echo "package_name=com.destinyai.astrology" >> "$GITHUB_OUTPUT"
 
       - name: Build release AAB
         run: |
