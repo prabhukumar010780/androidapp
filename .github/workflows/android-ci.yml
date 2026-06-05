@@ -30,10 +30,10 @@ jobs:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
 
       - name: Lint
-        run: ./gradlew lintProductionRelease --no-daemon
+        run: ./gradlew lintStagingRelease -PAPI_KEY_STAGING=ci_placeholder -PGOOGLE_SERVER_CLIENT_ID=ci_placeholder --no-daemon
 
       - name: Unit tests
-        run: ./gradlew testProductionReleaseUnitTest --no-daemon
+        run: ./gradlew testStagingReleaseUnitTest -PAPI_KEY_STAGING=ci_placeholder -PGOOGLE_SERVER_CLIENT_ID=ci_placeholder --no-daemon
 
       - name: Build staging debug (smoke build)
         run: ./gradlew assembleStagingDebug --no-daemon
@@ -43,7 +43,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lint-report
-          path: app/build/reports/lint-results-productionRelease.html
+          path: app/build/reports/lint-results-stagingRelease.html
 
       - name: Upload test results on failure
         if: failure()
