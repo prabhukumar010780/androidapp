@@ -6,22 +6,27 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.VisualTransformation
@@ -30,12 +35,18 @@ import androidx.compose.ui.unit.sp
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
-import com.destinyai.astrology.ui.theme.NavyInput
 
 /**
- * STUB — TextField wrapper with a floating gold label and underline focus animation.
+ * iOS parity (SharedThemeComponents.swift:49-94 PremiumInputField).
  *
- * TODO (R3): Animate label upward when the field has content or focus (scale + translate).
+ * Renders a floating gold label above the field plus a separate placeholder shown
+ * inside the input when empty — matching iOS, which takes BOTH `label` and
+ * `placeholder` and shows a leading gold icon.
+ *
+ * If [placeholder] is omitted (empty string) the label is reused inside as the
+ * legacy fallback so existing callers that only pass `label` keep their previous
+ * behavior, but new callers should supply both to avoid the "label twice" visual
+ * bug flagged in the iOS↔Android parity audit.
  */
 @Composable
 fun PremiumInputField(
@@ -43,6 +54,8 @@ fun PremiumInputField(
     onValueChange: (String) -> Unit,
     label: String,
     modifier: Modifier = Modifier,
+    placeholder: String = "",
+    icon: ImageVector? = null,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     visualTransformation: VisualTransformation = VisualTransformation.None,
@@ -58,13 +71,27 @@ fun PremiumInputField(
     )
     val underlineColor = Gold.copy(alpha = underlineAlpha)
 
+    // iOS parity: header row is icon + label (gold icon, secondary-text label).
+    val placeholderText = if (placeholder.isNotEmpty()) placeholder else label
+
     Column(modifier = modifier.fillMaxWidth()) {
-        Text(
-            text = label,
-            color = if (isFocused) Gold else CreamDim,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = Gold,
+                    modifier = Modifier.size(14.dp),
+                )
+                Spacer(Modifier.width(4.dp))
+            }
+            Text(
+                text = label,
+                color = if (isFocused) Gold else CreamDim,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+            )
+        }
         Spacer(Modifier.height(4.dp))
         Box(
             modifier = Modifier
@@ -97,7 +124,7 @@ fun PremiumInputField(
                 decorationBox = { innerTextField ->
                     if (value.isEmpty()) {
                         Text(
-                            text = label,
+                            text = placeholderText,
                             color = CreamDim.copy(alpha = 0.5f),
                             fontSize = 16.sp,
                         )

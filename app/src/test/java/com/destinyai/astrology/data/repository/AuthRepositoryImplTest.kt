@@ -8,9 +8,11 @@ import com.destinyai.astrology.data.remote.RegisterResponse
 import com.destinyai.astrology.data.remote.UpgradeRequest
 import com.destinyai.astrology.data.repository.impl.AuthRepositoryImpl
 import com.destinyai.astrology.domain.model.User
+import com.destinyai.astrology.services.QuotaManager
 import com.destinyai.astrology.ui.auth.AccountDeletedException
 import com.destinyai.astrology.ui.auth.ConflictException
 import io.mockk.*
+import javax.inject.Provider
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.*
@@ -21,6 +23,7 @@ class AuthRepositoryImplTest {
     private lateinit var api: AstroApiService
     private lateinit var secure: SecureStorage
     private lateinit var prefs: UserPreferences
+    private lateinit var quotaManager: QuotaManager
     private lateinit var repo: AuthRepositoryImpl
 
     @BeforeEach
@@ -28,7 +31,8 @@ class AuthRepositoryImplTest {
         api = mockk(relaxed = true)
         secure = mockk(relaxed = true)
         prefs = mockk(relaxed = true)
-        repo = AuthRepositoryImpl(api, secure, prefs)
+        quotaManager = mockk(relaxed = true)
+        repo = AuthRepositoryImpl(api, secure, prefs, Provider { quotaManager })
     }
 
     // ── getSavedUser ──────────────────────────────────────────────────────────
@@ -97,7 +101,14 @@ class AuthRepositoryImplTest {
 
         val result = repo.registerGuest()
 
-        assertTrue(result.isFailure)
+        // iOS parity (AppleAuthService.signInAsGuest): guest registration is
+        // offline-first — the local guest email/state is persisted unconditionally
+        // and the backend /register call is best-effort. Network errors are logged
+        // and ignored so guests can use the app without connectivity. registerGuest
+        // therefore always returns Result.success regardless of api outcome.
+        assertTrue(result.isSuccess)
+        // The local guest email must still be persisted so chat/compat work offline.
+        verify { secure.saveEmail(any()) }
     }
 
     // ── signInWithGoogle ──────────────────────────────────────────────────────
@@ -114,20 +125,41 @@ class AuthRepositoryImplTest {
             dailyUsed = 0,
         )
 
-        val result = repo.signInWithGoogle("test-id-token")
+        val result = repo.signInWithGoogle(
+            email = "google@user.com",
+            googleId = "google-sub-123",
+            name = "Jane Doe",
+            idToken = "test-id-token",
+        )
 
         assertTrue(result.isSuccess)
         val user = result.getOrThrow()
         assertEquals("google@user.com", user.email)
         assertFalse(user.isGuestEmail)
         verify { secure.saveEmail("google@user.com") }
+        // Verify backend payload matches Pydantic RegisterRequest schema
+        coVerify {
+            api.signInWithGoogle(
+                match {
+                    it.email == "google@user.com" &&
+                        it.googleId == "google-sub-123" &&
+                        it.name == "Jane Doe" &&
+                        !it.isGeneratedEmail
+                }
+            )
+        }
     }
 
     @Test
     fun `signInWithGoogle returns failure on api error`() = runTest {
         coEvery { api.signInWithGoogle(any()) } throws RuntimeException("auth failed")
 
-        val result = repo.signInWithGoogle("bad-token")
+        val result = repo.signInWithGoogle(
+            email = "x@y.z",
+            googleId = "g-1",
+            name = null,
+            idToken = "bad-token",
+        )
         assertTrue(result.isFailure)
     }
 
@@ -181,5 +213,65 @@ class AuthRepositoryImplTest {
         repo.clearSession()
 
         coVerify { prefs.clearAll() }
+    }
+
+    @Test
+    fun `clearSession resets QuotaManager in-memory caches`() = runTest {
+        // iOS parity: signOut wipes StoreKit/QuotaManager/SubscriptionManager so
+        // account A's Plus state can't bleed into account B on the same device.
+        repo.clearSession()
+
+        verify { quotaManager.resetForSignOut() }
+    }
+
+    // ── signInWithApple dual-store recovery ───────────────────────────────────
+
+    @Test
+    fun `signInWithApple persists email and name to dual-store on first sign-in`() = runTest {
+        coEvery { api.signInWithApple(any()) } returns RegisterResponse(
+            userEmail = "apple@user.com",
+            planId = "free_registered",
+            isGeneratedEmail = false,
+            isPremium = false,
+            accessState = "granted",
+            dailyQuota = 5,
+            dailyUsed = 0,
+        )
+
+        repo.signInWithApple(
+            appleId = "apple-uid-123",
+            email = "apple@user.com",
+            name = "Jane",
+        )
+
+        // Primary: SecureStorage (encrypted, persists across reinstall on iOS).
+        verify { secure.saveAppleEmail("apple-uid-123", "apple@user.com") }
+        verify { secure.saveAppleName("apple-uid-123", "Jane") }
+        // Fallback: DataStore mirror (matches iOS UserDefaults dual-store).
+        coVerify { prefs.setAppleEmailFallback("apple-uid-123", "apple@user.com") }
+        coVerify { prefs.setAppleNameFallback("apple-uid-123", "Jane") }
+    }
+
+    @Test
+    fun `signInWithApple recovers email and name from SecureStorage on subsequent sign-in`() = runTest {
+        every { secure.getAppleEmail("apple-uid-123") } returns "apple@user.com"
+        every { secure.getAppleName("apple-uid-123") } returns "Jane"
+        coEvery { api.signInWithApple(any()) } returns RegisterResponse(
+            userEmail = "apple@user.com",
+            planId = "free_registered",
+            isGeneratedEmail = false,
+            isPremium = false,
+            accessState = "granted",
+            dailyQuota = 5,
+            dailyUsed = 0,
+        )
+
+        // Apple omits email/name on subsequent sign-ins.
+        repo.signInWithApple(appleId = "apple-uid-123", email = null, name = null)
+
+        // Backend was called with the recovered email, NOT the placeholder.
+        coVerify {
+            api.signInWithApple(match { it.email == "apple@user.com" && it.name == "Jane" })
+        }
     }
 }

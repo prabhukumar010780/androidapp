@@ -2,7 +2,9 @@ package com.destinyai.astrology.ui.auth
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -16,6 +18,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -42,7 +45,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -53,6 +61,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.destinyai.astrology.R
+import com.destinyai.astrology.services.HapticManager
 import com.destinyai.astrology.ui.components.GoldGradientText
 import com.destinyai.astrology.ui.components.ShimmerButton
 import com.destinyai.astrology.ui.onboarding.ResponseStyleOnboardingScreen
@@ -77,16 +86,36 @@ fun BirthDataScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val haptic = remember { HapticManager(context) }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    // System back gesture / hardware back: only allow back-navigation when the
+    // user is a guest (iOS parity — BirthDataView.swift:88-109 only renders the
+    // chevron for guests, and registered users have no way to leave this screen
+    // until save completes).
+    BackHandler(enabled = state.isGuest) { onBack() }
+
+    // iOS parity (BirthDataView.swift:144-146): fade the entire form in over
+    // 0.4s on first composition.
+    val contentAlpha = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        contentAlpha.animateTo(1f, animationSpec = tween(durationMillis = 400))
+    }
 
     LaunchedEffect(Unit) { viewModel.loadSaved() }
     LaunchedEffect(state.isSaved) { if (state.isSaved) onSaved() }
 
-    // R2-A9: suppress user-cancel errors
+    // R2-A9: suppress user-cancel errors. iOS parity (GuestSignInPromptView.swift:313-319):
+    // matches ASAuthorizationError 1000/1001 by NSError code; we additionally accept
+    // those numeric tokens for the Apple Web/CustomTabs path where only a message is available.
     LaunchedEffect(state.error) {
         val err = state.error ?: return@LaunchedEffect
         if (err.contains("cancelled", ignoreCase = true) ||
             err.contains("canceled", ignoreCase = true) ||
-            err.contains("user_cancel", ignoreCase = true)
+            err.contains("user_cancel", ignoreCase = true) ||
+            err.contains("1000") ||
+            err.contains("1001")
         ) {
             viewModel.clearError()
         }
@@ -106,6 +135,15 @@ fun BirthDataScreen(
             calendar.get(Calendar.DAY_OF_MONTH),
         ).apply {
             datePicker.maxDate = System.currentTimeMillis()
+            // iOS parity (BirthDataView.swift:148-158 sheet onDismiss): mark
+            // date as selected on ANY dismissal (OK, cancel, back) and play a
+            // light haptic. The OnDateSetListener already updates the date
+            // value when the user confirms; this listener handles the "selected
+            // semantic" so the UI shows the chosen date even after a cancel.
+            setOnDismissListener {
+                viewModel.markDateSelected()
+                haptic.light()
+            }
         }
     }
 
@@ -118,7 +156,14 @@ fun BirthDataScreen(
                 viewModel.setTimeOfBirth("%02d:%02d".format(hour, minute))
             },
             12, 0, true,
-        )
+        ).apply {
+            // iOS parity (BirthDataView.swift:159-169 sheet onDismiss): mark
+            // time as selected on ANY dismissal + light haptic.
+            setOnDismissListener {
+                viewModel.markTimeSelected()
+                haptic.light()
+            }
+        }
     }
 
     // Gender bottom sheet
@@ -128,7 +173,19 @@ fun BirthDataScreen(
     var showLocationSearch by remember { mutableStateOf(false) }
 
     CosmicBackground {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = contentAlpha.value }
+                // iOS parity (BirthDataView.swift:132-134 .onTapGesture): tap
+                // anywhere outside the name field to dismiss the soft keyboard.
+                .pointerInput(Unit) {
+                    detectTapGestures {
+                        focusManager.clearFocus()
+                        keyboardController?.hide()
+                    }
+                },
+        ) {
 
             // ── Top bar ──────────────────────────────────────────────────────
             Row(
@@ -138,31 +195,52 @@ fun BirthDataScreen(
                     .padding(horizontal = 8.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier.semantics { contentDescription = "Back" },
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = null,
-                        tint = Gold,
-                    )
+                // iOS parity (BirthDataView.swift:88-109): back chevron only
+                // visible to guest users. Registered users on a fresh sign-up
+                // flow must not be able to escape this screen.
+                if (state.isGuest) {
+                    IconButton(
+                        onClick = {
+                            haptic.light()
+                            onBack()
+                        },
+                        modifier = Modifier
+                            .testTag("birth_data_back")
+                            .semantics { contentDescription = "Back" },
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.action_back),
+                            tint = Gold,
+                        )
+                    }
                 }
                 Spacer(Modifier.weight(1f))
                 // R2-A4: Sound toggle
                 IconToggleButton(
                     checked = state.isSoundEnabled,
-                    onCheckedChange = { viewModel.toggleSound() },
+                    onCheckedChange = {
+                        // iOS parity (BirthDataView.swift:115-117): light haptic
+                        // before toggling so the user feels the tap.
+                        haptic.light()
+                        viewModel.toggleSound()
+                    },
+                    modifier = Modifier.testTag("birth_data_sound_toggle"),
                 ) {
                     Icon(
                         imageVector = if (state.isSoundEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
-                        contentDescription = if (state.isSoundEnabled) "Mute sound" else "Unmute sound",
+                        contentDescription = if (state.isSoundEnabled) stringResource(R.string.sound_on_a11y) else stringResource(R.string.sound_off_a11y),
                         tint = Gold.copy(alpha = 0.8f),
                     )
                 }
             }
 
-            // R2-A6: Refreshed banner
+            // R2-A6: Refreshed banner — iOS parity (BirthDataView.swift:140-143)
+            // banner has no tap-to-dismiss; it auto-clears the persisted
+            // `birthDataRefreshedOnServer` flag when the view appears, so the
+            // user sees it once for the session. We mirror that here by NOT
+            // wiring a click handler. The flag is cleared by viewModel.loadSaved()
+            // on next appearance via prefs.setBackendDataRefreshed(false).
             AnimatedVisibility(
                 visible = state.showRefreshedBanner,
                 enter = expandVertically() + fadeIn(),
@@ -172,8 +250,8 @@ fun BirthDataScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(Color(0xFFB8860B).copy(alpha = 0.15f))
-                        .clickable { viewModel.dismissRefreshedBanner() }
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                        .padding(horizontal = 16.dp, vertical = 10.dp)
+                        .testTag("birth_data_refreshed_banner"),
                 ) {
                     Text(
                         text = stringResource(R.string.backend_data_refreshed_banner),
@@ -244,7 +322,7 @@ fun BirthDataScreen(
                 // Age warning
                 AnimatedVisibility(visible = state.dateOfBirth.isNotBlank() && isUnder13(state.dateOfBirth)) {
                     Text(
-                        text = "You must be at least 13 years old",
+                        text = stringResource(R.string.age_minimum_required),
                         color = MaterialTheme.colorScheme.error,
                         fontSize = 12.sp,
                         modifier = Modifier
@@ -261,8 +339,12 @@ fun BirthDataScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
+                                // iOS parity (BirthDataView.swift:369-374):
+                                // light haptic on toggle of timeUnknown.
+                                haptic.light()
                                 viewModel.setTimeUnknown(!state.timeUnknown)
                             }
+                            .testTag("birth_data_time_unknown_row")
                             .semantics { contentDescription = "I don't know my birth time" },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -316,10 +398,10 @@ fun BirthDataScreen(
 
                 // ── Gender row ────────────────────────────────────────────────
                 val genderLabel = when (state.gender) {
-                    "male" -> "Male"
-                    "female" -> "Female"
-                    "non-binary" -> "Non-Binary"
-                    "prefer_not_to_say" -> "Prefer not to say"
+                    "male" -> stringResource(R.string.gender_male)
+                    "female" -> stringResource(R.string.gender_female)
+                    "non-binary" -> stringResource(R.string.gender_non_binary)
+                    "prefer_not_to_say" -> stringResource(R.string.gender_prefer_not_say)
                     else -> stringResource(R.string.select_gender)
                 }
                 PremiumFieldButton(
@@ -344,34 +426,47 @@ fun BirthDataScreen(
 
                 Spacer(Modifier.height(28.dp))
 
-                // R2-A5: Analytics consent checkbox
-                val isUsLocale = remember {
-                    java.util.Locale.getDefault().country.equals("US", ignoreCase = true)
-                }
-                // Default false for US, true otherwise — but honour stored value after first load
+                // R2-A5: Analytics consent checkbox — Android product decision diverges
+                // from iOS by design: always show the consent toggle regardless of
+                // locale. iOS still gates on non-US (BirthDataView.swift:33,426); on
+                // Android we render the Row + trailing Spacer unconditionally so the
+                // checkbox is visible to every user.
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { viewModel.setAnalyticsConsent(!state.analyticsConsent) }
-                        .padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                        .clickable {
+                            // iOS parity (BirthDataView.swift:427-431): light
+                            // haptic on toggle of analytics consent.
+                            haptic.light()
+                            viewModel.setAnalyticsConsent(!state.analyticsConsent)
+                        }
+                        .testTag("birth_data_analytics_row")
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.Top,
                 ) {
                     Checkbox(
                         checked = state.analyticsConsent,
                         onCheckedChange = { viewModel.setAnalyticsConsent(it) },
                         colors = CheckboxDefaults.colors(
                             checkedColor = Gold,
-                            uncheckedColor = TextTertiary,
+                            uncheckedColor = CreamDim,
                             checkmarkColor = Color(0xFF0D0D1A),
                         ),
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.analytics_consent_label),
-                        fontSize = 13.sp,
-                        color = CreamDim,
-                        modifier = Modifier.weight(1f),
-                    )
+                    Column {
+                        Text(
+                            text = stringResource(R.string.analytics_consent_label),
+                            fontSize = 14.sp,
+                            color = CreamText,
+                            fontWeight = FontWeight.Medium,
+                        )
+                        Text(
+                            text = stringResource(R.string.analytics_consent_description),
+                            fontSize = 12.sp,
+                            color = CreamDim,
+                        )
+                    }
                 }
 
                 Spacer(Modifier.height(12.dp))
@@ -379,11 +474,17 @@ fun BirthDataScreen(
                 // R2-A8: ShimmerButton replaces solid gold Button
                 ShimmerButton(
                     text = if (state.isLoading) "…" else stringResource(R.string.action_continue),
-                    onClick = { viewModel.save() },
+                    onClick = {
+                        // iOS parity (BirthDataView.swift:451-454):
+                        // premiumContinue haptic + button-tap sound before save.
+                        haptic.premiumContinue()
+                        viewModel.save()
+                    },
                     enabled = viewModel.isValid && !state.isLoading,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(54.dp)
+                        .testTag("birth_data_continue")
                         .semantics { contentDescription = "Continue" },
                 )
 
@@ -409,7 +510,7 @@ fun BirthDataScreen(
                     ) {
                         CircularProgressIndicator(color = Gold, strokeWidth = 2.dp)
                         Spacer(Modifier.height(12.dp))
-                        Text(text = "Saving...", color = CreamText, fontSize = 14.sp)
+                        Text(text = stringResource(R.string.saving_profile), color = CreamText, fontSize = 14.sp)
                     }
                 }
             }
@@ -433,6 +534,7 @@ fun BirthDataScreen(
         LocationSearchSheet(
             results = state.locationResults,
             isSearching = state.isSearchingLocation,
+            errorRes = state.locationErrorRes,
             onQueryChange = { viewModel.searchLocation(it) },
             onSelect = { city, lat, lng ->
                 viewModel.setLocation(city, lat, lng)
@@ -448,9 +550,28 @@ fun BirthDataScreen(
 
     // ── Response style onboarding sheet (shown on first save) ─────────────────
     if (state.showResponseStyleSheet) {
+        // iOS parity (BirthDataView.swift:191-205 fullScreenCover): the picker
+        // must NOT be dismissable until the user explicitly continues — iOS uses
+        // a non-dismissable fullScreenCover. On Android we mirror this by:
+        //   1. Marking the sheet skipPartiallyExpanded = true so swipe-down does
+        //      not collapse to a smaller state.
+        //   2. Rejecting Hidden via confirmValueChange so swipe / scrim tap
+        //      cannot dismiss the sheet (only onContinue / onBack inside the
+        //      response-style screen can).
+        //   3. Intercepting the system back press while the sheet is up.
+        val sheetState = androidx.compose.material3.rememberModalBottomSheetState(
+            skipPartiallyExpanded = true,
+            confirmValueChange = { value ->
+                value != androidx.compose.material3.SheetValue.Hidden
+            },
+        )
+        BackHandler(enabled = true) { /* swallow — must Continue inside picker */ }
         ModalBottomSheet(
-            onDismissRequest = { viewModel.dismissResponseStyle(); onSaved() },
+            sheetState = sheetState,
+            onDismissRequest = { /* no-op — see comment above */ },
             containerColor = androidx.compose.ui.graphics.Color.Transparent,
+            // Hide the drag handle since dragging is disabled.
+            dragHandle = null,
         ) {
             ResponseStyleOnboardingScreen(
                 isSettingsMode = false,
@@ -458,6 +579,38 @@ fun BirthDataScreen(
                 onBack = { viewModel.dismissResponseStyle(); onSaved() },
             )
         }
+    }
+
+    // ── 409/403 conflict — show GuestSignInPromptScreen as a full-screen overlay ──
+    // iOS parity (BirthDataView.swift:223-238): when birth data matches a registered
+    // account, present GuestSignInPromptView with provider-filtered buttons and a
+    // human-readable message that names the matching provider.
+    if (state.birthDataTakenEmail != null || state.birthDataTakenProvider != null) {
+        val provider = state.birthDataTakenProvider
+        val maskedEmail = state.birthDataTakenEmail
+        val message = when (provider?.lowercase()) {
+            "apple" -> stringResource(R.string.birth_data_linked_apple)
+            "google" -> if (!maskedEmail.isNullOrBlank()) {
+                stringResource(R.string.birth_data_linked_google_email, maskedEmail)
+            } else {
+                stringResource(R.string.birth_data_linked_google)
+            }
+            else -> stringResource(
+                R.string.birth_data_linked_email,
+                maskedEmail ?: stringResource(R.string.sign_in_required),
+            )
+        }
+        GuestSignInPromptScreen(
+            message = message,
+            provider = provider,
+            onSignIn = {
+                viewModel.clearBirthDataConflict()
+                onBack()
+            },
+            onBack = {
+                viewModel.clearBirthDataConflict()
+            },
+        )
     }
 }
 
@@ -637,10 +790,10 @@ private fun GenderSelectionSheet(
     onDismiss: () -> Unit,
 ) {
     val options = listOf(
-        "male" to "Male",
-        "female" to "Female",
-        "non-binary" to "Non-Binary",
-        "prefer_not_to_say" to "Prefer not to say",
+        "male" to stringResource(R.string.gender_male),
+        "female" to stringResource(R.string.gender_female),
+        "non-binary" to stringResource(R.string.gender_non_binary),
+        "prefer_not_to_say" to stringResource(R.string.gender_prefer_not_say),
     )
 
     ModalBottomSheet(
@@ -715,6 +868,7 @@ private fun GenderSelectionSheet(
 private fun LocationSearchSheet(
     results: List<com.destinyai.astrology.data.remote.LocationResult>,
     isSearching: Boolean,
+    errorRes: Int?,
     onQueryChange: (String) -> Unit,
     onSelect: (city: String, lat: Double, lng: Double) -> Unit,
     onDismiss: () -> Unit,
@@ -775,35 +929,76 @@ private fun LocationSearchSheet(
 
             Spacer(Modifier.height(8.dp))
 
-            if (isSearching) {
-                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Gold, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+            when {
+                isSearching -> {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(
+                            color = Gold,
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    }
                 }
-            } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 320.dp)
-                        .verticalScroll(rememberScrollState()),
-                ) {
-                    results.forEach { result ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onSelect(result.displayName, result.latitude, result.longitude) }
-                                .padding(vertical = 12.dp, horizontal = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(
-                                Icons.Default.LocationOn,
-                                contentDescription = null,
-                                tint = Gold.copy(alpha = 0.6f),
-                                modifier = Modifier.size(16.dp),
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(text = result.displayName, fontSize = 15.sp, color = CreamText)
+                // GAP-2: surface backend/network failures so the user does not see
+                // a silently empty list when the request hit a 401/404/timeout.
+                errorRes != null -> {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = stringResource(errorRes),
+                            fontSize = 14.sp,
+                            color = TextTertiary,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
+                // Genuine "no matches" state — distinct from a backend failure.
+                query.length >= 2 && results.isEmpty() -> {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.location_search_no_results),
+                            fontSize = 14.sp,
+                            color = TextTertiary,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
+                else -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 320.dp)
+                            .verticalScroll(rememberScrollState()),
+                    ) {
+                        results.forEach { result ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        onSelect(result.displayName, result.latitude, result.longitude)
+                                    }
+                                    .padding(vertical = 12.dp, horizontal = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    Icons.Default.LocationOn,
+                                    contentDescription = null,
+                                    tint = Gold.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(text = result.displayName, fontSize = 15.sp, color = CreamText)
+                            }
+                            HorizontalDivider(color = Gold.copy(alpha = 0.08f))
                         }
-                        HorizontalDivider(color = Gold.copy(alpha = 0.08f))
                     }
                 }
             }

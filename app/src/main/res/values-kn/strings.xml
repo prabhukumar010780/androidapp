@@ -2075,7 +2075,7 @@
     <string name="setup_phase_insights">ಇಂದಿನ ಒಳನೋಟಗಳನ್ನು ರಚಿಸಲಾಗುತ್ತಿದೆ...</string>
     <string name="setup_phase_ready">ನಿಮ್ಮ ಕಾಸ್ಮಿಕ್ ಪ್ರೊಫೈಲ್ ಸಿದ್ಧವಾಗಿದೆ!</string>
     <string name="select_a_language">ಭಾಷೆ ಆಯ್ಕೆ ಮಾಡಿ</string>
-    <string name="continue_in_language_format">%@ನಲ್ಲಿ ಮುಂದುವರಿಯಿರಿ</string>
+    <string name="continue_in_language_format">%1$sನಲ್ಲಿ ಮುಂದುವರಿಯಿರಿ</string>
     <string name="kuta_theme_work">ಕಾರ್ಯ ಹೊಂದಾಣಿಕೆ</string>
     <string name="kuta_theme_attraction">ಆಕರ್ಷಣೆ ಮತ್ತು ಪ್ರಭಾವ</string>
     <string name="kuta_theme_destiny">ಭಾಗ್ಯ ಮತ್ತು ಸೌಭಾಗ್ಯ</string>

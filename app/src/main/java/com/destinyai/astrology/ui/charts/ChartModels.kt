@@ -76,34 +76,48 @@ data class ChartApiResponse(
 // ── Dasha / Transit DTOs ──────────────────────────────────────────────────────
 
 data class DashaPeriod(
-    val mahadasha: String,
-    val antardasha: String,
-    val pratyantardasha: String,
-    val start: String,
-    val end: String,
+    @SerializedName("mahadasha_lord") val mahadasha: String,
+    @SerializedName("antardasha_lord") val antardasha: String,
+    @SerializedName("pratyantardasha_lord") val pratyantardasha: String,
+    @SerializedName("start") val start: String,
+    @SerializedName("end") val end: String,
 )
 
 data class DashaResponse(
-    val year: Int,
-    val periods: List<DashaPeriod>,
+    @SerializedName("year") val year: Int,
+    @SerializedName("dasha_periods") val periods: List<DashaPeriod>,
 )
 
 data class TransitEvent(
-    val date: String,
-    val sign: String,
-    val houseFromLagna: Int,
+    @SerializedName("date") val date: String,
+    @SerializedName("sign") val sign: String,
+    @SerializedName("house_from_lagna") val houseFromLagna: Int,
+    @SerializedName("favorable") val favorable: Boolean? = null,
 )
 
 data class TransitResponse(
-    val year: Int,
-    val transits: Map<String, List<TransitEvent>>,
+    @SerializedName("year") val year: Int,
+    @SerializedName("transits") val transits: Map<String, List<TransitEvent>>,
 )
 
 // ── Chart request DTO ─────────────────────────────────────────────────────────
 
 data class ChartDataRequest(
+    @SerializedName("birth_data") val birthData: BirthData,
+)
+
+data class DashaTransitRequest(
+    @SerializedName("birth_data") val birthData: BirthData,
+    @SerializedName("year") val year: Int,
+)
+
+data class BirthData(
     @SerializedName("dob") val dob: String,
     @SerializedName("time") val time: String,
     @SerializedName("latitude") val latitude: Double,
     @SerializedName("longitude") val longitude: Double,
+    @SerializedName("ayanamsa") val ayanamsa: String = "lahiri",
+    @SerializedName("house_system") val houseSystem: String = "whole_sign",
+    @SerializedName("city_of_birth") val cityOfBirth: String? = null,
+    @SerializedName("birth_time_unknown") val birthTimeUnknown: Boolean = false,
 )

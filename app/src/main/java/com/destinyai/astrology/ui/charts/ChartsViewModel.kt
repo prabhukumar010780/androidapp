@@ -2,13 +2,16 @@ package com.destinyai.astrology.ui.charts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.destinyai.astrology.BuildConfig
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AstroApiService
+import com.destinyai.astrology.data.remote.BirthProfileDto
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import javax.inject.Inject
 
 data class ChartsUiState(
@@ -20,10 +23,12 @@ data class ChartsUiState(
     val cityOfBirth: String = "",
     val latitude: Double = 0.0,
     val longitude: Double = 0.0,
-    val chartStyle: String = "north_indian",
+    val chartStyle: String = "north",
     val timeUnknown: Boolean = false,
     val chartApiData: ChartApiResponse? = null,
     val ascendantSign: String? = null,
+    val dashaResponse: DashaResponse? = null,
+    val transitResponse: TransitResponse? = null,
 )
 
 @HiltViewModel
@@ -60,10 +65,14 @@ class ChartsViewModel @Inject constructor(
             try {
                 val response = api.getChartData(
                     ChartDataRequest(
-                        dob = profile.dateOfBirth,
-                        time = profile.timeOfBirth,
-                        latitude = profile.latitude,
-                        longitude = profile.longitude,
+                        birthData = BirthData(
+                            dob = profile.dateOfBirth,
+                            time = profile.timeOfBirth,
+                            latitude = profile.latitude,
+                            longitude = profile.longitude,
+                            cityOfBirth = profile.cityOfBirth,
+                            birthTimeUnknown = profile.birthTimeUnknown,
+                        ),
                     )
                 )
                 val signNum = response.houses["1"]?.signNum ?: 1
@@ -76,10 +85,42 @@ class ChartsViewModel @Inject constructor(
                         ascendantSign = ascSign,
                     )
                 }
+                // Mirrors iOS UserChartService.fetchDashaPeriods / fetchTransits — fire after main chart loads
+                loadDashaAndTransits(profile)
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(isLoading = false, errorMessage = e.message ?: "Failed to load chart")
                 }
+            }
+        }
+    }
+
+    private fun loadDashaAndTransits(profile: BirthProfileDto) {
+        viewModelScope.launch {
+            val year = LocalDate.now().year
+            val authHeader = "Bearer ${BuildConfig.API_KEY}"
+            val request = DashaTransitRequest(
+                birthData = BirthData(
+                    dob = profile.dateOfBirth,
+                    time = profile.timeOfBirth,
+                    latitude = profile.latitude,
+                    longitude = profile.longitude,
+                    cityOfBirth = profile.cityOfBirth,
+                    birthTimeUnknown = profile.birthTimeUnknown,
+                ),
+                year = year,
+            )
+            try {
+                val dasha = api.getDashaPeriods(authHeader, request)
+                _uiState.update { it.copy(dashaResponse = dasha) }
+            } catch (_: Exception) {
+                // Non-fatal — chart still renders without dasha
+            }
+            try {
+                val transits = api.getTransits(authHeader, request)
+                _uiState.update { it.copy(transitResponse = transits) }
+            } catch (_: Exception) {
+                // Non-fatal — chart still renders without transits
             }
         }
     }

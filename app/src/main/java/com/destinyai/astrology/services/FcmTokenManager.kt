@@ -1,6 +1,6 @@
 package com.destinyai.astrology.services
 
-import com.destinyai.astrology.BuildConfig
+import android.util.Log
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.remote.DeviceTokenRequest
@@ -14,7 +14,10 @@ class FcmTokenManager @Inject constructor(
 ) {
     suspend fun registerToken(token: String, appVersion: String) {
         prefs.setFcmToken(token)
-        val email = prefs.getUserEmail() ?: return
+        val email = prefs.getUserEmail() ?: run {
+            Log.w(TAG, "Cannot register FCM token: no userEmail in prefs")
+            return
+        }
         try {
             api.registerDeviceToken(
                 DeviceTokenRequest(
@@ -25,6 +28,12 @@ class FcmTokenManager @Inject constructor(
                 )
             )
             prefs.setFcmTokenRegistered(true)
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            Log.w(TAG, "FCM token registration failed: ${e.message}", e)
+        }
+    }
+
+    private companion object {
+        const val TAG = "FcmTokenManager"
     }
 }

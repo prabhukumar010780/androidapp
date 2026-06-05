@@ -54,7 +54,7 @@ fun DashaView(dashaResponse: DashaResponse?) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Icon(Icons.Default.HourglassEmpty, contentDescription = null, tint = Gold, modifier = Modifier.size(16.dp))
             Text(
-                "Vimshottari Dasha ${dashaResponse?.year ?: 2024}",
+                stringResource(R.string.vimshottari_dasha_year_fmt, dashaResponse?.year ?: 2024),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = Color(0xFF0B0F19),
@@ -75,7 +75,7 @@ fun DashaView(dashaResponse: DashaResponse?) {
                 }
             }
         } else {
-            Text("Select a year to view dasha periods.", fontSize = 14.sp, color = Color.Gray)
+            Text(stringResource(R.string.select_year_dasha), fontSize = 14.sp, color = Color.Gray)
         }
     }
 }

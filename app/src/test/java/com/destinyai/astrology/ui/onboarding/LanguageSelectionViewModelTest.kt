@@ -2,10 +2,15 @@ package com.destinyai.astrology.ui.onboarding
 
 import app.cash.turbine.test
 import com.destinyai.astrology.data.local.prefs.UserPreferences
+import com.destinyai.astrology.services.HapticManager
+import com.destinyai.astrology.services.LocaleManager
+import com.destinyai.astrology.services.SoundManager
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeAll
@@ -19,6 +24,9 @@ class LanguageSelectionViewModelTest {
 
     private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var prefs: UserPreferences
+    private lateinit var localeManager: LocaleManager
+    private lateinit var soundManager: SoundManager
+    private lateinit var hapticManager: HapticManager
     private lateinit var vm: LanguageSelectionViewModel
 
     @BeforeAll
@@ -29,7 +37,12 @@ class LanguageSelectionViewModelTest {
     @BeforeEach
     fun setUp() {
         prefs = mockk(relaxed = true)
-        vm = LanguageSelectionViewModel(prefs)
+        localeManager = mockk(relaxed = true)
+        soundManager = mockk(relaxed = true)
+        hapticManager = mockk(relaxed = true)
+        // Sound flow used by the ViewModel must emit before stateIn collects.
+        every { prefs.isSoundEnabledFlow() } returns flowOf(true)
+        vm = LanguageSelectionViewModel(prefs, localeManager, soundManager, hapticManager)
     }
 
     @Test

@@ -17,10 +17,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.destinyai.astrology.R
+import com.destinyai.astrology.services.HapticManager
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
@@ -36,14 +41,34 @@ fun DeleteAccountSheet(
     hasActiveSubscription: Boolean,
     onDismiss: () -> Unit,
     onConfirmDelete: () -> Unit,
+    isDeleting: Boolean = false,
+    errorMessage: String? = null,
 ) {
     var inputText by remember { mutableStateOf("") }
     val inputMatches = inputText == DELETE_CONFIRM_WORD
-    val canDelete = inputMatches && !hasActiveSubscription
+    val canDelete = inputMatches && !hasActiveSubscription && !isDeleting
+    val context = LocalContext.current
+    val haptic = remember { HapticManager(context) }
+
+    // iOS parity: DeleteAccountSheet.swift:164 .interactiveDismissDisabled(isDeleting).
+    // confirmValueChange returns false while deleting so swipe-down/scrim taps cannot
+    // dismiss the sheet — the user has to wait for the delete RPC to finish.
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        confirmValueChange = { !isDeleting },
+    )
 
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!isDeleting) onDismiss() },
+        sheetState = sheetState,
         containerColor = NavySurface,
+        // iOS .interactiveDismissDisabled(isDeleting) parity — block back-press
+        // dismissal while the delete RPC is in flight. Drag/scrim is blocked via
+        // the sheetState.confirmValueChange callback above.
+        properties = ModalBottomSheetProperties(
+            securePolicy = androidx.compose.ui.window.SecureFlagPolicy.Inherit,
+            shouldDismissOnBackPress = !isDeleting,
+        ),
         dragHandle = {
             Box(
                 modifier = Modifier
@@ -58,7 +83,8 @@ fun DeleteAccountSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 40.dp),
+                .padding(bottom = 40.dp)
+                .testTag("delete_account_sheet"),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // Warning icon
@@ -81,7 +107,7 @@ fun DeleteAccountSheet(
             Spacer(Modifier.height(16.dp))
 
             Text(
-                text = "Delete your account",
+                text = stringResource(R.string.delete_account_title),
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = CanelaFontFamily,
@@ -91,7 +117,7 @@ fun DeleteAccountSheet(
             Spacer(Modifier.height(4.dp))
 
             Text(
-                text = "This will permanently delete all your data. This cannot be undone.",
+                text = stringResource(R.string.delete_account_subtitle),
                 fontSize = 13.sp,
                 color = CreamDim,
             )
@@ -109,17 +135,17 @@ fun DeleteAccountSheet(
             ) {
                 DeleteBulletRow(
                     icon = Icons.Filled.Cancel,
-                    text = "Your account and profile will be permanently removed",
+                    text = stringResource(R.string.delete_account_bullet_remove),
                     iconTint = CreamDim,
                 )
                 DeleteBulletRow(
                     icon = Icons.Filled.Email,
-                    text = "All chat history and readings will be deleted",
+                    text = stringResource(R.string.delete_account_bullet_history),
                     iconTint = CreamDim,
                 )
                 DeleteBulletRow(
                     icon = Icons.Filled.Delete,
-                    text = "This action cannot be reversed",
+                    text = stringResource(R.string.delete_account_bullet_irreversible),
                     iconTint = Color(0xFFFF5252),
                 )
             }
@@ -135,7 +161,7 @@ fun DeleteAccountSheet(
                         .padding(14.dp),
                 ) {
                     Text(
-                        text = "Cancel your subscription before deleting your account. Active subscriptions cannot be refunded after deletion.",
+                        text = stringResource(R.string.delete_account_active_subscription_warning),
                         fontSize = 13.sp,
                         color = Color(0xFFFF8C00),
                     )
@@ -147,8 +173,11 @@ fun DeleteAccountSheet(
             OutlinedTextField(
                 value = inputText,
                 onValueChange = { inputText = it },
-                label = { Text("Type DELETE to confirm", color = CreamDim) },
-                modifier = Modifier.fillMaxWidth(),
+                label = { Text(stringResource(R.string.type_delete_to_confirm), color = CreamDim) },
+                enabled = !isDeleting,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("delete_account_confirm_input"),
                 shape = RoundedCornerShape(12.dp),
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -165,13 +194,33 @@ fun DeleteAccountSheet(
 
             Spacer(Modifier.height(16.dp))
 
+            // Inline error — mirrors iOS DeleteAccountSheet errorMessage at line 112-117.
+            if (!errorMessage.isNullOrEmpty()) {
+                Text(
+                    text = errorMessage,
+                    fontSize = 13.sp,
+                    color = Color(0xFFFF5252),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                        .testTag("delete_account_error_message"),
+                )
+            }
+
             Button(
                 onClick = {
-                    onDismiss()
+                    haptic.heavy()
+                    // Do NOT dismiss here — sheet must stay open while delete is in flight.
+                    // ProfileViewModel will dismiss on success (isDeleted->true) or surface
+                    // an inline error and keep the sheet visible. Mirrors iOS behavior at
+                    // ProfileView.swift:844-872.
                     onConfirmDelete()
                 },
                 enabled = canDelete,
-                modifier = Modifier.fillMaxWidth().height(52.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .testTag("delete_account_confirm_button"),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFFFF5252),
@@ -180,16 +229,32 @@ fun DeleteAccountSheet(
                     disabledContentColor = CreamDim,
                 ),
             ) {
-                Text("Delete Account", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                if (isDeleting) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(20.dp),
+                    )
+                } else {
+                    Text(stringResource(R.string.delete_account_button), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                }
             }
 
             Spacer(Modifier.height(8.dp))
 
             TextButton(
-                onClick = onDismiss,
-                modifier = Modifier.fillMaxWidth(),
+                onClick = {
+                    if (!isDeleting) {
+                        haptic.light()
+                        onDismiss()
+                    }
+                },
+                enabled = !isDeleting,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("delete_account_cancel_button"),
             ) {
-                Text("Cancel", color = CreamDim, fontSize = 15.sp)
+                Text(stringResource(R.string.delete_account_cancel), color = CreamDim, fontSize = 15.sp)
             }
         }
     }

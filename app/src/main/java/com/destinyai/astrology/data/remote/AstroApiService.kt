@@ -9,14 +9,35 @@ data class RegisterRequest(
     @SerializedName("email") val email: String,
     @SerializedName("is_generated_email") val isGeneratedEmail: Boolean,
     @SerializedName("google_id") val googleId: String? = null,
+    // iOS parity (ProfileService.registerUser): backend /subscription/register accepts
+    // apple_id alongside google_id so a SSO user can be looked up by stable provider ID
+    // when the email is a placeholder ("Hide My Email" / lookup-by-id flows).
+    @SerializedName("apple_id") val appleId: String? = null,
     @SerializedName("name") val name: String? = null,
 )
 
+// Mirrors backend RegisterRequest (subscription_router.py:46-51) — backend
+// requires `email` (and looks up users by `google_id` when provided). Parity
+// with iOS ProfileService.registerUser and AppleSignInRequest above:
+// is_generated_email is FALSE because Google Sign-In = registered user, not guest.
+// id_token is retained for forward-compat (server may verify it) but the backend
+// currently ignores it; email + google_id are what drive the lookup.
 data class GoogleSignInRequest(
-    @SerializedName("id_token") val idToken: String,
-    @SerializedName("email") val email: String? = null,
+    @SerializedName("email") val email: String,
+    @SerializedName("is_generated_email") val isGeneratedEmail: Boolean = false,
+    @SerializedName("google_id") val googleId: String,
     @SerializedName("name") val name: String? = null,
-    @SerializedName("google_id") val googleId: String? = null,
+    @SerializedName("id_token") val idToken: String? = null,
+)
+
+// Mirrors iOS ProfileService.registerUser(appleId:) — backend looks up user by
+// apple_id, returns the stored email (handles "Hide My Email" + new-device).
+// is_generated_email is FALSE because Apple Sign-In = registered user, not guest.
+data class AppleSignInRequest(
+    @SerializedName("email") val email: String,
+    @SerializedName("is_generated_email") val isGeneratedEmail: Boolean = false,
+    @SerializedName("apple_id") val appleId: String,
+    @SerializedName("name") val name: String? = null,
 )
 
 data class UpgradeRequest(
@@ -43,6 +64,9 @@ data class BirthProfileDto(
     @SerializedName("longitude") val longitude: Double,
     @SerializedName("gender") val gender: String? = null,
     @SerializedName("birth_time_unknown") val birthTimeUnknown: Boolean = false,
+    // iOS parity (BirthDataViewModel.swift:17): persist Google place_id so backend
+    // can disambiguate cities with the same name on re-resolution.
+    @SerializedName("place_id") val placeId: String? = null,
 )
 
 // Predict endpoint BirthData — matches backend BirthData schema exactly
@@ -75,11 +99,21 @@ data class DeviceTokenRequest(
     @SerializedName("app_version") val appVersion: String,
 )
 
+// Mirrors iOS UnifiedFeedbackPayload (FeedbackService.swift) — backend
+// UnifiedFeedbackRequest treats query/prediction_text/area/system as required for
+// RL training; missing fields cause Pydantic 422 or empty rows in the training set.
 data class FeedbackRequest(
-    @SerializedName("user_email") val userEmail: String,
-    @SerializedName("prediction_id") val predictionId: String,
+    @SerializedName("prediction_id") val predictionId: String?,
+    @SerializedName("session_id") val sessionId: String?,
+    @SerializedName("conversation_id") val conversationId: String? = null,
+    @SerializedName("user_email") val userEmail: String?,
+    @SerializedName("query") val query: String,
+    @SerializedName("prediction_text") val predictionText: String,
+    @SerializedName("area") val area: String = "general",
+    @SerializedName("sub_area") val subArea: String? = null,
+    @SerializedName("ascendant") val ascendant: String? = null,
+    @SerializedName("system") val system: String = "vedic",
     @SerializedName("rating") val rating: Int,
-    @SerializedName("comment") val comment: String? = null,
 )
 
 // Matches backend PartnerProfileData exactly (subscription_router.py)
@@ -125,6 +159,7 @@ data class CompatibilityRequestDto(
     @SerializedName("comparison_group_id") val comparisonGroupId: String? = null,
     @SerializedName("partner_index") val partnerIndex: Int? = null,
     @SerializedName("language") val language: String = "en",
+    @SerializedName("profile_id") val profileId: String? = null,
 )
 
 data class HardNoFlagsDto(
@@ -175,7 +210,12 @@ data class CompatibilityFollowUpResponse(
 
 data class NotificationListResponse(
     @SerializedName("notifications") val notifications: List<NotificationDto> = emptyList(),
-    @SerializedName("total") val total: Int = 0,
+    // Backend NotificationListResponse (notification_router.py:74) emits `total_count`,
+    // not `total`. Accept legacy `total` as alternate so older mocked responses still parse.
+    @SerializedName(value = "total_count", alternate = ["total"]) val total: Int = 0,
+    @SerializedName("has_more") val hasMore: Boolean? = null,
+    @SerializedName("page") val page: Int? = null,
+    @SerializedName("page_size") val pageSize: Int? = null,
 )
 
 // Matches backend NotificationPreferencesRequest (notification_router.py)
@@ -206,16 +246,29 @@ data class ReadAllRequest(
 
 data class VerifyRequest(
     @SerializedName("signed_transaction") val signedTransaction: String,
-    @SerializedName("platform") val platform: String = "android",
+    // Backend subscription_router.verify_purchase only accepts apple|google|stripe.
+    // Default to "google" for the Android billing flow.
+    @SerializedName("platform") val platform: String = "google",
     @SerializedName("user_email") val userEmail: String,
     @SerializedName("product_id") val productId: String,
+    // iOS parity — backend uses environment ("Sandbox" | "Production") to gate
+    // test-track purchases against real entitlements on prod backend.
+    @SerializedName("environment") val environment: String? = null,
 )
 
 data class VerifyResponse(
     @SerializedName("success") val success: Boolean = false,
     @SerializedName("plan_id") val planId: String? = null,
     @SerializedName("is_premium") val isPremium: Boolean = false,
+    @SerializedName("expires_at") val expiresAt: String? = null,
     @SerializedName("message") val message: String? = null,
+    @SerializedName("error") val error: String? = null,
+    // iOS parity (SubscriptionManager.swift:27-28, 501-555 — pendingUpgradeProductId
+    // and pendingUpgradeEffectiveDate from StoreKit renewalInfo.autoRenewPreference).
+    // Backend webhook-derived scheduled Core→Plus change exposed to clients so the
+    // UI can render a "Scheduled" badge and effective date.
+    @SerializedName("pending_upgrade_product_id") val pendingUpgradeProductId: String? = null,
+    @SerializedName("pending_upgrade_effective_date") val pendingUpgradeEffectiveDate: String? = null,
 )
 
 // ── Response DTOs ─────────────────────────────────────────────────────────────
@@ -240,6 +293,13 @@ data class ProfileResponse(
     @SerializedName("subscription_status") val subscriptionStatus: String? = null,
     @SerializedName("subscription_expires_at") val subscriptionExpiresAt: String? = null,
     @SerializedName("birth_profile") val birthProfile: BirthProfileDto? = null,
+    // iOS parity (ProfileService.swift ProfileResponse): analytics_consent surfaced
+    // via GET /subscription/profile so app can mirror the saved consent on launch
+    // without a separate /subscription/status round-trip.
+    @SerializedName("analytics_consent") val analyticsConsent: Boolean? = null,
+    // iOS parity: access_state ("granted" | "waitlist_pending" | …) drives gate
+    // routing post-sign-in. Default null so legacy backend responses still parse.
+    @SerializedName("access_state") val accessState: String? = null,
 )
 
 // Matches backend PartnerProfileResponse (subscription_router.py)
@@ -297,25 +357,46 @@ data class NotificationPreferencesResponse(
 
 data class RegisterResponse(
     @SerializedName("user_email") val userEmail: String,
-    @SerializedName("plan_id") val planId: String,
+    // Backend /subscription/register returns StatusResponse with Optional[str] plan_id
+    // (subscription_router.py:81). Nullable for safety — guest users have no plan yet.
+    @SerializedName("plan_id") val planId: String? = null,
     @SerializedName("is_generated_email") val isGeneratedEmail: Boolean,
     @SerializedName("is_premium") val isPremium: Boolean,
     @SerializedName("access_state") val accessState: String,
-    @SerializedName("daily_quota") val dailyQuota: Int = 3,
-    @SerializedName("daily_used") val dailyUsed: Int = 0,
+    // Backend now emits daily_quota / daily_used derived from feature_usage in
+    // subscription_router._derive_quota_view (parity fix). Both can be null
+    // when no quota gates the user's plan, so use nullable Int.
+    @SerializedName("daily_quota") val dailyQuota: Int? = null,
+    @SerializedName("daily_used") val dailyUsed: Int? = null,
     @SerializedName("name") val name: String? = null,
     @SerializedName("google_id") val googleId: String? = null,
 )
 
 data class StatusResponse(
     @SerializedName("user_email") val userEmail: String,
-    @SerializedName("plan_id") val planId: String,
+    // Backend StatusResponse.plan_id is Optional[str] (subscription_router.py:81).
+    // Use nullable String — non-null default would NPE for newly registered users
+    // before plan assignment lands.
+    @SerializedName("plan_id") val planId: String? = null,
     @SerializedName("is_generated_email") val isGeneratedEmail: Boolean = false,
     @SerializedName("is_premium") val isPremium: Boolean,
-    @SerializedName("daily_quota") val dailyQuota: Int = 3,
-    @SerializedName("daily_used") val dailyUsed: Int = 0,
+    // Backend emits daily_quota / daily_used as Optional[int] — null when no
+    // quota gates the plan. Use nullable Int instead of fake defaults so the
+    // UI can distinguish "no quota tracked" from a real numeric value.
+    @SerializedName("daily_quota") val dailyQuota: Int? = null,
+    @SerializedName("daily_used") val dailyUsed: Int? = null,
     @SerializedName("access_state") val accessState: String = "granted",
     @SerializedName("name") val name: String? = null,
+    @SerializedName("analytics_consent") val analyticsConsent: Boolean? = null,
+    @SerializedName("pending_upgrade_plan_id") val pendingUpgradePlanId: String? = null,
+    @SerializedName("pending_upgrade_date") val pendingUpgradeDate: String? = null,
+    // iOS parity (QuotaManager.swift:265-281 SubscriptionStatus): server-mirrored
+    // subscription metadata used by SubscriptionView/HomeViewModel to render
+    // plan/expiry/auto-renew badges on cold start before the next sync lands.
+    @SerializedName("subscription_status") val subscriptionStatus: String? = null,
+    @SerializedName("subscription_expires_at") val subscriptionExpiresAt: String? = null,
+    @SerializedName("auto_renew_status") val autoRenewStatus: Boolean? = null,
+    @SerializedName("plan_display_name") val planDisplayName: String? = null,
 )
 
 data class PredictResponse(
@@ -332,6 +413,17 @@ data class ChatThreadDto(
     @SerializedName("title") val title: String,
     @SerializedName("created_at") val createdAt: String,
     @SerializedName("updated_at") val updatedAt: String,
+    @SerializedName("is_pinned") val isPinned: Boolean = false,
+)
+
+data class ChatHistorySettingsDto(
+    @SerializedName("history_enabled") val historyEnabled: Boolean = true,
+    @SerializedName("save_conversations") val saveConversations: Boolean = true,
+)
+
+data class UpdateChatThreadRequest(
+    @SerializedName("is_pinned") val isPinned: Boolean? = null,
+    @SerializedName("title") val title: String? = null,
 )
 
 data class ChatMessageDto(
@@ -344,19 +436,54 @@ data class ChatMessageDto(
 data class PartnerDto(
     @SerializedName("id") val id: String,
     @SerializedName("name") val name: String,
-    @SerializedName("date_of_birth") val dateOfBirth: String,
-    @SerializedName("time_of_birth") val timeOfBirth: String,
-    @SerializedName("city_of_birth") val cityOfBirth: String,
-    @SerializedName("latitude") val latitude: Double,
-    @SerializedName("longitude") val longitude: Double,
-)
+    @SerializedName("gender") val gender: String = "",
+    @SerializedName("date_of_birth") val dateOfBirth: String? = null,
+    @SerializedName("time_of_birth") val timeOfBirth: String? = null,
+    @SerializedName("city_of_birth") val cityOfBirth: String? = null,
+    @SerializedName("latitude") val latitude: Double? = null,
+    @SerializedName("longitude") val longitude: Double? = null,
+    @SerializedName("timezone") val timezone: Double? = null,
+    @SerializedName("birth_time_unknown") val birthTimeUnknown: Boolean = false,
+    @SerializedName("for_compatibility") val forCompatibility: Boolean = false,
+    @SerializedName("guardian_consent_given") val guardianConsentGiven: Boolean = false,
+    @SerializedName("is_self") val isSelf: Boolean = false,
+    @SerializedName("is_active") val isActive: Boolean = false,
+    @SerializedName("first_switched_at") val firstSwitchedAt: String? = null,
+) {
+    /** Mirrors iOS PartnerProfile.isProtected — primary/active/used profiles cannot be edited or deleted. */
+    val isProtected: Boolean
+        get() = isSelf || isActive || firstSwitchedAt != null
+}
 
 data class NotificationDto(
     @SerializedName("id") val id: String,
-    @SerializedName("title") val title: String,
-    @SerializedName("body") val body: String,
-    @SerializedName("is_read") val isRead: Boolean,
-    @SerializedName("created_at") val createdAt: String,
+    // Backend NotificationItem emits `subject`/`preview` (not `title`/`body`).
+    // Accept either: legacy clients/mocks may still send `title`/`body`, but
+    // the live backend wire fields are `subject` and `preview` (notification_router.py:61-62).
+    @SerializedName(value = "subject", alternate = ["title"]) val title: String? = null,
+    @SerializedName(value = "preview", alternate = ["body"]) val body: String? = null,
+    // Backend NotificationItem (notification_router.py:64) wire field is `read` (bool).
+    // Accept legacy `is_read` as alternate. Without this, isRead would silently always
+    // default to false on the wire, breaking unread badge / read-state UI.
+    @SerializedName(value = "read", alternate = ["is_read"]) val isRead: Boolean = false,
+    @SerializedName("created_at") val createdAt: String? = null,
+    // iOS parity (NotificationItem in NotificationModels.swift): status + read_at
+    // mirrored locally so server-side state and client cache stay aligned after
+    // mark-as-read / mark-all-read mutations.
+    @SerializedName("status") val status: String? = null,
+    @SerializedName("read_at") val readAt: String? = null,
+    // iOS parity (NotificationModels.swift:5-29) — fields needed for routing,
+    // tone-aware accent color, topic chip, icon switching, and the detail
+    // sheet's primary action button (Ask More / Compatibility / Subscription).
+    @SerializedName("type") val type: String? = null,
+    @SerializedName("channel") val channel: String? = null,
+    @SerializedName("subject") val subject: String? = null,
+    @SerializedName("preview") val preview: String? = null,
+    @SerializedName("action_url") val actionUrl: String? = null,
+    @SerializedName("image_url") val imageUrl: String? = null,
+    @SerializedName("chat_prompt") val chatPrompt: String? = null,
+    @SerializedName("topic") val topic: String? = null,
+    @SerializedName("overall_tone") val overallTone: String? = null,
 )
 
 data class NotificationPrefsDto(
@@ -371,6 +498,8 @@ data class UnreadCountResponse(
 
 data class SuccessResponse(
     @SerializedName("success") val success: Boolean = true,
+    @SerializedName("deleted_count") val deletedCount: Int? = null,
+    @SerializedName("message") val message: String? = null,
 )
 
 data class PlanDto(
@@ -380,6 +509,19 @@ data class PlanDto(
     @SerializedName("price_monthly") val priceMonthly: Double,
     @SerializedName("price_yearly") val priceYearly: Double,
     @SerializedName("daily_quota") val dailyQuota: Int,
+    @SerializedName("description") val description: String? = null,
+    @SerializedName("entitlements") val entitlements: List<PlanEntitlementDto>? = null,
+)
+
+/** iOS parity (PlanEntitlement / FeatureItemRow in SubscriptionView.swift:521-572).
+ *  Drives the per-plan checkmark feature list rendered on each plan card. */
+data class PlanEntitlementDto(
+    @SerializedName("feature_id") val featureId: String,
+    @SerializedName("display_name") val displayName: String,
+    @SerializedName("description") val description: String? = null,
+    @SerializedName("marketing_text") val marketingText: String? = null,
+    @SerializedName("daily_limit") val dailyLimit: Int? = null,
+    @SerializedName("overall_limit") val overallLimit: Int? = null,
 )
 
 data class LocationResult(
@@ -387,11 +529,140 @@ data class LocationResult(
     @SerializedName("latitude") val latitude: Double,
     @SerializedName("longitude") val longitude: Double,
     @SerializedName("display_name") val displayName: String,
+    // iOS parity (LocationSearchView passes Google place_id back to BirthDataViewModel.setLocation):
+    // capture place_id when backend returns it, otherwise null.
+    @SerializedName("place_id") val placeId: String? = null,
 )
 
+// Mirrors iOS ProfileService:619-622 body shape — backend Pydantic schema
+// expects user_email/analytics_consent (not email/consent), else 422.
 data class AnalyticsConsentRequest(
+    @SerializedName("user_email") val email: String,
+    @SerializedName("analytics_consent") val consent: Boolean,
+)
+
+// Today's prediction request — minimal birth_data envelope
+// iOS parity (UserAstroDataModels.swift:5-37): top-level user_email/language/is_first_login
+// siblings to birth_data so backend can deliver onboarding fixed question + cache by language.
+data class UserAstroDataRequest(
+    @SerializedName("birth_data") val birth_data: Map<String, Any?>,
+    @SerializedName("user_email") val user_email: String? = null,
+    @SerializedName("language") val language: String? = null,
+    @SerializedName("is_first_login") val is_first_login: Boolean? = null,
+)
+
+// Today's prediction response — fields are optional; backend may return any subset.
+// `current_dasha` is typed Any? to defensively accept both legacy String shape
+// (e.g. "Venus-Rahu-Moon") and the structured Map shape returned by newer backends.
+data class TodaysPredictionResponse(
+    @SerializedName(value = "text", alternate = ["todays_insight"]) val text: String? = null,
+    @SerializedName("current_dasha") val current_dasha: Any? = null,
+    @SerializedName("life_areas") val life_areas: Map<String, Map<String, Any?>>? = null,
+    @SerializedName("transit_influences") val transit_influences: List<Map<String, Any?>>? = null,
+    @SerializedName(value = "suggested_questions", alternate = ["mind_questions"]) val suggested_questions: List<String>? = null,
+    @SerializedName("analysis") val analysis: AstroAnalysisDto? = null,
+    @SerializedName("insight_area") val insightArea: String? = null,
+    @SerializedName("target_date") val targetDate: String? = null,
+    @SerializedName("prediction_id") val predictionId: String? = null,
+)
+
+// Mirrors iOS AstroAnalysisData — yogas + dosha verdicts surfaced from the prediction endpoint
+data class AstroAnalysisDto(
+    @SerializedName("yogas") val yogas: YogasContainerDto? = null,
+    @SerializedName("mangal_dosha") val mangalDosha: MangalDoshaResultDto? = null,
+    @SerializedName("kala_sarpa") val kalaSarpa: KalaSarpaResultDto? = null,
+)
+
+data class YogasContainerDto(
+    @SerializedName("yogas") val yogas: List<YogaDetailDto>? = null,
+    @SerializedName("doshas") val doshas: List<YogaDetailDto>? = null,
+)
+
+data class YogaDetailDto(
+    @SerializedName("name") val name: String = "",
+    @SerializedName("yoga_key") val yogaKey: String? = null,
+    @SerializedName("planets") val planets: String? = null,
+    @SerializedName("houses") val houses: String? = null,
+    @SerializedName("status") val status: String? = null,
+    @SerializedName("strength") val strength: Double? = null,
+    @SerializedName("is_dosha") val isDosha: Boolean? = null,
+    @SerializedName("category") val category: String? = null,
+    @SerializedName("formation") val formation: String? = null,
+    @SerializedName("outcome") val outcome: String? = null,
+    @SerializedName("reason") val reason: String? = null,
+)
+
+data class MangalDoshaResultDto(
+    @SerializedName("has_mangal_dosha") val hasMangalDosha: Boolean? = null,
+    @SerializedName("severity") val severity: String? = null,
+    @SerializedName("is_cancelled") val isCancelled: Boolean? = null,
+)
+
+data class KalaSarpaResultDto(
+    @SerializedName("yoga_present") val yogaPresent: Boolean? = null,
+    @SerializedName("dosha_name") val doshaName: String? = null,
+    @SerializedName("axis") val axis: String? = null,
+)
+
+// Feature gating response — GET /subscription/can-access
+// NOTE: Backend wire field is `can_access`; we accept `allowed` as an alternate so existing
+// ChatViewModel call sites keep working alongside the new QuotaManager.
+data class CanAccessResponse(
+    @SerializedName(value = "can_access", alternate = ["allowed"]) val allowed: Boolean,
+    @SerializedName("reason") val reason: String? = null,
+    @SerializedName("resets_at") val resets_at: String? = null,
+)
+
+// Richer feature-access response mirroring iOS FeatureAccessResponse — used by QuotaManager
+data class FeatureLimitInfo(
+    @SerializedName("used") val used: Int = 0,
+    @SerializedName("limit") val limit: Int = 0,
+    @SerializedName("remaining") val remaining: Int = 0,
+) {
+    val isUnlimited: Boolean get() = limit == -1
+    val hasRemaining: Boolean get() = isUnlimited || remaining > 0
+}
+
+data class UpgradeCtaDto(
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("suggested_plan") val suggestedPlan: String? = null,
+)
+
+data class FeatureAccessResponse(
+    @SerializedName("can_access") val canAccess: Boolean,
+    @SerializedName("feature") val feature: String? = null,
+    @SerializedName("plan_id") val planId: String? = null,
+    @SerializedName("reason") val reason: String? = null,
+    @SerializedName("requires_quota") val requiresQuota: Boolean? = null,
+    @SerializedName("limits") val limits: Map<String, FeatureLimitInfo>? = null,
+    @SerializedName("reset_at") val resetAt: String? = null,
+    @SerializedName("upgrade_cta") val upgradeCta: UpgradeCtaDto? = null,
+)
+
+// POST /subscription/use — record feature usage
+data class UseFeatureRequest(
     @SerializedName("email") val email: String,
-    @SerializedName("consent") val consent: Boolean,
+    @SerializedName("feature_id") val featureId: String,
+)
+
+data class UsageInfoDto(
+    @SerializedName("daily") val daily: FeatureLimitInfo,
+    @SerializedName("overall") val overall: FeatureLimitInfo,
+)
+
+data class UseFeatureResponse(
+    @SerializedName("success") val success: Boolean = false,
+    @SerializedName("feature") val feature: String? = null,
+    @SerializedName("usage") val usage: UsageInfoDto? = null,
+    @SerializedName("error") val error: String? = null,
+)
+
+// Mirrors iOS AppStartupService.ConfigResponse (AppStartupService.swift:15-22).
+// Backend GET /api/v2/app/config returns gate config used to hide/show guest
+// CTA and to drive gate-mode awareness.
+data class AppConfigResponse(
+    @SerializedName("gate_mode") val gateMode: String = "off",
+    @SerializedName("allow_guest") val allowGuest: Boolean = false,
 )
 
 // ── API Service Interface ─────────────────────────────────────────────────────
@@ -405,8 +676,19 @@ interface AstroApiService {
     @POST("subscription/register")
     suspend fun signInWithGoogle(@Body request: GoogleSignInRequest): RegisterResponse
 
+    // Mirrors iOS Apple Sign-In flow (ProfileService.registerUser with apple_id) —
+    // backend uses /subscription/register and looks up the user by apple_id, returning
+    // the stored email even when Apple's "Hide My Email" obscures it client-side.
+    @POST("subscription/register")
+    suspend fun signInWithApple(@Body request: AppleSignInRequest): RegisterResponse
+
     @GET("subscription/status")
     suspend fun getStatus(@Query("email") email: String): StatusResponse
+
+    // App-level gate config — mirrors iOS AppStartupService.fetchConfig
+    // (AppStartupService.swift:24-45). Drives guest button visibility + gate mode.
+    @GET("api/v2/app/config")
+    suspend fun getAppConfig(): AppConfigResponse
 
     @POST("subscription/upgrade")
     suspend fun upgradeGuest(@Body request: UpgradeRequest): RegisterResponse
@@ -457,6 +739,25 @@ interface AstroApiService {
     @DELETE("chat-history/all/{userId}")
     suspend fun deleteAllChatHistory(@Path("userId") userId: String): SuccessResponse
 
+    // Chat History Settings — mirrors iOS HistorySettingsManager
+    @GET("chat-history/settings/{userId}")
+    suspend fun getChatHistorySettings(@Path("userId") userId: String): ChatHistorySettingsDto
+
+    @PUT("chat-history/settings/{userId}")
+    suspend fun updateChatHistorySettings(
+        @Path("userId") userId: String,
+        @Query("history_enabled") historyEnabled: Boolean,
+        @Query("save_conversations") saveConversations: Boolean,
+    ): SuccessResponse
+
+    // Pin / unpin a chat thread (server-side persistence)
+    @PATCH("chat-history/threads/{userId}/{threadId}")
+    suspend fun updateChatThread(
+        @Path("userId") userId: String,
+        @Path("threadId") threadId: String,
+        @Body request: UpdateChatThreadRequest,
+    ): SuccessResponse
+
     // Notifications
     @POST("notifications/device-token")
     suspend fun registerDeviceToken(@Body request: DeviceTokenRequest): SuccessResponse
@@ -472,16 +773,21 @@ interface AstroApiService {
         @Body request: NotificationPrefsRequest,
     ): SuccessResponse
 
-    @GET("notifications/list")
-    suspend fun listNotifications(@Query("email") email: String): NotificationListResponse
+    @GET("notifications")
+    suspend fun listNotifications(
+        @Query("user_email") email: String,
+        @Query("page") page: Int = 1,
+        @Query("page_size") pageSize: Int = 20,
+    ): NotificationListResponse
 
     @GET("notifications/unread-count")
-    suspend fun getUnreadCount(@Query("email") email: String): UnreadCountResponse
+    suspend fun getUnreadCount(@Query("user_email") email: String): UnreadCountResponse
 
     @POST("notifications/read-all")
-    suspend fun markAllRead(@Query("email") email: String): SuccessResponse
+    suspend fun markAllRead(@Query("user_email") email: String): SuccessResponse
 
-    @PATCH("notifications/{notificationId}/read")
+    // Backend uses POST (not PATCH) — mirrors iOS NotificationInboxService.markAsRead
+    @POST("notifications/{notificationId}/read")
     suspend fun markNotificationRead(@Path("notificationId") id: String): SuccessResponse
 
     // Partners
@@ -490,6 +796,13 @@ interface AstroApiService {
 
     @POST("subscription/partners")
     suspend fun addPartner(@Body request: CreatePartnerRequest): PartnerDto
+
+    // Mirrors iOS PartnerProfileService.updatePartner — PUT /subscription/partners/{id}
+    @PUT("subscription/partners/{partnerId}")
+    suspend fun updatePartner(
+        @Path("partnerId") partnerId: String,
+        @Body request: CreatePartnerRequest,
+    ): PartnerDto
 
     @DELETE("subscription/partners/{partnerId}")
     suspend fun deletePartner(
@@ -505,9 +818,12 @@ interface AstroApiService {
     @POST("vedic/api/compatibility/follow-up")
     suspend fun compatibilityFollowUp(@Body request: CompatibilityFollowUpRequest): CompatibilityFollowUpResponse
 
-    // Feedback
+    // Feedback — Authorization: Bearer is added by the global AuthInterceptor in
+    // NetworkModule. iOS FeedbackService uses Bearer for parity (post-unification).
     @POST("feedback/submit")
-    suspend fun submitFeedback(@Body request: FeedbackRequest): SuccessResponse
+    suspend fun submitFeedback(
+        @Body request: FeedbackRequest,
+    ): SuccessResponse
 
     // Profiles (multi-profile)
     // Backend SwitchProfileRequest: { user_email, profile_id } — not target_email
@@ -515,8 +831,10 @@ interface AstroApiService {
     suspend fun switchProfile(@Body request: SwitchProfileRequest): SwitchProfileResponse
 
     // Backend returns PartnerProfileResponse (not RegisterResponse)
+    // Backend GET /subscription/profiles/active expects `user_email` query param
+    // (subscription_router.py:1315), not `email`. Sending the wrong key yields 422.
     @GET("subscription/profiles/active")
-    suspend fun getActiveProfile(@Query("email") email: String): PartnerProfileResponse
+    suspend fun getActiveProfile(@Query("user_email") email: String): PartnerProfileResponse
 
     // Analytics Consent
     @POST("subscription/analytics-consent")
@@ -527,6 +845,52 @@ interface AstroApiService {
     suspend fun searchLocations(@Query("query") query: String): List<LocationResult>
 
     // Chart Data (Vedic birth chart with planets, houses, nakshatra, D9)
-    @POST("vedic/api/chart-data/")
+    @POST("vedic/api/astrodata/full")
     suspend fun getChartData(@Body request: com.destinyai.astrology.ui.charts.ChartDataRequest): com.destinyai.astrology.ui.charts.ChartApiResponse
+
+    // Dasha periods for a given year (mirrors iOS UserChartService.fetchDashaPeriods)
+    @POST("vedic/api/astrodata/dasha")
+    suspend fun getDashaPeriods(
+        @Header("Authorization") authHeader: String,
+        @Body request: com.destinyai.astrology.ui.charts.DashaTransitRequest,
+    ): com.destinyai.astrology.ui.charts.DashaResponse
+
+    // Transits for a given year (mirrors iOS UserChartService.fetchTransits)
+    @POST("vedic/api/astrodata/transits")
+    suspend fun getTransits(
+        @Header("Authorization") authHeader: String,
+        @Body request: com.destinyai.astrology.ui.charts.DashaTransitRequest,
+    ): com.destinyai.astrology.ui.charts.TransitResponse
+
+    // Today's prediction (Home tab daily snapshot)
+    @POST("vedic/api/todays-prediction")
+    suspend fun getTodaysPrediction(
+        @Header("Authorization") authHeader: String,
+        @Body req: UserAstroDataRequest,
+    ): TodaysPredictionResponse
+
+    // Feature gating — checks if user can access a given feature within plan quota
+    @GET("subscription/can-access")
+    suspend fun canAccessFeature(
+        @Header("Authorization") authHeader: String,
+        @Query("email") email: String,
+        @Query("feature") feature: String,
+        @Query("count") count: Int? = null,
+    ): CanAccessResponse
+
+    // Richer variant returning full quota / upgrade-CTA payload — used by QuotaManager
+    @GET("subscription/can-access")
+    suspend fun canAccessFeatureFull(
+        @Header("Authorization") authHeader: String,
+        @Query("email") email: String,
+        @Query("feature") feature: String,
+        @Query("count") count: Int? = null,
+    ): FeatureAccessResponse
+
+    // Record feature usage after a successful gated action (mirrors iOS recordFeatureUsage)
+    @POST("subscription/use")
+    suspend fun useFeature(
+        @Header("Authorization") authHeader: String,
+        @Body request: UseFeatureRequest,
+    ): UseFeatureResponse
 }

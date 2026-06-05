@@ -1,7 +1,10 @@
 package com.destinyai.astrology.ui.splash
 
 import app.cash.turbine.test
+import com.destinyai.astrology.data.local.prefs.SecureStorage
 import com.destinyai.astrology.data.local.prefs.UserPreferences
+import com.destinyai.astrology.data.remote.AstroApiService
+import com.destinyai.astrology.services.AppStartupService
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
@@ -14,14 +17,20 @@ import org.junit.jupiter.api.TestInstance
 class SplashViewModelTest {
 
     private lateinit var prefs: UserPreferences
+    private lateinit var secure: SecureStorage
+    private lateinit var api: AstroApiService
+    private lateinit var appStartup: AppStartupService
     private lateinit var vm: SplashViewModel
 
     @BeforeEach
     fun setUp() {
         prefs = mockk(relaxed = true)
+        secure = mockk(relaxed = true)
+        api = mockk(relaxed = true)
+        appStartup = mockk(relaxed = true)
     }
 
-    private fun buildVm() = SplashViewModel(prefs)
+    private fun buildVm() = SplashViewModel(prefs, secure, api, appStartup)
 
     // ── Initial state ─────────────────────────────────────────────────────────
 

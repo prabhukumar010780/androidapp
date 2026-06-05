@@ -58,7 +58,9 @@ class SettingsViewModelTest {
     fun `initial state has defaults`() = runTest {
         vm.uiState.test {
             val s = awaitItem()
-            assertEquals("north_indian", s.chartStyle)
+            // Chart style key is "north" / "south" (R.string.north_indian / south_indian
+            // are localized labels for the picker — not the persisted key).
+            assertEquals("north", s.chartStyle)
             assertEquals("balanced", s.responseStyle)
             assertEquals("en", s.selectedLanguage)
             assertTrue(s.notifDailyInsight)

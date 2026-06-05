@@ -12,6 +12,7 @@ data class LocalChatThreadEntity(
     @ColumnInfo(name = "title") val title: String,
     @ColumnInfo(name = "created_at") val createdAt: String,
     @ColumnInfo(name = "updated_at") val updatedAt: String,
+    @ColumnInfo(name = "is_pinned", defaultValue = "0") val isPinned: Boolean = false,
 )
 
 @Entity(tableName = "chat_messages")
@@ -56,15 +57,42 @@ data class CompatibilityHistoryEntity(
     @ColumnInfo(name = "result_json") val resultJson: String = "",
 )
 
+/**
+ * Mirrors iOS AstroDataCache + TodaysPredictionCache (Services/AstroDataCache.swift,
+ * TodaysPredictionCache.swift). Stores serialized JSON keyed by (kind, profile_id,
+ * birth_hash, year, month) so charts/dasha/transits/today are not re-fetched on every
+ * tab switch. `kind` discriminates the four shapes; nullable year/month let chart use
+ * a forever cache, dasha use per-year, transits + today use per-year+month.
+ */
+@Entity(tableName = "astro_data_cache", primaryKeys = ["kind", "profile_id", "birth_hash", "year", "month"])
+data class AstroDataCacheEntity(
+    @ColumnInfo(name = "kind") val kind: String,
+    @ColumnInfo(name = "profile_id") val profileId: String,
+    @ColumnInfo(name = "birth_hash") val birthHash: String,
+    @ColumnInfo(name = "year") val year: Int,
+    @ColumnInfo(name = "month") val month: Int,
+    @ColumnInfo(name = "owner_email") val ownerEmail: String,
+    @ColumnInfo(name = "payload_json") val payloadJson: String,
+    @ColumnInfo(name = "saved_at_ms") val savedAtMs: Long,
+)
+
 // ── DAOs ──────────────────────────────────────────────────────────────────────
 
 @Dao
 interface ChatThreadDao {
-    @Query("SELECT * FROM chat_threads WHERE owner_email = :ownerEmail ORDER BY updated_at DESC")
+    @Query("SELECT * FROM chat_threads WHERE owner_email = :ownerEmail ORDER BY is_pinned DESC, updated_at DESC")
     suspend fun getThreadsForUser(ownerEmail: String): List<LocalChatThreadEntity>
+
+    // Paginated query mirroring iOS dataManager.fetchChatThreadsPaginated (ChatView.swift:512-644).
+    // Use offset/limit for incremental load-more from the history sheet.
+    @Query("SELECT * FROM chat_threads WHERE owner_email = :ownerEmail ORDER BY is_pinned DESC, updated_at DESC LIMIT :limit OFFSET :offset")
+    suspend fun getThreadsForUserPaginated(ownerEmail: String, limit: Int, offset: Int): List<LocalChatThreadEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(thread: LocalChatThreadEntity)
+
+    @Query("UPDATE chat_threads SET is_pinned = :pinned WHERE id = :threadId")
+    suspend fun setPin(threadId: String, pinned: Boolean)
 
     @Query("DELETE FROM chat_threads WHERE id = :threadId")
     suspend fun delete(threadId: String)
@@ -108,6 +136,22 @@ interface CompatibilityHistoryDao {
     @Query("SELECT * FROM compatibility_history WHERE owner_email = :ownerEmail ORDER BY is_pinned DESC, timestamp_ms DESC")
     fun observeAll(ownerEmail: String): Flow<List<CompatibilityHistoryEntity>>
 
+    /**
+     * Lookup a single saved match by sessionId. Mirrors iOS
+     * dataManager.fetchCompatibilityHistoryItem(by:) — used for deep-link
+     * navigation from Home/History into the Match tab.
+     */
+    @Query("SELECT * FROM compatibility_history WHERE session_id = :sessionId LIMIT 1")
+    suspend fun getById(sessionId: String): CompatibilityHistoryEntity?
+
+    /**
+     * Lookup all saved matches that share a comparisonGroupId. Mirrors iOS
+     * dataManager.fetchComparisonGroup(by:) — used for deep-link navigation
+     * into a multi-partner group on the Match tab.
+     */
+    @Query("SELECT * FROM compatibility_history WHERE comparison_group_id = :groupId ORDER BY partner_index ASC")
+    suspend fun getByGroupId(groupId: String): List<CompatibilityHistoryEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: CompatibilityHistoryEntity)
 
@@ -118,6 +162,44 @@ interface CompatibilityHistoryDao {
     suspend fun delete(sessionId: String)
 }
 
+/**
+ * Mirrors iOS AstroDataCache + TodaysPredictionCache lookup/invalidate semantics.
+ * Use kind="chart" with year=0,month=0 for the forever-cached full chart,
+ * kind="dasha" with year=YYYY,month=0, kind="transits" with year=YYYY,month=MM,
+ * kind="today" with year=YYYY,month=MM,day-encoded-into-month-key by callers.
+ */
+@Dao
+interface AstroDataCacheDao {
+    @Query(
+        "SELECT * FROM astro_data_cache WHERE kind = :kind AND profile_id = :profileId AND " +
+            "birth_hash = :birthHash AND year = :year AND month = :month LIMIT 1"
+    )
+    suspend fun get(
+        kind: String,
+        profileId: String,
+        birthHash: String,
+        year: Int,
+        month: Int,
+    ): AstroDataCacheEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(entity: AstroDataCacheEntity)
+
+    /** Invalidate all entries for a profile on profile-switch (parity with iOS). */
+    @Query("DELETE FROM astro_data_cache WHERE profile_id = :profileId")
+    suspend fun deleteForProfile(profileId: String)
+
+    /** Invalidate all entries for a user on logout. */
+    @Query("DELETE FROM astro_data_cache WHERE owner_email = :ownerEmail")
+    suspend fun deleteForUser(ownerEmail: String)
+
+    /** Drop entries where the saved birth_hash no longer matches the current profile. */
+    @Query(
+        "DELETE FROM astro_data_cache WHERE profile_id = :profileId AND birth_hash != :currentBirthHash"
+    )
+    suspend fun deleteStaleForProfile(profileId: String, currentBirthHash: String)
+}
+
 // ── Database ──────────────────────────────────────────────────────────────────
 
 @Database(
@@ -126,8 +208,9 @@ interface CompatibilityHistoryDao {
         LocalChatMessageEntity::class,
         PartnerProfileEntity::class,
         CompatibilityHistoryEntity::class,
+        AstroDataCacheEntity::class,
     ],
-    version = 2,
+    version = 4,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -135,4 +218,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun chatMessageDao(): ChatMessageDao
     abstract fun partnerDao(): PartnerDao
     abstract fun compatibilityHistoryDao(): CompatibilityHistoryDao
+    abstract fun astroDataCacheDao(): AstroDataCacheDao
 }

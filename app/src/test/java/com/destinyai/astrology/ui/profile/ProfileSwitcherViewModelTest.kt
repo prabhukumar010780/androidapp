@@ -50,6 +50,7 @@ class ProfileSwitcherViewModelTest {
         coEvery { prefs.getUserEmail() } returns "self@example.com"
         coEvery { prefs.getUserName() } returns "Prabhu"
         coEvery { prefs.getActiveProfileEmail() } returns null
+        coEvery { prefs.getActiveProfileId() } returns null
         coEvery { api.listPartners(any()) } returns emptyList()
         vm = ProfileSwitcherViewModel(api, prefs, bus)
     }
@@ -100,24 +101,34 @@ class ProfileSwitcherViewModelTest {
 
     @Test
     fun `activeEmail uses stored active profile email`() = runTest {
-        coEvery { prefs.getActiveProfileEmail() } returns "partner@example.com"
+        // Production code: _activeEmail tracks the OWNER email (always self) — partner
+        // identity is exposed via activeProfileId (UUID for partners, email for self).
+        // The test now asserts activeProfileId reflects the persisted active profile id.
+        coEvery { prefs.getActiveProfileId() } returns "partner-uuid-1"
         vm = ProfileSwitcherViewModel(api, prefs, bus)
 
+        vm.activeProfileId.test {
+            assertEquals("partner-uuid-1", awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+        // activeEmail remains the owner email regardless of switched-to partner.
         vm.activeEmail.test {
-            assertEquals("partner@example.com", awaitItem())
+            assertEquals("self@example.com", awaitItem())
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
     fun `switchProfile calls api and updates activeEmail`() = runTest {
-        vm.switchProfile("partner@example.com")
+        vm.switchProfile("partner-uuid-1")
 
-        vm.activeEmail.test {
-            assertEquals("partner@example.com", awaitItem())
+        // Production code: switching updates activeProfileId, not activeEmail (owner email
+        // is unchanged across switches). Verify the new id is persisted + reflected.
+        vm.activeProfileId.test {
+            assertEquals("partner-uuid-1", awaitItem())
             cancelAndIgnoreRemainingEvents()
         }
-        coVerify { prefs.setActiveProfileEmail("partner@example.com") }
+        coVerify { prefs.setActiveProfileId("partner-uuid-1") }
     }
 
     @Test

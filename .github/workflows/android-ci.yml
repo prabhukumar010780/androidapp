@@ -51,3 +51,49 @@ jobs:
         with:
           name: test-results
           path: app/build/reports/tests/
+
+  instrumentation-tests:
+    runs-on: macos-latest
+    # Connected/instrumentation tests run on PRs and the test branch only.
+    # Skipped on main pushes (already validated upstream) and branches that
+    # do not affect the Android module.
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/test'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Decode google-services.json
+        run: echo "$GOOGLE_SERVICES_JSON" > app/google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+
+      - name: Enable KVM
+        run: |
+          echo 'KERN.HV_SUPPORT: 1' || true
+
+      - name: Run connected (instrumentation) tests on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          script: ./gradlew connectedStagingDebugAndroidTest --no-daemon
+
+      - name: Upload instrumentation test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: instrumentation-test-results
+          path: app/build/reports/androidTests/

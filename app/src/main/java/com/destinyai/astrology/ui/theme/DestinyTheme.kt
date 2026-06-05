@@ -25,12 +25,20 @@ val GoldSoft = Color(0xFFF2D06B)
 val GoldChampagne = Color(0xFFFFF8E1)
 val GoldLight = Color(0xFFF5D060)
 val NavyDeep = Color(0xFF0B0F19)      // iOS mainBackground
+val DarkNavyContrast = Color(0xFF0D0D1A) // iOS AppTheme.Colors.darkNavyContrast (FAB icon fill)
 val NavySurface = Color(0xFF151A29)   // iOS cardBackground
 val NavyVariant = Color(0xFF1C2235)   // iOS secondaryBackground
 val NavyInput = Color(0xFF121620)     // iOS inputBackground
 val CreamText = Color(0xFFFFFFFF)     // iOS textPrimary (white)
 val CreamDim = Color(0xFFA0AEC0)      // iOS textSecondary (cool gray)
 val TextTertiary = Color(0xFF718096)  // iOS textTertiary
+
+// iOS Assets.xcassets color set parity (sRGB → hex)
+val GoldAccent = Color(0xFFD4A84B)        // iOS GoldAccent (R=0.831 G=0.659 B=0.294)
+val NavyPrimary = Color(0xFF263248)       // iOS NavyPrimary (R=0.149 G=0.196 B=0.282)
+val BackgroundLight = Color(0xFFF5F5F5)   // iOS BackgroundLight (sRGB 0.961 cream/off-white)
+val TextDark = Color(0xFF333333)          // iOS TextDark (sRGB 0.20)
+val AccentColor = Gold                    // iOS AccentColor (empty universal — uses app gold tint)
 
 val GoldGradient = Brush.linearGradient(
     colors = listOf(Color(0xFFD4AF37), Color(0xFFF5D060), Color(0xFFD4AF37)),

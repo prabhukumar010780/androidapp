@@ -2055,7 +2055,7 @@
     <string name="setup_phase_insights">आज की अंतर्दृष्टि तैयार हो रही है...</string>
     <string name="setup_phase_ready">आपकी कॉस्मिक प्रोफाइल तैयार है!</string>
     <string name="select_a_language">भाषा चुनें</string>
-    <string name="continue_in_language_format">%@ में जारी रखें</string>
+    <string name="continue_in_language_format">%1$s में जारी रखें</string>
     <string name="kuta_theme_work">कार्य अनुकूलता</string>
     <string name="kuta_theme_attraction">आकर्षण और प्रभाव</string>
     <string name="kuta_theme_destiny">भाग्य और समृद्धि</string>

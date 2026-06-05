@@ -2,7 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="com.android.vending.BILLING" />
 
     <application
         android:name=".DestinyApp"
@@ -24,6 +28,25 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!--
+              OAuth / magic-link redirect intent-filter.
+              Mirrors iOS Info.plist CFBundleURLTypes (Google Sign-In OAuth + universal-link parity).
+              Scheme is the reverse-DNS of the application ID; backend redirects to
+              destinyai-astrology://auth-callback after OAuth / email magic-link.
+              CredentialManager Google Sign-In itself does not require this — only present
+              for OAuth redirect flows and email magic-link parity with iOS.
+            -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:scheme="destinyai-astrology"
+                    android:host="auth-callback" />
+            </intent-filter>
         </activity>
 
         <service
@@ -33,6 +56,17 @@
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
+
+        <!--
+          FCM default notification channel + icon — parity with iOS APNS configuration.
+          channel id must match the channel created at runtime in DestinyApp/notifications setup.
+        -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="destiny_default" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

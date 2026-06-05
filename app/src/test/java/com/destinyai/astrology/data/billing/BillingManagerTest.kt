@@ -15,6 +15,7 @@ import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -99,14 +100,17 @@ class BillingManagerTest {
             userEmail = "test@example.com",
         )
 
+        // Production sends platform="google" (backend only accepts apple|google|stripe);
+        // environment="Sandbox" in debug, "Production" otherwise. Match against the actual
+        // wire shape rather than asserting a fully-equal request.
         coVerify {
             api.verifyPurchase(
-                VerifyRequest(
-                    signedTransaction = "tok_abc",
-                    platform = "android",
-                    userEmail = "test@example.com",
-                    productId = "com.daa.core.monthly",
-                ),
+                match { req ->
+                    req.signedTransaction == "tok_abc" &&
+                        req.userEmail == "test@example.com" &&
+                        req.productId == "com.daa.core.monthly" &&
+                        req.platform == "google"
+                },
             )
         }
     }
@@ -178,12 +182,17 @@ class BillingManagerTest {
     }
 
     @Test
-    fun `processPurchases with acknowledged purchase verifies with backend`() = runTest {
+    fun `processPurchases with acknowledged purchase verifies with backend`() = runTest(testDispatcher) {
         val purchase = mockk<Purchase>(relaxed = true)
         every { purchase.purchaseToken } returns "tok_123"
         every { purchase.purchaseState } returns Purchase.PurchaseState.PURCHASED
         every { purchase.isAcknowledged } returns true
         every { purchase.products } returns listOf("com.daa.core.monthly")
+        // BillingManager.shouldSkipForProd() drops purchases without a real Play orderId
+        // ("GPA." prefix) on release builds — productionRelease is a release variant so
+        // tests must seed a valid-looking orderId or the verify path is skipped silently.
+        every { purchase.orderId } returns "GPA.test-1234"
+        every { purchase.isAutoRenewing } returns true
 
         coEvery {
             api.verifyPurchase(any())
@@ -191,6 +200,10 @@ class BillingManagerTest {
         coEvery { prefs.getUserEmail() } returns "test@example.com"
 
         manager.processPurchases(listOf(purchase))
+        // BillingManager dispatches handlePurchase via its own internal CoroutineScope
+        // (Dispatchers.Main + SupervisorJob). With the test main dispatcher set, the
+        // launch is queued on the test scheduler and only runs when we advance it.
+        advanceUntilIdle()
 
         coVerify { api.verifyPurchase(any()) }
     }
@@ -198,25 +211,28 @@ class BillingManagerTest {
     // ── SubscriptionConflict ───────────────────────────────────────────────────
 
     @Test
-    fun `conflict is set when two active subscriptions detected`() = runTest {
-        val purchase1 = mockk<Purchase>(relaxed = true)
-        every { purchase1.purchaseToken } returns "tok_1"
-        every { purchase1.purchaseState } returns Purchase.PurchaseState.PURCHASED
-        every { purchase1.isAcknowledged } returns true
-        every { purchase1.products } returns listOf("com.daa.core.monthly")
+    fun `conflict is set when two active subscriptions detected`() = runTest(testDispatcher) {
+        // iOS parity (SubscriptionManager.swift:650-664): subscription conflict is
+        // backend-driven — surfaced exactly once per session when /verify returns
+        // success=false + error="transaction_belongs_to_different_user". The Android
+        // BillingManager filters down to the newest auto-renewing local purchase, so
+        // the trigger is the backend response, not client-side multi-active detection.
+        val purchase = mockk<Purchase>(relaxed = true)
+        every { purchase.purchaseToken } returns "tok_1"
+        every { purchase.purchaseState } returns Purchase.PurchaseState.PURCHASED
+        every { purchase.isAcknowledged } returns true
+        every { purchase.isAutoRenewing } returns true
+        every { purchase.products } returns listOf("com.daa.core.monthly")
+        every { purchase.orderId } returns "GPA.test-conflict"
 
-        val purchase2 = mockk<Purchase>(relaxed = true)
-        every { purchase2.purchaseToken } returns "tok_2"
-        every { purchase2.purchaseState } returns Purchase.PurchaseState.PURCHASED
-        every { purchase2.isAcknowledged } returns true
-        every { purchase2.products } returns listOf("com.daa.plus.monthly")
-
-        coEvery {
-            api.verifyPurchase(any())
-        } returns VerifyResponse(success = true, isPremium = true)
+        coEvery { api.verifyPurchase(any()) } returns VerifyResponse(
+            success = false,
+            error = "transaction_belongs_to_different_user",
+        )
         coEvery { prefs.getUserEmail() } returns "test@example.com"
 
-        manager.processPurchases(listOf(purchase1, purchase2))
+        manager.processPurchases(listOf(purchase))
+        advanceUntilIdle()
 
         assertNotNull(manager.subscriptionConflict.value)
     }

@@ -32,22 +32,41 @@ jobs:
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
 
-      - name: Decode google-services.json
-        run: echo "$GOOGLE_SERVICES_JSON" > app/google-services.json
+      - name: Decode google-services.json (per-flavor)
+        run: |
+          mkdir -p app/src/staging app/src/production
+          # Per-flavor Firebase project files (separate Firebase projects per env)
+          if [ -n "$GOOGLE_SERVICES_JSON_STAGING" ]; then
+            echo "$GOOGLE_SERVICES_JSON_STAGING" > app/src/staging/google-services.json
+          fi
+          if [ -n "$GOOGLE_SERVICES_JSON_PRODUCTION" ]; then
+            echo "$GOOGLE_SERVICES_JSON_PRODUCTION" > app/src/production/google-services.json
+          fi
+          # Legacy fallback: single google-services.json at app/ root for backward compat
+          # (used when per-flavor secrets are not yet configured)
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            echo "$GOOGLE_SERVICES_JSON" > app/google-services.json
+          fi
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+          GOOGLE_SERVICES_JSON_STAGING: ${{ secrets.GOOGLE_SERVICES_JSON_STAGING }}
+          GOOGLE_SERVICES_JSON_PRODUCTION: ${{ secrets.GOOGLE_SERVICES_JSON_PRODUCTION }}
 
-      - name: Set flavor and track (main=production, test=internal)
+      - name: Set flavor and track (main=production+production-track, test/feature=staging+internal-track)
         id: config
         env:
           BRANCH: ${{ github.ref_name }}
         run: |
+          # Branch → flavor + Play Console track mapping.
+          # "local" flavor is local-dev only and is never built in CI.
           if [ "$BRANCH" = "main" ]; then
+            echo "flavor=production" >> "$GITHUB_OUTPUT"
             echo "track=production" >> "$GITHUB_OUTPUT"
           else
+            # test branch and any feature/* branch → staging flavor + internal track
+            echo "flavor=staging" >> "$GITHUB_OUTPUT"
             echo "track=internal" >> "$GITHUB_OUTPUT"
           fi
-          echo "flavor=production" >> "$GITHUB_OUTPUT"
           echo "package_name=com.destinyai.astrology" >> "$GITHUB_OUTPUT"
 
       - name: Build release AAB
@@ -55,14 +74,66 @@ jobs:
           FLAVOR="${{ steps.config.outputs.flavor }}"
           # Capitalize first letter for Gradle task name (stagingRelease → bundleStagingRelease)
           FLAVOR_CAP="$(echo "${FLAVOR:0:1}" | tr '[:lower:]' '[:upper:]')${FLAVOR:1}"
-          ./gradlew "bundle${FLAVOR_CAP}Release" \
-            -PversionCode="${{ github.run_number }}" \
-            --no-daemon
+          # Pass ONLY the API key matching the flavor being built — never both at once.
+          # GOOGLE_SERVER_CLIENT_ID is always passed.
+          if [ "$FLAVOR" = "production" ]; then
+            ./gradlew "bundle${FLAVOR_CAP}Release" \
+              -PversionCode="${{ github.run_number }}" \
+              -PAPI_KEY_PRODUCTION="${{ secrets.DESTINY_API_KEY_PRODUCTION }}" \
+              -PGOOGLE_SERVER_CLIENT_ID="${{ secrets.GOOGLE_SERVER_CLIENT_ID }}" \
+              --no-daemon
+          else
+            ./gradlew "bundle${FLAVOR_CAP}Release" \
+              -PversionCode="${{ github.run_number }}" \
+              -PAPI_KEY_STAGING="${{ secrets.DESTINY_API_KEY_STAGING }}" \
+              -PGOOGLE_SERVER_CLIENT_ID="${{ secrets.GOOGLE_SERVER_CLIENT_ID }}" \
+              --no-daemon
+          fi
         env:
           ANDROID_KEYSTORE_PATH: /tmp/destiny-release.keystore
           ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          # Legacy single-key fallback retained while DESTINY_API_KEY_* secrets roll out.
+          DESTINY_API_KEY: ${{ secrets.DESTINY_API_KEY }}
+
+      - name: Verify staging AAB does not contain production key
+        if: steps.config.outputs.flavor == 'staging'
+        run: |
+          AAB="$(ls app/build/outputs/bundle/stagingRelease/*.aab | head -n1)"
+          if [ -z "$AAB" ]; then
+            echo "No staging AAB found — skipping leak check"
+            exit 0
+          fi
+          PROD_KEY="${{ secrets.DESTINY_API_KEY_PRODUCTION }}"
+          if [ -z "$PROD_KEY" ]; then
+            echo "DESTINY_API_KEY_PRODUCTION secret not set — skipping leak check"
+            exit 0
+          fi
+          if unzip -p "$AAB" 2>/dev/null | strings | grep -F "$PROD_KEY" >/dev/null; then
+            echo "ERROR: production API key string found inside staging AAB — flavors are leaking"
+            exit 1
+          fi
+          echo "OK: staging AAB does not contain production key"
+
+      - name: Verify production AAB does not contain staging key
+        if: steps.config.outputs.flavor == 'production'
+        run: |
+          AAB="$(ls app/build/outputs/bundle/productionRelease/*.aab | head -n1)"
+          if [ -z "$AAB" ]; then
+            echo "No production AAB found — skipping leak check"
+            exit 0
+          fi
+          STAGING_KEY="${{ secrets.DESTINY_API_KEY_STAGING }}"
+          if [ -z "$STAGING_KEY" ]; then
+            echo "DESTINY_API_KEY_STAGING secret not set — skipping leak check"
+            exit 0
+          fi
+          if unzip -p "$AAB" 2>/dev/null | strings | grep -F "$STAGING_KEY" >/dev/null; then
+            echo "ERROR: staging API key string found inside production AAB — flavors are leaking"
+            exit 1
+          fi
+          echo "OK: production AAB does not contain staging key"
 
       - name: Authenticate to Google Cloud (WIF)
         uses: google-github-actions/auth@v2

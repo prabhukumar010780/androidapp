@@ -40,9 +40,23 @@ class AstrologySettingsViewModel @Inject constructor(
         }
     }
 
-    fun setAyanamsa(value: String) = _uiState.update { it.copy(ayanamsa = value, isSaved = false) }
-    fun setHouseSystem(value: String) = _uiState.update { it.copy(houseSystem = value, isSaved = false) }
-    fun setChartStyle(value: String) = _uiState.update { it.copy(chartStyle = value, isSaved = false) }
+    // iOS parity: AstrologySettingsSheet.swift uses @AppStorage which persists on every tap.
+    // Android mirrors this by writing to DataStore inside each setter so users never lose
+    // changes when they back out without pressing Save.
+    fun setAyanamsa(value: String) {
+        _uiState.update { it.copy(ayanamsa = value, isSaved = false) }
+        viewModelScope.launch { prefs.saveAyanamsa(value) }
+    }
+
+    fun setHouseSystem(value: String) {
+        _uiState.update { it.copy(houseSystem = value, isSaved = false) }
+        viewModelScope.launch { prefs.saveHouseSystem(value) }
+    }
+
+    fun setChartStyle(value: String) {
+        _uiState.update { it.copy(chartStyle = value, isSaved = false) }
+        viewModelScope.launch { prefs.setChartStyle(value) }
+    }
 
     fun save() {
         viewModelScope.launch {

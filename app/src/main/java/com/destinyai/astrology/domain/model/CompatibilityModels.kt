@@ -64,6 +64,12 @@ data class CompatibilityResult(
     val girlCity: String?,
     val boyYogaDoshaData: YogaDoshaData? = null,
     val girlYogaDoshaData: YogaDoshaData? = null,
+    // iOS parity (CompatibilityView.swift:148-161): D1 chart data + ascendant
+    // for ChartComparisonSheet on the result screen.
+    val boyChartData: com.destinyai.astrology.ui.charts.ChartData? = null,
+    val girlChartData: com.destinyai.astrology.ui.charts.ChartData? = null,
+    val boyAscendant: String? = null,
+    val girlAscendant: String? = null,
 ) {
     val scorePercentage: Double get() = if (maxScore > 0) totalScore.toDouble() / maxScore else 0.0
     val adjustedPercentage: Double get() = if (maxScore > 0 && adjustedScore != null) adjustedScore.toDouble() / maxScore else scorePercentage
@@ -233,6 +239,10 @@ data class PartnerData(
     val city: String = "",
     val latitude: Double = 0.0,
     val longitude: Double = 0.0,
+    // iOS parity (PartnerData.swift) — when partner was loaded from a saved
+    // birth chart, retain the source partner profile id so the picker can
+    // exclude already-selected partners.
+    val savedProfileId: String? = null,
 ) {
     val isComplete: Boolean get() = name.isNotBlank() && city.isNotBlank()
 }

@@ -2075,7 +2075,7 @@ Bitte teilen Sie tiefere Einblicke, wie dieser Transit mein Leben beeinflusst, u
     <string name="setup_phase_insights">Die heutigen Einblicke werden generiert...</string>
     <string name="setup_phase_ready">Dein kosmisches Profil ist fertig!</string>
     <string name="select_a_language">Sprache auswählen</string>
-    <string name="continue_in_language_format">Weiter auf %@</string>
+    <string name="continue_in_language_format">Weiter auf %1$s</string>
     <string name="kuta_theme_work">Arbeitskompatibilität</string>
     <string name="kuta_theme_attraction">Anziehung und Einfluss</string>
     <string name="kuta_theme_destiny">Schicksal und Glück</string>

@@ -9,6 +9,7 @@ import com.destinyai.astrology.data.remote.BirthProfileDto
 import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.repository.impl.ChatRepositoryImpl
 import com.destinyai.astrology.domain.model.ChatMessage
+import com.destinyai.astrology.ui.chat.UpgradeRequiredException
 import io.mockk.*
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.TestInstance
 class ChatRepositoryImplTest {
 
     private lateinit var api: AstroApiService
+    private lateinit var streamingApi: AstroApiService
     private lateinit var threadDao: ChatThreadDao
     private lateinit var messageDao: ChatMessageDao
     private lateinit var prefs: UserPreferences
@@ -31,10 +33,11 @@ class ChatRepositoryImplTest {
     @BeforeEach
     fun setUp() {
         api = mockk(relaxed = true)
+        streamingApi = mockk(relaxed = true)
         threadDao = mockk(relaxed = true)
         messageDao = mockk(relaxed = true)
         prefs = mockk(relaxed = true)
-        repo = ChatRepositoryImpl(api, threadDao, messageDao, prefs)
+        repo = ChatRepositoryImpl(api, streamingApi, threadDao, messageDao, prefs)
     }
 
     // ── loadHistory ───────────────────────────────────────────────────────────
@@ -97,7 +100,7 @@ class ChatRepositoryImplTest {
             latitude = 21.21,
             longitude = 81.39,
         )
-        coEvery { api.streamPredict(any()) } returns
+        coEvery { streamingApi.streamPredict(any()) } returns
             "event: answer\ndata: {\"answer\":\"Hello World\"}\n\nevent: done\ndata: {}\n\n"
                 .toByteArray()
                 .toResponseBody("text/event-stream".toMediaType())
@@ -111,10 +114,41 @@ class ChatRepositoryImplTest {
     fun `sendMessage emits failure on network error`() = runTest {
         coEvery { prefs.getUserEmail() } returns "u@x.com"
         coEvery { prefs.getBirthProfile() } returns mockk(relaxed = true)
-        coEvery { api.streamPredict(any()) } throws RuntimeException("network error")
+        coEvery { streamingApi.streamPredict(any()) } throws RuntimeException("network error")
 
         val results = repo.sendMessage("session-x", "test").toList()
         assertTrue(results.any { it.isFailure })
+    }
+
+    @Test
+    fun `sendMessage maps SSE quota_exceeded code with user_not_found reason to UpgradeRequiredException`() = runTest {
+        // Regression: backend ships `code: "quota_exceeded"` alongside an unrecognized
+        // `reason: "user_not_found"`. Either signal must route to UpgradeRequiredException
+        // so the VM shows the QuotaExhaustedAccountSheet (or guest paywall) — NOT a tiny
+        // banner with the raw server text.
+        coEvery { prefs.getUserEmail() } returns "u@x.com"
+        coEvery { prefs.getBirthProfile() } returns BirthProfileDto(
+            dateOfBirth = "1980-07-01",
+            timeOfBirth = "06:32",
+            cityOfBirth = "Bhilai",
+            latitude = 21.21,
+            longitude = 81.39,
+        )
+        coEvery { streamingApi.streamPredict(any()) } returns
+            ("event: error\n" +
+                "data: {\"code\":\"quota_exceeded\",\"reason\":\"user_not_found\"," +
+                "\"message\":\"Account not found\"}\n\n")
+                .toByteArray()
+                .toResponseBody("text/event-stream".toMediaType())
+
+        val results = repo.sendMessage("session-q", "test quota").toList()
+        val failures = results.filter { it.isFailure }
+        assertTrue(failures.isNotEmpty(), "expected at least one Result.failure")
+        val ex = failures.first().exceptionOrNull()
+        assertTrue(
+            ex is UpgradeRequiredException,
+            "expected UpgradeRequiredException, got ${ex?.javaClass?.simpleName}: ${ex?.message}",
+        )
     }
 
     // ── deleteThread ──────────────────────────────────────────────────────────

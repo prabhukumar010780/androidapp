@@ -42,6 +42,7 @@ fun ShimmerButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    destructive: Boolean = false,
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
 
@@ -56,16 +57,21 @@ fun ShimmerButton(
         label = "shimmerProgress",
     )
 
+    // Palette: gold by default, red for destructive actions (sign out, delete)
+    val baseColor = if (destructive) Color(0xFFB23535) else Gold
+    val softColor = if (destructive) Color(0xFFD64545) else GoldSoft
+    val lightColor = if (destructive) Color(0xFFFF7373) else GoldLight
+
     // Build a brush that places the bright highlight at `shimmerProgress`
     // along the horizontal axis. The highlight band is ~20% of total width.
     val shimmerBrush = Brush.linearGradient(
         colorStops = arrayOf(
-            0.00f to Gold,
-            (shimmerProgress - 0.10f).coerceIn(0f, 1f) to Gold,
-            shimmerProgress.coerceIn(0f, 1f) to GoldSoft,
-            (shimmerProgress + 0.10f).coerceIn(0f, 1f) to GoldLight,
-            (shimmerProgress + 0.20f).coerceIn(0f, 1f) to GoldSoft,
-            1.00f to Gold,
+            0.00f to baseColor,
+            (shimmerProgress - 0.10f).coerceIn(0f, 1f) to baseColor,
+            shimmerProgress.coerceIn(0f, 1f) to softColor,
+            (shimmerProgress + 0.10f).coerceIn(0f, 1f) to lightColor,
+            (shimmerProgress + 0.20f).coerceIn(0f, 1f) to softColor,
+            1.00f to baseColor,
         ),
         start = Offset(0f, 0f),
         end = Offset(900f, 0f),
@@ -76,14 +82,14 @@ fun ShimmerButton(
             .fillMaxWidth()
             .height(AuthDimens.buttonHeight)
             .clip(RoundedCornerShape(AuthDimens.buttonCornerRadius))
-            .background(if (enabled) shimmerBrush else Brush.horizontalGradient(listOf(Gold.copy(alpha = 0.4f), Gold.copy(alpha = 0.4f))))
+            .background(if (enabled) shimmerBrush else Brush.horizontalGradient(listOf(baseColor.copy(alpha = 0.4f), baseColor.copy(alpha = 0.4f))))
             .clickable(enabled = enabled, onClick = onClick)
             .alpha(if (enabled) 1f else 0.5f),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = text,
-            color = NavyDeep,
+            color = if (destructive) Color.White else NavyDeep,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 0.5.sp,

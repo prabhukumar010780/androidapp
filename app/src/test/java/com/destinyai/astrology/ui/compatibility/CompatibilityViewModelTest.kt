@@ -61,6 +61,7 @@ class CompatibilityViewModelTest {
     private lateinit var prefs: UserPreferences
     private lateinit var compatibilityRepo: CompatibilityRepository
     private lateinit var historyDao: CompatibilityHistoryDao
+    private lateinit var chatRepository: com.destinyai.astrology.data.repository.ChatRepository
     private lateinit var vm: CompatibilityViewModel
 
     @BeforeAll
@@ -79,13 +80,18 @@ class CompatibilityViewModelTest {
         prefs = mockk(relaxed = true)
         compatibilityRepo = mockk(relaxed = true)
         historyDao = mockk(relaxed = true)
+        chatRepository = mockk(relaxed = true)
         coEvery { prefs.getUserEmail() } returns "u@x.com"
         coEvery { prefs.getUserName() } returns "Prabhu"
         coEvery { prefs.getBirthProfile() } returns fakeBirthProfile()
         every { prefs.isHistoryEnabledFlow } returns flowOf(true)
         every { compatibilityRepo.streamAnalysis(any()) } returns flowOf(SseEvent.FinalJson(FAKE_FINAL_JSON))
         every { historyDao.observeAll(any()) } returns flowOf(emptyList())
-        vm = CompatibilityViewModel(api, prefs, compatibilityRepo, historyDao)
+        // Stub the quota check inside analyze() — relaxed mocks return allowed=false which
+        // routes analyze() into the paywall branch and short-circuits the SSE consumer.
+        coEvery { api.canAccessFeature(any(), any(), any(), any()) } returns
+            com.destinyai.astrology.data.remote.CanAccessResponse(allowed = true)
+        vm = CompatibilityViewModel(api, prefs, compatibilityRepo, historyDao, chatRepository)
     }
 
     @Test
@@ -243,6 +249,7 @@ class CompatibilityViewModelTest {
 
     @Test
     fun `addPartner appends new partner and makes it active`() {
+        vm.setPlus(true)
         vm.addPartner()
         assertEquals(2, vm.partners.value.size)
         assertEquals(1, vm.activePartnerIndex.value)
@@ -250,6 +257,7 @@ class CompatibilityViewModelTest {
 
     @Test
     fun `addPartner respects max 3 partners`() {
+        vm.setPlus(true)
         vm.addPartner()
         vm.addPartner()
         vm.addPartner() // 4th attempt should be silently ignored
@@ -258,6 +266,7 @@ class CompatibilityViewModelTest {
 
     @Test
     fun `removePartner removes partner at index and adjusts active`() {
+        vm.setPlus(true)
         vm.addPartner() // now 2 partners
         vm.removePartner(0)
         assertEquals(1, vm.partners.value.size)
@@ -272,6 +281,7 @@ class CompatibilityViewModelTest {
 
     @Test
     fun `selectPartner changes activePartnerIndex`() {
+        vm.setPlus(true)
         vm.addPartner()
         vm.selectPartner(0)
         assertEquals(0, vm.activePartnerIndex.value)
@@ -448,6 +458,7 @@ class CompatibilityViewModelTest {
 
     @Test
     fun `addPartner blocks at 3`() {
+        vm.setPlus(true)
         vm.addPartner()
         vm.addPartner()
         vm.addPartner() // 4th attempt — must be ignored

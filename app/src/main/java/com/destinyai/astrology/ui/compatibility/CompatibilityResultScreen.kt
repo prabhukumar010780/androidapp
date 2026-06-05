@@ -24,6 +24,11 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -39,9 +44,11 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.buildAnnotatedString
@@ -78,6 +85,7 @@ fun CompatibilityResultScreen(
     onNewAnalysis: () -> Unit,
     isFromComparison: Boolean = false,
     onCharts: (() -> Unit)? = null,
+    onOpenSettings: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     var showFullReport by remember { mutableStateOf(false) }
@@ -327,9 +335,24 @@ fun CompatibilityResultScreen(
     }
 
     if (showHistorySheet) {
+        val historyVm: CompatibilityViewModel = androidx.hilt.navigation.compose.hiltViewModel()
         CompatibilityHistoryScreen(
-            viewModel = androidx.hilt.navigation.compose.hiltViewModel(),
+            viewModel = historyVm,
             onBack = { showHistorySheet = false },
+            onItemSelect = { item ->
+                historyVm.loadFromHistory(item)
+                showHistorySheet = false
+            },
+            onGroupSelect = { group ->
+                historyVm.loadFromGroup(group)
+                showHistorySheet = false
+            },
+            onOpenSettings = onOpenSettings?.let {
+                {
+                    showHistorySheet = false
+                    it()
+                }
+            },
         )
     }
 
@@ -758,6 +781,10 @@ fun AskDestinyDialog(
     val scope = rememberCoroutineScope()
     var scrollJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
+    // iOS parity (CompatibilityResultSheets.swift:1261-1269): response-length selector
+    var showStyleSelector by remember { mutableStateOf(false) }
+    val responseLength by viewModel.responseLength.collectAsState(initial = "standard")
+
     val cosmicMessages = remember {
         listOf(
             "✦ Reading the stars…",
@@ -887,7 +914,23 @@ fun AskDestinyDialog(
                     }
                 } else {
                     items(vmMessages) { msg ->
-                        AskChatBubble(isUser = msg.isUser, text = msg.text)
+                        // For AI replies, find the most recent user message above this one to pair as the "query".
+                        val lastQuery = if (!msg.isUser) {
+                            val idx = vmMessages.indexOf(msg)
+                            vmMessages.subList(0, idx).lastOrNull { it.isUser }?.text.orEmpty()
+                        } else ""
+                        AskChatBubble(
+                            isUser = msg.isUser,
+                            text = msg.text,
+                            queryForRating = lastQuery,
+                            onRate = { rating ->
+                                viewModel.submitCompatRating(
+                                    query = lastQuery,
+                                    responseText = msg.text,
+                                    rating = rating,
+                                )
+                            },
+                        )
                     }
                     if (isLoading) {
                         item {
@@ -944,6 +987,20 @@ fun AskDestinyDialog(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                // iOS parity (CompatibilityResultSheets.swift:1261-1269): leading style/length selector.
+                IconButton(
+                    onClick = { showStyleSelector = true },
+                    enabled = !isLoading,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .semantics { contentDescription = "compat_response_length_button" },
+                ) {
+                    Icon(
+                        Icons.Filled.Tune,
+                        contentDescription = "Response length",
+                        tint = if (isLoading) CreamDim.copy(alpha = 0.4f) else Gold,
+                    )
+                }
                 OutlinedTextField(
                     value = inputText,
                     onValueChange = { inputText = it },
@@ -982,44 +1039,205 @@ fun AskDestinyDialog(
             }
         }
     }
+
+    // iOS parity (CompatibilityResultSheets.swift:1261-1269): ResponseLengthSheet bottom sheet.
+    if (showStyleSelector) {
+        CompatResponseLengthSheet(
+            current = responseLength,
+            onSelect = {
+                viewModel.setResponseLength(it)
+                showStyleSelector = false
+            },
+            onDismiss = { showStyleSelector = false },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CompatResponseLengthSheet(
+    current: String,
+    onSelect: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = NavySurface,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp)
+                .semantics { contentDescription = "compat_response_length_sheet" },
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                "Response Style",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Gold,
+            )
+            CompatLengthOption(
+                title = "Concise",
+                desc = "Short, focused answers",
+                value = "short",
+                isSelected = current == "short",
+                onSelect = onSelect,
+            )
+            CompatLengthOption(
+                title = "Detailed",
+                desc = "Longer, more thorough answers",
+                value = "detailed",
+                isSelected = current == "detailed" || current == "standard",
+                onSelect = onSelect,
+            )
+            Spacer(Modifier.height(16.dp))
+        }
+    }
 }
 
 @Composable
-private fun AskChatBubble(isUser: Boolean, text: String) {
-    Box(
+private fun CompatLengthOption(
+    title: String,
+    desc: String,
+    value: String,
+    isSelected: Boolean,
+    onSelect: (String) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (isSelected) Gold.copy(alpha = 0.12f) else Color.Transparent)
+            .border(
+                width = 1.dp,
+                color = if (isSelected) Gold.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.08f),
+                shape = RoundedCornerShape(12.dp),
+            )
+            .clickable { onSelect(value) }
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, fontSize = 15.sp, color = CreamText, fontWeight = FontWeight.Medium)
+            Text(desc, fontSize = 12.sp, color = CreamDim)
+        }
+        if (isSelected) {
+            Icon(Icons.Filled.Check, contentDescription = null, tint = Gold, modifier = Modifier.size(18.dp))
+        }
+    }
+}
+
+@Composable
+private fun AskChatBubble(
+    isUser: Boolean,
+    text: String,
+    queryForRating: String = "",
+    onRate: (Int) -> Unit = {},
+) {
+    val clipboard = LocalClipboardManager.current
+    var copied by remember(text) { mutableStateOf(false) }
+    var ratedStars by remember(text) { mutableIntStateOf(0) }
+    val showCopy = !isUser && text.length > 50
+    val showRating = !isUser && text.length > 50
+
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        contentAlignment = if (isUser) Alignment.CenterEnd else Alignment.CenterStart,
+        horizontalAlignment = if (isUser) Alignment.End else Alignment.Start,
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxWidth(0.85f)
-                .clip(
-                    RoundedCornerShape(
-                        topStart = 14.dp,
-                        topEnd = 14.dp,
-                        bottomStart = if (isUser) 14.dp else 4.dp,
-                        bottomEnd = if (isUser) 4.dp else 14.dp,
-                    )
-                )
-                .background(if (isUser) Gold.copy(alpha = 0.15f) else NavyVariant)
-                .border(
-                    1.dp,
-                    if (isUser) Gold.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.06f),
-                    RoundedCornerShape(
-                        topStart = 14.dp,
-                        topEnd = 14.dp,
-                        bottomStart = if (isUser) 14.dp else 4.dp,
-                        bottomEnd = if (isUser) 4.dp else 14.dp,
-                    )
-                )
-                .padding(12.dp),
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = if (isUser) Alignment.CenterEnd else Alignment.CenterStart,
         ) {
-            Text(
-                text = text,
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (isUser) Gold else CreamText,
-                lineHeight = 20.sp,
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.85f)
+                    .clip(
+                        RoundedCornerShape(
+                            topStart = 14.dp,
+                            topEnd = 14.dp,
+                            bottomStart = if (isUser) 14.dp else 4.dp,
+                            bottomEnd = if (isUser) 4.dp else 14.dp,
+                        )
+                    )
+                    .background(if (isUser) Gold.copy(alpha = 0.15f) else NavyVariant)
+                    .border(
+                        1.dp,
+                        if (isUser) Gold.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.06f),
+                        RoundedCornerShape(
+                            topStart = 14.dp,
+                            topEnd = 14.dp,
+                            bottomStart = if (isUser) 14.dp else 4.dp,
+                            bottomEnd = if (isUser) 4.dp else 14.dp,
+                        )
+                    )
+                    .padding(12.dp),
+            ) {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (isUser) Gold else CreamText,
+                    lineHeight = 20.sp,
+                )
+            }
+        }
+
+        // iOS parity (CompatibilityResultSheets.swift:1782-1799 + 1801-1803):
+        // metadata row with copy button + 5-star inline rating below long AI replies.
+        if (showCopy || showRating) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth(0.85f)
+                    .padding(top = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                if (showCopy) {
+                    IconButton(
+                        onClick = {
+                            clipboard.setText(AnnotatedString(text))
+                            copied = true
+                        },
+                        modifier = Modifier
+                            .size(28.dp)
+                            .semantics { contentDescription = "compat_copy_button" },
+                    ) {
+                        Icon(
+                            imageVector = if (copied) Icons.Filled.Check else Icons.Filled.ContentCopy,
+                            contentDescription = if (copied) "Copied" else "Copy",
+                            tint = if (copied) Gold else CreamDim,
+                            modifier = Modifier.size(14.dp),
+                        )
+                    }
+                }
+                if (showRating) {
+                    Spacer(Modifier.weight(1f))
+                    Row(
+                        modifier = Modifier.semantics { contentDescription = "compat_inline_rating" },
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        for (star in 1..5) {
+                            IconButton(
+                                onClick = {
+                                    if (ratedStars == 0) {
+                                        ratedStars = star
+                                        onRate(star)
+                                    }
+                                },
+                                enabled = ratedStars == 0,
+                                modifier = Modifier.size(24.dp),
+                            ) {
+                                Icon(
+                                    imageVector = if (star <= ratedStars) Icons.Filled.Star else Icons.Filled.StarBorder,
+                                    contentDescription = "$star star",
+                                    tint = if (star <= ratedStars) Gold else CreamDim.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(14.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

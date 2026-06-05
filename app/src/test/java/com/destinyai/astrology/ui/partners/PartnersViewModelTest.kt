@@ -1,9 +1,12 @@
 package com.destinyai.astrology.ui.partners
 
 import app.cash.turbine.test
+import com.destinyai.astrology.data.local.db.PartnerDao
 import com.destinyai.astrology.data.local.prefs.UserPreferences
+import com.destinyai.astrology.data.location.LocationSearchService
 import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.remote.PartnerDto
+import com.destinyai.astrology.services.QuotaManager
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -27,6 +30,9 @@ class PartnersViewModelTest {
     private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var api: AstroApiService
     private lateinit var prefs: UserPreferences
+    private lateinit var quotaManager: QuotaManager
+    private lateinit var locationSearchService: LocationSearchService
+    private lateinit var partnerDao: PartnerDao
     private lateinit var vm: PartnersViewModel
 
     @BeforeAll
@@ -43,8 +49,11 @@ class PartnersViewModelTest {
     fun setUp() {
         api = mockk(relaxed = true)
         prefs = mockk(relaxed = true)
+        quotaManager = mockk(relaxed = true)
+        locationSearchService = mockk(relaxed = true)
+        partnerDao = mockk(relaxed = true)
         coEvery { prefs.getUserEmail() } returns "u@x.com"
-        vm = PartnersViewModel(api, prefs)
+        vm = PartnersViewModel(api, prefs, quotaManager, locationSearchService, partnerDao)
     }
 
     @Test
@@ -177,6 +186,7 @@ class PartnersViewModelTest {
 
     private fun setValidForm() {
         vm.setFormName("Priya")
+        vm.setFormGender("female")
         vm.setFormDob("1985-03-15")
         vm.setFormTime("08:00")
         vm.setFormLocation("Mumbai", 19.076, 72.877)

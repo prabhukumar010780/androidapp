@@ -2075,7 +2075,7 @@
     <string name="setup_phase_insights">నేటి అంతర్దృష్టులను రూపొందిస్తున్నాం...</string>
     <string name="setup_phase_ready">మీ కాస్మిక్ ప్రొఫైల్ సిద్ధంగా ఉంది!</string>
     <string name="select_a_language">భాష ఎంచుకోండి</string>
-    <string name="continue_in_language_format">%@లో కొనసాగండి</string>
+    <string name="continue_in_language_format">%1$sలో కొనసాగండి</string>
     <string name="kuta_theme_work">పని అనుకూలత</string>
     <string name="kuta_theme_attraction">ఆకర్షణ మరియు ప్రభావం</string>
     <string name="kuta_theme_destiny">నియతి మరియు అదృష్టం</string>

@@ -1,13 +1,18 @@
 package com.destinyai.astrology.ui.auth
 
 import app.cash.turbine.test
+import android.content.Context
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.repository.AuthRepository
 import com.destinyai.astrology.domain.model.User
+import com.destinyai.astrology.services.AppStartupService
 import com.destinyai.astrology.services.HapticManager
+import com.destinyai.astrology.services.SoundManager
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.*
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.*
@@ -24,6 +29,9 @@ class AuthViewModelTest {
     private lateinit var repository: AuthRepository
     private lateinit var haptic: HapticManager
     private lateinit var prefs: UserPreferences
+    private lateinit var appStartup: AppStartupService
+    private lateinit var soundManager: SoundManager
+    private lateinit var context: Context
     private lateinit var viewModel: AuthViewModel
 
     @BeforeAll
@@ -41,8 +49,17 @@ class AuthViewModelTest {
         repository = mockk(relaxed = true)
         haptic = mockk(relaxed = true)
         prefs = mockk(relaxed = true)
+        appStartup = mockk(relaxed = true)
+        soundManager = mockk(relaxed = true)
+        context = mockk(relaxed = true)
         coEvery { prefs.isSoundEnabled() } returns true
-        viewModel = AuthViewModel(repository, haptic, prefs)
+        // Stub the flows that AuthViewModel.init() collects/reads — relaxed mocks return
+        // Nothing for Flow/StateFlow getters, which crashes the init coroutines before
+        // any test can run (kotlinx.coroutines.test.UncaughtExceptionsBeforeTest).
+        every { prefs.isSoundEnabledFlow() } returns flowOf(true)
+        every { appStartup.allowGuest } returns MutableStateFlow(true)
+        every { appStartup.gateMode } returns MutableStateFlow("off")
+        viewModel = AuthViewModel(repository, haptic, prefs, appStartup, soundManager, context)
     }
 
     // --- Session state ---
@@ -52,7 +69,7 @@ class AuthViewModelTest {
         val savedUser = User(email = "test@example.com", isGuestEmail = false)
         coEvery { repository.getSavedUser() } returns savedUser
 
-        val vm = AuthViewModel(repository, haptic, prefs)
+        val vm = AuthViewModel(repository, haptic, prefs, appStartup, soundManager, context)
 
         vm.uiState.test {
             val state = awaitItem()
@@ -64,7 +81,7 @@ class AuthViewModelTest {
     fun `unauthenticated state shown when no saved session`() = runTest {
         coEvery { repository.getSavedUser() } returns null
 
-        val vm = AuthViewModel(repository, haptic, prefs)
+        val vm = AuthViewModel(repository, haptic, prefs, appStartup, soundManager, context)
 
         vm.uiState.test {
             val state = awaitItem()
@@ -78,11 +95,18 @@ class AuthViewModelTest {
     @Test
     fun `signInWithGoogle calls repository and updates state on success`() = runTest {
         val user = User(email = "google@example.com", isGuestEmail = false, googleId = "gid_abc")
-        coEvery { repository.signInWithGoogle("valid-id-token") } returns Result.success(user)
+        coEvery { repository.signInWithGoogle(any(), any(), any(), any()) } returns Result.success(user)
 
-        viewModel.signInWithGoogle("valid-id-token")
+        viewModel.signInWithGoogle(
+            email = "google@example.com",
+            googleId = "gid_abc",
+            name = "G User",
+            idToken = "valid-id-token",
+        )
 
-        coVerify(exactly = 1) { repository.signInWithGoogle("valid-id-token") }
+        coVerify(exactly = 1) {
+            repository.signInWithGoogle("google@example.com", "gid_abc", "G User", "valid-id-token")
+        }
         viewModel.uiState.test {
             val state = awaitItem()
             assertTrue(state.isAuthenticated)
@@ -94,9 +118,14 @@ class AuthViewModelTest {
     @Test
     fun `google sign-in success sets authenticated state`() = runTest {
         val user = User(email = "prabhu@gmail.com", isGuestEmail = false, googleId = "gid123")
-        coEvery { repository.signInWithGoogle(any()) } returns Result.success(user)
+        coEvery { repository.signInWithGoogle(any(), any(), any(), any()) } returns Result.success(user)
 
-        viewModel.signInWithGoogle("google-id-token")
+        viewModel.signInWithGoogle(
+            email = "prabhu@gmail.com",
+            googleId = "gid123",
+            name = null,
+            idToken = "google-id-token",
+        )
 
         viewModel.uiState.test {
             val state = awaitItem()
@@ -107,9 +136,14 @@ class AuthViewModelTest {
 
     @Test
     fun `google sign-in failure sets error state`() = runTest {
-        coEvery { repository.signInWithGoogle(any()) } returns Result.failure(Exception("Network error"))
+        coEvery { repository.signInWithGoogle(any(), any(), any(), any()) } returns Result.failure(Exception("Network error"))
 
-        viewModel.signInWithGoogle("bad-token")
+        viewModel.signInWithGoogle(
+            email = "x@y.z",
+            googleId = "g-1",
+            name = null,
+            idToken = "bad-token",
+        )
 
         viewModel.uiState.test {
             val state = awaitItem()
@@ -196,7 +230,7 @@ class AuthViewModelTest {
     fun `403 account_deleted on any call forces logout`() = runTest {
         coEvery { repository.getSavedUser() } throws AccountDeletedException()
 
-        val vm = AuthViewModel(repository, haptic, prefs)
+        val vm = AuthViewModel(repository, haptic, prefs, appStartup, soundManager, context)
 
         vm.uiState.test {
             val state = awaitItem()
@@ -209,9 +243,14 @@ class AuthViewModelTest {
     @Test
     fun `signInWithGoogle calls haptic success on success`() = runTest {
         val user = User(email = "haptic@test.com", isGuestEmail = false)
-        coEvery { repository.signInWithGoogle(any()) } returns Result.success(user)
+        coEvery { repository.signInWithGoogle(any(), any(), any(), any()) } returns Result.success(user)
 
-        viewModel.signInWithGoogle("test-token")
+        viewModel.signInWithGoogle(
+            email = "haptic@test.com",
+            googleId = "gid-h",
+            name = null,
+            idToken = "test-token",
+        )
 
         verify(exactly = 1) { haptic.success() }
     }

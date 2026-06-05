@@ -35,7 +35,13 @@ class BirthDataScreenTest {
         coEvery { prefs.getUserEmail() } returns "test@example.com"
         coEvery { prefs.isGuestUser() } returns false
         coEvery { prefs.getBirthProfile() } returns null
-        val viewModel = BirthDataViewModel(api, prefs).also(block)
+        val viewModel = BirthDataViewModel(
+            api,
+            prefs,
+            mockk(relaxed = true), // LocationSearchService
+            mockk(relaxed = true), // SoundManager
+            mockk(relaxed = true), // ApplicationContext
+        ).also(block)
         composeTestRule.setContent {
             DestinyTheme {
                 BirthDataScreen(

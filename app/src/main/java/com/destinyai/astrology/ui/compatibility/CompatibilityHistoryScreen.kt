@@ -22,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
@@ -30,6 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.destinyai.astrology.R
 import com.destinyai.astrology.domain.model.CompatibilityHistoryItem
 import com.destinyai.astrology.domain.model.ComparisonGroup
 import com.destinyai.astrology.ui.theme.CosmicBackground
@@ -90,8 +92,8 @@ fun CompatibilityHistoryScreen(
             if (pendingDeleteId != null) {
                 AlertDialog(
                     onDismissRequest = { pendingDeleteId = null },
-                    title = { Text("Delete Match?") },
-                    text = { Text("This will permanently remove this compatibility result from your history.") },
+                    title = { Text(stringResource(R.string.compat_history_delete_match_title)) },
+                    text = { Text(stringResource(R.string.compat_history_delete_match_message)) },
                     confirmButton = {
                         TextButton(
                             onClick = {
@@ -99,12 +101,12 @@ fun CompatibilityHistoryScreen(
                                 pendingDeleteId = null
                             },
                         ) {
-                            Text("Delete", color = Color(0xFFFC8181))
+                            Text(stringResource(R.string.delete_action), color = Color(0xFFFC8181))
                         }
                     },
                     dismissButton = {
                         TextButton(onClick = { pendingDeleteId = null }) {
-                            Text("Cancel")
+                            Text(stringResource(R.string.cancel))
                         }
                     },
                 )
@@ -117,10 +119,10 @@ fun CompatibilityHistoryScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = CreamText)
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back), tint = CreamText)
                 }
                 Text(
-                    text = "Match History",
+                    text = stringResource(R.string.match_history_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = CreamText,
@@ -156,14 +158,14 @@ fun CompatibilityHistoryScreen(
                         modifier = Modifier.weight(1f),
                         decorationBox = { inner ->
                             if (searchText.isEmpty()) {
-                                Text("Search matches...", style = MaterialTheme.typography.bodyMedium, color = CreamDim.copy(alpha = 0.6f))
+                                Text(stringResource(R.string.search_matches_placeholder), style = MaterialTheme.typography.bodyMedium, color = CreamDim.copy(alpha = 0.6f))
                             }
                             inner()
                         },
                     )
                     if (searchText.isNotEmpty()) {
                         IconButton(onClick = { searchText = "" }, modifier = Modifier.size(20.dp)) {
-                            Icon(Icons.Filled.Close, contentDescription = "Clear", tint = CreamDim, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.cd_clear_search), tint = CreamDim, modifier = Modifier.size(16.dp))
                         }
                     }
                 }
@@ -171,8 +173,13 @@ fun CompatibilityHistoryScreen(
                 Spacer(Modifier.height(4.dp))
 
                 if (filtered.isEmpty()) {
+                    val emptyMsg = if (searchText.isBlank()) {
+                        stringResource(R.string.history_no_compatibility_yet)
+                    } else {
+                        stringResource(R.string.no_results_found)
+                    }
                     Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Text(emptyHistoryMessage(searchText), style = MaterialTheme.typography.bodyMedium, color = CreamDim)
+                        Text(emptyMsg, style = MaterialTheme.typography.bodyMedium, color = CreamDim)
                     }
                 } else {
                     LazyColumn(
@@ -219,26 +226,40 @@ private fun SwipeToDeleteHistoryItem(
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.EndToStart) {
-                onDeleteRequest()
+            when (value) {
+                SwipeToDismissBoxValue.EndToStart -> onDeleteRequest()
+                SwipeToDismissBoxValue.StartToEnd -> onPin()
+                else -> Unit
             }
-            false // Always return false — dialog handles actual deletion
+            false // Always return false — we manually handle actions; do not let row dismiss
         },
     )
 
     SwipeToDismissBox(
         state = dismissState,
-        enableDismissFromStartToEnd = false,
+        // Both edges enabled — leading=Pin (gold), trailing=Delete (red)
         backgroundContent = {
+            val isPinSwipe = dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd
+            val bg = if (isPinSwipe) Gold.copy(alpha = 0.85f) else Color(0xFFFC8181).copy(alpha = 0.85f)
+            val align = if (isPinSwipe) Alignment.CenterStart else Alignment.CenterEnd
+            val pad = if (isPinSwipe) PaddingValues(start = 20.dp) else PaddingValues(end = 20.dp)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFFFC8181).copy(alpha = 0.85f))
-                    .padding(end = 20.dp),
-                contentAlignment = Alignment.CenterEnd,
+                    .background(bg)
+                    .padding(pad),
+                contentAlignment = align,
             ) {
-                Icon(Icons.Filled.Delete, contentDescription = "Delete", tint = Color.White)
+                if (isPinSwipe) {
+                    Icon(
+                        Icons.Filled.PushPin,
+                        contentDescription = if (item.isPinned) stringResource(R.string.cd_unpin) else stringResource(R.string.cd_pin),
+                        tint = Color(0xFF0D0D1A),
+                    )
+                } else {
+                    Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.cd_delete), tint = Color.White)
+                }
             }
         },
     ) {
@@ -255,10 +276,13 @@ private fun SwipeToDeleteGroupRow(
     onPin: (CompatibilityHistoryItem) -> Unit,
 ) {
     val firstItem = group.items.firstOrNull()
+    val pinTarget = group.items.firstOrNull { it.isPinned } ?: group.bestMatch ?: firstItem
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.EndToStart && firstItem != null) {
-                onDeleteRequest(firstItem)
+            when (value) {
+                SwipeToDismissBoxValue.EndToStart -> firstItem?.let { onDeleteRequest(it) }
+                SwipeToDismissBoxValue.StartToEnd -> pinTarget?.let { onPin(it) }
+                else -> Unit
             }
             false
         },
@@ -266,17 +290,28 @@ private fun SwipeToDeleteGroupRow(
 
     SwipeToDismissBox(
         state = dismissState,
-        enableDismissFromStartToEnd = false,
         backgroundContent = {
+            val isPinSwipe = dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd
+            val bg = if (isPinSwipe) Gold.copy(alpha = 0.85f) else Color(0xFFFC8181).copy(alpha = 0.85f)
+            val align = if (isPinSwipe) Alignment.CenterStart else Alignment.CenterEnd
+            val pad = if (isPinSwipe) PaddingValues(start = 20.dp) else PaddingValues(end = 20.dp)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFFFC8181).copy(alpha = 0.85f))
-                    .padding(end = 20.dp),
-                contentAlignment = Alignment.CenterEnd,
+                    .background(bg)
+                    .padding(pad),
+                contentAlignment = align,
             ) {
-                Icon(Icons.Filled.Delete, contentDescription = "Delete", tint = Color.White)
+                if (isPinSwipe) {
+                    Icon(
+                        Icons.Filled.PushPin,
+                        contentDescription = if (pinTarget?.isPinned == true) stringResource(R.string.cd_unpin) else stringResource(R.string.cd_pin),
+                        tint = Color(0xFF0D0D1A),
+                    )
+                } else {
+                    Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.cd_delete), tint = Color.White)
+                }
             }
         },
     ) {
@@ -353,7 +388,7 @@ private fun HistoryItemRow(
                 }
                 // R2-CM15: Best-score star indicator
                 if (isBestInGroup) {
-                    Icon(Icons.Filled.Star, contentDescription = "Best match", tint = Gold, modifier = Modifier.size(13.dp))
+                    Icon(Icons.Filled.Star, contentDescription = stringResource(R.string.compat_history_best_match_cd), tint = Gold, modifier = Modifier.size(13.dp))
                     Spacer(Modifier.width(4.dp))
                 }
                 Text(
@@ -377,7 +412,7 @@ private fun HistoryItemRow(
         IconButton(onClick = onPin, modifier = Modifier.size(36.dp)) {
             Icon(
                 imageVector = Icons.Filled.PushPin,
-                contentDescription = if (item.isPinned) "Unpin" else "Pin",
+                contentDescription = if (item.isPinned) stringResource(R.string.cd_unpin) else stringResource(R.string.cd_pin),
                 tint = if (item.isPinned) Gold else CreamDim.copy(alpha = 0.4f),
                 modifier = Modifier.size(18.dp),
             )
@@ -407,14 +442,14 @@ private fun HistoryItemRow(
             onDismissRequest = { showContextMenu = false },
         ) {
             DropdownMenuItem(
-                text = { Text(if (item.isPinned) "Unpin" else "Pin") },
+                text = { Text(if (item.isPinned) stringResource(R.string.unpin) else stringResource(R.string.pin)) },
                 onClick = {
                     showContextMenu = false
                     onPin()
                 },
             )
             DropdownMenuItem(
-                text = { Text("Delete", color = Color(0xFFFC8181)) },
+                text = { Text(stringResource(R.string.delete_action), color = Color(0xFFFC8181)) },
                 onClick = {
                     showContextMenu = false
                     onDeleteRequest()
@@ -433,13 +468,13 @@ private fun HistoryDisabledState(
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("🕐", fontSize = 56.sp)
             Text(
-                text = "History is Turned Off",
+                text = stringResource(R.string.compat_history_disabled_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = CreamText,
             )
             Text(
-                text = "Match results are not being saved.\nEnable history in Settings to track your analyses.",
+                text = stringResource(R.string.compat_history_disabled_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = CreamDim,
                 textAlign = TextAlign.Center,
@@ -452,7 +487,7 @@ private fun HistoryDisabledState(
                     border = androidx.compose.foundation.BorderStroke(1.dp, Gold.copy(alpha = 0.5f)),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold),
                 ) {
-                    Text("Open Settings")
+                    Text(stringResource(R.string.open_settings))
                 }
             }
         }
@@ -466,14 +501,14 @@ private fun HistoryEmptyState(modifier: Modifier = Modifier) {
             Text("🕐", fontSize = 60.sp)
             Spacer(Modifier.height(16.dp))
             Text(
-                text = "No Match History",
+                text = stringResource(R.string.compat_history_empty_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = CreamText,
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Your compatibility analyses will\nappear here after running them.",
+                text = stringResource(R.string.compat_history_empty_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = CreamDim,
                 textAlign = TextAlign.Center,
@@ -485,6 +520,7 @@ private fun HistoryEmptyState(modifier: Modifier = Modifier) {
 
 // ─── Group History Row (iOS GroupHistoryRow) ──────────────────────────────────
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun GroupHistoryRow(
     group: ComparisonGroup,
@@ -498,6 +534,8 @@ private fun GroupHistoryRow(
         (best?.scorePercentage ?: 0.0) >= 50 -> Color(0xFFED8936)
         else -> Color(0xFFFC8181)
     }
+    var showContextMenu by remember { mutableStateOf(false) }
+    val pinTarget = group.items.firstOrNull { it.isPinned } ?: best ?: group.items.firstOrNull()
 
     Row(
         modifier = Modifier
@@ -505,10 +543,36 @@ private fun GroupHistoryRow(
             .clip(RoundedCornerShape(12.dp))
             .background(NavySurface)
             .border(1.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
-            .clickable(onClick = onTap)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .combinedClickable(
+                onClick = onTap,
+                onLongClick = { showContextMenu = true },
+            )
+            .padding(horizontal = 14.dp, vertical = 12.dp)
+            .semantics { contentDescription = "history_group_row" },
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // R2-CM16: Long-press context menu (Pin/Unpin + Delete) — group parity
+        DropdownMenu(
+            expanded = showContextMenu,
+            onDismissRequest = { showContextMenu = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text(if (pinTarget?.isPinned == true) stringResource(R.string.unpin) else stringResource(R.string.pin)) },
+                onClick = {
+                    showContextMenu = false
+                    pinTarget?.let { onPin(it) }
+                },
+                modifier = Modifier.semantics { contentDescription = "history_group_pin_action" },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.delete_action), color = Color(0xFFFC8181)) },
+                onClick = {
+                    showContextMenu = false
+                    pinTarget?.let { onDeleteRequest(it) }
+                },
+                modifier = Modifier.semantics { contentDescription = "history_group_delete_action" },
+            )
+        }
         // R2-CM14: Group icon with partner count overlay
         Box(
             modifier = Modifier
@@ -551,7 +615,11 @@ private fun GroupHistoryRow(
             )
             Spacer(Modifier.height(3.dp))
             Text(
-                text = "${group.partnerCount} partners • Best: ${best?.girlName ?: "—"}",
+                text = stringResource(
+                    R.string.compat_history_partners_best_format,
+                    group.partnerCount,
+                    best?.girlName ?: stringResource(R.string.compat_history_partners_best_dash),
+                ),
                 style = MaterialTheme.typography.labelSmall,
                 color = CreamDim,
             )

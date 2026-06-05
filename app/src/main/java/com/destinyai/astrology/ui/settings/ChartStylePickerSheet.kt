@@ -6,11 +6,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.destinyai.astrology.R
+import com.destinyai.astrology.services.HapticManager
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
@@ -18,20 +24,20 @@ import com.destinyai.astrology.ui.theme.Gold
 
 private data class ChartStyleOption(
     val key: String,
-    val label: String,
-    val subtitle: String,
+    val labelRes: Int,
+    val subtitleRes: Int,
 )
 
 private val chartStyleOptions = listOf(
     ChartStyleOption(
         key = "north",
-        label = "North Indian",
-        subtitle = "Diamond layout. Houses are fixed; planets move.",
+        labelRes = R.string.north_indian,
+        subtitleRes = R.string.chart_style_north_subtitle,
     ),
     ChartStyleOption(
         key = "south",
-        label = "South Indian",
-        subtitle = "Square layout. Signs are fixed; planets move.",
+        labelRes = R.string.south_indian,
+        subtitleRes = R.string.chart_style_south_subtitle,
     ),
 )
 
@@ -42,6 +48,9 @@ fun ChartStylePickerSheet(
     onSelect: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val haptic = remember { HapticManager(context) }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surface,
@@ -52,14 +61,35 @@ fun ChartStylePickerSheet(
                 .navigationBarsPadding()
                 .padding(bottom = 24.dp),
         ) {
-            Text(
-                text = "Chart Style",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = CanelaFontFamily,
-                color = Gold,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
-            )
+            // iOS parity (ChartStylePickerSheet.swift:83): explicit Done button to dismiss.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.chart_style_title),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = CanelaFontFamily,
+                    color = Gold,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(
+                    onClick = {
+                        haptic.light()
+                        onDismiss()
+                    },
+                    modifier = Modifier.testTag("chart_style_sheet_done"),
+                ) {
+                    Text(
+                        text = stringResource(R.string.done_action),
+                        color = Gold,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            }
 
             HorizontalDivider(color = Gold.copy(alpha = 0.1f), thickness = 0.5.dp)
 
@@ -69,22 +99,24 @@ fun ChartStylePickerSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
+                            haptic.light()
                             onSelect(option.key)
                             onDismiss()
                         }
-                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                        .padding(horizontal = 24.dp, vertical = 16.dp)
+                        .testTag("chart_style_${option.key}"),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = option.label,
+                            text = stringResource(option.labelRes),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = if (isSelected) Gold else CreamText,
                         )
                         Text(
-                            text = option.subtitle,
+                            text = stringResource(option.subtitleRes),
                             fontSize = 13.sp,
                             color = CreamDim,
                             modifier = Modifier.padding(top = 2.dp),

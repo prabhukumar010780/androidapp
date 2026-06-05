@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.destinyai.astrology.data.local.prefs.AlertItem
 import com.destinyai.astrology.data.local.prefs.UserPreferences
+import com.destinyai.astrology.data.remote.AlertItemDto
 import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.remote.NotificationPrefsRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -24,7 +25,7 @@ data class NotificationPreferencesUiState(
     val emailEnabled: Boolean = true,
     val inAppEnabled: Boolean = true,
     // R2-S8: permission
-    val isPermissionGranted: Boolean = true,
+    val isPermissionGranted: Boolean = false,
     // R2-S13c: custom alerts
     val alertItems: List<AlertItem> = emptyList(),
     val isLoading: Boolean = false,
@@ -112,17 +113,22 @@ class NotificationPreferencesViewModel @Inject constructor(
     /**
      * Append a new alert. No-ops if already at 5 items.
      */
-    fun addAlert(text: String, frequency: String) {
+    fun addAlert(text: String, frequency: String, frequencyDay: Int? = null) {
         val current = _uiState.value.alertItems
         if (current.size >= 5) return
-        val updated = current + AlertItem(id = UUID.randomUUID().toString(), text = text, frequency = frequency)
+        val updated = current + AlertItem(
+            id = UUID.randomUUID().toString(),
+            text = text,
+            frequency = frequency,
+            frequencyDay = frequencyDay,
+        )
         _uiState.update { it.copy(alertItems = updated) }
         viewModelScope.launch { prefs.saveAlertItems(updated) }
     }
 
-    fun updateAlert(id: String, text: String, frequency: String) {
+    fun updateAlert(id: String, text: String, frequency: String, frequencyDay: Int? = null) {
         val updated = _uiState.value.alertItems.map { item ->
-            if (item.id == id) item.copy(text = text, frequency = frequency) else item
+            if (item.id == id) item.copy(text = text, frequency = frequency, frequencyDay = frequencyDay) else item
         }
         _uiState.update { it.copy(alertItems = updated) }
         viewModelScope.launch { prefs.saveAlertItems(updated) }
@@ -142,11 +148,25 @@ class NotificationPreferencesViewModel @Inject constructor(
             val s = _uiState.value
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
+                // Mirrors iOS NotificationPreferencesViewModel.savePreferences — sends
+                // channel toggles AND custom alert items so backend can generate pushes.
+                val alertDtos = s.alertItems.map {
+                    AlertItemDto(id = it.id, text = it.text, frequency = it.frequency.uppercase(), frequencyDay = it.frequencyDay)
+                }
                 api.updateNotificationPrefs(
                     email,
-                    NotificationPrefsRequest(s.dailyInsight, s.transits, s.compatibility)
+                    NotificationPrefsRequest(
+                        dailyInsight = s.dailyInsight,
+                        transits = s.transits,
+                        compatibility = s.compatibility,
+                        pushEnabled = s.pushEnabled,
+                        emailEnabled = s.emailEnabled,
+                        inAppEnabled = s.inAppEnabled,
+                        alertItems = alertDtos,
+                    )
                 )
                 prefs.setNotifPrefs(s.dailyInsight, s.transits, s.compatibility)
+                prefs.saveAlertItems(s.alertItems)
                 _uiState.update { it.copy(isLoading = false, isSaved = true) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message ?: "Failed to save") }

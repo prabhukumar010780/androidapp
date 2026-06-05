@@ -10,7 +10,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CompareArrows
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Tune
@@ -21,6 +20,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -28,6 +30,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.destinyai.astrology.R
+import com.destinyai.astrology.services.HapticManager
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
@@ -45,34 +49,23 @@ fun ChartsScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showStyleMenu by remember { mutableStateOf(false) }
-    var showComparison by remember { mutableStateOf(false) }
     var showPlanetaryPositions by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val haptic = remember { HapticManager(context) }
 
     LaunchedEffect(Unit) { viewModel.loadChartData() }
 
-    if (showComparison) {
-        ChartComparisonSheet(
-            boyName = "You",
-            girlName = "Partner",
-            boyChartData = state.chartApiData?.let { mapToChartData(it) },
-            girlChartData = null,
-            boyAscendant = state.ascendantSign,
-            girlAscendant = null,
-            onDismiss = { showComparison = false },
-            initialChartStyle = state.chartStyle,
+    // R2-C1: Planetary Positions bottom sheet — self-contained loading/error/retry
+    // mirrors iOS PlanetaryPositionsSheet.swift so the sheet is reachable even when
+    // the parent chart fetch failed.
+    if (showPlanetaryPositions) {
+        PlanetaryPositionsSheet(
+            state = state,
+            currentChartStyle = state.chartStyle,
+            onChartStyleChanged = { viewModel.setChartStyle(it) },
+            onRetry = { viewModel.retry() },
+            onDismiss = { showPlanetaryPositions = false },
         )
-    }
-
-    // R2-C1: Planetary Positions bottom sheet
-    if (showPlanetaryPositions && state.chartApiData != null) {
-        state.chartApiData?.let { chartData ->
-            PlanetaryPositionsSheet(
-                chartApiData = chartData,
-                currentChartStyle = state.chartStyle,
-                onChartStyleChanged = { viewModel.setChartStyle(it) },
-                onDismiss = { showPlanetaryPositions = false },
-            )
-        }
     }
 
     CosmicBackground {
@@ -85,42 +78,47 @@ fun ChartsScreen(
                     .padding(horizontal = 8.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = onBack) {
+                IconButton(
+                    onClick = {
+                        haptic.light()
+                        onBack()
+                    },
+                    modifier = Modifier.testTag("charts_back_button"),
+                ) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
+                        contentDescription = stringResource(R.string.back_action),
                         tint = CreamDim,
                     )
                 }
                 Text(
-                    text = "Birth Chart",
+                    text = stringResource(R.string.birth_chart),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = CanelaFontFamily,
                     color = Gold,
                     modifier = Modifier.weight(1f),
                 )
-                // Compare button
-                IconButton(onClick = { showComparison = true }) {
-                    Icon(Icons.Default.CompareArrows, contentDescription = "Compare charts", tint = Gold)
-                }
-                // Planet positions sheet button (R2-C1)
+                // Planet positions sheet button (R2-C1) — always enabled; sheet
+                // shows its own loading/error/retry to mirror iOS behaviour.
                 IconButton(
                     onClick = { showPlanetaryPositions = true },
-                    enabled = state.chartApiData != null,
                 ) {
-                    Icon(Icons.Default.GridView, contentDescription = "Planet positions", tint = Gold)
+                    Icon(Icons.Default.GridView, contentDescription = stringResource(R.string.planet_positions_action), tint = Gold)
                 }
                 // Chart style menu (North / South toggle)
                 Box {
                     IconButton(onClick = { showStyleMenu = true }) {
-                        Icon(Icons.Default.Tune, contentDescription = "Chart style", tint = Gold)
+                        Icon(Icons.Default.Tune, contentDescription = stringResource(R.string.chart_style_action), tint = Gold)
                     }
                     DropdownMenu(
                         expanded = showStyleMenu,
                         onDismissRequest = { showStyleMenu = false },
                     ) {
-                        listOf("north_indian" to "North Indian", "south_indian" to "South Indian").forEach { (key, label) ->
+                        listOf(
+                            "north" to stringResource(R.string.north_indian),
+                            "south" to stringResource(R.string.south_indian),
+                        ).forEach { (key, label) ->
                             DropdownMenuItem(
                                 text = {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -147,7 +145,7 @@ fun ChartsScreen(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             CircularProgressIndicator(color = Gold, modifier = Modifier.size(40.dp))
                             Spacer(Modifier.height(16.dp))
-                            Text("Calculating chart…", color = CreamDim, fontSize = 14.sp)
+                            Text(stringResource(R.string.calculating_chart), color = CreamDim, fontSize = 14.sp)
                         }
                     }
                 }
@@ -156,7 +154,7 @@ fun ChartsScreen(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(Icons.Default.Warning, contentDescription = null, tint = Color.Red.copy(alpha = 0.8f), modifier = Modifier.size(40.dp))
                             Spacer(Modifier.height(12.dp))
-                            Text("Failed to load chart", color = CreamText, fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.failed_to_load_chart), color = CreamText, fontWeight = FontWeight.SemiBold)
                             Spacer(Modifier.height(4.dp))
                             Text(state.errorMessage.orEmpty(), color = CreamDim, fontSize = 12.sp)
                             Spacer(Modifier.height(16.dp))
@@ -166,7 +164,7 @@ fun ChartsScreen(
                             ) {
                                 Icon(Icons.Default.Refresh, contentDescription = null)
                                 Spacer(Modifier.width(6.dp))
-                                Text("Retry", color = Color(0xFF0D0D1A))
+                                Text(stringResource(R.string.retry), color = Color(0xFF0D0D1A))
                             }
                         }
                     }
@@ -186,7 +184,7 @@ fun ChartsScreen(
                             Text("🪐", fontSize = 48.sp)
                             Spacer(Modifier.height(12.dp))
                             Text(
-                                "No birth chart yet",
+                                stringResource(R.string.no_birth_chart_yet),
                                 fontFamily = CanelaFontFamily,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
@@ -194,7 +192,7 @@ fun ChartsScreen(
                             )
                             Spacer(Modifier.height(6.dp))
                             Text(
-                                "Save your birth details to generate your Vedic birth chart.",
+                                stringResource(R.string.no_birth_chart_yet_desc),
                                 color = CreamDim,
                                 fontSize = 14.sp,
                             )
@@ -224,7 +222,7 @@ fun ChartsScreen(
                         // Chart visualization (North or South)
                         val chartData = mapToChartData(chart)
                         AnimatedVisibility(visible = true) {
-                            if (state.chartStyle == "north_indian") {
+                            if (state.chartStyle == "north") {
                                 NorthIndianChartView(
                                     chartData = chartData,
                                     ascendantSign = state.ascendantSign,
@@ -242,7 +240,7 @@ fun ChartsScreen(
                         val planetOrder = listOf("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu")
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Text(
-                                "Planetary Positions",
+                                stringResource(R.string.planetary_positions),
                                 fontFamily = CanelaFontFamily,
                                 fontSize = 18.sp,
                                 color = CreamText,
@@ -262,6 +260,11 @@ fun ChartsScreen(
 
                         // Badge legend
                         BadgeLegend()
+
+                        // Gap 2: Dasha + Transits removed from Charts to match iOS
+                        // (iOS PlanetaryPositionsSheet.swift:50-73 only shows minimalBirthInfo +
+                        // chartVisualSection + planetaryGrid + badgeLegend). Dasha and Transits
+                        // are surfaced on Home (HomeScreen) where iOS also surfaces them.
 
                         Spacer(Modifier.height(32.dp))
                     }
@@ -297,12 +300,26 @@ private fun MinimalBirthInfo(
         }
         if (ascendantSign != null) {
             Text("•", color = Gold.copy(alpha = 0.6f))
-            Text("Asc: $ascendantSign", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Gold)
+            Text(stringResource(R.string.ascendant_short_fmt, ascendantSign), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Gold)
         }
     }
 }
 
 // ── Premium planet row ────────────────────────────────────────────────────────
+
+// Map planet API names to localized string resources (mirrors DashaView.kt pattern,
+// iOS PlanetaryPositionsSheet.swift:449 — "planet_<name>".localized)
+private val premiumPlanetNameResMap: Map<String, Int> = mapOf(
+    "Sun" to R.string.planet_sun,
+    "Moon" to R.string.planet_moon,
+    "Mars" to R.string.planet_mars,
+    "Mercury" to R.string.planet_mercury,
+    "Jupiter" to R.string.planet_jupiter,
+    "Venus" to R.string.planet_venus,
+    "Saturn" to R.string.planet_saturn,
+    "Rahu" to R.string.planet_rahu,
+    "Ketu" to R.string.planet_ketu,
+)
 
 @Composable
 fun PremiumPlanetRow(
@@ -348,7 +365,8 @@ fun PremiumPlanetRow(
         // Name + badges + sign/degree
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(name, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = CreamText)
+                val localizedName = premiumPlanetNameResMap[name]?.let { stringResource(it) } ?: name
+                Text(localizedName, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = CreamText)
                 if (data.isRetrograde == true) ChartBadge("R", Color.Red)
                 if (data.isCombust == true) ChartBadge("C", Color(0xFFFF8C00))
                 if (data.vargottama == true) ChartBadge("V", Color(0xFF9C27B0))
@@ -369,11 +387,11 @@ fun PremiumPlanetRow(
                     .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(50))
                     .padding(horizontal = 8.dp, vertical = 2.dp),
             ) {
-                Text("H${data.house}", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Gold)
+                Text(stringResource(R.string.house_short_fmt, data.house), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Gold)
             }
             if (nakshatra != null) {
                 Text(nakshatra.nakshatra, fontSize = 11.sp, color = CreamDim)
-                Text("Pada ${nakshatra.pada}", fontSize = 10.sp, color = CreamDim.copy(alpha = 0.7f))
+                Text(stringResource(R.string.pada_num_fmt, nakshatra.pada), fontSize = 10.sp, color = CreamDim.copy(alpha = 0.7f))
             }
         }
     }

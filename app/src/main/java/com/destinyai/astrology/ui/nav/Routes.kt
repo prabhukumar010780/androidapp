@@ -7,6 +7,7 @@ object Routes {
     const val AUTH = "auth"
     const val WAITLIST = "waitlist"
     const val BIRTH_DATA = "birth_data"
+    const val PROFILE_SETUP = "profile_setup"
     const val MAIN = "main"
     const val HISTORY = "history"
     const val CHARTS = "charts"
@@ -20,4 +21,5 @@ object Routes {
     const val SUBSCRIPTION = "subscription"
     const val RESPONSE_STYLE = "response_style"
     const val FAQ_HELP = "faq_help"
+    const val BIRTH_DETAILS = "birth_details"
 }

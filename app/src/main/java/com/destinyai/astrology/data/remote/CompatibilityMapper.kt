@@ -4,6 +4,9 @@ import com.destinyai.astrology.domain.model.CompatibilityResult
 import com.destinyai.astrology.domain.model.DoshaSummaryModel
 import com.destinyai.astrology.domain.model.DoshaDetailModel
 import com.destinyai.astrology.domain.model.KutaDetail
+import com.destinyai.astrology.ui.charts.ChartData
+import com.destinyai.astrology.ui.charts.D1PlanetPosition
+import com.destinyai.astrology.ui.charts.D9PlanetPosition
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 
@@ -32,6 +35,37 @@ private fun JsonObject?.optBool(key: String, default: Boolean = false): Boolean 
 
 private fun JsonObject?.optInt(key: String, default: Int = 0): Int =
     this?.get(key)?.takeIf { !it.isJsonNull }?.asInt ?: default
+
+/**
+ * iOS parity (Models/ChartData.swift) — extract chart_data block under
+ * analysis_data.{boy|girl}.chart_data, decoding D1 + D9 planet maps.
+ */
+private fun parseChartData(side: JsonObject?): ChartData? {
+    val chart = side?.optObj("chart_data") ?: return null
+    val d1Obj = chart.optObj("d1") ?: return null
+    val d1: Map<String, D1PlanetPosition> = d1Obj.entrySet().mapNotNull { (planet, el) ->
+        val obj = el?.takeIf { it.isJsonObject }?.asJsonObject ?: return@mapNotNull null
+        planet to D1PlanetPosition(
+            house = obj.optInt("house", 0),
+            sign = obj.optStr("sign"),
+            degree = obj.optDbl("degree", 0.0),
+            retrograde = obj.get("retrograde")?.takeIf { !it.isJsonNull }?.asBoolean,
+            vargottama = obj.get("vargottama")?.takeIf { !it.isJsonNull }?.asBoolean,
+            combust = obj.get("combust")?.takeIf { !it.isJsonNull }?.asBoolean,
+            nakshatra = obj.get("nakshatra")?.takeIf { !it.isJsonNull }?.asString,
+            pada = obj.get("pada")?.takeIf { !it.isJsonNull }?.asInt,
+        )
+    }.toMap()
+    val d9Obj = chart.optObj("d9")
+    val d9: Map<String, D9PlanetPosition> = d9Obj?.entrySet()?.mapNotNull { (planet, el) ->
+        val obj = el?.takeIf { it.isJsonObject }?.asJsonObject ?: return@mapNotNull null
+        planet to D9PlanetPosition(
+            house = obj.get("house")?.takeIf { !it.isJsonNull }?.asInt,
+            sign = obj.optStr("sign"),
+        )
+    }?.toMap() ?: emptyMap()
+    return ChartData(d1 = d1, d9 = d9)
+}
 
 fun mapCompatibilityResponse(
     json: String,
@@ -108,6 +142,12 @@ fun mapCompatibilityResponse(
     val followUpSuggestions = root.getAsJsonArray("follow_up_suggestions")
         ?.map { it.asString } ?: emptyList()
 
+    // iOS parity (CompatibilityView.swift:148-156): chart_data on each side.
+    val boyChart = parseChartData(analysisData.optObj("boy"))
+    val girlChart = parseChartData(analysisData.optObj("girl"))
+    val boyAsc = boyChart?.d1?.get("Ascendant")?.sign
+    val girlAsc = girlChart?.d1?.get("Ascendant")?.sign
+
     return CompatibilityResult(
         totalScore = totalScore,
         maxScore = 36,
@@ -138,5 +178,9 @@ fun mapCompatibilityResponse(
         girlDob = girlDob,
         boyCity = boyCity,
         girlCity = girlCity,
+        boyChartData = boyChart,
+        girlChartData = girlChart,
+        boyAscendant = boyAsc,
+        girlAscendant = girlAsc,
     )
 }

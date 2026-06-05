@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.destinyai.astrology.R
+import com.destinyai.astrology.ui.components.rememberBioRhythmWithHaptic
 import com.destinyai.astrology.ui.theme.AuthDimens
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.GoldLight
@@ -78,18 +79,9 @@ fun AuthLogo(
     )
 
     // 60 BPM breathing pulse (1s per beat). Scale 1.0 -> 1.05 -> 1.0.
-    val pulse by infinite.animateFloat(
-        initialValue = 1f,
-        targetValue = if (bioRhythmActive) 1.05f else 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = 60_000 / AuthDimens.bioRhythmBpm,
-                easing = LinearEasing,
-            ),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "pulse",
-    )
+    // iOS parity: BioRhythmModifier.pulse() fires HapticManager.playHeartbeat()
+    // on every beat. rememberBioRhythmWithHaptic() drives the same haptic tick.
+    val pulse = rememberBioRhythmWithHaptic(active = bioRhythmActive)
 
     Box(
         modifier = modifier

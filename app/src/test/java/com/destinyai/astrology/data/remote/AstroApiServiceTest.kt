@@ -249,6 +249,9 @@ class AstroApiServiceTest {
         service.submitFeedback(FeedbackRequest(
             userEmail = "u@x.com",
             predictionId = "pred_001",
+            sessionId = null,
+            query = "test query",
+            predictionText = "test prediction",
             rating = 5,
         ))
 

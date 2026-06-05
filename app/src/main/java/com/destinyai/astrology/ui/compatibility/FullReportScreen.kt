@@ -1,5 +1,15 @@
 package com.destinyai.astrology.ui.compatibility
 
+import android.content.ContentValues
+import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.pdf.PdfDocument
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
+import android.view.View
+import android.widget.Toast
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -11,7 +21,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.IosShare
+import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.SaveAlt
+import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,6 +36,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -32,6 +46,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
 import com.destinyai.astrology.domain.model.CompatibilityResult
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
@@ -39,7 +54,12 @@ import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
-import android.content.Intent
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
+import java.io.OutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -54,11 +74,113 @@ fun FullReportScreen(
     var showAskDestiny by remember { mutableStateOf(false) }
     val sections = remember(result.summary) { parseSections(result.summary) }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     val shareText = remember(result) {
         val score = result.adjustedScore ?: result.totalScore
         val pct = (score.toDouble() / result.maxScore * 100).toInt()
         "✨ ${result.boyName} & ${result.girlName} — Compatibility score: ${result.totalScore}/${result.maxScore} ($pct%)\n\nAnalyzed with Destiny AI Astrology\n🔗 destinyaiastrology.com"
+    }
+
+    // iOS parity (CompatibilityResultSheets.swift:107-152): render branded
+    // ShareCardView to a 1080x1080 PNG and attach to the share intent.
+    fun renderShareCardBitmap(): Bitmap {
+        val shareView = ComposeView(context).apply {
+            setContent {
+                ShareCardView(
+                    boyName = result.boyName,
+                    girlName = result.girlName,
+                    totalScore = result.totalScore,
+                    maxScore = result.maxScore,
+                    percentage = result.adjustedPercentage,
+                    isRecommended = result.isRecommended,
+                    adjustedScore = result.adjustedScore,
+                )
+            }
+        }
+        val width = 1080
+        val height = 1080
+        shareView.measure(
+            View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY),
+        )
+        shareView.layout(0, 0, width, height)
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(bitmap)
+        shareView.draw(canvas)
+        return bitmap
+    }
+
+    fun shareWithImage() {
+        scope.launch {
+            try {
+                val bitmap = renderShareCardBitmap()
+                val sessionTag = result.boyName.take(4) + result.girlName.take(4)
+                val file = File(context.cacheDir, "report-$sessionTag.png")
+                withContext(Dispatchers.IO) {
+                    FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 90, it) }
+                }
+                val uri = FileProvider.getUriForFile(
+                    context,
+                    "com.destinyai.astrology.fileprovider",
+                    file,
+                )
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = "image/png"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    putExtra(Intent.EXTRA_TEXT, shareText)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(intent, "Share Report"))
+            } catch (_: Exception) {
+                // Fallback to text-only share
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, shareText)
+                }
+                context.startActivity(Intent.createChooser(intent, "Share Report"))
+            }
+        }
+    }
+
+    fun savePdfToFiles() {
+        scope.launch {
+            try {
+                val pdfFileName = "Compatibility-${result.boyName}-${result.girlName}-${System.currentTimeMillis()}.pdf"
+                val pdfBytes = withContext(Dispatchers.IO) {
+                    buildCompatibilityPdfBytes(result, sections)
+                }
+                val savedUri: Uri? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    val values = ContentValues().apply {
+                        put(MediaStore.MediaColumns.DISPLAY_NAME, pdfFileName)
+                        put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf")
+                        put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                    }
+                    val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                    uri?.also { u ->
+                        withContext(Dispatchers.IO) {
+                            context.contentResolver.openOutputStream(u)?.use { os: OutputStream ->
+                                os.write(pdfBytes)
+                            }
+                        }
+                    }
+                } else {
+                    val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                    val file = File(downloads, pdfFileName)
+                    withContext(Dispatchers.IO) {
+                        FileOutputStream(file).use { it.write(pdfBytes) }
+                    }
+                    FileProvider.getUriForFile(context, "com.destinyai.astrology.fileprovider", file)
+                }
+                Toast.makeText(
+                    context,
+                    if (savedUri != null) "Report saved to Downloads" else "Save failed",
+                    Toast.LENGTH_SHORT,
+                ).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Save failed: ${e.message ?: "unknown"}", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     CosmicBackground {
@@ -75,13 +197,7 @@ fun FullReportScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Gold)
                     }
                     Spacer(Modifier.weight(1f))
-                    IconButton(onClick = {
-                        val intent = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, shareText)
-                        }
-                        context.startActivity(Intent.createChooser(intent, "Share Report"))
-                    }) {
+                    IconButton(onClick = { shareWithImage() }) {
                         Icon(Icons.Filled.IosShare, contentDescription = "Share", tint = Gold)
                     }
                 }
@@ -99,20 +215,15 @@ fun FullReportScreen(
                     // 1. Branded header card
                     BrandedHeaderCard(result = result)
 
-                    // 2. Action bar — share report
+                    // 2a. Action bar — share report (with image)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
                             .background(NavySurface)
                             .border(1.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
-                            .clickable(onClick = {
-                                val intent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(Intent.EXTRA_TEXT, shareText)
-                                }
-                                context.startActivity(Intent.createChooser(intent, "Share Report"))
-                            })
+                            .clickable(onClick = { shareWithImage() })
+                            .semantics { contentDescription = "compat_share_report_row" }
                             .padding(horizontal = 16.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -120,6 +231,24 @@ fun FullReportScreen(
                         Spacer(Modifier.width(12.dp))
                         Text("Share Report", fontSize = 16.sp, color = CreamText, modifier = Modifier.weight(1f))
                         Icon(Icons.Filled.IosShare, contentDescription = null, tint = CreamDim, modifier = Modifier.size(14.dp))
+                    }
+
+                    // 2b. Action bar — Save PDF to Files (iOS parity: CompatibilityResultSheets.swift:156-188)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(NavySurface)
+                            .border(1.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+                            .clickable(onClick = { savePdfToFiles() })
+                            .semantics { contentDescription = "compat_save_pdf_row" }
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Filled.PictureAsPdf, contentDescription = null, tint = CreamText, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text("Save to Files (PDF)", fontSize = 16.sp, color = CreamText, modifier = Modifier.weight(1f))
+                        Icon(Icons.Filled.SaveAlt, contentDescription = null, tint = CreamDim, modifier = Modifier.size(14.dp))
                     }
 
                     // 3. Section cards (parsed from LLM output)
@@ -552,4 +681,155 @@ private fun parseMarkdownBold(text: String): AnnotatedString = buildAnnotatedStr
             append(part)
         }
     }
+}
+
+// ─── PDF Renderer ─────────────────────────────────────────────────────────────
+//
+// iOS parity (CompatibilityPDFRenderer.swift): produce an A4 PDF with a branded
+// header (couple names, score, recommendation), parsed sections, and footer.
+// Built with android.graphics.pdf.PdfDocument so no extra deps are needed.
+//
+internal fun buildCompatibilityPdfBytes(
+    result: CompatibilityResult,
+    sections: List<Any>, // ReportSection (private) — typed loosely for export
+): ByteArray {
+    val doc = PdfDocument()
+    // A4 @ 72dpi-ish: 595 x 842 points
+    val pageWidth = 595
+    val pageHeight = 842
+    val margin = 36f
+    val contentWidth = pageWidth - margin * 2
+
+    val titlePaint = android.graphics.Paint().apply {
+        color = android.graphics.Color.rgb(212, 175, 55) // Gold
+        textSize = 22f
+        isAntiAlias = true
+        isFakeBoldText = true
+    }
+    val headerPaint = android.graphics.Paint().apply {
+        color = android.graphics.Color.rgb(212, 175, 55)
+        textSize = 13f
+        isAntiAlias = true
+        isFakeBoldText = true
+        letterSpacing = 0.1f
+    }
+    val bodyPaint = android.graphics.Paint().apply {
+        color = android.graphics.Color.rgb(40, 40, 50)
+        textSize = 11f
+        isAntiAlias = true
+    }
+    val dimPaint = android.graphics.Paint().apply {
+        color = android.graphics.Color.rgb(120, 120, 130)
+        textSize = 9f
+        isAntiAlias = true
+    }
+
+    fun newPage(num: Int): Pair<PdfDocument.Page, android.graphics.Canvas> {
+        val pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, num).create()
+        val page = doc.startPage(pageInfo)
+        return page to page.canvas
+    }
+
+    var pageNum = 1
+    var (page, canvas) = newPage(pageNum)
+    var y = margin
+
+    // Brand label
+    canvas.drawText("DESTINY AI ASTROLOGY", margin, y + 12f, dimPaint)
+    y += 24f
+    // Title (couple names)
+    canvas.drawText("${result.boyName} & ${result.girlName}", margin, y + 22f, titlePaint)
+    y += 36f
+    // Birth dates
+    if (result.boyDob != null && result.girlDob != null) {
+        canvas.drawText("Born: ${result.boyDob}  •  ${result.girlDob}", margin, y + 11f, dimPaint)
+        y += 18f
+    }
+    // Score line
+    val displayScore = result.adjustedScore ?: result.totalScore
+    val pct = (displayScore.toDouble() / result.maxScore * 100).toInt()
+    canvas.drawText(
+        "Score: $displayScore / ${result.maxScore} ($pct%)  —  ${if (result.isRecommended) "Recommended" else "Not Recommended"}",
+        margin,
+        y + 13f,
+        headerPaint,
+    )
+    y += 28f
+    // Divider
+    val dividerPaint = android.graphics.Paint().apply {
+        color = android.graphics.Color.rgb(212, 175, 55)
+        alpha = 80
+        strokeWidth = 0.6f
+    }
+    canvas.drawLine(margin, y, margin + contentWidth, y, dividerPaint)
+    y += 14f
+
+    val parsed = parseSections(result.summary)
+    val items: List<Pair<String, String>> = if (parsed.isEmpty()) {
+        listOf("Analysis" to result.summary)
+    } else {
+        parsed.map { (it.emoji + " " + it.title) to replaceGenericLabels(it.content, result.boyName, result.girlName) }
+    }
+
+    fun ensureSpace(needed: Float) {
+        if (y + needed > pageHeight - margin - 24f) {
+            doc.finishPage(page)
+            pageNum += 1
+            val np = newPage(pageNum)
+            page = np.first
+            canvas = np.second
+            y = margin
+        }
+    }
+
+    fun drawWrappedText(text: String, paint: android.graphics.Paint, maxWidth: Float) {
+        val words = text.split(" ")
+        val sb = StringBuilder()
+        for (word in words) {
+            val candidate = if (sb.isEmpty()) word else sb.toString() + " " + word
+            val w = paint.measureText(candidate)
+            if (w > maxWidth && sb.isNotEmpty()) {
+                ensureSpace(paint.textSize + 4f)
+                canvas.drawText(sb.toString(), margin, y + paint.textSize, paint)
+                y += paint.textSize + 4f
+                sb.clear()
+                sb.append(word)
+            } else {
+                if (sb.isNotEmpty()) sb.append(" ")
+                sb.append(word)
+            }
+        }
+        if (sb.isNotEmpty()) {
+            ensureSpace(paint.textSize + 4f)
+            canvas.drawText(sb.toString(), margin, y + paint.textSize, paint)
+            y += paint.textSize + 4f
+        }
+    }
+
+    items.forEach { (title, content) ->
+        ensureSpace(36f)
+        canvas.drawText(title.uppercase(Locale.getDefault()), margin, y + 13f, headerPaint)
+        y += 18f
+        // Strip markdown bold markers for PDF text
+        val plain = content.replace("**", "")
+        plain.split("\n").forEach { paragraph ->
+            if (paragraph.isBlank()) {
+                y += 6f
+            } else {
+                drawWrappedText(paragraph.trim(), bodyPaint, contentWidth)
+            }
+        }
+        y += 10f
+    }
+
+    // Footer disclaimer
+    ensureSpace(28f)
+    val footer = "AI generated analysis · For guidance only · © 2026 Destiny AI Astrology"
+    canvas.drawText(footer, margin, y + 10f, dimPaint)
+
+    doc.finishPage(page)
+    val out = java.io.ByteArrayOutputStream()
+    doc.writeTo(out)
+    doc.close()
+    return out.toByteArray()
 }

@@ -30,13 +30,16 @@ import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
     onNavigateToAstrologySettings: () -> Unit,
+    onNavigateToNotificationPrefs: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    var showLanguageSheet by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { viewModel.loadSettings() }
 
@@ -51,10 +54,14 @@ fun SettingsScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = CreamDim)
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = stringResource(R.string.settings_back_cd),
+                        tint = CreamDim,
+                    )
                 }
                 Text(
-                    text = "Settings",
+                    text = stringResource(R.string.settings_title),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = CanelaFontFamily,
@@ -71,33 +78,6 @@ fun SettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Spacer(Modifier.height(4.dp))
-
-                CosmicSettingsSection(title = "Chart Style") {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("north", "south", "east").forEach { style ->
-                            FilterChip(
-                                selected = state.chartStyle == style,
-                                onClick = { viewModel.setChartStyle(style) },
-                                label = {
-                                    Text(
-                                        style.replaceFirstChar { it.uppercase() },
-                                        color = if (state.chartStyle == style) Color(0xFF0D0D1A) else CreamDim,
-                                    )
-                                },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = Gold,
-                                    containerColor = NavySurface,
-                                ),
-                                border = FilterChipDefaults.filterChipBorder(
-                                    enabled = true,
-                                    selected = state.chartStyle == style,
-                                    borderColor = Gold.copy(alpha = 0.3f),
-                                    selectedBorderColor = Gold,
-                                ),
-                            )
-                        }
-                    }
-                }
 
                 // Astrology Settings link
                 Row(
@@ -125,15 +105,19 @@ fun SettingsScreen(
                     )
                 }
 
-                CosmicSettingsSection(title = "Response Style") {
+                CosmicSettingsSection(title = stringResource(R.string.settings_response_style_section)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("brief", "balanced", "detailed").forEach { style ->
+                        listOf(
+                            "brief" to stringResource(R.string.settings_response_style_brief),
+                            "balanced" to stringResource(R.string.settings_response_style_balanced),
+                            "detailed" to stringResource(R.string.settings_response_style_detailed),
+                        ).forEach { (style, label) ->
                             FilterChip(
                                 selected = state.responseStyle == style,
                                 onClick = { viewModel.setResponseStyle(style) },
                                 label = {
                                     Text(
-                                        style.replaceFirstChar { it.uppercase() },
+                                        label,
                                         color = if (state.responseStyle == style) Color(0xFF0D0D1A) else CreamDim,
                                     )
                                 },
@@ -152,46 +136,100 @@ fun SettingsScreen(
                     }
                 }
 
-                CosmicSettingsSection(title = "Language") {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("en", "hi", "ta").forEach { lang ->
-                            FilterChip(
-                                selected = state.selectedLanguage == lang,
-                                onClick = { viewModel.setLanguage(lang) },
-                                label = {
-                                    Text(
-                                        lang.uppercase(),
-                                        color = if (state.selectedLanguage == lang) Color(0xFF0D0D1A) else CreamDim,
-                                    )
-                                },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = Gold,
-                                    containerColor = NavySurface,
-                                ),
-                                border = FilterChipDefaults.filterChipBorder(
-                                    enabled = true,
-                                    selected = state.selectedLanguage == lang,
-                                    borderColor = Gold.copy(alpha = 0.3f),
-                                    selectedBorderColor = Gold,
-                                ),
-                            )
-                        }
+                // Language row — opens the full 13-language LanguageSettingsSheet (parity with iOS)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(NavySurface)
+                        .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(14.dp))
+                        .clickable { showLanguageSheet = true }
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_language_section),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = CreamText,
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = state.selectedLanguage.uppercase(),
+                            fontSize = 13.sp,
+                            color = Gold.copy(alpha = 0.8f),
+                            modifier = Modifier.padding(end = 8.dp),
+                        )
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowForwardIos,
+                            contentDescription = null,
+                            tint = Gold.copy(alpha = 0.6f),
+                            modifier = Modifier.size(16.dp),
+                        )
                     }
                 }
 
-                CosmicSettingsSection(title = "Notifications") {
+                CosmicSettingsSection(title = stringResource(R.string.settings_notifications_section)) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SettingsToggleRow("Daily Insights", state.notifDailyInsight, viewModel::setNotifDailyInsight)
-                        SettingsToggleRow("Transits", state.notifTransits, viewModel::setNotifTransits)
-                        SettingsToggleRow("Compatibility", state.notifCompatibility, viewModel::setNotifCompatibility)
+                        SettingsToggleRow(
+                            stringResource(R.string.settings_notif_daily_insights),
+                            state.notifDailyInsight,
+                            viewModel::setNotifDailyInsight,
+                        )
+                        SettingsToggleRow(
+                            stringResource(R.string.settings_notif_transits),
+                            state.notifTransits,
+                            viewModel::setNotifTransits,
+                        )
+                        SettingsToggleRow(
+                            stringResource(R.string.settings_notif_compatibility),
+                            state.notifCompatibility,
+                            viewModel::setNotifCompatibility,
+                        )
                     }
+                }
+
+                // iOS parity: NotificationPreferencesSheet is presented from ProfileView; on Android
+                // we expose it via a row in Settings so users can manage personalized alerts.
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(NavySurface)
+                        .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(14.dp))
+                        .clickable(onClick = onNavigateToNotificationPrefs)
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.personalized_alerts_title),
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = CreamText,
+                        )
+                        Text(
+                            text = stringResource(R.string.personalized_alerts_subtitle),
+                            fontSize = 12.sp,
+                            color = CreamDim,
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
+                    }
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowForwardIos,
+                        contentDescription = null,
+                        tint = Gold.copy(alpha = 0.6f),
+                        modifier = Modifier.size(16.dp),
+                    )
                 }
 
                 if (state.error != null) {
                     Text(text = state.error ?: "", color = Color(0xFFFF8A80), fontSize = 13.sp)
                 }
                 if (state.isSaved) {
-                    Text(text = "Settings saved", color = Gold, fontSize = 13.sp)
+                    Text(text = stringResource(R.string.settings_saved), color = Gold, fontSize = 13.sp)
                 }
 
                 Button(
@@ -207,12 +245,19 @@ fun SettingsScreen(
                     if (state.isLoading) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color(0xFF0D0D1A), strokeWidth = 2.dp)
                     } else {
-                        Text("Save Settings", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                        Text(stringResource(R.string.settings_save_button), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
                     }
                 }
 
                 Spacer(Modifier.height(32.dp))
             }
+        }
+
+        if (showLanguageSheet) {
+            LanguageSettingsSheet(
+                onDismiss = { showLanguageSheet = false },
+                viewModel = viewModel,
+            )
         }
     }
 }

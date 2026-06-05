@@ -7,12 +7,13 @@ import com.destinyai.astrology.data.repository.SseEvent
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import javax.inject.Inject
+import javax.inject.Named
 import javax.inject.Singleton
 import com.google.gson.JsonParser
 
 @Singleton
 class CompatibilityRepositoryImpl @Inject constructor(
-    private val api: AstroApiService,
+    @Named("streaming") private val api: AstroApiService,
 ) : CompatibilityRepository {
 
     override fun streamAnalysis(request: CompatibilityRequestDto): Flow<SseEvent> = flow {

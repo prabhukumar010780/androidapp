@@ -31,7 +31,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.ClipData
+import android.content.Context
 import android.content.Intent
+import android.graphics.Paint
+import android.graphics.pdf.PdfDocument
+import android.net.Uri
+import androidx.core.content.FileProvider
 import androidx.compose.animation.core.*
 import androidx.compose.ui.platform.LocalContext
 import com.destinyai.astrology.domain.model.ComparisonResult
@@ -41,9 +47,17 @@ import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
+import java.io.File
+import java.io.FileOutputStream
 
 private val SuccessColor = Color(0xFF48BB78)
 private val ErrorColor = Color(0xFFFC8181)
+
+private data class KutaCellOverlay(
+    val partnerName: String,
+    val kutaName: String,
+    val reason: String,
+)
 
 @Composable
 fun ComparisonOverviewView(
@@ -63,6 +77,8 @@ fun ComparisonOverviewView(
     val hasDosha = sortedResults.any { it.adjustedScore != it.overallScore }
 
     var showCancellationAlert by remember { mutableStateOf(false) }
+    // iOS parity (ComparisonOverviewView.swift:484-494, 526-535): per-cell cancellation/warning popup.
+    var selectedCellOverlay by remember { mutableStateOf<KutaCellOverlay?>(null) }
 
     // Collect all cancelled kutas across all results for the overlay
     val cancelledKutas = remember(sortedResults) {
@@ -82,9 +98,59 @@ fun ComparisonOverviewView(
         )
     }
 
+    selectedCellOverlay?.let { overlay ->
+        CancellationOverlay(
+            kutas = listOf(Triple(overlay.partnerName, overlay.kutaName, overlay.reason)),
+            onDismiss = { selectedCellOverlay = null },
+        )
+    }
+
     val context = LocalContext.current
     val shareText = remember(sortedResults, userName) {
         buildComparisonExportText(userName, sortedResults)
+    }
+
+    // iOS parity (ComparisonOverviewView.swift:144-175 + 240-247): generate a PDF
+    // for both Save-to-Files and Share, attaching application/pdf via FileProvider.
+    val pdfBuilder: () -> Uri? = {
+        runCatching { buildComparisonPdf(context, userName, sortedResults) }.getOrNull()
+    }
+    val sharePdfWithText: () -> Unit = {
+        val uri = pdfBuilder()
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "application/pdf"
+            putExtra(Intent.EXTRA_TEXT, shareText)
+            putExtra(Intent.EXTRA_SUBJECT, "$userName — Compatibility Report")
+            if (uri != null) {
+                putExtra(Intent.EXTRA_STREAM, uri)
+                clipData = ClipData.newRawUri("Compatibility PDF", uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            } else {
+                type = "text/plain"
+            }
+        }
+        context.startActivity(Intent.createChooser(intent, "Share Results"))
+    }
+    val saveToFiles: () -> Unit = {
+        val uri = pdfBuilder()
+        if (uri != null) {
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "application/pdf"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                putExtra(Intent.EXTRA_SUBJECT, "$userName — Compatibility Report")
+                clipData = ClipData.newRawUri("Compatibility PDF", uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(Intent.createChooser(intent, "Save Report"))
+        } else {
+            // Fallback: text share if PDF generation fails
+            val fallback = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, shareText)
+                putExtra(Intent.EXTRA_SUBJECT, "$userName — Compatibility Report")
+            }
+            context.startActivity(Intent.createChooser(fallback, "Save Report"))
+        }
     }
 
     CosmicBackground(modifier = modifier) {
@@ -94,13 +160,7 @@ fun ComparisonOverviewView(
                 .semantics { contentDescription = "comparison_overview_screen" },
         ) {
             // Header
-            ComparisonHeader(userName = userName, onBack = onBack, onShare = {
-                val intent = Intent(Intent.ACTION_SEND).apply {
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_TEXT, shareText)
-                }
-                context.startActivity(Intent.createChooser(intent, "Share Results"))
-            })
+            ComparisonHeader(userName = userName, onBack = onBack, onShare = sharePdfWithText)
 
             Column(
                 modifier = Modifier
@@ -153,6 +213,9 @@ fun ComparisonOverviewView(
                     KootaBreakdownTable(
                         results = sortedResults,
                         modifier = Modifier.padding(horizontal = 12.dp),
+                        onCellClick = { partnerName, kutaName, reason ->
+                            selectedCellOverlay = KutaCellOverlay(partnerName, kutaName, reason)
+                        },
                     )
                 }
 
@@ -164,7 +227,7 @@ fun ComparisonOverviewView(
                     )
                 }
 
-                // Section 4: Export report row (mirrors iOS "Save to Files" button)
+                // Section 4: Save Report row (mirrors iOS "Save to Files" — generates PDF)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -172,21 +235,15 @@ fun ComparisonOverviewView(
                         .clip(RoundedCornerShape(12.dp))
                         .background(NavySurface)
                         .border(1.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
-                        .clickable {
-                            val intent = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, shareText)
-                                putExtra(Intent.EXTRA_SUBJECT, "$userName — Compatibility Report")
-                            }
-                            context.startActivity(Intent.createChooser(intent, "Export Report"))
-                        }
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                        .clickable(onClick = saveToFiles)
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                        .semantics { contentDescription = "comparison_save_pdf_button" },
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Icon(Icons.Default.Download, contentDescription = null, tint = Gold, modifier = Modifier.size(20.dp))
                     Text(
-                        "Export Report",
+                        "Save to Files (PDF)",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Medium,
                         color = CreamText,
@@ -403,6 +460,7 @@ private val kootaDisplayNames = mapOf(
 private fun KootaBreakdownTable(
     results: List<ComparisonResult>,
     modifier: Modifier = Modifier,
+    onCellClick: (partnerName: String, kutaName: String, reason: String) -> Unit = { _, _, _ -> },
 ) {
     Column(
         modifier = modifier
@@ -477,8 +535,41 @@ private fun KootaBreakdownTable(
                         kuta.score == 0.0 -> Color(0xFFED8936)
                         else -> CreamDim.copy(alpha = 0.6f)
                     }
+                    // iOS parity (ComparisonOverviewView.swift:484-494, 526-535): per-cell
+                    // info popup. Cancelled cells reveal the cancellation reason; zero
+                    // non-critical cells reveal a low-score warning.
+                    val cellClickable: (() -> Unit)? = when {
+                        kuta != null && kuta.doshaCancelled && !kuta.cancellationReason.isNullOrBlank() -> {
+                            {
+                                onCellClick(
+                                    r.partner.name,
+                                    kootaDisplayNames[key] ?: key,
+                                    kuta.cancellationReason,
+                                )
+                            }
+                        }
+                        kuta != null && kuta.score == 0.0 && !(kuta.doshaPresent && !kuta.doshaCancelled) -> {
+                            {
+                                onCellClick(
+                                    r.partner.name,
+                                    kootaDisplayNames[key] ?: key,
+                                    kuta.description.ifBlank {
+                                        "This kuta scored zero — review the kuta description for guidance."
+                                    },
+                                )
+                            }
+                        }
+                        else -> null
+                    }
                     Column(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .let { m ->
+                                if (cellClickable != null) m.clickable(onClick = cellClickable) else m
+                            }
+                            .semantics {
+                                contentDescription = if (cellClickable != null) "kuta_cell_clickable" else "kuta_cell"
+                            },
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         if (statusIcon != null) Text(statusIcon, fontSize = 10.sp)
@@ -817,4 +908,73 @@ internal fun rejectionReasonScoreHighlight(reason: String): Pair<String, String>
     val match = Regex("(\\d+/\\d+)").find(reason) ?: return null
     val before = reason.substring(0, match.range.first)
     return before to match.value
+}
+
+// ── PDF builder (Android parity with iOS ComparisonPDFRenderer) ───────────────
+
+/**
+ * Generates a PDF from the comparison results and returns a content:// URI through
+ * the app's FileProvider. Mirrors iOS ComparisonPDFRenderer (text-only document, no
+ * embedded fonts) so receiving apps can preview and save the report.
+ */
+internal fun buildComparisonPdf(
+    context: Context,
+    userName: String,
+    results: List<ComparisonResult>,
+): Uri? {
+    val doc = PdfDocument()
+    val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create() // A4 in points
+    val page = doc.startPage(pageInfo)
+    val canvas = page.canvas
+    val title = Paint().apply {
+        color = android.graphics.Color.BLACK
+        textSize = 18f
+        isFakeBoldText = true
+    }
+    val body = Paint().apply {
+        color = android.graphics.Color.DKGRAY
+        textSize = 12f
+    }
+    var y = 60f
+    canvas.drawText("$userName — Compatibility Report", 40f, y, title)
+    y += 28f
+    canvas.drawText("Analyzed with Destiny AI Astrology", 40f, y, body)
+    y += 24f
+    results.forEach { r ->
+        val line = "${r.partner.name}: ${r.adjustedScore}/${r.maxScore}" +
+            if (r.isRecommended) " — Recommended" else " — Not Recommended"
+        canvas.drawText(line, 40f, y, body)
+        y += 18f
+        if (r.summary.isNotBlank()) {
+            r.summary.chunkedByLine(80).forEach { chunk ->
+                canvas.drawText(chunk, 56f, y, body)
+                y += 16f
+                if (y > 800f) return@forEach
+            }
+        }
+        y += 8f
+    }
+    doc.finishPage(page)
+    val safeUser = userName.filter { it.isLetterOrDigit() }.take(16).ifBlank { "compat" }
+    val file = File(context.cacheDir, "compat-$safeUser.pdf")
+    return runCatching {
+        FileOutputStream(file).use { doc.writeTo(it) }
+        doc.close()
+        FileProvider.getUriForFile(context, "com.destinyai.astrology.fileprovider", file)
+    }.getOrElse {
+        doc.close()
+        null
+    }
+}
+
+private fun String.chunkedByLine(maxChars: Int): List<String> {
+    if (length <= maxChars) return listOf(this)
+    val result = mutableListOf<String>()
+    var idx = 0
+    while (idx < length) {
+        val end = minOf(idx + maxChars, length)
+        result += substring(idx, end)
+        idx = end
+    }
+    return result
 }

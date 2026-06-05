@@ -31,25 +31,35 @@ import com.destinyai.astrology.ui.theme.NavySurface
 @Composable
 fun DivineGlassCard(
     modifier: Modifier = Modifier,
-    cornerRadius: Dp = 16.dp,
+    cornerRadius: Dp = 24.dp,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val shape = RoundedCornerShape(cornerRadius)
-    val goldBorderColor = Gold.copy(alpha = 0.3f)
+    // 5-stop gradient gold rim mirroring iOS DivineGlassCard.swift
+    // (white -> gold -> faded gold -> gold -> white) at 1.5dp.
+    val goldRimBrush = Brush.linearGradient(
+        colorStops = arrayOf(
+            0.05f to Color.White.copy(alpha = 0.8f),
+            0.20f to Gold,
+            0.50f to Gold.copy(alpha = 0.3f),
+            0.80f to Gold,
+            0.98f to Color.White.copy(alpha = 0.7f),
+        ),
+    )
 
     Box(
         modifier = modifier
             .clip(shape)
             // Base translucent fill
             .background(NavySurface.copy(alpha = 0.75f))
-            // Hairline gold border + radial refraction highlight drawn together
+            // 5-stop gold gradient rim + radial refraction highlight drawn together
             .drawBehind {
-                // Gold hairline border
+                // 5-stop gold gradient rim (1.5dp)
                 drawRoundRect(
-                    color = goldBorderColor,
+                    brush = goldRimBrush,
                     size = size,
                     cornerRadius = CornerRadius(cornerRadius.toPx(), cornerRadius.toPx()),
-                    style = Stroke(width = 0.5.dp.toPx()),
+                    style = Stroke(width = 1.5.dp.toPx()),
                 )
                 // Radial refraction highlight positioned at (0.30, 0.28)
                 val highlightCenter = Offset(

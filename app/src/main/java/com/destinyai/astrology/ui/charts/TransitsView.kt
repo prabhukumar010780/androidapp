@@ -1,14 +1,10 @@
 package com.destinyai.astrology.ui.charts
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Loop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -43,11 +39,22 @@ fun getSignNameRes(sign: String): Int = when (sign) {
     else -> R.string.sign_ar // fallback
 }
 
+// Map planet API names to localized string resources (iOS TransitsView.swift:48 —
+// "planet_<name>".localized)
+private val transitPlanetNameResMap: Map<String, Int> = mapOf(
+    "Sun" to R.string.planet_sun,
+    "Moon" to R.string.planet_moon,
+    "Mars" to R.string.planet_mars,
+    "Mercury" to R.string.planet_mercury,
+    "Jupiter" to R.string.planet_jupiter,
+    "Venus" to R.string.planet_venus,
+    "Saturn" to R.string.planet_saturn,
+    "Rahu" to R.string.planet_rahu,
+    "Ketu" to R.string.planet_ketu,
+)
+
 @Composable
 fun TransitsView(transitResponse: TransitResponse?) {
-    // R2-C9: per-planet expansion state
-    var expanded by remember { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -61,7 +68,7 @@ fun TransitsView(transitResponse: TransitResponse?) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Icon(Icons.Default.Loop, contentDescription = null, tint = Gold, modifier = Modifier.size(16.dp))
             Text(
-                "Transits ${transitResponse?.year ?: 2024}",
+                stringResource(R.string.transits_year_fmt, transitResponse?.year ?: 2024),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = Color(0xFF0B0F19),
@@ -72,21 +79,14 @@ fun TransitsView(transitResponse: TransitResponse?) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 transitResponse.transits.keys.sorted().forEach { planet ->
                     val events = transitResponse.transits[planet] ?: return@forEach
-                    val isExpanded = expanded[planet] ?: false
                     TransitPlanetSection(
                         planet = planet,
                         events = events,
-                        isExpanded = isExpanded,
-                        onToggle = {
-                            expanded = expanded.toMutableMap().apply {
-                                this[planet] = !isExpanded
-                            }
-                        },
                     )
                 }
             }
         } else {
-            Text("Select a year to view transits.", fontSize = 14.sp, color = Color.Gray)
+            Text(stringResource(R.string.select_year_transits), fontSize = 14.sp, color = Color.Gray)
         }
     }
 }
@@ -95,40 +95,21 @@ fun TransitsView(transitResponse: TransitResponse?) {
 private fun TransitPlanetSection(
     planet: String,
     events: List<TransitEvent>,
-    isExpanded: Boolean,
-    onToggle: () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        // R2-C9: collapsible header row
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .clickable(onClick = onToggle)
-                .padding(vertical = 6.dp, horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                "$planet (${events.size} event${if (events.size != 1) "s" else ""})",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF0B0F19),
-            )
-            Icon(
-                imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                contentDescription = if (isExpanded) "Collapse" else "Expand",
-                modifier = Modifier.size(18.dp),
-                tint = Color.Gray,
-            )
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        // iOS parity: TransitsView.swift:48 — planet name header (no toggle)
+        val planetLabel = transitPlanetNameResMap[planet]?.let { stringResource(it) } ?: planet
+        Text(
+            planetLabel,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFF0B0F19),
+        )
+        // iOS parity: events always shown inline, no AnimatedVisibility wrapper
+        events.forEach { event ->
+            TransitEventRow(event = event)
         }
-        AnimatedVisibility(visible = isExpanded) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                events.forEach { event ->
-                    TransitEventRow(event = event)
-                }
-            }
-        }
+        Spacer(Modifier.height(4.dp))
     }
 }
 
@@ -151,7 +132,7 @@ private fun TransitEventRow(event: TransitEvent) {
         // R2-C8: localised sign name
         val signName = stringResource(getSignNameRes(event.sign))
         Text(
-            "$signName (H${event.houseFromLagna})",
+            "$signName (${stringResource(R.string.house_short_fmt, event.houseFromLagna)})",
             fontSize = 13.sp,
             color = Color(0xFF0B0F19),
         )

@@ -2,6 +2,7 @@ package com.destinyai.astrology.ui.compatibility
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.destinyai.astrology.BuildConfig
 import com.destinyai.astrology.data.local.db.CompatibilityHistoryDao
 import com.destinyai.astrology.data.local.db.CompatibilityHistoryEntity
 import com.destinyai.astrology.data.local.prefs.UserPreferences
@@ -10,6 +11,8 @@ import com.destinyai.astrology.data.remote.BirthProfileDto
 import com.destinyai.astrology.data.remote.CompatibilityBirthDetailsDto
 import com.destinyai.astrology.data.remote.CompatibilityFollowUpRequest
 import com.destinyai.astrology.data.remote.CompatibilityRequestDto
+import com.destinyai.astrology.data.remote.CreatePartnerRequest
+import com.destinyai.astrology.data.remote.PartnerRequest
 import com.destinyai.astrology.data.remote.PredictBirthDataDto
 import com.destinyai.astrology.data.remote.PredictRequest
 import com.destinyai.astrology.data.remote.mapCompatibilityResponse
@@ -81,6 +84,7 @@ class CompatibilityViewModel @Inject constructor(
     private val prefs: UserPreferences,
     private val compatibilityRepo: CompatibilityRepository,
     private val historyDao: CompatibilityHistoryDao,
+    private val chatRepository: com.destinyai.astrology.data.repository.ChatRepository,
 ) : ViewModel() {
 
     private val gson = Gson()
@@ -103,6 +107,40 @@ class CompatibilityViewModel @Inject constructor(
     private val _comparisonResults = MutableStateFlow<List<ComparisonResult>>(emptyList())
     val comparisonResults: StateFlow<List<ComparisonResult>> = _comparisonResults
 
+    // iOS parity (CompatibilityView.swift:218-227): expose the active profile id so the
+    // partner picker can exclude it from saved-partner suggestions.
+    val activeProfileId: StateFlow<String?> = prefs.activeProfileIdFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    // iOS parity (CompatibilityResultSheets.swift:1261-1269): response length selector
+    // for the Ask Destiny chat. Reuses the global ResponseLengthManager prefs.
+    val responseLength: kotlinx.coroutines.flow.Flow<String>
+        get() = prefs.responseLengthFlow
+
+    fun setResponseLength(value: String) {
+        viewModelScope.launch { runCatching { prefs.setResponseLength(value) } }
+    }
+
+    /**
+     * iOS parity (CompatibilityResultSheets.swift:1827-1890): submit a 1..5-star
+     * inline rating for a compatibility-chat response. Best-effort — UI latches
+     * the local thank-you state regardless of network outcome.
+     */
+    fun submitCompatRating(query: String, responseText: String, rating: Int) {
+        viewModelScope.launch {
+            runCatching {
+                chatRepository.submitRating(
+                    traceId = null,
+                    sessionId = null,
+                    userEmail = null,
+                    query = query,
+                    responseText = responseText,
+                    rating = rating,
+                )
+            }
+        }
+    }
+
     fun loadUserData() {
         viewModelScope.launch {
             val email = prefs.getUserEmail() ?: return@launch
@@ -121,12 +159,33 @@ class CompatibilityViewModel @Inject constructor(
                     personATimeUnknown = profile.birthTimeUnknown,
                 )
             }
+            // Load history so cache lookup in analyze() works (parity with iOS).
+            loadHistory()
         }
     }
 
     fun setPartnerName(name: String) = _uiState.update { it.copy(partnerName = name) }
     fun setPartnerDob(dob: String) = _uiState.update { it.copy(partnerDob = dob) }
     fun setPartnerTime(time: String) = _uiState.update { it.copy(partnerTime = time) }
+
+    /**
+     * Geocode a free-text city query via the backend's location search endpoint.
+     * Returns Triple(displayName, lat, lon) on success, or null on no result / error.
+     */
+    suspend fun searchLocation(query: String): Triple<String, Double, Double>? {
+        if (query.isBlank()) return null
+        return try {
+            val results = api.searchLocations(query.trim())
+            val first = results.firstOrNull() ?: return null
+            Triple(
+                first.displayName.ifBlank { first.city },
+                first.latitude,
+                first.longitude,
+            )
+        } catch (_: Exception) {
+            null
+        }
+    }
     fun setPartnerLocation(city: String, lat: Double, lon: Double) =
         _uiState.update { it.copy(partnerCity = city, partnerLatitude = lat, partnerLongitude = lon) }
     fun setPartnerGender(gender: String) = _uiState.update { it.copy(partnerGender = gender) }
@@ -136,6 +195,8 @@ class CompatibilityViewModel @Inject constructor(
     fun setShowLocationSearch(show: Boolean) = _uiState.update { it.copy(showLocationSearch = show) }
     fun setShowComparisonOverview(show: Boolean) = _uiState.update { it.copy(showComparisonOverview = show) }
     fun dismissPaywall() = _uiState.update { it.copy(showPaywall = false) }
+    fun showPaywallSheet() = _uiState.update { it.copy(showPaywall = true) }
+    fun dismissError() = _uiState.update { it.copy(error = null) }
     fun setSavePartnerToBirthCharts(save: Boolean) = _uiState.update { it.copy(savePartnerToBirthCharts = save) }
     fun dismissDuplicateAlert() = _uiState.update { it.copy(showDuplicateAlert = false, duplicateSessionId = null) }
     fun showDuplicateAlert(sessionId: String) = _uiState.update { it.copy(showDuplicateAlert = true, duplicateSessionId = sessionId) }
@@ -179,17 +240,28 @@ class CompatibilityViewModel @Inject constructor(
 
     fun dismissPartnerPicker() = _uiState.update { it.copy(showPartnerPicker = false) }
 
+    /**
+     * Mirrors iOS CompatibilityView .onChange(of: viewModel.girl*) blocks: when the user
+     * edits any partner field after loading from a saved chart, drop the "from saved" flag
+     * and re-enable the "save partner" checkbox so the modified copy can be persisted.
+     */
+    fun markPartnerEdited() {
+        val s = _uiState.value
+        if (!s.partnerFromSaved) return
+        _uiState.update { it.copy(partnerFromSaved = false, savePartnerToBirthCharts = true) }
+    }
+
     fun selectSavedPartner(partner: com.destinyai.astrology.data.remote.PartnerDto) {
         _uiState.update {
             it.copy(
                 partnerName = partner.name,
-                partnerDob = partner.dateOfBirth,
-                partnerTime = partner.timeOfBirth,
-                partnerCity = partner.cityOfBirth,
-                partnerLatitude = partner.latitude,
-                partnerLongitude = partner.longitude,
-                partnerGender = "",
-                partnerTimeUnknown = false,
+                partnerDob = partner.dateOfBirth ?: "",
+                partnerTime = partner.timeOfBirth ?: "",
+                partnerCity = partner.cityOfBirth ?: "",
+                partnerLatitude = partner.latitude ?: 0.0,
+                partnerLongitude = partner.longitude ?: 0.0,
+                partnerGender = partner.gender,
+                partnerTimeUnknown = partner.birthTimeUnknown,
                 partnerFromSaved = true,
                 showPartnerPicker = false,
             )
@@ -233,33 +305,128 @@ class CompatibilityViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Pre-flight quota gate that mirrors iOS QuotaManager.canAccessFeature(.compatibility, ...).
+     * Returns true when the user may proceed; otherwise updates UI state with the appropriate
+     * banner / paywall marker (matching iOS string contracts) and returns false.
+     */
+    private suspend fun checkCompatibilityQuota(email: String, count: Int = 1): Boolean {
+        return try {
+            val authHeader = "Bearer ${BuildConfig.API_KEY}"
+            val access = api.canAccessFeature(authHeader, email, "compatibility", count)
+            if (access.allowed) {
+                true
+            } else {
+                when (access.reason) {
+                    "daily_limit_reached" -> {
+                        val msg = access.resets_at?.let { "Daily limit reached. Resets at $it." }
+                            ?: "Daily limit reached. Resets tomorrow."
+                        _uiState.update {
+                            it.copy(isAnalyzing = false, showStreamingView = false, error = msg)
+                        }
+                    }
+                    "overall_limit_reached" -> {
+                        val marker = if (email.contains("guest") || email.contains("@gen.com")) {
+                            "FREE_LIMIT_GUEST"
+                        } else {
+                            "FREE_LIMIT_REGISTERED"
+                        }
+                        _uiState.update {
+                            it.copy(
+                                isAnalyzing = false,
+                                showStreamingView = false,
+                                showPaywall = true,
+                                error = marker,
+                            )
+                        }
+                    }
+                    else -> {
+                        // upgrade_required / feature_upgrade_required / unknown -> paywall sheet
+                        _uiState.update {
+                            it.copy(
+                                isAnalyzing = false,
+                                showStreamingView = false,
+                                showPaywall = true,
+                                error = "FEATURE_UPGRADE_REQUIRED",
+                            )
+                        }
+                    }
+                }
+                false
+            }
+        } catch (e: Exception) {
+            // Match iOS behaviour: log and proceed; backend will still enforce the cap server-side.
+            true
+        }
+    }
+
     fun analyze() {
         viewModelScope.launch {
             val s = _uiState.value
             if (!s.canAnalyze) return@launch
             val profile = personAProfile ?: return@launch
             val email = personAEmail ?: return@launch
+
+            // STEP 1: Local cache lookup — if matching match exists, load from history (FREE, no API call)
+            // Mirrors iOS CompatibilityHistoryService.findExistingMatch behaviour.
+            val cached = _historyItems.value.firstOrNull { item ->
+                item.boyDob == profile.dateOfBirth &&
+                    item.boyTime == profile.timeOfBirth &&
+                    item.boyCity.equals(profile.cityOfBirth, ignoreCase = true) &&
+                    item.girlDob == s.partnerDob &&
+                    item.girlTime == s.partnerTime &&
+                    item.girlCity.equals(s.partnerCity, ignoreCase = true)
+            }
+            if (cached?.result != null) {
+                _compatibilityResult.value = cached.result
+                _uiState.update {
+                    it.copy(
+                        result = cached.result.summary,
+                        score = cached.result.totalScore,
+                        isAnalyzing = false,
+                        showStreamingView = false,
+                    )
+                }
+                return@launch
+            }
+
+            // Pre-flight quota check before invoking streaming analysis (parity with iOS QuotaManager)
+            if (!checkCompatibilityQuota(email)) return@launch
+
             _uiState.update { it.copy(isAnalyzing = true, error = null, showStreamingView = true) }
             _currentStep.value = AnalysisStep.CALCULATING_CHARTS
 
+            val appLanguage = prefs.getSelectedLanguage()
+            val activeProfileId = prefs.getActiveProfileId()
+            // Round coordinates to 6 decimal places (backend Pydantic validator requirement) — parity with iOS
+            val roundedBoyLat = Math.round(profile.latitude * 1_000_000.0) / 1_000_000.0
+            val roundedBoyLon = Math.round(profile.longitude * 1_000_000.0) / 1_000_000.0
+            val roundedGirlLat = Math.round(s.partnerLatitude * 1_000_000.0) / 1_000_000.0
+            val roundedGirlLon = Math.round(s.partnerLongitude * 1_000_000.0) / 1_000_000.0
+            // Mint sessionId client-side so follow-up Ask Destiny can link to this analysis (parity with iOS)
+            val mintedSessionId = "sess_${System.currentTimeMillis()}"
+            currentSessionId = mintedSessionId
             val request = CompatibilityRequestDto(
                 boy = CompatibilityBirthDetailsDto(
                     dob = profile.dateOfBirth,
                     time = if (profile.birthTimeUnknown) "12:00" else profile.timeOfBirth,
-                    lat = profile.latitude,
-                    lon = profile.longitude,
+                    lat = roundedBoyLat,
+                    lon = roundedBoyLon,
                     name = s.personAName,
                     place = profile.cityOfBirth,
                 ),
                 girl = CompatibilityBirthDetailsDto(
                     dob = s.partnerDob,
                     time = if (s.partnerTimeUnknown) "12:00" else s.partnerTime,
-                    lat = s.partnerLatitude,
-                    lon = s.partnerLongitude,
+                    lat = roundedGirlLat,
+                    lon = roundedGirlLon,
                     name = s.partnerName,
                     place = s.partnerCity,
                 ),
+                sessionId = mintedSessionId,
                 userEmail = email,
+                language = appLanguage,
+                profileId = activeProfileId,
             )
 
             try {
@@ -278,6 +445,10 @@ class CompatibilityViewModel @Inject constructor(
                             )
                             _compatibilityResult.value = result
                             saveToHistory(result, email, profile, s)
+                            // R2-CM5: persist partner to user's birth charts when checkbox is set
+                            if (s.savePartnerToBirthCharts && !s.partnerFromSaved) {
+                                savePartnerToBirthCharts(email, s)
+                            }
                             _uiState.update {
                                 it.copy(
                                     result = result.summary,
@@ -483,7 +654,22 @@ class CompatibilityViewModel @Inject constructor(
 
     private var currentComparisonGroupId: String? = null
 
+    /**
+     * Set the Plus-tier flag — gates multi-partner addPartner() and other Plus-only flows.
+     * Wired from QuotaManager subscription state observer (iOS parity:
+     * QuotaManager.isPlus). Visible to allow unit tests to drive the gate without
+     * spinning up the full subscription stack.
+     */
+    fun setPlus(isPlus: Boolean) {
+        _uiState.update { it.copy(isPlus = isPlus) }
+    }
+
     fun addPartner() {
+        // Multi-partner is a Plus-only feature (parity with iOS QuotaManager.isPlus gate).
+        if (!_uiState.value.isPlus) {
+            _uiState.update { it.copy(showPaywall = true) }
+            return
+        }
         val current = _partners.value
         if (current.size >= 3) return
         _partners.value = current + PartnerData()
@@ -512,6 +698,9 @@ class CompatibilityViewModel @Inject constructor(
             val validPartners = _partners.value.filter { it.isComplete }
             if (validPartners.isEmpty()) return@launch
 
+            // Pre-flight quota check before invoking streaming analysis (parity with iOS QuotaManager)
+            if (!checkCompatibilityQuota(email, count = validPartners.size)) return@launch
+
             val groupId = java.util.UUID.randomUUID().toString()
             currentComparisonGroupId = groupId
             _comparisonResults.value = emptyList()
@@ -523,26 +712,34 @@ class CompatibilityViewModel @Inject constructor(
             val newResults = mutableListOf<ComparisonResult>()
 
             validPartners.forEachIndexed { index, partner ->
+                val appLanguage = prefs.getSelectedLanguage()
+                val activeProfileId = prefs.getActiveProfileId()
+                val rBoyLat = Math.round(profile.latitude * 1_000_000.0) / 1_000_000.0
+                val rBoyLon = Math.round(profile.longitude * 1_000_000.0) / 1_000_000.0
+                val rGirlLat = Math.round(partner.latitude * 1_000_000.0) / 1_000_000.0
+                val rGirlLon = Math.round(partner.longitude * 1_000_000.0) / 1_000_000.0
                 val request = CompatibilityRequestDto(
                     boy = CompatibilityBirthDetailsDto(
                         dob = profile.dateOfBirth,
                         time = if (profile.birthTimeUnknown) "12:00" else profile.timeOfBirth,
-                        lat = profile.latitude,
-                        lon = profile.longitude,
+                        lat = rBoyLat,
+                        lon = rBoyLon,
                         name = _uiState.value.personAName,
                         place = profile.cityOfBirth,
                     ),
                     girl = CompatibilityBirthDetailsDto(
                         dob = partner.dob,
                         time = partner.time.ifBlank { "12:00" },
-                        lat = partner.latitude,
-                        lon = partner.longitude,
+                        lat = rGirlLat,
+                        lon = rGirlLon,
                         name = partner.name,
                         place = partner.city,
                     ),
                     userEmail = email,
                     comparisonGroupId = groupId,
                     partnerIndex = index,
+                    language = appLanguage,
+                    profileId = activeProfileId,
                 )
                 try {
                     compatibilityRepo.streamAnalysis(request).collect { event ->
@@ -594,6 +791,10 @@ class CompatibilityViewModel @Inject constructor(
             val email = personAEmail ?: return@launch
             val failedIndices = _failedPartnerIndices.value.toList()
             if (failedIndices.isEmpty()) return@launch
+
+            // Pre-flight quota check before invoking streaming analysis (parity with iOS QuotaManager)
+            if (!checkCompatibilityQuota(email, count = failedIndices.size)) return@launch
+
             _failedPartnerIndices.value = emptyList()
 
             val groupId = currentComparisonGroupId ?: java.util.UUID.randomUUID().toString()
@@ -604,26 +805,34 @@ class CompatibilityViewModel @Inject constructor(
                 val partner = _partners.value.getOrNull(index) ?: run {
                     newFailed.add(index); return@forEach
                 }
+                val appLanguage = prefs.getSelectedLanguage()
+                val activeProfileId = prefs.getActiveProfileId()
+                val rBoyLat = Math.round(profile.latitude * 1_000_000.0) / 1_000_000.0
+                val rBoyLon = Math.round(profile.longitude * 1_000_000.0) / 1_000_000.0
+                val rGirlLat = Math.round(partner.latitude * 1_000_000.0) / 1_000_000.0
+                val rGirlLon = Math.round(partner.longitude * 1_000_000.0) / 1_000_000.0
                 val request = CompatibilityRequestDto(
                     boy = CompatibilityBirthDetailsDto(
                         dob = profile.dateOfBirth,
                         time = if (profile.birthTimeUnknown) "12:00" else profile.timeOfBirth,
-                        lat = profile.latitude,
-                        lon = profile.longitude,
+                        lat = rBoyLat,
+                        lon = rBoyLon,
                         name = _uiState.value.personAName,
                         place = profile.cityOfBirth,
                     ),
                     girl = CompatibilityBirthDetailsDto(
                         dob = partner.dob,
                         time = partner.time.ifBlank { "12:00" },
-                        lat = partner.latitude,
-                        lon = partner.longitude,
+                        lat = rGirlLat,
+                        lon = rGirlLon,
                         name = partner.name,
                         place = partner.city,
                     ),
                     userEmail = email,
                     comparisonGroupId = groupId,
                     partnerIndex = index,
+                    language = appLanguage,
+                    profileId = activeProfileId,
                 )
                 try {
                     compatibilityRepo.streamAnalysis(request).collect { event ->
@@ -658,6 +867,102 @@ class CompatibilityViewModel @Inject constructor(
                 }
             }
             _failedPartnerIndices.value = newFailed
+        }
+    }
+
+    /**
+     * Hydrate the form + result state from a saved history entry. Mirrors iOS
+     * CompatibilityViewModel.loadFromHistory(_:) — used for both deep-link entry
+     * and free re-open of past matches (no LLM call).
+     */
+    fun loadFromHistory(item: CompatibilityHistoryItem) {
+        _uiState.update {
+            it.copy(
+                partnerName = item.girlName,
+                partnerDob = item.girlDob,
+                partnerTime = item.girlTime,
+                partnerCity = item.girlCity,
+                // Don't hardcode gender — leave blank if not stored
+                partnerGender = it.partnerGender,
+            )
+        }
+        item.result?.let { saved ->
+            _compatibilityResult.value = saved
+            _uiState.update {
+                it.copy(
+                    result = saved.summary,
+                    score = saved.totalScore,
+                )
+            }
+        }
+        currentSessionId = item.sessionId
+    }
+
+    /**
+     * Hydrate the comparison overview from a saved comparison group (deep-link
+     * from Home match-history). Mirrors iOS CompatibilityViewModel.loadFromGroup —
+     * sets the comparison results without re-running an LLM analysis.
+     */
+    fun loadFromGroup(group: com.destinyai.astrology.domain.model.ComparisonGroup) {
+        val results = group.items.mapNotNull { item ->
+            val saved = item.result ?: return@mapNotNull null
+            val partner = PartnerData(
+                name = item.girlName,
+                dob = item.girlDob,
+                time = item.girlTime,
+                city = item.girlCity,
+            )
+            ComparisonResult(
+                partner = partner,
+                totalScore = saved.totalScore,
+                maxScore = item.maxScore,
+                overallScore = saved.adjustedScore ?: saved.totalScore,
+                isRecommended = saved.isRecommended,
+                adjustedScore = saved.adjustedScore ?: saved.totalScore,
+                summary = saved.summary,
+            )
+        }
+        _comparisonResults.value = results
+        currentComparisonGroupId = group.id
+        _uiState.update { it.copy(showComparisonOverview = true) }
+    }
+
+    /** When the user taps a partner in the comparison overview, swap the active result. */
+    fun selectComparisonResult(index: Int) {
+        val results = _comparisonResults.value
+        val r = results.getOrNull(index) ?: return
+        _uiState.update {
+            it.copy(
+                result = r.summary,
+                score = r.totalScore,
+            )
+        }
+    }
+
+    /**
+     * Persist the partner currently in the form to the user's saved birth charts.
+     * Best-effort — fire-and-forget; failures are logged but do not block analysis.
+     */
+    private suspend fun savePartnerToBirthCharts(email: String, s: CompatibilityUiState) {
+        try {
+            val req = CreatePartnerRequest(
+                userEmail = email,
+                profile = PartnerRequest(
+                    name = s.partnerName,
+                    gender = s.partnerGender,
+                    dateOfBirth = s.partnerDob,
+                    timeOfBirth = if (s.partnerTimeUnknown) null else s.partnerTime,
+                    cityOfBirth = s.partnerCity,
+                    latitude = s.partnerLatitude,
+                    longitude = s.partnerLongitude,
+                    birthTimeUnknown = s.partnerTimeUnknown,
+                    forCompatibility = true,
+                ),
+                consentGiven = true,
+            )
+            api.addPartner(req)
+        } catch (_: Exception) {
+            // Silently swallow — partner save is best-effort and must not break analysis flow.
         }
     }
 }

@@ -6,6 +6,7 @@ import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.remote.NotificationDto
 import com.destinyai.astrology.data.remote.NotificationListResponse
 import com.destinyai.astrology.data.remote.UnreadCountResponse
+import com.destinyai.astrology.services.QuotaManager
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -29,6 +30,7 @@ class NotificationsViewModelTest {
     private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var api: AstroApiService
     private lateinit var prefs: UserPreferences
+    private lateinit var quotaManager: QuotaManager
     private lateinit var vm: NotificationsViewModel
 
     @BeforeAll
@@ -45,8 +47,9 @@ class NotificationsViewModelTest {
     fun setUp() {
         api = mockk(relaxed = true)
         prefs = mockk(relaxed = true)
+        quotaManager = mockk(relaxed = true)
         coEvery { prefs.getUserEmail() } returns "u@x.com"
-        vm = NotificationsViewModel(api, prefs)
+        vm = NotificationsViewModel(api, prefs, quotaManager)
     }
 
     @Test

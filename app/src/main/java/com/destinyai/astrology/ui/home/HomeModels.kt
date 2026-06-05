@@ -5,6 +5,11 @@ data class HomeTransit(
     val sign: String,
     val influence: String,
     val isFavorable: Boolean,
+    // Optional richer fields populated from server `transit_influences` payload
+    // (parity with iOS TransitInfluencesSection rendering and chat-context build).
+    val house: Int = 0,
+    val description: String = "",
+    val badgeType: String = "neutral", // positive | caution | warning | neutral
 )
 
 data class HomeDashaInfo(
@@ -20,6 +25,8 @@ data class HomeDashaInfo(
     val theme: String? = null,
     // R2-H19: quality label ("Good", "Steady", "Caution")
     val quality: String? = null,
+    // Parity with iOS DashaInsightCard — meaning paragraph displayed below theme.
+    val meaning: String? = null,
 )
 
 data class HomeYoga(
@@ -32,6 +39,15 @@ data class HomeYoga(
     val status: String = "active",
     // R2-H33: cancellation reason key for localized lookup
     val cancellationKey: String? = null,
+    // Parity with iOS PremiumYogaCard / YogaDetailPopup — extra fields for the popup
+    // and the 170dp detail card.
+    val planets: String = "",
+    val houses: String = "",
+    val formation: String = "",
+    val strength: Int = 0, // 0..100
+    val outcome: String = "",
+    val reductionReason: String = "",
+    val isDosha: Boolean = false,
 )
 
 data class HomeDoshaStatus(
@@ -51,7 +67,7 @@ data class HomeLifeArea(
     val briefDescription: String = "",
 )
 
-enum class LifeAreaStatus { Positive, Neutral }
+enum class LifeAreaStatus { Positive, Neutral, Caution }
 
 data class HomeRichData(
     val transits: List<HomeTransit> = emptyList(),
@@ -59,6 +75,8 @@ data class HomeRichData(
     val yogas: List<HomeYoga> = emptyList(),
     val doshas: HomeDoshaStatus = HomeDoshaStatus(),
     val lifeAreas: List<HomeLifeArea> = defaultLifeAreas(),
+    // R2-H30 parity with iOS HomeView greeting + ascendant subtitle. Empty when unknown.
+    val ascendantSign: String = "",
 )
 
 fun defaultLifeAreas(): List<HomeLifeArea> = listOf(

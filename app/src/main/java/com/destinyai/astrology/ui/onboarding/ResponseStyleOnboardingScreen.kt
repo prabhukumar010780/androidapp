@@ -10,12 +10,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.ShowChart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
@@ -24,6 +29,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.destinyai.astrology.R
+import com.destinyai.astrology.services.HapticManager
+import com.destinyai.astrology.ui.components.ShimmerButton
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
@@ -33,29 +43,30 @@ import com.destinyai.astrology.ui.theme.NavySurface
 
 private data class ResponseStyleOption(
     val key: String,
-    val label: String,
-    val tagline: String,
-    val exampleResponse: String,
+    val labelRes: Int,
+    val taglineRes: Int,
+    val exampleResponseRes: Int,
+    // iOS parity (ResponseStyleOnboardingView.swift:142-144): each card has a leading
+    // gold-tinted icon. Mapped from iOS ContentStyle.icon (sparkles / chart.xyaxis.line).
+    val icon: ImageVector,
 )
 
+// iOS contract: ContentStyle raw values are "guidance" (essentials) and "astrology" (completeChart).
+// These keys are sent to backend as `response_style`.
 private val styleOptions = listOf(
     ResponseStyleOption(
-        key = "brief",
-        label = "Brief",
-        tagline = "Short, direct answers. Get to the point without extra context.",
-        exampleResponse = "Saturn in 7H delays commitment. Marriage timing: 2026-27.",
+        key = "guidance",
+        labelRes = R.string.content_style_essentials,
+        taglineRes = R.string.content_style_essentials_tagline,
+        exampleResponseRes = R.string.content_style_essentials_example,
+        icon = Icons.Outlined.AutoAwesome, // iOS: "sparkles"
     ),
     ResponseStyleOption(
-        key = "balanced",
-        label = "Balanced",
-        tagline = "Clear explanations with key insights and practical guidance.",
-        exampleResponse = "Saturn in your 7th house suggests you may experience delays in marriage or partnerships. This is a karmic placement that often leads to meaningful, long-lasting bonds once the timing is right — typically mid-to-late 2026.",
-    ),
-    ResponseStyleOption(
-        key = "detailed",
-        label = "Detailed",
-        tagline = "In-depth analysis with full astrological reasoning and remedies.",
-        exampleResponse = "Saturn's placement in your 7th house of partnerships indicates a pattern of karmic lessons through relationships. As the natural significator of discipline and delay, Saturn here often manifests as postponed marriage, but the relationships that do form tend to be enduring. Your current Dasha period suggests 2026-27 is a favorable window.",
+        key = "astrology",
+        labelRes = R.string.content_style_complete,
+        taglineRes = R.string.content_style_complete_tagline,
+        exampleResponseRes = R.string.content_style_complete_example,
+        icon = Icons.Outlined.ShowChart, // iOS: "chart.xyaxis.line"
     ),
 )
 
@@ -64,13 +75,17 @@ fun ResponseStyleOnboardingScreen(
     isSettingsMode: Boolean = false,
     onContinue: () -> Unit,
     onBack: () -> Unit = {},
+    viewModel: ResponseStyleOnboardingViewModel = hiltViewModel(),
 ) {
-    var selected by remember { mutableStateOf("balanced") }
+    val selected by viewModel.selected.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val haptic = remember { HapticManager(context) }
+
+    LaunchedEffect(Unit) { viewModel.loadCurrent() }
 
     CosmicBackground {
         Column(modifier = Modifier.fillMaxSize()) {
             if (isSettingsMode) {
-                // Settings mode: back button header
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -79,10 +94,14 @@ fun ResponseStyleOnboardingScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = CreamDim)
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.response_style_back),
+                            tint = CreamDim,
+                        )
                     }
                     Text(
-                        text = "Response Style",
+                        text = stringResource(R.string.response_style_setting_title),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = CanelaFontFamily,
@@ -91,7 +110,6 @@ fun ResponseStyleOnboardingScreen(
                     )
                 }
             } else {
-                // Onboarding mode: capsule step dots
                 Spacer(Modifier.statusBarsPadding())
                 Row(
                     modifier = Modifier
@@ -122,12 +140,20 @@ fun ResponseStyleOnboardingScreen(
             ) {
                 Spacer(Modifier.height(8.dp))
 
-                // Title
+                val titlePrefix = stringResource(R.string.response_style_onboarding_title_prefix)
+                val titleEmphasis = stringResource(R.string.response_style_onboarding_title_emphasis)
                 Text(
                     text = buildAnnotatedString {
-                        append("How do you like your ")
-                        withStyle(SpanStyle(color = Gold, fontStyle = FontStyle.Italic, fontWeight = FontWeight.SemiBold)) {
-                            append("insights?")
+                        append(titlePrefix)
+                        append(" ")
+                        withStyle(
+                            SpanStyle(
+                                color = Gold,
+                                fontStyle = FontStyle.Italic,
+                                fontWeight = FontWeight.SemiBold,
+                            ),
+                        ) {
+                            append(titleEmphasis)
                         }
                     },
                     fontSize = 24.sp,
@@ -137,7 +163,11 @@ fun ResponseStyleOnboardingScreen(
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = if (isSettingsMode) "Change your preferred response depth anytime." else "Choose how Destiny delivers your readings.",
+                    text = if (isSettingsMode) {
+                        stringResource(R.string.response_style_settings_subtitle)
+                    } else {
+                        stringResource(R.string.response_style_onboarding_subtitle)
+                    },
                     fontSize = 14.sp,
                     color = CreamDim,
                     textAlign = TextAlign.Center,
@@ -145,33 +175,36 @@ fun ResponseStyleOnboardingScreen(
 
                 Spacer(Modifier.height(28.dp))
 
-                // Style cards
                 styleOptions.forEach { option ->
                     ResponseStyleCard(
                         option = option,
                         isSelected = selected == option.key,
-                        onSelect = { selected = option.key },
+                        onSelect = {
+                            // iOS parity (ResponseStyleOnboardingView.swift:134):
+                            // light haptic on each card tap.
+                            haptic.light()
+                            viewModel.select(option.key)
+                        },
                     )
                     Spacer(Modifier.height(14.dp))
                 }
 
                 Spacer(Modifier.height(12.dp))
 
-                Button(
-                    onClick = onContinue,
-                    modifier = Modifier.fillMaxWidth().height(54.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Gold,
-                        contentColor = Color(0xFF0D0D1A),
-                    ),
-                ) {
-                    Text(
-                        if (isSettingsMode) "Save" else "Continue",
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 16.sp,
-                    )
-                }
+                // iOS parity (ResponseStyleOnboardingView.swift:117-119): Continue
+                // button uses the premium gold gradient — ShimmerButton matches it.
+                ShimmerButton(
+                    text = if (isSettingsMode) {
+                        stringResource(R.string.response_style_save_action)
+                    } else {
+                        stringResource(R.string.response_style_continue_action)
+                    },
+                    onClick = {
+                        haptic.premiumContinue()
+                        viewModel.persistSelection()
+                        onContinue()
+                    },
+                )
 
                 Spacer(Modifier.height(40.dp))
             }
@@ -199,20 +232,27 @@ private fun ResponseStyleCard(
             .padding(20.dp),
     ) {
         Column {
-            // Title row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                // iOS parity (ResponseStyleOnboardingView.swift:142-144): gold-tinted
+                // SF Symbol leading the label. We use the matching Material icon.
+                Icon(
+                    imageVector = option.icon,
+                    contentDescription = null,
+                    tint = Gold,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(8.dp))
                 Text(
-                    text = option.label,
+                    text = stringResource(option.labelRes),
                     fontSize = 17.sp,
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = CanelaFontFamily,
                     color = CreamText,
                     modifier = Modifier.weight(1f),
                 )
-                // Radio indicator
                 Box(
                     modifier = Modifier
                         .size(24.dp)
@@ -237,7 +277,7 @@ private fun ResponseStyleCard(
 
             Spacer(Modifier.height(6.dp))
             Text(
-                text = option.tagline,
+                text = stringResource(option.taglineRes),
                 fontSize = 13.sp,
                 color = CreamDim,
                 lineHeight = 18.sp,
@@ -245,7 +285,6 @@ private fun ResponseStyleCard(
 
             Spacer(Modifier.height(16.dp))
 
-            // Example box
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -256,7 +295,7 @@ private fun ResponseStyleCard(
             ) {
                 Column {
                     Text(
-                        text = "EXAMPLE",
+                        text = stringResource(R.string.example_label),
                         fontSize = 9.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = CreamDim.copy(alpha = 0.5f),
@@ -264,14 +303,14 @@ private fun ResponseStyleCard(
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "\"How is my career this year?\"",
+                        text = stringResource(R.string.example_question_career),
                         fontSize = 11.sp,
                         fontStyle = FontStyle.Italic,
                         color = CreamDim.copy(alpha = 0.6f),
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        text = option.exampleResponse,
+                        text = stringResource(option.exampleResponseRes),
                         fontSize = 12.sp,
                         color = CreamText.copy(alpha = 0.75f),
                         lineHeight = 17.sp,

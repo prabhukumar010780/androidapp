@@ -3,6 +3,7 @@ package com.destinyai.astrology.ui.history
 import app.cash.turbine.test
 import com.destinyai.astrology.data.local.db.CompatibilityHistoryDao
 import com.destinyai.astrology.data.local.db.CompatibilityHistoryEntity
+import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.repository.ChatRepository
 import com.destinyai.astrology.domain.model.ChatThread
 import io.mockk.coEvery
@@ -30,6 +31,7 @@ class HistoryViewModelTest {
     private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var repository: ChatRepository
     private lateinit var compatibilityHistoryDao: CompatibilityHistoryDao
+    private lateinit var prefs: UserPreferences
     private lateinit var vm: HistoryViewModel
 
     @BeforeAll
@@ -46,8 +48,11 @@ class HistoryViewModelTest {
     fun setUp() {
         repository = mockk(relaxed = true)
         compatibilityHistoryDao = mockk(relaxed = true)
+        prefs = mockk(relaxed = true)
         every { compatibilityHistoryDao.observeAll(any()) } returns flowOf(emptyList())
-        vm = HistoryViewModel(repository, compatibilityHistoryDao)
+        every { prefs.isHistoryEnabledFlow } returns flowOf(true)
+        every { prefs.activeProfileIdFlow } returns flowOf(null)
+        vm = HistoryViewModel(repository, compatibilityHistoryDao, prefs)
     }
 
     @Test

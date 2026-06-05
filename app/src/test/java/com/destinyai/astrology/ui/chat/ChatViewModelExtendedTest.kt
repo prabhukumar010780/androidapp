@@ -1,10 +1,17 @@
 package com.destinyai.astrology.ui.chat
 
+import android.content.Context
 import app.cash.turbine.test
+import com.destinyai.astrology.data.local.prefs.UserPreferences
+import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.repository.ChatRepository
 import com.destinyai.astrology.domain.model.ChatThread
+import com.destinyai.astrology.services.ProfileChangeBus
+import com.destinyai.astrology.services.QuotaManager
 import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
@@ -18,6 +25,11 @@ class ChatViewModelExtendedTest {
 
     private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var repository: ChatRepository
+    private lateinit var api: AstroApiService
+    private lateinit var prefs: UserPreferences
+    private lateinit var quotaManager: QuotaManager
+    private lateinit var profileChangeBus: ProfileChangeBus
+    private lateinit var appContext: Context
     private lateinit var viewModel: ChatViewModel
 
     @BeforeAll
@@ -29,7 +41,19 @@ class ChatViewModelExtendedTest {
     @BeforeEach
     fun setUp() {
         repository = mockk(relaxed = true)
-        viewModel = ChatViewModel(repository)
+        api = mockk(relaxed = true)
+        prefs = mockk(relaxed = true)
+        quotaManager = mockk(relaxed = true)
+        profileChangeBus = mockk(relaxed = true)
+        appContext = mockk(relaxed = true)
+        every { repository.progressEvents } returns MutableSharedFlow()
+        every { prefs.isHistoryEnabledFlow } returns flowOf(true)
+        every { prefs.isGuestUserFlow } returns flowOf(false)
+        every { prefs.activeProfileIdFlow } returns flowOf(null)
+        every { prefs.responseLengthFlow } returns flowOf("standard")
+        every { profileChangeBus.events } returns MutableSharedFlow()
+        coEvery { prefs.getUserEmail() } returns null
+        viewModel = ChatViewModel(repository, api, prefs, quotaManager, profileChangeBus, appContext)
     }
 
     // ── suggestedQuestions ────────────────────────────────────────────────────
@@ -94,10 +118,12 @@ class ChatViewModelExtendedTest {
             ChatThread(id = "t1", title = "Career", isPinned = false),
             ChatThread(id = "t2", title = "Health", isPinned = false),
         )
-        coEvery { repository.loadHistory() } returns threads
+        coEvery { repository.loadHistoryPaginated(any(), any()) } returns threads
         viewModel.loadHistory()
+        runCurrent()
 
         viewModel.pinThread("t1")
+        runCurrent()
 
         viewModel.uiState.test {
             val state = awaitItem()
@@ -109,10 +135,12 @@ class ChatViewModelExtendedTest {
     @Test
     fun `pinThread unpins already-pinned thread`() = runTest {
         val threads = listOf(ChatThread(id = "t1", title = "Career", isPinned = true))
-        coEvery { repository.loadHistory() } returns threads
+        coEvery { repository.loadHistoryPaginated(any(), any()) } returns threads
         viewModel.loadHistory()
+        runCurrent()
 
         viewModel.pinThread("t1")
+        runCurrent()
 
         viewModel.uiState.test {
             assertFalse(awaitItem().threads.first { it.id == "t1" }.isPinned)

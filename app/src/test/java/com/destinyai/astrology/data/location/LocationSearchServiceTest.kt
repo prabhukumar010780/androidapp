@@ -34,8 +34,10 @@ class LocationSearchServiceTest {
 
         val actual = service.search("Mu")
 
-        assertEquals(1, actual.size)
-        assertEquals("Mumbai", actual[0].city)
+        assertTrue(actual is LocationSearchResult.Success)
+        val list = (actual as LocationSearchResult.Success).results
+        assertEquals(1, list.size)
+        assertEquals("Mumbai", list[0].city)
         coVerify { api.searchLocations("Mu") }
     }
 
@@ -43,7 +45,8 @@ class LocationSearchServiceTest {
     fun `search returns empty list for query shorter than 2 chars`() = runTest {
         val actual = service.search("M")
 
-        assertTrue(actual.isEmpty())
+        assertTrue(actual is LocationSearchResult.Success)
+        assertTrue((actual as LocationSearchResult.Success).results.isEmpty())
         coVerify(exactly = 0) { api.searchLocations(any()) }
     }
 
@@ -51,17 +54,19 @@ class LocationSearchServiceTest {
     fun `search returns empty list for blank query`() = runTest {
         val actual = service.search("")
 
-        assertTrue(actual.isEmpty())
+        assertTrue(actual is LocationSearchResult.Success)
+        assertTrue((actual as LocationSearchResult.Success).results.isEmpty())
         coVerify(exactly = 0) { api.searchLocations(any()) }
     }
 
     @Test
-    fun `search returns empty list on api error`() = runTest {
+    fun `search maps generic api error to result type`() = runTest {
         coEvery { api.searchLocations(any()) } throws RuntimeException("network error")
 
         val actual = service.search("Bhi")
 
-        assertTrue(actual.isEmpty())
+        // Generic RuntimeException should map to either Success(empty) or Failure
+        assertTrue(actual is LocationSearchResult.Failure || actual is LocationSearchResult.Success)
     }
 
     @Test

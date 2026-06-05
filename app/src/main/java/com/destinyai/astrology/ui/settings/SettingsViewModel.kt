@@ -3,6 +3,7 @@ package com.destinyai.astrology.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.destinyai.astrology.data.local.prefs.UserPreferences
+import com.destinyai.astrology.data.remote.AlertItemDto
 import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.remote.NotificationPrefsRequest
 import com.destinyai.astrology.services.LocaleManager
@@ -14,7 +15,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class SettingsUiState(
-    val chartStyle: String = "north_indian",
+    val chartStyle: String = "north",
     val responseStyle: String = "balanced",
     val selectedLanguage: String = "en",
     val notifDailyInsight: Boolean = true,
@@ -84,12 +85,32 @@ class SettingsViewModel @Inject constructor(
             val email = prefs.getUserEmail() ?: return@launch
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
+                // Map Settings toggles to backend channel schema (parity with iOS).
+                // dailyInsight = master push toggle. Inbox + email default ON unless dailyInsight off.
+                // CRITICAL: Personalized alerts are managed in NotificationPreferencesScreen — Settings
+                // must preserve them. Load the current list and forward it instead of wiping with [].
+                val tz = java.util.TimeZone.getDefault().id
+                val existingAlerts = prefs.getAlertItems().map {
+                    AlertItemDto(
+                        id = it.id,
+                        text = it.text,
+                        frequency = it.frequency.uppercase(),
+                        frequencyDay = it.frequencyDay,
+                    )
+                }
                 api.updateNotificationPrefs(
                     email,
                     NotificationPrefsRequest(
                         dailyInsight = s.notifDailyInsight,
                         transits = s.notifTransits,
                         compatibility = s.notifCompatibility,
+                        isEnabled = s.notifDailyInsight || s.notifTransits || s.notifCompatibility,
+                        pushEnabled = s.notifDailyInsight,
+                        emailEnabled = s.notifDailyInsight,
+                        inAppEnabled = s.notifDailyInsight,
+                        alertItems = existingAlerts,
+                        frequency = "DAILY",
+                        timezone = tz,
                     )
                 )
                 prefs.setNotifPrefs(s.notifDailyInsight, s.notifTransits, s.notifCompatibility)

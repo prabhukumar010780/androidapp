@@ -19,3 +19,5 @@ local.properties
 
 # Firebase config — contains API key, never commit real version
 app/google-services.json
+app/src/staging/google-services.json
+app/src/production/google-services.json
