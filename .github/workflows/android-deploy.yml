@@ -168,7 +168,53 @@ jobs:
             echo "status=completed" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Upload to Google Play
+      - name: Diagnose AAB before upload
+        run: |
+          AAB="$(ls app/build/outputs/bundle/${{ steps.config.outputs.flavor }}Release/*.aab | head -n1)"
+          if [ -z "$AAB" ]; then
+            echo "::error::No AAB found at app/build/outputs/bundle/${{ steps.config.outputs.flavor }}Release/"
+            exit 1
+          fi
+          echo "AAB path:    $AAB"
+          echo "AAB size:    $(du -h "$AAB" | cut -f1)  ($(stat -c %s "$AAB" 2>/dev/null || stat -f %z "$AAB") bytes)"
+          echo "AAB SHA-256: $(sha256sum "$AAB" | cut -d' ' -f1)"
+
+      # Upload retries: r0adkll/upload-google-play@v1.1.5 uses a non-resumable upload.
+      # Google's Play Edit token has ~45s TTL; production AABs upload in ~42s — knife-edge.
+      # Each attempt below creates a fresh Edit, giving the upload a new TTL window.
+      - name: Upload to Google Play (attempt 1)
+        id: upload1
+        continue-on-error: true
+        uses: r0adkll/upload-google-play@v1.1.5
+        with:
+          serviceAccountJson: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
+          packageName: ${{ steps.config.outputs.package_name }}
+          releaseFiles: app/build/outputs/bundle/${{ steps.config.outputs.flavor }}Release/*.aab
+          track: ${{ steps.config.outputs.track }}
+          status: ${{ steps.release.outputs.status }}
+
+      - name: Wait before retry 2
+        if: steps.upload1.outcome == 'failure'
+        run: sleep 15
+
+      - name: Upload to Google Play (attempt 2)
+        id: upload2
+        if: steps.upload1.outcome == 'failure'
+        continue-on-error: true
+        uses: r0adkll/upload-google-play@v1.1.5
+        with:
+          serviceAccountJson: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
+          packageName: ${{ steps.config.outputs.package_name }}
+          releaseFiles: app/build/outputs/bundle/${{ steps.config.outputs.flavor }}Release/*.aab
+          track: ${{ steps.config.outputs.track }}
+          status: ${{ steps.release.outputs.status }}
+
+      - name: Wait before retry 3
+        if: steps.upload1.outcome == 'failure' && steps.upload2.outcome == 'failure'
+        run: sleep 30
+
+      - name: Upload to Google Play (attempt 3, final)
+        if: steps.upload1.outcome == 'failure' && steps.upload2.outcome == 'failure'
         uses: r0adkll/upload-google-play@v1.1.5
         with:
           serviceAccountJson: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
