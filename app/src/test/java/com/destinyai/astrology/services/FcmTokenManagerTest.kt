@@ -73,4 +73,28 @@ class FcmTokenManagerTest {
         coVerify { prefs.setFcmToken("token-abc-123") }
         coVerify(exactly = 0) { prefs.setFcmTokenRegistered(any()) }
     }
+
+    @Test
+    fun `registerToken on second call with same token re-registers with backend`() = runTest {
+        // MainActivity calls registerToken on every onCreate (and every onStart via FCM token).
+        // The second call must POST to backend again — registration is idempotent on server side.
+        manager.registerToken("stable-token-xyz", "2.0")
+        manager.registerToken("stable-token-xyz", "2.0")  // Second foreground
+
+        // Both calls should hit the API — server handles idempotency
+        coVerify(exactly = 2) {
+            api.registerDeviceToken(match { it.token == "stable-token-xyz" })
+        }
+    }
+
+    @Test
+    fun `registerToken with new token replaces cached token`() = runTest {
+        manager.registerToken("old-token", "1.0")
+        manager.registerToken("new-token", "1.0")  // Token rotated by FCM
+
+        coVerify { prefs.setFcmToken("new-token") }
+        coVerify {
+            api.registerDeviceToken(match { it.token == "new-token" })
+        }
+    }
 }
