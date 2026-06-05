@@ -200,15 +200,19 @@ android {
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
-            // Return defaults instead of throwing for un-mocked Android framework calls
-            // (Log.w, Looper.getMainLooper, etc.) so unit tests don't have to mock every
-            // Android API surface. Tests that genuinely depend on framework behavior use
-            // Robolectric (already in dependencies) or instrumented androidTest.
             isReturnDefaultValues = true
             all {
                 it.useJUnitPlatform()
             }
         }
+    }
+
+    lint {
+        // Baseline suppresses pre-existing issues so CI only fails on newly introduced errors.
+        // Run `./gradlew updateLintBaseline` locally to update after fixing existing issues.
+        baseline = file("lint-baseline.xml")
+        abortOnError = true
+        warningsAsErrors = false
     }
 }
 
