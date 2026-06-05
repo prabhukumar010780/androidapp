@@ -2075,7 +2075,7 @@
     <string name="setup_phase_insights">正在生成今日洞察...</string>
     <string name="setup_phase_ready">您的宇宙档案已就绪！</string>
     <string name="select_a_language">选择语言</string>
-    <string name="continue_in_language_format">以 %@ 继续</string>
+    <string name="continue_in_language_format">以 %1$s 继续</string>
     <string name="kuta_theme_work">工作相合度</string>
     <string name="kuta_theme_attraction">吸引力与影响力</string>
     <string name="kuta_theme_destiny">命运与财富</string>

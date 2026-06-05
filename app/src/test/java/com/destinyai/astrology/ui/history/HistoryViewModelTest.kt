@@ -1,13 +1,18 @@
 package com.destinyai.astrology.ui.history
 
 import app.cash.turbine.test
+import com.destinyai.astrology.data.local.db.CompatibilityHistoryDao
+import com.destinyai.astrology.data.local.db.CompatibilityHistoryEntity
+import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.repository.ChatRepository
 import com.destinyai.astrology.domain.model.ChatThread
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -25,6 +30,8 @@ class HistoryViewModelTest {
 
     private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var repository: ChatRepository
+    private lateinit var compatibilityHistoryDao: CompatibilityHistoryDao
+    private lateinit var prefs: UserPreferences
     private lateinit var vm: HistoryViewModel
 
     @BeforeAll
@@ -40,7 +47,12 @@ class HistoryViewModelTest {
     @BeforeEach
     fun setUp() {
         repository = mockk(relaxed = true)
-        vm = HistoryViewModel(repository)
+        compatibilityHistoryDao = mockk(relaxed = true)
+        prefs = mockk(relaxed = true)
+        every { compatibilityHistoryDao.observeAll(any()) } returns flowOf(emptyList())
+        every { prefs.isHistoryEnabledFlow } returns flowOf(true)
+        every { prefs.activeProfileIdFlow } returns flowOf(null)
+        vm = HistoryViewModel(repository, compatibilityHistoryDao, prefs)
     }
 
     @Test
@@ -153,4 +165,70 @@ class HistoryViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    // --- P0-4: Compatibility tab tests ---
+
+    @Test
+    fun `initial selectedTab is 0`() = runTest {
+        vm.uiState.test {
+            assertEquals(0, awaitItem().selectedTab)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `setTab(1) loads compatibility history`() = runTest {
+        val fakeEntity = fakeCompatibilityEntity("sess_1", "Prabhu", "Priya", 28, 36)
+        every { compatibilityHistoryDao.observeAll("user@x.com") } returns flowOf(listOf(fakeEntity))
+
+        vm.loadCompatibilityHistory("user@x.com")
+        vm.setTab(1)
+
+        vm.uiState.test {
+            val s = awaitItem()
+            assertEquals(1, s.selectedTab)
+            assertEquals(1, s.compatibilityItems.size)
+            assertEquals("Priya", s.compatibilityItems[0].girlName)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `deleteCompatibilityItem removes item from state`() = runTest {
+        val entity1 = fakeCompatibilityEntity("sess_1", "Prabhu", "Priya", 28, 36)
+        val entity2 = fakeCompatibilityEntity("sess_2", "Prabhu", "Anita", 30, 36)
+        every { compatibilityHistoryDao.observeAll(any()) } returns flowOf(listOf(entity1, entity2))
+
+        vm.loadCompatibilityHistory("user@x.com")
+        vm.deleteCompatibilityItem("sess_1")
+
+        vm.uiState.test {
+            val s = awaitItem()
+            assertEquals(1, s.compatibilityItems.size)
+            assertEquals("sess_2", s.compatibilityItems[0].sessionId)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    private fun fakeCompatibilityEntity(
+        sessionId: String,
+        boyName: String,
+        girlName: String,
+        totalScore: Int,
+        maxScore: Int,
+    ) = CompatibilityHistoryEntity(
+        sessionId = sessionId,
+        ownerEmail = "user@x.com",
+        timestampMs = System.currentTimeMillis(),
+        boyName = boyName,
+        boyDob = "1980-01-01",
+        boyCity = "Delhi",
+        boyTime = "06:00",
+        girlName = girlName,
+        girlDob = "1985-03-15",
+        girlCity = "Mumbai",
+        girlTime = "08:30",
+        totalScore = totalScore,
+        maxScore = maxScore,
+    )
 }

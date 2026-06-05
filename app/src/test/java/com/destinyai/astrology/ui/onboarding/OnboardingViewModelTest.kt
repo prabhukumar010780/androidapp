@@ -2,6 +2,8 @@ package com.destinyai.astrology.ui.onboarding
 
 import app.cash.turbine.test
 import com.destinyai.astrology.data.local.prefs.UserPreferences
+import com.destinyai.astrology.services.HapticManager
+import com.destinyai.astrology.services.SoundManager
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -19,6 +21,8 @@ class OnboardingViewModelTest {
 
     private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var prefs: UserPreferences
+    private lateinit var haptic: HapticManager
+    private lateinit var sound: SoundManager
     private lateinit var vm: OnboardingViewModel
 
     @BeforeAll
@@ -29,7 +33,9 @@ class OnboardingViewModelTest {
     @BeforeEach
     fun setUp() {
         prefs = mockk(relaxed = true)
-        vm = OnboardingViewModel(prefs)
+        haptic = mockk(relaxed = true)
+        sound = mockk(relaxed = true)
+        vm = OnboardingViewModel(prefs, haptic, sound)
     }
 
     @Test

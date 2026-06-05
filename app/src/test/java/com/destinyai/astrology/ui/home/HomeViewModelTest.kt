@@ -1,11 +1,19 @@
 package com.destinyai.astrology.ui.home
 
 import app.cash.turbine.test
+import com.destinyai.astrology.data.local.prefs.UserPreferences
+import com.destinyai.astrology.data.remote.AstroApiService
+import com.destinyai.astrology.data.remote.BirthProfileDto
 import com.destinyai.astrology.data.repository.HomeRepository
 import com.destinyai.astrology.domain.model.User
+import com.destinyai.astrology.services.ProfileChangeBus
+import com.destinyai.astrology.services.NetworkMonitor
+import com.destinyai.astrology.services.QuotaManager
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.*
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.*
@@ -23,6 +31,11 @@ class HomeViewModelTest {
 
     private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var repository: HomeRepository
+    private lateinit var prefs: UserPreferences
+    private lateinit var api: AstroApiService
+    private lateinit var profileChangeBus: ProfileChangeBus
+    private lateinit var quotaManager: QuotaManager
+    private lateinit var networkMonitor: NetworkMonitor
     private lateinit var viewModel: HomeViewModel
 
     @BeforeAll
@@ -38,7 +51,21 @@ class HomeViewModelTest {
     @BeforeEach
     fun setUp() {
         repository = mockk(relaxed = true)
-        viewModel = HomeViewModel(repository)
+        prefs = mockk(relaxed = true)
+        api = mockk(relaxed = true)
+        profileChangeBus = mockk(relaxed = true)
+        quotaManager = mockk(relaxed = true)
+        networkMonitor = mockk(relaxed = true)
+        every { networkMonitor.isOnline } returns flowOf(true)
+        every { quotaManager.isPremium } returns MutableStateFlow(false)
+        // profileChangeBus.events is a SharedFlow — relaxed mock returns Nothing, crashing
+        // the init coroutine that subscribes to it. MutableSharedFlow gives a no-emission
+        // flow that suspends forever on collect, which is what we want for tests that
+        // don't simulate profile switches.
+        every { profileChangeBus.events } returns kotlinx.coroutines.flow.MutableSharedFlow()
+        coEvery { prefs.getUserEmail() } returns null
+        coEvery { prefs.getBirthProfile() } returns null
+        viewModel = HomeViewModel(repository, prefs, api, profileChangeBus, quotaManager, networkMonitor)
     }
 
     // --- Defaults ---
@@ -47,7 +74,7 @@ class HomeViewModelTest {
     fun `init sets quota to plan default (10 for free registered)`() = runTest {
         coEvery { repository.getDailyQuota() } returns 10
 
-        val vm = HomeViewModel(repository)
+        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, quotaManager, networkMonitor)
 
         vm.uiState.test {
             assertEquals(10, awaitItem().dailyQuota)
@@ -76,7 +103,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `greeting is Good Evening after 5pm`() {
+    fun `greeting is Good Evening after 6pm`() {
         val greeting = HomeViewModel.greetingFor(LocalTime.of(19, 0))
         assertEquals("Good Evening", greeting)
     }
@@ -90,7 +117,7 @@ class HomeViewModelTest {
             isGuestEmail = true,
         )
 
-        val vm = HomeViewModel(repository)
+        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, quotaManager, networkMonitor)
 
         vm.uiState.test {
             assertEquals("Guest", awaitItem().displayName)
@@ -105,7 +132,7 @@ class HomeViewModelTest {
             name = "Prabhu Kushwaha",
         )
 
-        val vm = HomeViewModel(repository)
+        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, quotaManager, networkMonitor)
 
         vm.uiState.test {
             assertEquals("Prabhu", awaitItem().displayName)
@@ -119,7 +146,7 @@ class HomeViewModelTest {
         coEvery { repository.getDailyQuota() } returns 10
         coEvery { repository.getDailyUsed() } returns 5
 
-        val vm = HomeViewModel(repository)
+        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, quotaManager, networkMonitor)
 
         vm.uiState.test {
             assertEquals(0.5f, awaitItem().quotaProgress, 0.001f)
@@ -159,7 +186,7 @@ class HomeViewModelTest {
         )
         coEvery { repository.getDailyQuota() } returns -1
 
-        val vm = HomeViewModel(repository)
+        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, quotaManager, networkMonitor)
 
         vm.uiState.test {
             assertTrue(awaitItem().isUnlimited)
@@ -208,5 +235,86 @@ class HomeViewModelTest {
     fun `renewalDateString formats as MMM d`() {
         val formatted = HomeViewModel.formatRenewalDate("2026-06-01")
         assertEquals("Jun 1", formatted)
+    }
+
+    // --- Rich home data ---
+
+    @Test
+    fun `loadHomeData sets dashaInfo when api returns chart data`() = runTest {
+        val fakeDasha = HomeDashaInfo(mahadasha = "Venus", antardasha = "Sun", endsAt = "2027-01")
+        val fakeRichData = HomeRichData(dashaInfo = fakeDasha)
+        coEvery { prefs.getUserEmail() } returns "test@example.com"
+        coEvery { prefs.getBirthProfile() } returns BirthProfileDto(
+            dateOfBirth = "1990-01-01",
+            timeOfBirth = "06:00",
+            cityOfBirth = "Delhi",
+            latitude = 28.6,
+            longitude = 77.2,
+        )
+        coEvery { repository.getRichHomeData(any(), any()) } returns fakeRichData
+
+        viewModel.loadHomeData()
+
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertEquals("Venus", state.dashaInfo?.mahadasha)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `selectLifeArea sets briefLifeArea (R2-H28 two-step)`() = runTest {
+        val area = HomeLifeArea(name = "Career", emoji = "💼", questions = listOf("Question?"))
+
+        viewModel.selectLifeArea(area)
+
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertEquals(area, state.briefLifeArea)
+            assertNull(state.selectedLifeArea)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `confirmLifeAreaBrief emits chat prompt and clears briefLifeArea`() = runTest {
+        // Parity with iOS HomeView.LifeAreaBriefPopup.onAskMore — the brief popup's
+        // confirm button now pushes the brief context straight to chat instead of
+        // advancing to a separate questions sheet.
+        val area = HomeLifeArea(
+            name = "Career",
+            emoji = "💼",
+            briefDescription = "Strong week ahead",
+            questions = listOf("Question?"),
+        )
+
+        viewModel.selectLifeArea(area)
+
+        viewModel.askDestinyEvents.test {
+            viewModel.confirmLifeAreaBrief()
+            val prompt = awaitItem()
+            assertTrue(prompt.contains("Career"))
+            assertTrue(prompt.contains("Strong week ahead"))
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertNull(state.briefLifeArea)
+            assertNull(state.selectedLifeArea)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `dismissLifeArea clears selectedLifeArea`() = runTest {
+        val area = HomeLifeArea(name = "Career", emoji = "💼", questions = listOf("Question?"))
+        viewModel.selectLifeArea(area)
+        viewModel.dismissLifeArea()
+
+        viewModel.uiState.test {
+            assertNull(awaitItem().selectedLifeArea)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 }

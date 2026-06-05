@@ -37,6 +37,22 @@ class SecureStorage @Inject constructor(
     fun saveUserId(userId: String) = prefs.edit().putString(KEY_USER_ID, userId).apply()
     fun getUserId(): String? = prefs.getString(KEY_USER_ID, null)
 
+    // iOS parity (AppleAuthService.swift:108-127): Apple only returns email/name on
+    // FIRST sign-in. Persist them into the encrypted store keyed by Apple userId so
+    // subsequent logins can recover them. Companion UserPreferences mirrors the same
+    // values into DataStore as a fallback (matches iOS UserDefaults dual-store).
+    fun saveAppleEmail(userId: String, email: String) =
+        prefs.edit().putString("$KEY_APPLE_EMAIL_PREFIX$userId", email).apply()
+
+    fun getAppleEmail(userId: String): String? =
+        prefs.getString("$KEY_APPLE_EMAIL_PREFIX$userId", null)
+
+    fun saveAppleName(userId: String, name: String) =
+        prefs.edit().putString("$KEY_APPLE_NAME_PREFIX$userId", name).apply()
+
+    fun getAppleName(userId: String): String? =
+        prefs.getString("$KEY_APPLE_NAME_PREFIX$userId", null)
+
     fun clearAll() = prefs.edit().clear().apply()
 
     private companion object {
@@ -44,5 +60,8 @@ class SecureStorage @Inject constructor(
         const val KEY_AUTH_TOKEN = "auth_token"
         const val KEY_REFRESH_TOKEN = "refresh_token"
         const val KEY_USER_ID = "user_id"
+        // iOS parity (AppleAuthService.swift:111,116) — keys are namespaced by Apple userId.
+        const val KEY_APPLE_EMAIL_PREFIX = "appleEmail_"
+        const val KEY_APPLE_NAME_PREFIX = "appleName_"
     }
 }

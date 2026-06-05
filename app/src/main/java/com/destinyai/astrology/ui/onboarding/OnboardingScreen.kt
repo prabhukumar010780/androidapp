@@ -3,17 +3,18 @@ package com.destinyai.astrology.ui.onboarding
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.automirrored.filled.Chat
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
@@ -22,22 +23,32 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.destinyai.astrology.R
+import com.destinyai.astrology.ui.components.FloatingIcon
+import com.destinyai.astrology.ui.components.ShimmerButton
 import kotlinx.coroutines.launch
+import kotlin.math.absoluteValue
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.Gold
+import com.destinyai.astrology.ui.theme.GoldLight
 import com.destinyai.astrology.ui.theme.NavyVariant
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.CreamDim
@@ -52,16 +63,34 @@ fun OnboardingScreen(
     val pagerState = rememberPagerState(pageCount = { slides.size })
     val isLastSlide = pagerState.currentPage == slides.lastIndex
     val scope = rememberCoroutineScope()
+    // iOS parity: HapticManager + SoundManager are injected via the Hilt
+    // ViewModel so the screen does not need to construct them itself.
+    val resolvedHaptic = viewModel.haptic
+    val soundManager = viewModel.sound
 
     CosmicBackground {
-        Box(modifier = Modifier.fillMaxSize()) {
-            // Skip button — shown on all slides except the last
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .testTag("onboarding_screen")
+                .semantics { contentDescription = "onboarding_screen" },
+        ) {
+            // Skip button — iOS parity (OnboardingView.swift:43-61): pinned to leading edge.
             if (!isLastSlide) {
                 TextButton(
-                    onClick = onNavigateToAuth,
+                    onClick = {
+                        resolvedHaptic.light()
+                        soundManager.playButtonTap()
+                        scope.launch {
+                            viewModel.complete()
+                            onNavigateToAuth()
+                        }
+                    },
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = 56.dp, end = 16.dp),
+                        .align(Alignment.TopStart)
+                        .padding(top = 56.dp, start = 16.dp)
+                        .testTag("onboarding_skip")
+                        .semantics { contentDescription = "onboarding_skip" },
                 ) {
                     Text(
                         text = stringResource(R.string.skip),
@@ -82,7 +111,21 @@ fun OnboardingScreen(
                     state = pagerState,
                     modifier = Modifier.weight(1f),
                 ) { page ->
-                    OnboardingPage(slide = slides[page])
+                    val pageOffset =
+                        ((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction)
+                            .absoluteValue
+                    OnboardingPage(
+                        slide = slides[page],
+                        modifier = Modifier.graphicsLayer {
+                            // iOS parity (OnboardingView.swift:75-80): scrollTransition fades,
+                            // scales (0.92), and blurs (radius 2) off-screen pages.
+                            val identity = (1f - pageOffset).coerceIn(0f, 1f)
+                            alpha = 0.5f + 0.5f * identity
+                            val scale = 0.92f + 0.08f * identity
+                            scaleX = scale
+                            scaleY = scale
+                        },
+                    )
                 }
 
                 // Capsule page indicators
@@ -108,50 +151,35 @@ fun OnboardingScreen(
                     }
                 }
 
-                // Continue / Get Started button
-                Button(
-                    onClick = {
-                        scope.launch {
-                            if (isLastSlide) {
-                                viewModel.complete()
-                                onNavigateToAuth()
-                            } else {
-                                pagerState.animateScrollToPage(pagerState.currentPage + 1)
-                            }
-                        }
-                    },
+                // Continue / Get Started button — iOS parity uses ShimmerButton with
+                // premiumContinue + playButtonTap on intermediate slides, and
+                // premiumSuccess + playSuccess on Get Started.
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(52.dp)
                         .padding(horizontal = 24.dp),
-                    shape = RoundedCornerShape(26.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Gold,
-                        contentColor = Color(0xFF0D0D1A),
-                    ),
                 ) {
-                    val label = if (isLastSlide) {
-                        stringResource(R.string.get_started)
-                    } else {
-                        stringResource(R.string.action_continue)
-                    }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text(
-                            text = label,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 16.sp,
-                        )
-                        if (!isLastSlide) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                            )
-                        }
-                    }
+                    ShimmerButton(
+                        text = if (isLastSlide) stringResource(R.string.get_started)
+                        else stringResource(R.string.action_continue),
+                        modifier = Modifier
+                            .testTag("onboarding_continue")
+                            .semantics { contentDescription = "onboarding_continue" },
+                        onClick = {
+                            scope.launch {
+                                if (isLastSlide) {
+                                    resolvedHaptic.premiumSuccess()
+                                    soundManager.playSuccess()
+                                    viewModel.complete()
+                                    onNavigateToAuth()
+                                } else {
+                                    resolvedHaptic.premiumContinue()
+                                    soundManager.playButtonTap()
+                                    pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                                }
+                            }
+                        },
+                    )
                 }
 
                 Spacer(Modifier.height(48.dp))
@@ -161,34 +189,59 @@ fun OnboardingScreen(
 }
 
 @Composable
-private fun OnboardingPage(slide: OnboardingSlide) {
+private fun OnboardingPage(slide: OnboardingSlide, modifier: Modifier = Modifier) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         if (slide.imageRes != null) {
-            Image(
-                painter = painterResource(slide.imageRes),
-                contentDescription = null,
-                modifier = Modifier
-                    .size(160.dp)
-                    .clip(RoundedCornerShape(20.dp)),
-                contentScale = ContentScale.Fit,
-            )
+            // iOS parity (OnboardingSlideView.swift:16-19, 79-82): hero image is
+            // wrapped in FloatingIcon (radial glow + bobbing motion) — we approximate
+            // by layering a radial glow behind the image and animating the offset.
+            Box(
+                modifier = Modifier.size(180.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                // Glow halo behind hero image (matches iOS FloatingIcon pulsing glow).
+                Box(
+                    modifier = Modifier
+                        .size(180.dp)
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(Gold.copy(alpha = 0.35f), Color.Transparent),
+                            ),
+                        ),
+                )
+                Image(
+                    painter = painterResource(slide.imageRes),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(140.dp)
+                        .clip(RoundedCornerShape(20.dp)),
+                    contentScale = ContentScale.Fit,
+                )
+            }
+        } else {
+            // Fallback when no hero image — use a sparkles FloatingIcon to keep parity.
+            FloatingIcon(icon = Icons.Filled.AutoAwesome, iconSize = 80.dp)
         }
 
         Spacer(Modifier.height(32.dp))
 
+        // iOS parity (OnboardingSlideView.swift:25,51,88): slide title rendered
+        // with the gold gradient (not solid Gold). Compose 1.6+ supports
+        // TextStyle(brush = ...) for gradient text.
+        val goldBrush = Brush.linearGradient(listOf(GoldLight, Gold))
         Text(
             text = stringResource(slide.titleRes),
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = CanelaFontFamily,
-            color = Gold,
             textAlign = TextAlign.Center,
             lineHeight = 36.sp,
+            style = TextStyle(brush = goldBrush),
         )
 
         if (slide.subtitleRes != null) {
@@ -229,25 +282,90 @@ private fun OnboardingPage(slide: OnboardingSlide) {
 
 @Composable
 private fun StatsCard() {
+    // iOS parity (OnboardingSlideView.swift:219-287): glassmorphism with dark
+    // gradient base, glossy top sheen, inner light stroke, gold gradient outer
+    // stroke, plus dual drop shadows (black + gold).
+    val cornerRadius = 24.dp
+    val outerStrokeBrush = Brush.linearGradient(
+        colors = listOf(
+            Gold.copy(alpha = 0.5f),
+            Gold.copy(alpha = 0.2f),
+            Gold.copy(alpha = 0.1f),
+        ),
+    )
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(NavySurface.copy(alpha = 0.9f))
-            .then(
-                Modifier.padding(1.dp)
+            .shadow(
+                elevation = 20.dp,
+                shape = RoundedCornerShape(cornerRadius),
+                ambientColor = Color.Black.copy(alpha = 0.3f),
+                spotColor = Color.Black.copy(alpha = 0.3f),
+            )
+            .shadow(
+                elevation = 30.dp,
+                shape = RoundedCornerShape(cornerRadius),
+                ambientColor = Gold.copy(alpha = 0.08f),
+                spotColor = Gold.copy(alpha = 0.18f),
+            )
+            .clip(RoundedCornerShape(cornerRadius))
+            // Dark gradient base (iOS Color(white: 0.15) → Color(white: 0.08)).
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xE6262626),
+                        Color(0xE6141414),
+                    ),
+                ),
+            )
+            .border(
+                width = 1.dp,
+                brush = outerStrokeBrush,
+                shape = RoundedCornerShape(cornerRadius),
             ),
     ) {
+        // Glossy top shine layer
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
-                .background(NavySurface)
+                .height(80.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.15f),
+                            Color.White.copy(alpha = 0.05f),
+                            Color.Transparent,
+                        ),
+                    ),
+                ),
+        )
+        // Inner light stroke (iOS .stroke white 0.2→0.05→clear)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(1.dp)
+                .border(
+                    width = 1.5.dp,
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.2f),
+                            Color.White.copy(alpha = 0.05f),
+                            Color.Transparent,
+                        ),
+                    ),
+                    shape = RoundedCornerShape(cornerRadius - 1.dp),
+                ),
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
                 .padding(vertical = 24.dp, horizontal = 20.dp),
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 // 3M+ stat
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -282,9 +400,9 @@ private fun StatsCard() {
                         .height(1.dp)
                         .background(
                             Brush.horizontalGradient(
-                                listOf(Color.Transparent, Gold.copy(alpha = 0.3f), Color.Transparent)
-                            )
-                        )
+                                listOf(Color.Transparent, Gold.copy(alpha = 0.3f), Color.Transparent),
+                            ),
+                        ),
                 )
 
                 // Stars + rating

@@ -78,10 +78,16 @@ class ChatScreen(_Base):
 
 
 class CompatibilityScreen(_Base):
-    def is_visible(self):          return self.present("compatibility_screen")
-    def tap_analyze(self):         self.tap("analyze_button")
-    def wait_result(self):         self.wait_for("compatibility_result")
-    def result_text(self) -> str:  return self.find("compatibility_result").get_attribute("content-desc")
+    def is_visible(self):                 return self.present("compat_screen")
+    def tap_analyze(self):                self.tap("compat_analyze_button")
+    def tap_history(self):                self.tap("compat_history_button")
+    def is_analyze_enabled(self) -> bool: return self.find("compat_analyze_button").is_enabled()
+    def tap_dob_person2(self):            self.tap("compat_person2_dob")
+    def result_score(self) -> str:        return self.find("compat_result_score").get_attribute("content-desc")
+    def tap_mangal_dosha(self):           self.tap("mangal_dosha_row")
+    def tap_kalsarpa_dosha(self):         self.tap("kalsarpa_dosha_row")
+    def tap_ask_destiny(self):            self.tap("ask_destiny_button")
+    def wait_for_result(self, timeout=60):self.wait_for("compat_result_score", timeout)
 
 
 class ChartsScreen(_Base):

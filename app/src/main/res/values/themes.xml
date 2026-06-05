@@ -1,9 +1,18 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
-    <style name="Base.Theme.Android_app" parent="Theme.Material3.DayNight.NoActionBar">
+    <style name="Base.Theme.Android_app" parent="Theme.Material3.Dark.NoActionBar">
         <!-- Customize your light theme here. -->
         <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
     </style>
 
     <style name="Theme.Android_app" parent="Base.Theme.Android_app" />
+
+    <!-- Gold-tinted date/time picker dialog matching iOS cosmic theme -->
+    <style name="DestinyDatePickerTheme" parent="Theme.Material3.Dark.Dialog">
+        <item name="colorPrimary">#D4AF37</item>
+        <item name="colorOnPrimary">#0D0D1A</item>
+        <item name="colorSurface">#151A29</item>
+        <item name="colorOnSurface">#FFFFFF</item>
+        <item name="android:colorBackground">#151A29</item>
+    </style>
 </resources>

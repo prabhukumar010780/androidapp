@@ -1,14 +1,21 @@
 package com.destinyai.astrology.ui.profile
 
 import app.cash.turbine.test
+import com.destinyai.astrology.data.billing.BillingManager
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AstroApiService
+import com.destinyai.astrology.data.remote.DeleteAccountRequest
 import com.destinyai.astrology.data.remote.StatusResponse
+import com.destinyai.astrology.data.remote.AnalyticsConsentRequest
+import com.destinyai.astrology.data.remote.SuccessResponse
+import com.destinyai.astrology.data.repository.AuthRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -27,6 +34,8 @@ class ProfileViewModelTest {
     private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var api: AstroApiService
     private lateinit var prefs: UserPreferences
+    private lateinit var authRepository: AuthRepository
+    private lateinit var billingManager: BillingManager
     private lateinit var vm: ProfileViewModel
 
     @BeforeAll
@@ -43,9 +52,16 @@ class ProfileViewModelTest {
     fun setUp() {
         api = mockk(relaxed = true)
         prefs = mockk(relaxed = true)
+        authRepository = mockk(relaxed = true)
+        billingManager = mockk(relaxed = true)
+        // BillingManager exposes StateFlow<...> sources that the VM observes in init —
+        // stub them with empty flows so the constructor doesn't throw.
+        every { billingManager.pendingUpgradePlanId } returns MutableStateFlow<String?>(null)
+        every { billingManager.pendingUpgradeEffectiveDate } returns MutableStateFlow<Long?>(null)
+        every { billingManager.purchasedProductIds } returns MutableStateFlow<Set<String>>(emptySet())
         coEvery { prefs.getUserEmail() } returns "u@x.com"
         coEvery { prefs.getUserName() } returns "Prabhu"
-        vm = ProfileViewModel(api, prefs)
+        vm = ProfileViewModel(api, prefs, authRepository, billingManager)
     }
 
     @Test
@@ -134,7 +150,7 @@ class ProfileViewModelTest {
     fun `confirmDeleteAccount calls api and clears prefs then sets isDeleted`() = runTest {
         vm.confirmDeleteAccount()
 
-        coVerify { api.deleteAccount("u@x.com") }
+        coVerify { api.deleteAccount(match { it.userEmail == "u@x.com" && it.confirmation == "DELETE" }) }
         coVerify { prefs.clearAll() }
         vm.uiState.test {
             assertTrue(awaitItem().isDeleted)
@@ -144,13 +160,17 @@ class ProfileViewModelTest {
 
     @Test
     fun `confirmDeleteAccount sets error on api failure`() = runTest {
-        coEvery { api.deleteAccount(any()) } throws RuntimeException("api error")
+        coEvery { api.deleteAccount(any<DeleteAccountRequest>()) } throws RuntimeException("api error")
 
         vm.confirmDeleteAccount()
 
         vm.uiState.test {
             val s = awaitItem()
-            assertNotNull(s.error)
+            // Production code surfaces delete failures via deleteErrorMessage (rendered
+            // inline in the delete-confirmation sheet — mirrors iOS ProfileView.swift:844-872).
+            // The generic `error` field is reserved for non-delete flows (sign-out, profile
+            // load, etc.) so the delete sheet can stay open with its own inline message.
+            assertNotNull(s.deleteErrorMessage)
             assertFalse(s.isDeleted)
             cancelAndIgnoreRemainingEvents()
         }
@@ -162,6 +182,70 @@ class ProfileViewModelTest {
 
         vm.confirmDeleteAccount()
 
-        coVerify(exactly = 0) { api.deleteAccount(any()) }
+        coVerify(exactly = 0) { api.deleteAccount(any<DeleteAccountRequest>()) }
+    }
+
+    // ── toggleHistory ──────────────────────────────────────────────────────────
+
+    @Test
+    fun `toggleHistory updates historyEnabled`() = runTest {
+        vm.toggleHistory(false)
+
+        vm.uiState.test {
+            assertFalse(awaitItem().historyEnabled)
+            cancelAndIgnoreRemainingEvents()
+        }
+        coVerify { prefs.setHistoryEnabled(false) }
+    }
+
+    // ── loadProfile reads historyEnabled ───────────────────────────────────────
+
+    @Test
+    fun `loadProfile reads historyEnabled from prefs`() = runTest {
+        coEvery { prefs.isHistoryEnabled() } returns false
+        coEvery { api.getStatus("u@x.com") } returns StatusResponse(
+            userEmail = "u@x.com",
+            planId = "free_registered",
+            isGeneratedEmail = false,
+            isPremium = false,
+        )
+
+        vm.loadProfile()
+
+        vm.uiState.test {
+            assertFalse(awaitItem().historyEnabled)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // ── refreshAll ─────────────────────────────────────────────────────────────
+
+    @Test
+    fun `refreshAll calls api getStatus`() = runTest {
+        coEvery { api.getStatus("u@x.com") } returns StatusResponse(
+            userEmail = "u@x.com",
+            planId = "free_registered",
+            isGeneratedEmail = false,
+            isPremium = false,
+        )
+
+        vm.refreshAll()
+
+        coVerify { api.getStatus("u@x.com") }
+    }
+
+    // ── toggleAnalytics backed by api ──────────────────────────────────────────
+
+    @Test
+    fun `toggleAnalytics calls api updateAnalyticsConsent`() = runTest {
+        coEvery { api.updateAnalyticsConsent(any()) } returns SuccessResponse(success = true)
+
+        vm.toggleAnalytics(false)
+
+        coVerify {
+            api.updateAnalyticsConsent(match { req ->
+                req.email == "u@x.com" && !req.consent
+            })
+        }
     }
 }

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">Destiny</string>
     <string name="done">Done</string>
     <string name="view_daily_update">View Today\'s Update</string>
@@ -132,6 +132,22 @@ chart and personalize your insights</string>
     <string name="cancel_anytime">Cancel anytime</string>
     <string name="restore_purchases">Restore Purchases</string>
     <string name="subscription_terms">Subscription automatically renews unless canceled at least 24 hours before the end of the current period.</string>
+    <string name="billing_best_value" tools:ignore="MissingTranslation">Best Value</string>
+    <string name="billing_free_trial" tools:ignore="MissingTranslation">7-day free trial</string>
+    <string name="billing_subscribe" tools:ignore="MissingTranslation">Subscribe</string>
+    <string name="billing_loading_purchase" tools:ignore="MissingTranslation">Processing purchase…</string>
+    <string name="billing_conflict_title" tools:ignore="MissingTranslation">Subscription Conflict</string>
+    <string name="billing_conflict_message" tools:ignore="MissingTranslation">Multiple active subscriptions detected. Please manage your subscriptions in Google Play.</string>
+    <string name="billing_conflict_dismiss" tools:ignore="MissingTranslation">Dismiss</string>
+    <string name="billing_yearly_save_label" tools:ignore="MissingTranslation">Save over 15%%</string>
+    <string name="restore_success" tools:ignore="MissingTranslation">Purchases restored successfully.</string>
+    <string name="restore_no_purchases" tools:ignore="MissingTranslation">No purchases to restore.</string>
+    <string name="restore_failed" tools:ignore="MissingTranslation">Could not restore purchases. Please try again.</string>
+    <string name="billing_purchase_pending" tools:ignore="MissingTranslation">Your purchase is pending approval. We will activate your subscription as soon as it completes.</string>
+    <string name="billing_already_owned" tools:ignore="MissingTranslation">Activating your subscription…</string>
+    <string name="billing_plan_changed" tools:ignore="MissingTranslation">Your %1$s subscription is now active.</string>
+    <string name="terms_url" tools:ignore="MissingTranslation">https://www.destinyaiastrology.com/terms-of-service/</string>
+    <string name="privacy_url" tools:ignore="MissingTranslation">https://www.destinyaiastrology.com/privacy-policy/</string>
     <string name="aligning_stars">Aligning the stars...</string>
     <string name="suggested_questions">Suggested questions</string>
     <string name="no_chat_history">Your conversations will appear here</string>
@@ -168,8 +184,16 @@ history will appear here.</string>
     <string name="continue_with_apple">Continue with Apple</string>
     <string name="continue_with_google">Continue with Google</string>
     <string name="continue_with_email">Continue with Email</string>
+    <string name="google_sign_in_unavailable">Google Sign-In is not configured for this build. Please use another sign-in method.</string>
+    <string name="google_sign_in_failed">Google Sign-In failed (code %1$d). Please try again.</string>
+    <string name="google_sign_in_no_accounts">No Google accounts found. Add one to your device and try again.</string>
+    <string name="google_sign_in_failed_generic">Google Sign-In failed. Please try again.</string>
+    <string name="apple_sign_in_unavailable">Sign in with Apple is not yet available on Android. Please use Google or continue as guest.</string>
+    <string name="apple_account_requires_ios">This account was created with Apple and can only be accessed from the iOS app. Please contact support@destinyaiastrology.com for assistance.</string>
     <string name="i_dont_know_birth_time">I don\'t know my birth time</string>
-    <string name="analytics_consent_label">Help improve the app by sharing usage analytics</string>
+    <string name="analytics_consent_label">Help improve Destiny AI by sharing anonymised usage</string>
+    <string name="analytics_consent_description">Help us improve Destiny by sharing anonymized usage analytics. You can change this anytime in Settings.</string>
+    <string name="backend_data_refreshed_banner" tools:ignore="MissingTranslation">Your profile was updated from the cloud</string>
     <string name="profile_data_refreshed">Your profile data was refreshed on the server. Please re-enter your birth details.</string>
     <string name="sign_up">Sign up</string>
     <string name="account_deleted_error">This account has been permanently deleted and can no longer be used. The email associated with this account cannot be reused. If you believe this is an error, please contact support.</string>
@@ -186,6 +210,8 @@ history will appear here.</string>
     <string name="conflict_google">An account already exists with your birth data. Please sign in with Google.</string>
     <string name="conflict_email">An account already exists with your birth data. Please sign in with %@.</string>
     <string name="conflict_generic">An account already exists with your birth data. Please sign in.</string>
+    <string name="apple_unavailable_inline_notice">Apple sign-in is not available on Android. Please use Google or sign in on the iOS app.</string>
+    <string name="contact_support">Contact Support</string>
     <string name="a_registered_account">a registered account</string>
     <string name="daily_limit_reached">Daily limit reached. Resets at midnight.</string>
     <string name="overall_limit_reached">You\'ve used all your questions.</string>
@@ -1469,6 +1495,8 @@ history will appear here.</string>
     <string name="current_plan">Current</string>
     <string name="scheduled_plan">Scheduled</string>
     <string name="per_month">/ month</string>
+    <string name="per_year_short_suffix" tools:ignore="MissingTranslation">yr</string>
+    <string name="per_month_short_suffix" tools:ignore="MissingTranslation">mo</string>
     <string name="everything_in_core_plus">Everything in Core, plus:</string>
     <string name="coming_soon">(coming soon)</string>
     <string name="chart_style">Chart Style</string>
@@ -1510,7 +1538,6 @@ history will appear here.</string>
     <string name="onboarding_feature5_desc">Get notified on favorable days based on your chart and preferences</string>
     <string name="sign_in_button">Sign In</string>
     <string name="go_premium">Go Premium</string>
-    <string name="contact_support">Contact Support</string>
     <string name="sign_up_button">Sign up</string>
     <string name="not_now">Not now</string>
     <string name="search_for_city">Search for a city...</string>
@@ -1535,7 +1562,7 @@ history will appear here.</string>
     <string name="dasha_quality_good">Good</string>
     <string name="dasha_quality_steady">Steady</string>
     <string name="dasha_quality_caution">Caution</string>
-    <string name="chat_welcome_greeting">Hello %@! I\'m Destiny, your personal astrology guide. What would you like to know about your day, relationships, or path ahead?</string>
+    <string name="chat_welcome_greeting">Hello %1$s! I\'m Destiny, your personal astrology guide. What would you like to know about your day, relationships, or path ahead?</string>
     <string name="context_life_area_question">Today\'s forecast mentions: \'%@\' for my %@. Can you elaborate on what this means for me?</string>
     <string name="context_dasha_question">I am currently in my %@ Dasha period, which carries a theme of \'%@\' with a \'%@\' overall quality.%@
 
@@ -1548,6 +1575,13 @@ Please share deeper insights on how this transit influences my life and any prac
     <string name="context_transit_card_label">How is the %@ transit affecting me?</string>
     <string name="context_life_area_card_label">What\'s ahead for my %@?</string>
     <string name="context_yoga_card_label">What does %@ mean for me?</string>
+    <!-- Android-formatted variants of context_* (strings above use iOS %@ syntax). -->
+    <string name="context_dasha_question_android" tools:ignore="MissingTranslation">I am currently in my %1$s Dasha period, which carries a theme of \'%2$s\' with a \'%3$s\' overall quality.%4$s\n\nPlease provide a detailed analysis of how this Dasha period shapes my life, what opportunities or challenges to expect, and any recommended remedies.</string>
+    <string name="context_dasha_phase_suggests_android" tools:ignore="MissingTranslation"> The current phase suggests: \'%1$s\'.</string>
+    <string name="context_transit_question_android" tools:ignore="MissingTranslation">%1$s is currently transiting through %2$s in my %3$dth house. The key indication is: \'%4$s\'.\n\nPlease share deeper insights on how this transit influences my life and any practical guidance for this period.</string>
+    <string name="context_transit_card_label_android" tools:ignore="MissingTranslation">How is the %1$s transit affecting me?</string>
+    <string name="context_life_area_question_android" tools:ignore="MissingTranslation">Today\'s forecast mentions: \'%1$s\' for my %2$s. Can you elaborate on what this means for me?</string>
+    <string name="context_life_area_card_label_android" tools:ignore="MissingTranslation">What\'s ahead for my %1$s?</string>
     <string name="status_active">Active</string>
     <string name="status_cancelled">Cancelled</string>
     <string name="yoga_label_planets">PLANETS</string>
@@ -1702,6 +1736,26 @@ Please share deeper insights on how this transit influences my life and any prac
     <string name="vimshottari_dasha_year">Vimshottari Dasha (%@)</string>
     <string name="transits_year">Transits (%@)</string>
     <string name="house_short">H%@</string>
+    <!-- Charts area Android-format strings -->
+    <string name="vimshottari_dasha_year_fmt">Vimshottari Dasha %1$d</string>
+    <string name="transits_year_fmt">Transits %1$d</string>
+    <string name="ascendant_label_fmt">Ascendant: %1$s</string>
+    <string name="ascendant_short_fmt">Asc: %1$s</string>
+    <string name="house_short_fmt">H%1$d</string>
+    <string name="pada_num_fmt">Pada %1$d</string>
+    <string name="no_birth_chart_yet">No birth chart yet</string>
+    <string name="no_birth_chart_yet_desc">Save your birth details to generate your Vedic birth chart.</string>
+    <string name="back_action">Back</string>
+    <string name="compare_charts_action">Compare charts</string>
+    <string name="planet_positions_action">Planet positions</string>
+    <string name="chart_style_action">Chart style</string>
+    <string name="expand_action">Expand</string>
+    <string name="collapse_action">Collapse</string>
+    <plurals name="event_count">
+        <item quantity="one">%1$d event</item>
+        <item quantity="other">%1$d events</item>
+    </plurals>
+    <string name="planet_event_count_fmt">%1$s (%2$s)</string>
     <string name="ashtakoot_analysis_title">Ashtakoot Analysis</string>
     <string name="kuta_varna_label">Work</string>
     <string name="kuta_varna_theme">Work</string>
@@ -1801,7 +1855,7 @@ Please share deeper insights on how this transit influences my life and any prac
     <string name="view_full_report_action">View Full Report</string>
     <string name="accessibility_menu">Menu</string>
     <string name="accessibility_profile">Profile</string>
-    <string name="viewing_as_label">Viewing as %@</string>
+    <string name="viewing_as_label">Viewing as %1$s</string>
     <string name="accessibility_history_chat">Chat history</string>
     <string name="accessibility_history_match">Match history</string>
     <string name="accessibility_reset_form">Reset form</string>
@@ -1900,8 +1954,46 @@ Please share deeper insights on how this transit influences my life and any prac
     <string name="a11y_copy_response">Copy response</string>
     <string name="a11y_orb_status_format">%@: %@</string>
     <string name="history_title">History</string>
-    <string name="delete_item_confirm_format">Are you sure you want to delete \"%@\"?</string>
+    <!-- History date-section headers (mirrors iOS HistoryViewModel.formatSectionDate) -->
+    <string name="history_section_today">Today</string>
+    <string name="history_section_yesterday">Yesterday</string>
+    <string name="history_section_this_week">This Week</string>
+    <string name="history_section_earlier">Earlier</string>
+    <!-- Compatibility group row (mirrors iOS HistoryView.swift:350-353, 428-447) -->
+    <string name="history_group_title_format">%1$s + %2$s</string>
+    <string name="history_group_partners_format">%1$d partners</string>
+    <string name="history_best_score_format">Best %1$d/%2$d</string>
+    <string name="cd_compatibility_group">Compatibility group</string>
+    <string name="delete_item_confirm_format">Are you sure you want to delete \"%1$s\"?</string>
+    <string name="delete_dialog_title">Delete</string>
+    <string name="history_search_conversations">Search conversations…</string>
+    <string name="history_no_conversations_yet">No conversations yet</string>
+    <string name="history_no_results">No results</string>
+    <string name="history_conversation_default">Conversation</string>
+    <string name="history_no_compatibility_yet">No compatibility history yet</string>
+    <string name="history_search_by_partner">Search by partner name…</string>
+    <string name="history_tab_chat">Chat</string>
+    <string name="history_tab_compatibility">Compatibility</string>
+    <string name="history_screen_title">History</string>
+    <string name="cd_back">Back</string>
+    <string name="cd_unpin">Unpin</string>
+    <string name="cd_pin">Pin</string>
+    <string name="cd_delete">Delete</string>
+    <string name="cd_clear_search">Clear search</string>
     <string name="history_not_saved_desc">Your conversations and matches aren\'t being saved.</string>
+    <!-- Date format for older sections (mirrors iOS "MMMM d, yyyy" — formatSectionDate) -->
+    <string name="history_section_date_format">MMMM d, yyyy</string>
+    <!-- Multi-match subtitle (mirrors iOS multi_match_subtitle_format.localized) -->
+    <string name="multi_match_subtitle_format">%d partners</string>
+    <!-- Per-row content descriptions / a11y -->
+    <string name="cd_history_row">History row</string>
+    <string name="cd_history_chat_row">Chat history row</string>
+    <string name="cd_history_match_row">Match history row</string>
+    <string name="cd_history_match_group_row">Match group history row</string>
+    <string name="cd_user_questions">User questions</string>
+    <string name="cd_partners">Partners</string>
+    <string name="cd_history_empty_icon">No history icon</string>
+    <string name="cd_history_disabled_icon">History disabled icon</string>
     <string name="score_fraction_format">%d/%d</string>
     <string name="best_score_format">Best: %d/%d</string>
     <string name="retry_action">Retry</string>
@@ -1950,7 +2042,7 @@ Please share deeper insights on how this transit influences my life and any prac
     <string name="a11y_switch_profile_format">Switch to %@%@</string>
     <string name="a11y_your_profile_suffix">, your profile</string>
     <string name="add_first_personalized_alert">Add your first personalized alert below</string>
-    <string name="remove_alert_confirm_format">Remove \"%@...\"?</string>
+    <string name="remove_alert_confirm_format">Remove \"%1$s...\"?</string>
     <string name="remove_this_alert">Remove this alert?</string>
     <string name="enable_notifications_instruction">Enable in iOS Settings → Apps → Destiny → Notifications</string>
     <string name="alert_about_question">What do you want alerts about?</string>
@@ -2008,6 +2100,36 @@ Please share deeper insights on how this transit influences my life and any prac
     <string name="notif_edit_alert_title">Edit alert</string>
     <string name="notif_new_alert_title">New alert</string>
     <string name="notif_delete_alert_title">Delete Alert</string>
+    <!-- iOS parity: Notification Preferences screen -->
+    <string name="notif_preferences_title">Notification Preferences</string>
+    <string name="notif_back">Back</string>
+    <string name="notif_channel_push">Push Notifications</string>
+    <string name="notif_channel_email_label">Email</string>
+    <string name="notif_channel_inapp_label">In-App</string>
+    <string name="notif_channels_section">Channels</string>
+    <string name="notif_custom_alerts_section">Custom Alerts</string>
+    <string name="notif_blocked_in_settings">Notifications are blocked in system settings.</string>
+    <string name="notif_enable">Enable</string>
+    <string name="notif_no_custom_alerts">No custom alerts yet. Add one below.</string>
+    <string name="notif_add_alert">Add Alert</string>
+    <string name="notif_max_alerts_reached">Maximum 5 alerts reached</string>
+    <string name="notif_suggestions">SUGGESTIONS</string>
+    <string name="notif_add">Add</string>
+    <string name="notif_preferences_saved">Preferences saved</string>
+    <string name="notif_save_preferences">Save Preferences</string>
+    <string name="notif_suggestion_daily_morning">Good day to invest or take calculated risks</string>
+    <string name="notif_suggestion_transits_week">Good day for tough relationship conversations and conflict resolution</string>
+    <string name="notif_suggestion_compat_results">Good day to shop for a big purchase and negotiate a deal</string>
+    <string name="notif_suggestion_renewal">Good day to ask for a raise, negotiate, or pitch something important</string>
+    <!-- iOS parity: AddEditAlertSheet -->
+    <string name="notif_add_alert_title">Add Alert</string>
+    <string name="notif_edit_alert_dialog_title">Edit Alert</string>
+    <string name="notif_describe_alert">Describe your alert...</string>
+    <string name="notif_char_count_format">%1$d / %2$d</string>
+    <string name="notif_frequency">Frequency</string>
+    <string name="notif_freq_daily">Daily</string>
+    <string name="notif_freq_weekly">Weekly</string>
+    <string name="notif_freq_monthly">Monthly</string>
     <string name="partner_form_add_title">Add Birth Chart</string>
     <string name="partner_form_edit_title">Edit Birth Chart</string>
     <string name="partner_form_name_label">Name</string>
@@ -2026,7 +2148,6 @@ Please share deeper insights on how this transit influences my life and any prac
     <string name="search_birth_charts_placeholder">Search birth charts...</string>
     <string name="load_earlier_messages">Load earlier messages</string>
     <string name="chat_bg_interrupted">Interrupted in background</string>
-    <string name="multi_match_subtitle_format">Multi-match · %d partners compared</string>
     <string name="search_history_placeholder">Search history...</string>
     <string name="chat_starter_marriage">When will I get married?</string>
     <string name="chat_starter_career_direction">Best career direction?</string>
@@ -2048,14 +2169,21 @@ Please share deeper insights on how this transit influences my life and any prac
     <string name="notification_action_default">View</string>
     <string name="sign_up_to_personalize_alerts">Sign up to personalize alerts</string>
     <string name="personalize_alerts_cta">Personalize alerts</string>
+    <string name="tap_to_view_details">Tap to view details</string>
+    <string name="tell_me_more_about_format">Tell me more about %1$s</string>
     <string name="sound_on_a11y">Sound on</string>
     <string name="sound_off_a11y">Sound off</string>
     <string name="setup_phase_birth_chart">Calculating your birth chart...</string>
     <string name="setup_phase_planetary">Analyzing planetary positions...</string>
     <string name="setup_phase_insights">Generating today\'s insights...</string>
     <string name="setup_phase_ready">Your cosmic profile is ready!</string>
+    <!-- iOS parity: ProfileSetupLoadingView phase subtitle text (4 phases) -->
+    <string name="setup_phase_birth_chart_subtitle">Mapping planetary positions at your birth moment</string>
+    <string name="setup_phase_planetary_subtitle">Reading dignities, aspects and divisional placements</string>
+    <string name="setup_phase_insights_subtitle">Synthesizing your daily prediction</string>
+    <string name="setup_phase_ready_subtitle">Welcome to Destiny</string>
     <string name="select_a_language">Select a language</string>
-    <string name="continue_in_language_format">Continue in %@</string>
+    <string name="continue_in_language_format">Continue in %1$s</string>
     <string name="kuta_theme_work">Work compatibility</string>
     <string name="kuta_theme_attraction">Attraction and influence</string>
     <string name="kuta_theme_destiny">Destiny and fortune</string>
@@ -2108,44 +2236,425 @@ Until then: Use this period for strategic positioning.</string>
     <string name="unlock_unlimited_insights">Unlock unlimited insights</string>
     <string name="switch_profile_birth_chart">Switch Profile / Birth Chart</string>
     <string name="dosha_active_badge">Dosha Active</string>
+    <string name="response_style_onboarding_settings_subtitle_change">Change your preferred response depth anytime.</string>
+    <string name="response_style_save_action">Save</string>
+    <string name="response_style_continue_action">Continue</string>
+    <string name="response_style_back">Back</string>
 
-    <!-- Zodiac signs -->
-    <string name="aries">Aries</string>
-    <string name="taurus">Taurus</string>
-    <string name="gemini">Gemini</string>
-    <string name="cancer">Cancer</string>
-    <string name="leo">Leo</string>
-    <string name="virgo">Virgo</string>
-    <string name="libra">Libra</string>
-    <string name="scorpio">Scorpio</string>
-    <string name="sagittarius">Sagittarius</string>
-    <string name="capricorn">Capricorn</string>
-    <string name="aquarius">Aquarius</string>
-    <string name="pisces">Pisces</string>
+    <!-- Zodiac signs — proper nouns, not translated -->
+    <string name="aries" translatable="false">Aries</string>
+    <string name="taurus" translatable="false">Taurus</string>
+    <string name="gemini" translatable="false">Gemini</string>
+    <string name="cancer" translatable="false">Cancer</string>
+    <string name="leo" translatable="false">Leo</string>
+    <string name="virgo" translatable="false">Virgo</string>
+    <string name="libra" translatable="false">Libra</string>
+    <string name="scorpio" translatable="false">Scorpio</string>
+    <string name="sagittarius" translatable="false">Sagittarius</string>
+    <string name="capricorn" translatable="false">Capricorn</string>
+    <string name="aquarius" translatable="false">Aquarius</string>
+    <string name="pisces" translatable="false">Pisces</string>
 
-    <!-- Planets -->
-    <string name="sun">Sun</string>
-    <string name="moon">Moon</string>
-    <string name="mars">Mars</string>
-    <string name="mercury">Mercury</string>
-    <string name="jupiter">Jupiter</string>
-    <string name="venus">Venus</string>
-    <string name="saturn">Saturn</string>
-    <string name="rahu">Rahu</string>
-    <string name="ketu">Ketu</string>
+    <!-- Planets — proper nouns, not translated -->
+    <string name="sun" translatable="false">Sun</string>
+    <string name="moon" translatable="false">Moon</string>
+    <string name="mars" translatable="false">Mars</string>
+    <string name="mercury" translatable="false">Mercury</string>
+    <string name="jupiter" translatable="false">Jupiter</string>
+    <string name="venus" translatable="false">Venus</string>
+    <string name="saturn" translatable="false">Saturn</string>
+    <string name="rahu" translatable="false">Rahu</string>
+    <string name="ketu" translatable="false">Ketu</string>
 
     <!-- Astrology terms -->
     <string name="house">House</string>
     <string name="transit">Transit</string>
 
     <!-- Contextual prompt templates -->
-    <string name="sign_context_life_area_question">In today\'s forecast: \'%1$s\' was mentioned for my %2$s. Can you explain what this means for me?</string>
+    <string name="sign_context_life_area_question" tools:ignore="MissingTranslation">In today\'s forecast: \'%1$s\' was mentioned for my %2$s. Can you explain what this means for me?</string>
 
     <!-- Navigation tabs -->
-    <string name="tab_home">Home</string>
-    <string name="tab_chat">Chat</string>
-    <string name="tab_match">Match</string>
+    <string name="tab_home" tools:ignore="MissingTranslation">Home</string>
+    <string name="tab_chat" tools:ignore="MissingTranslation">Chat</string>
+    <string name="tab_match" tools:ignore="MissingTranslation">Match</string>
 
     <!-- Onboarding -->
-    <string name="onboarding_subtitle">Your cosmic guide</string>
+    <string name="onboarding_subtitle" tools:ignore="MissingTranslation">Your cosmic guide</string>
+
+    <!-- Home screen labels -->
+    <string name="home_your_life_areas">Your life areas</string>
+    <string name="home_current_transits">Current Transits</string>
+    <string name="home_active_yogas">Active Yogas</string>
+    <string name="home_dosha_alerts">Dosha Alerts</string>
+    <string name="home_ask_the_stars">Ask the stars</string>
+    <string name="home_tap_a_question">Tap a question to ask the stars</string>
+    <string name="home_welcome">Welcome</string>
+    <string name="home_error_title">Something went wrong</string>
+    <string name="home_error_retry">Retry</string>
+    <string name="home_unread_badge_overflow">99+</string>
+    <string name="home_dasha_period">♈  Dasha Period</string>
+    <string name="home_dasha_maha">Maha</string>
+    <string name="home_dasha_antar">Antar</string>
+    <string name="home_dasha_period_ends">Period ends: %1$s</string>
+    <string name="home_transit_in_sign">in %1$s</string>
+    <string name="home_mangal_dosha">Mangal Dosha</string>
+    <string name="home_kala_sarpa">Kala Sarpa</string>
+    <string name="home_close">Close</string>
+    <string name="home_ask_more">✦  Ask more</string>
+    <string name="home_what_in_my_mind">What\'s in my mind?</string>
+    <string name="home_current_dasha">Current Dasha</string>
+    <string name="home_greeting_with_name">%1$s, %2$s</string>
+    <string name="home_ascendant_subtitle">%1$s Ascendant</string>
+    <string name="home_tap_to_explore_day">Tap to explore your day</string>
+    <string name="home_todays_insight">✦  Today\'s Insight</string>
+    <string name="home_history_cd">History</string>
+    <string name="home_notifications_cd">Notifications</string>
+    <string name="home_offline_message">You\'re offline</string>
+    <string name="home_profile_switcher_close_cd">Close profile switcher</string>
+    <string name="home_close_cd">Close</string>
+    <string name="home_sound_toggle_cd">Toggle sound</string>
+    <string name="home_yoga_filter_all">All</string>
+    <string name="home_yoga_filter_wealth">Wealth</string>
+    <string name="home_yoga_filter_career">Career</string>
+    <string name="home_yoga_filter_love">Love</string>
+    <string name="home_yoga_filter_health">Health</string>
+    <string name="home_yoga_filter_family">Family</string>
+    <string name="home_yoga_filter_education">Education</string>
+    <string name="home_yoga_filter_spiritual">Spiritual</string>
+    <string name="home_yoga_filter_foundation">Foundation</string>
+    <string name="home_yoga_filter_personality">Personality</string>
+    <string name="home_yoga_filter_special">Special</string>
+    <string name="home_transit_house_label">in your %1$d house</string>
+    <string name="home_yoga_planets_label">Planets: %1$s</string>
+    <string name="home_yoga_houses_label">Houses: %1$s</string>
+    <string name="home_yoga_strength_label">Strength: %1$d%%</string>
+    <string name="home_yoga_no_results">No yogas in this category for now.</string>
+
+    <!-- Compatibility screen -->
+    <string name="compat_partner_details">Partner Details</string>
+    <string name="compat_name">Name</string>
+    <string name="compat_load_saved_partner">Load saved partner</string>
+    <string name="compat_gender">Gender</string>
+    <string name="compat_dob">Date of Birth</string>
+    <string name="compat_time_of_birth">Time of Birth</string>
+    <string name="compat_city_of_birth">City of Birth</string>
+    <string name="compat_time_unknown">Time unknown</string>
+    <string name="compat_time_unknown_note">Compatibility uses sun-sign approximation when time unknown.</string>
+    <string name="compat_retry_failed">Retry Failed</string>
+    <string name="compat_save_partner_to_birth_charts">Save partner to my birth charts</string>
+    <string name="compat_partner_already_saved">Partner already saved</string>
+    <string name="compat_partner_already_saved_msg">This partner is already in your history. Would you like to use the saved entry or continue?</string>
+    <string name="compat_save_anyway">Save anyway</string>
+    <string name="compat_use_saved">Use saved</string>
+    <string name="partner_form_add_button">+ Add</string>
+    <string name="partner_form_dob_label">Date of Birth (YYYY-MM-DD)</string>
+    <string name="partner_form_time_label">Time of Birth (HH:MM)</string>
+    <string name="partner_form_city_label">City of Birth</string>
+    <string name="partner_form_gender_label">Gender</string>
+    <string name="partner_form_birth_time_unknown_toggle">Birth time unknown</string>
+    <string name="partner_protected_cannot_delete">This birth chart is protected and cannot be deleted.</string>
+    <string name="partner_protected_cannot_edit">This birth chart is protected and cannot be edited.</string>
+    <string name="partner_duplicate_profile_error">A birth chart with the same birth data already exists.</string>
+    <string name="partner_load_failed">Failed to load</string>
+    <string name="partner_save_failed">Failed to save</string>
+    <string name="partner_delete_failed">Failed to delete</string>
+    <string name="partner_edit_action">Edit</string>
+    <string name="partner_picker_search_placeholder">Search birth charts</string>
+    <string name="partner_picker_no_matches">No matches found</string>
+    <string name="partner_picker_add_new">Add new birth chart</string>
+    <string name="partner_picker_title">Select Birth Chart</string>
+    <string name="partner_delete_confirm_title">Delete birth chart?</string>
+    <string name="partner_delete_confirm_message">This will permanently remove %1$s from your saved birth charts.</string>
+    <string name="gender_male">Male</string>
+    <string name="gender_female">Female</string>
+    <string name="gender_non_binary">Non-binary</string>
+    <string name="gender_prefer_not_say">Prefer not to say</string>
+    <!-- Partner form — guardian consent + minor protection (iOS PartnerFormView.swift:184-236) -->
+    <string name="partner_form_guardian_consent_title">Guardian consent</string>
+    <string name="partner_form_guardian_consent_message">I confirm I am the parent or legal guardian of this person and consent to creating their birth chart.</string>
+    <string name="partner_form_minor_no_compat">Compatibility matching is not available for profiles under 18.</string>
+    <string name="partner_form_for_compatibility">Use this profile for compatibility matching</string>
+    <string name="partner_form_select_date">Select date of birth</string>
+    <string name="partner_form_select_time">Select time of birth</string>
+    <string name="partner_form_search_city">Search city</string>
+    <!-- Quota gate (iOS PartnerManagerView.swift:108-125) -->
+    <string name="partner_quota_upgrade_title">Upgrade required</string>
+    <string name="partner_quota_upgrade_message">You have reached the maximum number of saved birth charts on your current plan. Upgrade to add more.</string>
+    <string name="partner_quota_upgrade_action">Upgrade</string>
+    <!-- Profile screen — parity with iOS Localizable.strings -->
+    <string name="profile_switch_profile">Switch Profile</string>
+    <string name="profile_manage_birth_charts">Manage saved birth charts</string>
+    <string name="profile_response_style">Response Style</string>
+    <string name="profile_notification_preferences">Notification Preferences</string>
+    <string name="profile_notifications">Notifications</string>
+    <string name="profile_notifications_allowed">Allowed</string>
+    <string name="profile_notifications_denied">Denied</string>
+    <string name="profile_chat_history">Chat History</string>
+    <string name="profile_clear_chat_history">Clear chat history</string>
+    <string name="profile_clear_chat_history_message">All chat history will be permanently deleted.</string>
+    <string name="profile_chat_history_cleared">Chat history cleared</string>
+    <string name="profile_chat_history_clear_failed">Failed to clear history</string>
+    <string name="profile_analytics">Analytics</string>
+    <string name="profile_help_faq">Help &amp; FAQ</string>
+    <string name="profile_upgrade_premium">✦  Upgrade to Premium</string>
+    <string name="profile_sign_up_cta">✦  Sign Up</string>
+    <string name="profile_manage_subscription">Manage subscription</string>
+    <string name="profile_settings_button">Settings</string>
+    <string name="profile_sign_out_question">Sign Out?</string>
+    <string name="profile_sign_out_message_short">You\'ll need to sign in again to access your data.</string>
+    <string name="profile_delete_account">Delete Account</string>
+    <string name="profile_back">Back</string>
+    <string name="profile_guest_label">Guest</string>
+    <string name="profile_guest_user_email">Guest user</string>
+    <string name="profile_app_version_with_build">%1$s (%2$d)</string>
+    <string name="profile_app_version_with_env">%1$s (%2$d) [%3$s]</string>
+    <string name="profile_plan_free">Free</string>
+    <string name="profile_plan_plus">Plus</string>
+    <string name="profile_viewing_birth_chart">Viewing: %1$s\'s birth chart</string>
+    <string name="profile_viewing_birth_chart_default">Viewing: your birth chart</string>
+    <string name="profile_daily_questions_label">Daily Questions</string>
+    <string name="profile_daily_questions_used">%1$d / %2$d used today</string>
+    <string name="profile_pending_upgrade_format">Upgrading to %1$s</string>
+    <string name="profile_pending_upgrade_with_date_format">Upgrading to %1$s on %2$s</string>
+    <string name="profile_no_saved_birth_charts">No saved birth charts yet</string>
+    <string name="profile_manage_birth_charts_link">Manage birth charts</string>
+    <string name="profile_active_badge">Active</string>
+    <string name="profile_you_badge">You</string>
+    <string name="profile_premium_badge_plus">Plus</string>
+    <string name="profile_premium_badge_core">Core</string>
+    <string name="profile_premium_badge_sign_up">Sign Up</string>
+    <string name="profile_birth_details">Birth Details</string>
+    <string name="profile_preferences_section">Preferences</string>
+    <string name="profile_contact_us">Contact us</string>
+    <string name="profile_privacy_policy">Privacy policy</string>
+    <string name="profile_terms_of_service">Terms of service</string>
+    <string name="profile_maybe_later">Maybe later</string>
+    <string name="profile_sign_in_or_sign_up">Sign In / Sign Up</string>
+    <string name="profile_guest_signin_switch_title">Sign in to manage profiles</string>
+    <string name="profile_guest_signin_switch_message">Create an account to save and switch between birth charts.</string>
+    <string name="profile_guest_signin_alerts_title">Sign in for personalized alerts</string>
+    <string name="profile_guest_signin_alerts_message">Create an account to receive personalized notifications.</string>
+    <string name="profile_guest_signin_subscription_title">Sign in to upgrade</string>
+    <string name="profile_guest_signin_subscription_message">Create an account to save your birth chart and unlock insights.</string>
+    <string name="profile_upgrade_required_to_switch">Upgrade required to switch profiles</string>
+    <string name="subscription_activated_title">Subscription Activated</string>
+    <string name="subscription_plan_updated">Your plan has been updated to %1$s.</string>
+    <string name="subscription_now_active">Your %1$s subscription is now active.</string>
+    <string name="subscription_auto_renews">Auto-renews on %1$s. Cancel anytime in Settings.</string>
+    <string name="subscription_ends_on">Ends on %1$s.</string>
+    <string name="subscription_active_until">Active until %1$s.</string>
+    <string name="subscription_conflict_title">Account Already Linked</string>
+    <string name="subscription_conflict_message">Your Google account has an active subscription that is already linked to a different Destiny account.\n\nThis was detected automatically while checking your subscription status.\n\nTo use this subscription, sign in with the original email. If you need help recovering access, contact support@destinyaiastrology.com.</string>
+    <string name="waitlist_tally_url_format" tools:ignore="MissingTranslation">https://tally.so/r/w4bOkb?utm_source=AndroidApp&amp;utm_medium=waitlist_screen&amp;email=%1$s</string>
+    <string name="waitlist_title">You\'re almost in</string>
+    <string name="waitlist_body_1">Destiny is in early access right now, and we\'re rolling out in phases.</string>
+    <string name="waitlist_body_2">Take a moment to fill out this quick form and we\'ll get you in soon:</string>
+    <string name="waitlist_cta">Join the Waitlist</string>
+    <string name="waitlist_already_filled">Already filled it out? Hang tight, your turn is coming.</string>
+    <string name="waitlist_support_prefix">Questions or need help? Reach us anytime at</string>
+    <string name="waitlist_support_email" tools:ignore="MissingTranslation">support@destinyaiastrology.com</string>
+    <string name="waitlist_back_to_login">Back to Login</string>
+    <!-- Auth UI parity strings (iOS Localizable.strings parity) -->
+    <string name="age_minimum_required">You must be at least 13 years old</string>
+    <string name="saving_profile">Saving…</string>
+    <string name="action_back">Back</string>
+    <string name="mute_sound">Mute sound</string>
+    <string name="unmute_sound">Unmute sound</string>
+    <!-- iOS parity (BirthDataView.swift:96-106): guest back-pill chip uses gold "Sign up" label. -->
+    <string name="back_to_sign_up">Sign up</string>
+    <!-- iOS parity (BirthDataView.swift:54): warning-triangle banner content description. -->
+    <string name="backend_data_refreshed_a11y">Backend data refreshed warning</string>
+    <string name="account_archived">Account archived</string>
+    <string name="sign_in_to_access_feature">Sign in to access this feature</string>
+    <string name="destiny_logo">Destiny Logo</string>
+    <!-- Chat parity strings (iOS Localizable.strings parity) -->
+    <string name="chat_ask_anything_placeholder">Ask anything…</string>
+    <string name="chat_copied">Copied</string>
+    <string name="chat_copy_action">⎘ Copy</string>
+    <string name="chat_was_interrupted">Chat was interrupted</string>
+    <string name="chat_personal_guide_subtitle">Your personal Vedic astrology guide</string>
+    <string name="chat_history_no_results">No results found</string>
+    <string name="chat_search_chats">Search chats</string>
+    <string name="chat_starter_today">What should I be mindful of today?</string>
+    <string name="chat_starter_relationships">What does my chart say about relationships?</string>
+    <string name="chat_starter_decisions">What\'s a good time for important decisions?</string>
+    <string name="chat_starter_dasha">What is my current dasha period?</string>
+    <!-- Cosmic progress timer (mirrors iOS ChatViewModel.startCosmicProgressTimer) -->
+    <string name="cosmic_progress_1">Reading your stars…</string>
+    <string name="cosmic_progress_2">Aligning planetary positions…</string>
+    <string name="cosmic_progress_3">Consulting your dasha period…</string>
+    <string name="cosmic_progress_4">Mapping divisional charts…</string>
+    <string name="cosmic_progress_5">Weighing planetary strengths…</string>
+    <string name="cosmic_progress_6">Tracing transits…</string>
+    <string name="cosmic_progress_7">Listening to your nakshatra…</string>
+    <string name="cosmic_progress_8">Cross-checking yogas and doshas…</string>
+    <string name="cosmic_progress_9">Synthesizing your reading…</string>
+    <string name="cosmic_progress_10">Finalizing guidance…</string>
+
+    <!-- Push notification fallbacks and channel names -->
+    <string name="notification_default_title">Destiny AI</string>
+    <string name="notification_channel_daily">Daily Insights</string>
+    <string name="notification_channel_transit">Transit Alerts</string>
+    <string name="notification_channel_general">General</string>
+
+    <!-- Settings screen (parity with iOS Settings sheets) -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_chart_style_section">Chart Style</string>
+    <string name="settings_response_style_section">Response Style</string>
+    <string name="settings_language_section">Language</string>
+    <string name="settings_notifications_section">Notifications</string>
+    <string name="settings_chart_style_north">North</string>
+    <string name="settings_chart_style_south">South</string>
+    <string name="settings_response_style_brief">Brief</string>
+    <string name="settings_response_style_balanced">Balanced</string>
+    <string name="settings_response_style_detailed">Detailed</string>
+    <string name="settings_notif_daily_insights">Daily Insights</string>
+    <string name="settings_notif_transits">Transits</string>
+    <string name="settings_notif_compatibility">Compatibility</string>
+    <string name="settings_saved">Settings saved</string>
+    <string name="settings_save_button">Save Settings</string>
+    <string name="settings_back_cd">Back</string>
+    <!-- Auth/birth-data friendly error fallbacks (iOS parity: localized, not raw HTTP exception text) -->
+    <string name="auth_generic_sign_in_failed">Sign-in failed. Please check your connection and try again.</string>
+    <string name="birth_data_save_failed">We couldn\'t save your profile right now. Please try again.</string>
+    <string name="birth_data_please_select_city">Please select your city of birth</string>
+    <string name="birth_data_please_select_valid_city">Please select a valid city from the search</string>
+    <!-- iOS parity: Subscription screen — already-premium banner, free-trial badge, quotas, Play notice -->
+    <string name="subscription_already_premium">✦  You\'re already Premium!</string>
+    <string name="subscription_plan_label">Plan: %1$s</string>
+    <string name="subscription_free_trial_available">✦ Free Trial Available</string>
+    <string name="subscription_questions_per_day">%1$d questions/day</string>
+    <string name="subscription_unlimited_questions">Unlimited questions</string>
+    <string name="play_subscription_notice">Purchases are billed through your Google Play account. Manage in Play Store → Account → Subscriptions.</string>
+    <string name="play_manage_subscriptions_url">https://play.google.com/store/account/subscriptions</string>
+
+    <!-- iOS parity: SubscriptionView.swift:198-235 activatingBanner -->
+    <string name="subscription_activating_title">Activating your subscription…</string>
+    <string name="subscription_activating_subtitle">This usually takes a few seconds. If it persists, sign out and back in.</string>
+
+    <!-- iOS parity: SubscriptionView.swift:243-276 crossAccountConflictBanner (BUG-2) -->
+    <string name="conflict_banner_title">Account Already Linked</string>
+    <string name="conflict_banner_body">Your Google account has an active subscription that is already linked to a different Destiny account. Sign in with the original email, or contact support.</string>
+
+    <!-- iOS parity: SubscriptionView.swift:683-690 trial dual-line CTA -->
+    <string name="start_7_day_free_trial">Start 7-Day Free Trial</string>
+    <string name="trial_then_price_format">then %1$s · cancel anytime</string>
+
+    <!-- iOS parity: SubscriptionView.swift:720-725 pendingUpgradeEffectiveDate -->
+    <string name="subscription_starts_on_format">Subscription starts %1$s</string>
+
+    <!-- iOS parity: Manage Subscription deep link to Play Store -->
+    <string name="manage_subscription_action">Manage Subscription</string>
+
+    <!-- BirthDetailsScreen localization (parity with iOS BirthDetailsView Localizable.strings keys) -->
+    <string name="birth_back">Back</string>
+    <string name="birth_section_editable">EDITABLE</string>
+    <string name="birth_section_birth_data">BIRTH DATA</string>
+    <string name="birth_section_identity">Identity</string>
+    <string name="birth_section_birth_data_title">Birth Data</string>
+    <string name="birth_field_name">Name</string>
+    <string name="birth_field_gender">Gender</string>
+    <string name="birth_value_dash">—</string>
+    <string name="birth_read_only_cd">Read only</string>
+    <string name="birth_save_changes">Save Changes</string>
+    <string name="birth_need_update_title">Need to update birth date, time, or place?</string>
+    <string name="birth_contact_support">Contact support</string>
+    <string name="birth_update_request_subject">Birth Data Update Request</string>
+    <string name="birth_update_request_body">Please update my birth data:\nDate: %1$s\nTime: %2$s\nCity: %3$s</string>
+
+    <!-- Chat reading layout — DepthLayersView, message rating, quota interstitial -->
+    <string name="depth_why_this_prediction">Why this prediction</string>
+    <string name="quota_exhausted_title">You\'ve reached today\'s limit</string>
+
+    <!-- DeleteAccountSheet localization (parity with iOS DeleteAccountSheet) -->
+    <string name="delete_account_title">Delete your account</string>
+    <string name="delete_account_subtitle">This will permanently delete all your data. This cannot be undone.</string>
+    <string name="delete_account_bullet_remove">Your account and profile will be permanently removed</string>
+    <string name="delete_account_bullet_history">All chat history and readings will be deleted</string>
+    <string name="delete_account_bullet_irreversible">This action cannot be reversed</string>
+    <string name="delete_account_active_subscription_warning">Cancel your subscription before deleting your account. Active subscriptions cannot be refunded after deletion.</string>
+    <string name="delete_account_button">Delete Account</string>
+    <string name="delete_account_cancel">Cancel</string>
+    <!-- Quota-exhausted guest sheet (mirrors iOS QuotaExhaustedView guest path). -->
+    <string name="guest_question_limit_reached">Question limit reached</string>
+    <string name="sign_in_to_continue_chat">Sign in to keep your chat history and unlock more questions. Your birth data is preserved.</string>
+    <!-- Astrology Settings screen (parity with iOS AstrologySettingsSheet) -->
+    <string name="astrology_settings_back_cd">Back</string>
+    <string name="ayanamsa_lahiri_default">Lahiri (Default)</string>
+    <string name="house_system_whole_sign_default">Whole Sign (Default)</string>
+    <string name="ayanamsa_footer">The reference point used to calculate planetary positions</string>
+    <string name="house_system_footer">The method for dividing the zodiac into 12 houses</string>
+    <string name="chart_style_footer">How your birth chart is visualised</string>
+    <string name="astrology_settings_save">Save</string>
+    <!-- Chart Style picker subtitles -->
+    <string name="chart_style_north_subtitle">Diamond layout. Houses are fixed; planets move.</string>
+    <string name="chart_style_south_subtitle">Square layout. Signs are fixed; planets move.</string>
+    <!-- Location search sheet error / empty states (parity with iOS LocationSearchService error surfaces) -->
+    <string name="location_search_no_results">No matching cities. Try a different spelling.</string>
+    <string name="location_search_error_network">No internet connection. Check your network and try again.</string>
+    <string name="location_search_error_auth">Could not authenticate with the server. Please sign in again.</string>
+    <string name="location_search_error_generic">Location search is unavailable right now. Please try again.</string>
+
+    <!-- Profile parity additions (mirrors iOS ProfileView Chart Style / Astrology Settings /
+         paid hero / Turn Off History / Cleared History rows). -->
+    <string name="profile_chart_style">Chart Style</string>
+    <string name="profile_astrology_settings">Astrology Settings</string>
+    <string name="profile_astrology_settings_subtitle">Choose your astrological path</string>
+    <string name="profile_view_all_plans">View All Plans</string>
+    <string name="profile_history_turn_off_title">Turn off history?</string>
+    <string name="profile_history_clear_warning">This will permanently delete all your conversations and matches. This action cannot be undone.</string>
+    <string name="profile_paid_active">Active</string>
+    <string name="profile_personalized_alerts">Personalized Alerts</string>
+    <!-- Settings parity fixes: action 1-15 -->
+    <string name="notif_close">Close</string>
+    <string name="notif_weekday_picker_label">Day of week</string>
+    <string name="notif_monthly_picker_label">Day of month</string>
+    <string name="notif_weekday_sun">S</string>
+    <string name="notif_weekday_mon">M</string>
+    <string name="notif_weekday_tue">T</string>
+    <string name="notif_weekday_wed">W</string>
+    <string name="notif_weekday_thu">T</string>
+    <string name="notif_weekday_fri">F</string>
+    <string name="notif_weekday_sat">S</string>
+
+    <!-- Home parity additions (sound toggle, dasha card, yoga details). -->
+    <string name="home_sound_on_cd">Sound on. Tap to mute.</string>
+    <string name="home_sound_off_cd">Sound off. Tap to enable.</string>
+    <string name="home_dasha_theme_label">Theme</string>
+    <string name="home_no_combinations_found">No combinations found in this category.</string>
+    <string name="home_yoga_formation">Formation</string>
+    <string name="home_yoga_strength">Strength</string>
+    <string name="home_yoga_outcome">Outcome</string>
+    <string name="home_yoga_reduction_reason">Reduction Reason</string>
+    <string name="home_default_q_career">Will my career grow this year?</string>
+    <string name="home_default_q_love">When will I find true love?</string>
+    <string name="home_default_q_finance">What is my financial outlook?</string>
+    <string name="home_default_q_health">How is my health this period?</string>
+
+    <!-- Partners — overflow menu / picker chevron / cancel action / gender sheet (iOS parity Views/Partners/*). -->
+    <string name="partner_more_options_cd">More options</string>
+    <string name="partner_chevron_cd">Open</string>
+    <string name="partner_protection_info_cd">Why can\'t I edit?</string>
+    <string name="partner_picker_cancel">Cancel</string>
+    <string name="partner_gender_symbol_male">♂</string>
+    <string name="partner_gender_symbol_female">♀</string>
+    <string name="partner_avatar_cd">Avatar</string>
+
+    <!-- Profile Switcher — close affordance, switch-to-self row, add-chart button (iOS ProfileSwitcherSheet.swift parity). -->
+    <string name="profile_switcher_close_cd">Close profile switcher</string>
+    <string name="profile_switcher_add_chart_cd">Add new birth chart</string>
+    <string name="profile_switcher_add_chart">Add new birth chart</string>
+    <string name="profile_switcher_switch_to_self">Switch to your chart</string>
+    <string name="profile_switcher_switching">Switching profile</string>
+
+    <!-- CompatibilityHistory screen — parity with iOS CompatibilityHistorySheet.swift localized strings. -->
+    <string name="compat_history_delete_match_title">Delete Match?</string>
+    <string name="compat_history_delete_match_message">This will permanently remove this compatibility result from your history.</string>
+    <string name="compat_history_empty_title">No Match History</string>
+    <string name="compat_history_empty_subtitle">Your compatibility analyses will\nappear here after running them.</string>
+    <string name="compat_history_disabled_title">History is Turned Off</string>
+    <string name="compat_history_disabled_subtitle">Match results are not being saved.\nEnable history in Settings to track your analyses.</string>
+    <string name="compat_history_best_match_cd">Best match</string>
+    <string name="compat_history_partners_best_format">%1$d partners • Best: %2$s</string>
+    <string name="compat_history_partners_best_dash">—</string>
 </resources>

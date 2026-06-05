@@ -27,14 +27,6 @@ data class PartnerProfile(
     val ownerEmail: String,
 )
 
-data class CompatibilityResult(
-    val score: Int,
-    val summary: String,
-    val content: String,
-    val personAEmail: String,
-    val personBName: String,
-)
-
 data class NotificationItem(
     val id: String,
     val title: String,

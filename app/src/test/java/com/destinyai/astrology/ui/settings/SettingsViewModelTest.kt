@@ -3,6 +3,7 @@ package com.destinyai.astrology.ui.settings
 import app.cash.turbine.test
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AstroApiService
+import com.destinyai.astrology.services.LocaleManager
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -26,6 +27,7 @@ class SettingsViewModelTest {
     private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var api: AstroApiService
     private lateinit var prefs: UserPreferences
+    private lateinit var localeManager: LocaleManager
     private lateinit var vm: SettingsViewModel
 
     @BeforeAll
@@ -42,20 +44,23 @@ class SettingsViewModelTest {
     fun setUp() {
         api = mockk(relaxed = true)
         prefs = mockk(relaxed = true)
+        localeManager = mockk(relaxed = true)
         coEvery { prefs.getChartStyle() } returns "north_indian"
         coEvery { prefs.getResponseStyle() } returns "balanced"
         coEvery { prefs.getSelectedLanguage() } returns "en"
         coEvery { prefs.getNotifDailyInsight() } returns true
         coEvery { prefs.getNotifTransits() } returns true
         coEvery { prefs.getNotifCompatibility() } returns true
-        vm = SettingsViewModel(api, prefs)
+        vm = SettingsViewModel(api, prefs, localeManager)
     }
 
     @Test
     fun `initial state has defaults`() = runTest {
         vm.uiState.test {
             val s = awaitItem()
-            assertEquals("north_indian", s.chartStyle)
+            // Chart style key is "north" / "south" (R.string.north_indian / south_indian
+            // are localized labels for the picker — not the persisted key).
+            assertEquals("north", s.chartStyle)
             assertEquals("balanced", s.responseStyle)
             assertEquals("en", s.selectedLanguage)
             assertTrue(s.notifDailyInsight)

@@ -2075,7 +2075,7 @@ Por favor comparta información más profunda sobre cómo este tránsito influye
     <string name="setup_phase_insights">Generando los conocimientos de hoy...</string>
     <string name="setup_phase_ready">¡Tu perfil cósmico está listo!</string>
     <string name="select_a_language">Seleccionar idioma</string>
-    <string name="continue_in_language_format">Continuar en %@</string>
+    <string name="continue_in_language_format">Continuar en %1$s</string>
     <string name="kuta_theme_work">Compatibilidad laboral</string>
     <string name="kuta_theme_attraction">Atracción e influencia</string>
     <string name="kuta_theme_destiny">Destino y fortuna</string>

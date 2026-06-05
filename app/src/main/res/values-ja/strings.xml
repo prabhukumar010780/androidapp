@@ -2075,7 +2075,7 @@
     <string name="setup_phase_insights">今日のインサイトを生成中...</string>
     <string name="setup_phase_ready">コズミックプロフィールの準備ができました！</string>
     <string name="select_a_language">言語を選択</string>
-    <string name="continue_in_language_format">%@で続ける</string>
+    <string name="continue_in_language_format">%1$sで続ける</string>
     <string name="kuta_theme_work">仕事の相性</string>
     <string name="kuta_theme_attraction">引力と影響</string>
     <string name="kuta_theme_destiny">運命と幸運</string>
