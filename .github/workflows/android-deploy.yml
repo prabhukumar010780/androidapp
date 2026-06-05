@@ -176,7 +176,6 @@ jobs:
           releaseFiles: app/build/outputs/bundle/${{ steps.config.outputs.flavor }}Release/*.aab
           track: ${{ steps.config.outputs.track }}
           status: ${{ steps.release.outputs.status }}
-          changesNotSentForReview: true
 
       - name: Cleanup keystore
         if: always()
