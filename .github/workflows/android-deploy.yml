@@ -52,7 +52,7 @@ jobs:
           GOOGLE_SERVICES_JSON_STAGING: ${{ secrets.GOOGLE_SERVICES_JSON_STAGING }}
           GOOGLE_SERVICES_JSON_PRODUCTION: ${{ secrets.GOOGLE_SERVICES_JSON_PRODUCTION }}
 
-      - name: Set flavor and track (main=production+production-track, test/feature=staging+internal-track)
+      - name: Set flavor and track (main=production+internal-track, test/feature=staging+internal-track)
         id: config
         env:
           BRANCH: ${{ github.ref_name }}
@@ -60,10 +60,12 @@ jobs:
           # Branch → flavor + Play Console track mapping.
           # "local" flavor is local-dev only and is never built in CI.
           # Both flavors upload to the same Play Console app (com.destinyai.astrology).
-          # Play Console tracks (internal vs production) distinguish environments.
+          # NOTE: both tracks use 'internal' until the app has been manually published
+          # to production once in Play Console (required before CI can push to production track).
+          # To switch production → release track after first manual publish, change track=internal below.
           if [ "$BRANCH" = "main" ]; then
             echo "flavor=production" >> "$GITHUB_OUTPUT"
-            echo "track=production" >> "$GITHUB_OUTPUT"
+            echo "track=internal" >> "$GITHUB_OUTPUT"
           else
             # test branch and any feature/* branch → staging flavor + internal track
             echo "flavor=staging" >> "$GITHUB_OUTPUT"
