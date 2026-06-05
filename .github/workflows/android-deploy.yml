@@ -59,6 +59,8 @@ jobs:
         run: |
           # Branch → flavor + Play Console track mapping.
           # "local" flavor is local-dev only and is never built in CI.
+          # Both flavors upload to the same Play Console app (com.destinyai.astrology).
+          # Play Console tracks (internal vs production) distinguish environments.
           if [ "$BRANCH" = "main" ]; then
             echo "flavor=production" >> "$GITHUB_OUTPUT"
             echo "track=production" >> "$GITHUB_OUTPUT"
