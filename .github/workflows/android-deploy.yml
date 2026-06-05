@@ -155,14 +155,25 @@ jobs:
           workload_identity_provider: projects/668639087682/locations/global/workloadIdentityPools/github-actions-pool/providers/android-deploy
           service_account: android-deploy@circular-genius-481518-v0.iam.gserviceaccount.com
 
+      - name: Set release status
+        id: release
+        env:
+          TRACK: ${{ steps.config.outputs.track }}
+        run: |
+          if [ "$TRACK" = "production" ]; then
+            echo "status=draft" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=completed" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Upload to Google Play
-        uses: r0adkll/upload-google-play@v1.1.3
+        uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJson: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
           packageName: ${{ steps.config.outputs.package_name }}
           releaseFiles: app/build/outputs/bundle/${{ steps.config.outputs.flavor }}Release/*.aab
-          tracks: ${{ steps.config.outputs.track }}
-          status: ${{ steps.config.outputs.track == 'production' && 'draft' || 'completed' }}
+          track: ${{ steps.config.outputs.track }}
+          status: ${{ steps.release.outputs.status }}
 
       - name: Cleanup keystore
         if: always()
