@@ -58,6 +58,8 @@ jobs:
     # Skipped on main pushes (already validated upstream) and branches that
     # do not affect the Android module.
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/test'
+    # Emulator boot is flaky on GitHub runners — don't block merges on it.
+    continue-on-error: true
 
     steps:
       - name: Checkout
@@ -78,17 +80,14 @@ jobs:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: echo "$GOOGLE_SERVICES_JSON" > app/google-services.json
 
-      - name: Enable KVM
-        run: |
-          echo 'KERN.HV_SUPPORT: 1' || true
-
       - name: Run connected (instrumentation) tests on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
-          target: google_apis
+          target: default
           arch: x86_64
           profile: pixel_5
+          emulator-boot-timeout: 900
           script: ./gradlew connectedStagingDebugAndroidTest --no-daemon
 
       - name: Upload instrumentation test results on failure

@@ -59,6 +59,8 @@ jobs:
         run: |
           # Branch → flavor + Play Console track mapping.
           # "local" flavor is local-dev only and is never built in CI.
+          # Both flavors upload to the same Play Console app (com.destinyai.astrology).
+          # Play Console tracks (internal vs production) distinguish environments.
           if [ "$BRANCH" = "main" ]; then
             echo "flavor=production" >> "$GITHUB_OUTPUT"
             echo "track=production" >> "$GITHUB_OUTPUT"
@@ -99,15 +101,21 @@ jobs:
 
       - name: Verify staging AAB does not contain production key
         if: steps.config.outputs.flavor == 'staging'
+        env:
+          PROD_KEY: ${{ secrets.DESTINY_API_KEY_PRODUCTION }}
+          STAGING_KEY: ${{ secrets.DESTINY_API_KEY_STAGING }}
         run: |
           AAB="$(ls app/build/outputs/bundle/stagingRelease/*.aab | head -n1)"
           if [ -z "$AAB" ]; then
             echo "No staging AAB found — skipping leak check"
             exit 0
           fi
-          PROD_KEY="${{ secrets.DESTINY_API_KEY_PRODUCTION }}"
           if [ -z "$PROD_KEY" ]; then
             echo "DESTINY_API_KEY_PRODUCTION secret not set — skipping leak check"
+            exit 0
+          fi
+          if [ "$PROD_KEY" = "$STAGING_KEY" ]; then
+            echo "Staging and production keys are identical — skipping leak check (single-key setup)"
             exit 0
           fi
           if unzip -p "$AAB" 2>/dev/null | strings | grep -F "$PROD_KEY" >/dev/null; then
@@ -118,15 +126,21 @@ jobs:
 
       - name: Verify production AAB does not contain staging key
         if: steps.config.outputs.flavor == 'production'
+        env:
+          STAGING_KEY: ${{ secrets.DESTINY_API_KEY_STAGING }}
+          PROD_KEY: ${{ secrets.DESTINY_API_KEY_PRODUCTION }}
         run: |
           AAB="$(ls app/build/outputs/bundle/productionRelease/*.aab | head -n1)"
           if [ -z "$AAB" ]; then
             echo "No production AAB found — skipping leak check"
             exit 0
           fi
-          STAGING_KEY="${{ secrets.DESTINY_API_KEY_STAGING }}"
           if [ -z "$STAGING_KEY" ]; then
             echo "DESTINY_API_KEY_STAGING secret not set — skipping leak check"
+            exit 0
+          fi
+          if [ "$STAGING_KEY" = "$PROD_KEY" ]; then
+            echo "Staging and production keys are identical — skipping leak check (single-key setup)"
             exit 0
           fi
           if unzip -p "$AAB" 2>/dev/null | strings | grep -F "$STAGING_KEY" >/dev/null; then
