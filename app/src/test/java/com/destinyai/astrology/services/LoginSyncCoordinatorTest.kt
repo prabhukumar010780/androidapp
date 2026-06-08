@@ -1,7 +1,13 @@
 package com.destinyai.astrology.services
 
+import com.destinyai.astrology.data.local.db.ChatThreadDao
+import com.destinyai.astrology.data.local.db.PartnerDao
 import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.remote.ChatThreadDto
+import com.destinyai.astrology.data.repository.AuthRepository
+import com.destinyai.astrology.data.repository.ChatRepository
+import com.destinyai.astrology.data.repository.HomeRepository
+import com.destinyai.astrology.data.local.prefs.UserPreferences
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -22,7 +28,16 @@ class LoginSyncCoordinatorTest {
     @BeforeEach
     fun setUp() {
         api = mockk(relaxed = true)
-        coordinator = LoginSyncCoordinator(api)
+        coordinator = LoginSyncCoordinator(
+            api = api,
+            chatRepository = mockk(relaxed = true),
+            authRepository = mockk(relaxed = true),
+            homeRepository = mockk(relaxed = true),
+            quotaManager = mockk(relaxed = true),
+            chatThreadDao = mockk(relaxed = true),
+            partnerDao = mockk(relaxed = true),
+            prefs = mockk(relaxed = true),
+        )
     }
 
     @Test

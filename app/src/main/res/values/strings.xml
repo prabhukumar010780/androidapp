@@ -1444,7 +1444,7 @@ history will appear here.</string>
     <string name="tooltip_type_label">Type</string>
     <string name="tooltip_no_dosha">No dosha detected for this Koota</string>
     <string name="tooltip_dosha_exempted">Dosha Exempted (Cancelled)</string>
-    <string name="tooltip_adjusted_score">Score restored to %@/%@</string>
+    <string name="tooltip_adjusted_score" formatted="false">Score restored to %1$s/%2$s</string>
     <string name="tooltip_no_exemption">No exemption — dosha remains active</string>
     <string name="history_section">History</string>
     <string name="save_conversation_history">Save conversation history</string>

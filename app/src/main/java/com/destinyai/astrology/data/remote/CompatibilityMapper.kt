@@ -102,7 +102,7 @@ private fun parseChartData(side: JsonObject?): ChartData? {
  * Parse yoga + dosha lists from analysis_data.{boy|girl}.raw.yogas.
  *
  * Backend shape (verified live, Jun 2026):
- *   {"yogas": [YogaItem...], "doshas": [YogaItem...]}
+ * Backend shape: yogas array + doshas array, each item has:
  * where each YogaItem has: name, yoga_key, category, planets, houses, status,
  * strength, is_dosha, formation, outcome, reason.
  */
