@@ -271,7 +271,7 @@ class CompatibilityModelsParityTest {
             yogaName = "Ananta",
             doshaName = "Kala Sarpa Dosha",
             axis = "1-7",
-            intensity = "High",
+            severity = "High",
             lifeAreas = listOf("Career"),
             description = "Strong",
             completeness = "Full",

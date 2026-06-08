@@ -1,9 +1,12 @@
 package com.destinyai.astrology.ui.nav
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -78,6 +81,35 @@ fun AppNav() {
             AppNavLocaleEntryPoint::class.java,
         ).soundManager()
     }
+    // iOS parity (ChatView.swift signOutAndReauth): paywall Sign In CTAs reach this
+    // repository to clear the guest session before navigating to AuthScreen, so the
+    // login UI sticks instead of bouncing back to Main via auto-redirect.
+    val paywallAuthRepository = remember(context) {
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            AppNavLocaleEntryPoint::class.java,
+        ).authRepository()
+    }
+    // Coroutine scope tied to NavHost root, NOT a composable's viewModelScope, so
+    // signOutPreserveBirthData can complete even after popUpTo(0) destroys the calling
+    // composable. Mirrors the BIRTH_DATA logout pattern at line 228-235.
+    val paywallScope = rememberCoroutineScope()
+    /**
+     * Centralized paywall → AuthScreen navigator. Used by every quota-exhausted Sign In CTA
+     * and every guest gate that needs to land at AuthScreen. Mirrors iOS signOutAndReauth +
+     * QuotaExhaustedView.onSignIn: clears the guest session (preserving birth data) FIRST
+     * so AuthScreen.loadSession() returns a null user, then navigates with popUpTo(0) so the
+     * user can't back-button their way around the auth wall.
+     */
+    val navigateToAuthFromPaywall: () -> Unit = remember(navController, paywallAuthRepository, paywallScope) {
+        {
+            paywallScope.launch {
+                runCatching { paywallAuthRepository.signOutPreserveBirthData() }
+                navController.navigate(Routes.AUTH) { popUpTo(0) { inclusive = true } }
+            }
+            Unit
+        }
+    }
     val localeVersion by localeManager.localeVersion.collectAsStateWithLifecycle()
 
     // iOS parity (AppRootView.swift:108-122): the splash is a ZStack overlay over the
@@ -138,7 +170,40 @@ fun AppNav() {
         // the entire NavHost is recomposed so every screen picks up the new
         // string resources. Mirrors iOS AppRootView's .id(languageRefreshID).
         key(localeVersion) {
-            NavHost(navController = navController, startDestination = Routes.SPLASH) {
+            // Issues 1 + 2: iOS-parity asymmetric move+opacity gate transitions.
+            // Replaces the default Material crossfade with slideInHorizontally + fadeIn
+            // (forward) and slideOutHorizontally + fadeOut (back), so each route push
+            // feels like the iOS NavigationStack's lateral slide rather than a crossfade.
+            val navEnterDurationMs = 320
+            val navExitDurationMs = 280
+            NavHost(
+                navController = navController,
+                startDestination = Routes.SPLASH,
+                enterTransition = {
+                    slideInHorizontally(
+                        animationSpec = tween(navEnterDurationMs, easing = FastOutSlowInEasing),
+                        initialOffsetX = { fullWidth -> fullWidth / 4 },
+                    ) + fadeIn(animationSpec = tween(navEnterDurationMs))
+                },
+                exitTransition = {
+                    slideOutHorizontally(
+                        animationSpec = tween(navExitDurationMs, easing = FastOutSlowInEasing),
+                        targetOffsetX = { fullWidth -> -fullWidth / 6 },
+                    ) + fadeOut(animationSpec = tween(navExitDurationMs))
+                },
+                popEnterTransition = {
+                    slideInHorizontally(
+                        animationSpec = tween(navEnterDurationMs, easing = FastOutSlowInEasing),
+                        initialOffsetX = { fullWidth -> -fullWidth / 6 },
+                    ) + fadeIn(animationSpec = tween(navEnterDurationMs))
+                },
+                popExitTransition = {
+                    slideOutHorizontally(
+                        animationSpec = tween(navExitDurationMs, easing = FastOutSlowInEasing),
+                        targetOffsetX = { fullWidth -> fullWidth / 4 },
+                    ) + fadeOut(animationSpec = tween(navExitDurationMs))
+                },
+            ) {
 
             // Placeholder: empty composable — splash is rendered as overlay above.
             // Kept as a real route so initial navigation has a valid back-stack root
@@ -159,7 +224,16 @@ fun AppNav() {
 
             composable(Routes.AUTH) {
                 AuthScreen(
-                    onNavigateToMain = { navController.navigate(Routes.MAIN) { popUpTo(Routes.AUTH) { inclusive = true } } },
+                    // iOS parity (AuthView.swift loadingOverlay + AuthViewModel.performSignIn):
+                    // post-sign-in users go directly to MAIN — the LoadingOverlay covers the
+                    // entire sync window because AuthViewModel keeps isLoading=true until
+                    // fetchAndRestoreProfile + LoginSyncCoordinator + QuotaManager.syncStatus
+                    // all complete. Matches iOS isAuthenticated flip happening AFTER syncs.
+                    onNavigateToMain = {
+                        navController.navigate(Routes.MAIN) {
+                            popUpTo(Routes.AUTH) { inclusive = true }
+                        }
+                    },
                     // iOS parity: once authenticated, AUTH is removed from the
                     // back stack so a back press from BirthDataScreen does not
                     // return the user to a sign-in surface they already passed.
@@ -233,16 +307,23 @@ fun AppNav() {
                     onNavigateToNotificationPrefs = { navController.navigate(Routes.NOTIFICATION_PREFS) },
                     onNavigateToFaq = { navController.navigate(Routes.FAQ_HELP) },
                     onNavigateToAstrologySettings = { navController.navigate(Routes.ASTROLOGY_SETTINGS) },
-                    onNavigateToAuth = {
-                        // Mirrors iOS QuotaExhaustedView.onSignIn — navigate to AuthScreen and clear stack so
-                        // the user can re-auth (or upgrade after re-auth). Birth data is preserved in prefs.
-                        navController.navigate(Routes.AUTH) { popUpTo(0) { inclusive = true } }
-                    },
+                    onNavigateToBirthDetails = { navController.navigate(Routes.BIRTH_DETAILS) },
+                    onNavigateToAuth = navigateToAuthFromPaywall,
                 )
             }
 
             composable(Routes.HISTORY) {
-                HistoryScreen(onBack = { navController.popBackStack() })
+                HistoryScreen(
+                    onBack = { navController.popBackStack() },
+                    // Mirrors iOS HistoryView.swift:89-93 — `.openProfileSettings`
+                    // NotificationCenter post. On Android we route through the
+                    // SETTINGS destination so the "Open Settings" CTA always
+                    // deep-links instead of falling back to onBack.
+                    onOpenProfileSettings = {
+                        navController.popBackStack()
+                        navController.navigate(Routes.SETTINGS) { launchSingleTop = true }
+                    },
+                )
             }
 
             composable(Routes.CHARTS) {
@@ -253,7 +334,7 @@ fun AppNav() {
                 NotificationsScreen(
                     onBack = { navController.popBackStack() },
                     onNotifPrefs = { navController.navigate(Routes.NOTIFICATION_PREFS) },
-                    onGuestSignInRequest = { navController.navigate(Routes.AUTH) },
+                    onGuestSignInRequest = navigateToAuthFromPaywall,
                     onUpgradeRequest = { navController.navigate(Routes.SUBSCRIPTION) },
                     // iOS parity (NotificationInboxView.swift:382-394) — Ask More from a daily/transit/life alert
                     // dismisses the inbox; NotificationRouter.pendingDeepLink (set inside the screen) is then
@@ -281,6 +362,10 @@ fun AppNav() {
                 PartnersScreen(
                     onBack = { navController.popBackStack() },
                     onUpgrade = { navController.navigate(Routes.SUBSCRIPTION) },
+                    // iOS parity (ProfileView.swift:339-347 + QuotaExhaustedView.onSignIn):
+                    // defense-in-depth — if a guest somehow reaches this destination,
+                    // clear the guest session and route to AuthScreen.
+                    onNavigateToAuth = navigateToAuthFromPaywall,
                 )
             }
 
@@ -289,6 +374,7 @@ fun AppNav() {
                     onBack = { navController.popBackStack() },
                     onNavigateToPartners = { navController.navigate(Routes.PARTNERS) },
                     onNavigateToSettings = { navController.navigate(Routes.SETTINGS) },
+                    onNavigateToAuth = navigateToAuthFromPaywall,
                 )
             }
 
@@ -306,6 +392,13 @@ fun AppNav() {
                     onNavigateToFaq = { navController.navigate(Routes.FAQ_HELP) },
                     onNavigateToBirthDetails = { navController.navigate(Routes.BIRTH_DETAILS) },
                     onNavigateToAstrologySettings = { navController.navigate(Routes.ASTROLOGY_SETTINGS) },
+                    // iOS parity (ProfileView.swift:157-183): GuestSignInPromptView
+                    // is presented as a sheet with the existing authViewModel — the
+                    // user signs in inside the prompt without bouncing through
+                    // signOut. On Android we route to the dedicated AUTH screen
+                    // (the same Google flow) without first clearing the guest
+                    // session.
+                    onLaunchEmbeddedAuth = navigateToAuthFromPaywall,
                 )
             }
 
@@ -369,4 +462,8 @@ fun AppNav() {
 interface AppNavLocaleEntryPoint {
     fun localeManager(): LocaleManager
     fun soundManager(): com.destinyai.astrology.services.SoundManager
+    // iOS parity (ChatView.swift signOutAndReauth): exposes AuthRepository so paywall
+    // sign-in CTAs can clear the guest session before navigating to AuthScreen — without
+    // this, AuthScreen.LaunchedEffect(state.isAuthenticated) immediately routes back to Main.
+    fun authRepository(): com.destinyai.astrology.data.repository.AuthRepository
 }

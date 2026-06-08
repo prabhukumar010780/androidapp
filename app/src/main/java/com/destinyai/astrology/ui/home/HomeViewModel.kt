@@ -4,10 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AstroApiService
+import com.destinyai.astrology.data.remote.BirthProfileDto
 import com.destinyai.astrology.data.repository.HomeRepository
 import com.destinyai.astrology.domain.model.User
 import com.destinyai.astrology.services.ProfileChangeBus
+import com.destinyai.astrology.services.ProfileContextManager
 import com.destinyai.astrology.services.NetworkMonitor
+import com.destinyai.astrology.services.LocaleManager
 import com.destinyai.astrology.services.QuotaManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
@@ -84,7 +87,9 @@ class HomeViewModel @Inject constructor(
     private val prefs: UserPreferences,
     private val api: AstroApiService,
     private val profileChangeBus: ProfileChangeBus,
+    private val profileContextManager: ProfileContextManager,
     private val quotaManager: QuotaManager,
+    private val localeManager: LocaleManager,
     networkMonitor: NetworkMonitor,
 ) : ViewModel() {
 
@@ -120,7 +125,10 @@ class HomeViewModel @Inject constructor(
                 val user = repository.getCurrentUser()
                 val quota = repository.getDailyQuota()
                 val used = repository.getDailyUsed()
-                updateQuotaState(user, quota, used)
+                // iOS parity: profileContext.userName is the canonical full name (saved during signup
+                // / first-time setup). Backend `name` may be only the first name. Prefer prefs.
+                val storedName = runCatching { prefs.getUserName() }.getOrNull()
+                updateQuotaState(user, quota, used, storedName)
             } catch (e: Exception) {
                 android.util.Log.w("HomeViewModel", "init load failed: ${e.message}", e)
                 _uiState.update { it.copy(isLoading = false) }
@@ -145,6 +153,19 @@ class HomeViewModel @Inject constructor(
                 }
             }
         }
+        // iOS parity (HomeViewModel.swift:159-227): when the app language flips
+        // mid-session, today's prediction must be re-fetched in the new language
+        // — otherwise the user reads a Hindi UI shell over English prediction
+        // text. AppNav already wraps NavHost in `key(localeVersion)`, but a
+        // subscriber here makes the refresh explicit (and survives any cached
+        // VM that outlives recomposition). loadHomeData internally detects the
+        // language flip via prefs.lastLoadedLanguage and bypasses its cache.
+        viewModelScope.launch {
+            localeManager.languageChanges.collect { newLang ->
+                android.util.Log.i("HomeViewModel", "Language changed to $newLang — refreshing Home")
+                loadHomeData()
+            }
+        }
     }
 
     /**
@@ -166,6 +187,11 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun resetForProfileSwitch() {
+        // iOS parity (HomeViewModel.swift:62-85): wipe everything that depends
+        // on the active profile so loadHomeData() actually re-fetches with the
+        // new profile's birth data instead of short-circuiting on the same-day
+        // cache gate. lastLoadDate MUST be cleared for the same reason.
+        lastLoadDate = null
         _uiState.update {
             it.copy(
                 dailyInsight = null,
@@ -177,17 +203,27 @@ class HomeViewModel @Inject constructor(
                 unreadCount = 0,
                 errorMessage = null,
                 ascendantSign = "",
+                suggestedQuestions = emptyList(),
+                briefLifeArea = null,
+                selectedLifeArea = null,
+                selectedYoga = null,
+                yogaFilter = YogaFilter.All,
             )
         }
     }
 
-    private fun updateQuotaState(user: User?, quota: Int, used: Int) {
+    private fun updateQuotaState(user: User?, quota: Int, used: Int, storedName: String? = null) {
         val unlimited = quota < 0
         val remaining = if (unlimited) Int.MAX_VALUE else maxOf(0, quota - used)
         val progress = if (unlimited || quota == 0) 0f else used.toFloat() / quota.toFloat()
+        // iOS parity: profileContext.activeProfileName uses UserDefaults["userName"] (full name
+        // captured at signup) ahead of any backend-truncated `name`. Prefer the prefs value when
+        // available so the greeting + avatar initials show the user's full name (e.g. "Prabhu
+        // Kushwaha" → "PK"), falling back to backend `user.name`, then the email prefix.
         val name = when {
             user == null || user.isGuestEmail -> "Guest"
-            user.name != null -> user.name.split(" ").first()
+            !storedName.isNullOrBlank() -> storedName
+            user.name != null -> user.name
             else -> user.email.substringBefore("@")
         }
         _uiState.update {
@@ -240,14 +276,32 @@ class HomeViewModel @Inject constructor(
             try {
                 val user = repository.getCurrentUser()
                 if (user != null) {
-                    updateQuotaState(user, user.dailyQuota, user.dailyUsed)
+                    val storedName = runCatching { prefs.getUserName() }.getOrNull()
+                    updateQuotaState(user, user.dailyQuota, user.dailyUsed, storedName)
                 }
             } catch (e: Exception) {
                 android.util.Log.w("HomeViewModel", "quota sync failed: ${e.message}", e)
             }
+            // iOS parity (HomeViewModel.swift:436): birth data + greeting + avatar
+            // come from the active profile, not the owner self-profile. When a
+            // partner is active activeBirthData() resolves their UUID via
+            // listPartners; otherwise falls back to the self birth profile.
+            val activeBirth = profileContextManager.activeBirthData()
+            if (activeBirth == null) {
+                _uiState.update { it.copy(isLoading = false) }
+                return@launch
+            }
+            val activeId = prefs.getActiveProfileId()?.takeIf { it.isNotBlank() } ?: email.orEmpty()
+            // Greeting + avatar: prefer the active partner's name (iOS parity
+            // HomeView.swift:517,748). Falls back to owner self name when self
+            // is active (activeProfileName already encodes that priority).
+            val activeName = runCatching { profileContextManager.activeProfileName() }.getOrNull()
+            if (!activeName.isNullOrBlank()) {
+                _uiState.update { it.copy(displayName = activeName) }
+            }
             val questions = repository.getSuggestedQuestions()
             val (insight, loadError) = try {
-                repository.getDailyInsight() to null
+                repository.getDailyInsight(activeBirth, activeId) to null
             } catch (e: Exception) {
                 android.util.Log.w("HomeViewModel", "getDailyInsight failed: ${e.message}", e)
                 "" to friendlyError(e)
@@ -270,7 +324,7 @@ class HomeViewModel @Inject constructor(
             }
             // R2-H3: fetch unread notification count
             fetchUnreadCount()
-            loadRichHomeData()
+            loadRichHomeData(activeBirth, activeId)
         }
     }
 
@@ -309,12 +363,21 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun loadRichHomeData() {
+    fun loadRichHomeData(
+        birthOverride: BirthProfileDto? = null,
+        profileCacheIdOverride: String? = null,
+    ) {
         viewModelScope.launch {
             val email = prefs.getUserEmail() ?: return@launch
-            val birth = prefs.getBirthProfile() ?: return@launch
+            // iOS parity (HomeViewModel.swift:436): chart/dasha/transits use the
+            // active profile's birth data + a profile-scoped cache key so the
+            // partner's chart isn't keyed against the owner's email row.
+            val birth = birthOverride ?: profileContextManager.activeBirthData() ?: return@launch
+            val cacheKey = profileCacheIdOverride
+                ?: prefs.getActiveProfileId()?.takeIf { it.isNotBlank() }
+                ?: email
             _uiState.update { it.copy(isRichDataLoading = true) }
-            val richData = repository.getRichHomeData(email, birth)
+            val richData = repository.getRichHomeData(email, birth, cacheKey)
             if (richData != null) {
                 _uiState.update {
                     it.copy(

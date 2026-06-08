@@ -1,5 +1,12 @@
 package com.destinyai.astrology.ui.compatibility
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -7,15 +14,20 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.destinyai.astrology.R
 import com.destinyai.astrology.domain.model.DestinyTileType
 import com.destinyai.astrology.domain.model.YogaDoshaData
 import com.destinyai.astrology.domain.model.YogaItem
@@ -46,13 +58,13 @@ fun AdditionalYogasScreen(
     val tileCounts = remember(currentData) {
         DestinyTileType.topicTiles.associateWith { tile ->
             currentData?.items(tile)?.size ?: 0
-        } + mapOf(DestinyTileType.DOSHA to allDoshaItems(currentData).size)
+        } + mapOf(DestinyTileType.DOSHA to (currentData?.activeDoshas?.size ?: 0))
     }
 
     val allTiles = DestinyTileType.topicTiles + listOf(DestinyTileType.DOSHA)
 
     CosmicBackground {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -60,10 +72,10 @@ fun AdditionalYogasScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Gold)
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back), tint = Gold)
                 }
                 Text(
-                    "Yogas Analysis",
+                    stringResource(R.string.yogas_analysis),
                     fontSize = 17.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = CreamText,
@@ -90,31 +102,49 @@ fun AdditionalYogasScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            if (topicItems.isEmpty()) {
+            if (currentData == null) {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .semantics { contentDescription = "yoga_empty_state" },
                     contentAlignment = Alignment.Center,
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Text("✨", fontSize = 36.sp)
+                        Icon(
+                            imageVector = Icons.Filled.AutoAwesome,
+                            contentDescription = null,
+                            tint = CreamDim,
+                            modifier = Modifier.size(48.dp),
+                        )
                         Text(
-                            "No yogas found for this category",
+                            stringResource(R.string.yoga_no_data),
                             fontSize = 14.sp,
                             color = CreamDim,
                         )
                     }
                 }
             } else {
-                TopicListView(
-                    tile = selectedTile,
-                    items = topicItems,
-                    personName = currentName,
-                    modifier = Modifier.fillMaxSize(),
-                    key = "${selectedTile.name}_${selectedPartner}",
-                )
+                AnimatedContent(
+                    targetState = "${selectedTile.name}_${selectedPartner}",
+                    transitionSpec = {
+                        (fadeIn(animationSpec = tween(220)) +
+                            slideInHorizontally(animationSpec = tween(220)) { it / 8 }) togetherWith
+                            (fadeOut(animationSpec = tween(160)) +
+                                slideOutHorizontally(animationSpec = tween(160)) { -it / 8 })
+                    },
+                    label = "yogas_content_swap",
+                ) { contentKey ->
+                    TopicListView(
+                        tile = selectedTile,
+                        items = topicItems,
+                        personName = currentName,
+                        modifier = Modifier.fillMaxSize(),
+                        key = contentKey,
+                    )
+                }
             }
         }
     }

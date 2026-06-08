@@ -88,6 +88,12 @@ fun MainScreen(
     onNavigateToNotificationPrefs: () -> Unit = {},
     onNavigateToFaq: () -> Unit = {},
     onNavigateToAstrologySettings: () -> Unit = {},
+    // iOS parity (ProfileView.swift:139-141 .sheet showBirthDetails →
+    // BirthDetailsView): the Profile screen needs a route to Birth Details.
+    // Without this, tapping the Birth Details row on the in-overlay Profile
+    // (showProfile = true on this MainScreen) is a no-op because the default
+    // lambda in ProfileScreen swallows the tap.
+    onNavigateToBirthDetails: () -> Unit = {},
     onNavigateToAuth: () -> Unit = {},
     viewModel: MainScreenViewModel = hiltViewModel(),
 ) {
@@ -258,6 +264,14 @@ fun MainScreen(
                         }
                     }
                 },
+                // Mirrors iOS HistoryView.swift:89-93 — when history is disabled
+                // the "Open Settings" CTA must deep-link to Profile Settings
+                // (NotificationCenter `.openProfileSettings`). On Android we
+                // dismiss the History overlay then surface the Profile screen.
+                onOpenProfileSettings = {
+                    showHistory = false
+                    showProfile = true
+                },
             )
             showProfile -> ProfileScreen(
                 onBack = { showProfile = false },
@@ -271,6 +285,11 @@ fun MainScreen(
                 onNavigateToPartners = onNavigateToPartners,
                 onNavigateToFaq = onNavigateToFaq,
                 onNavigateToAstrologySettings = onNavigateToAstrologySettings,
+                onNavigateToBirthDetails = onNavigateToBirthDetails,
+                // iOS parity (ProfileView.swift showGuestSignInSheet/showGuestSignInForSwitch/
+                // showGuestSignInForAlerts → GuestSignInPromptView): all guest gates inside Profile
+                // (Switch Profile, Manage Charts, Alerts, Subscription) must route to AuthScreen.
+                onLaunchEmbeddedAuth = onNavigateToAuth,
             )
             else -> {
                 // Co-resident tabs. Mirrors iOS MainTabView's ZStack with
@@ -320,32 +339,25 @@ fun MainScreen(
                                 if (initialT != null) pendingThreadId = null
                             }
                         }
+                        // iOS parity (.allowsHitTesting(selectedTab == 1)): when Chat is the
+                        // INACTIVE tab we render the cached UI but with size=0 so it cannot
+                        // intercept Home's scroll gestures. Earlier we used a pointerInput
+                        // consumer here, but that swallowed scroll/tap events meant for the
+                        // active Home layer underneath, breaking Home scroll after the user
+                        // returned from Chat via the back button.
                         Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .alpha(if (selectedTab == 1) 1f else 0f)
-                                .then(
-                                    if (selectedTab == 1) {
-                                        Modifier
-                                    } else {
-                                        // Block hit-testing on inactive Chat overlay so taps
-                                        // on Home (Bell, Avatar, Dasha card, Life-area orbs)
-                                        // reach their handlers instead of being absorbed by
-                                        // the alpha-0 ChatScreen sitting on top in z-order.
-                                        // Mirrors iOS .allowsHitTesting(selectedTab == 1).
-                                        Modifier.pointerInput(Unit) {
-                                            awaitPointerEventScope {
-                                                while (true) {
-                                                    val ev = awaitPointerEvent()
-                                                    ev.changes.forEach { it.consume() }
-                                                }
-                                            }
-                                        }
-                                    },
-                                ),
+                            modifier = if (selectedTab == 1) {
+                                Modifier.fillMaxSize()
+                            } else {
+                                Modifier.size(0.dp)
+                            },
                         ) {
                             ChatScreen(
                                 modifier = Modifier.fillMaxSize(),
+                                // Back chevron returns to the Home tab (iOS parity:
+                                // chat tab hides the bottom bar, so back is the
+                                // primary affordance to return to Home).
+                                onBack = { selectedTab = 0 },
                                 onNavigateToAuth = onNavigateToAuth,
                                 onNavigateToSettings = onNavigateToSettings,
                                 initialQuestion = initialQ,
@@ -358,31 +370,24 @@ fun MainScreen(
                     // active profile id so a profile switch fully recreates the
                     // VM-backed UI (parity with iOS .id(activeProfileId)).
                     if (hasVisitedMatch || selectedTab == 2) {
+                        // iOS parity (.allowsHitTesting(selectedTab == 2)): inactive Match
+                        // tab is rendered with size=0 so it cannot intercept Home/Chat
+                        // gestures (same fix as Chat tab — see comment above).
                         Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .alpha(if (selectedTab == 2) 1f else 0f)
-                                .then(
-                                    if (selectedTab == 2) {
-                                        Modifier
-                                    } else {
-                                        // Block hit-testing on inactive Match overlay.
-                                        // Mirrors iOS .allowsHitTesting(selectedTab == 2).
-                                        Modifier.pointerInput(Unit) {
-                                            awaitPointerEventScope {
-                                                while (true) {
-                                                    val ev = awaitPointerEvent()
-                                                    ev.changes.forEach { it.consume() }
-                                                }
-                                            }
-                                        }
-                                    },
-                                ),
+                            modifier = if (selectedTab == 2) {
+                                Modifier.fillMaxSize()
+                            } else {
+                                Modifier.size(0.dp)
+                            },
                         ) {
                             if (isGuestUser) {
                                 GuestSignInPromptScreen(
                                     message = stringResource(R.string.sign_in_to_check_compatibility),
-                                    onSignIn = { selectedTab = 0 },
+                                    // iOS parity (MainTabView.swift GuestSignInPromptView): the Sign In CTA
+                                    // must route to AuthScreen, not just reset to Home. Previous bug:
+                                    // onSignIn = { selectedTab = 0 } stranded the user on Home with no
+                                    // path to actually authenticate.
+                                    onSignIn = onNavigateToAuth,
                                     onBack = { selectedTab = 0 },
                                 )
                             } else {
@@ -392,6 +397,10 @@ fun MainScreen(
                                         onBack = {},
                                         onNavigateToPartners = onNavigateToPartners,
                                         onNavigateToSettings = onNavigateToSettings,
+                                        // iOS parity (CompatibilityView.swift signOutAndReauth):
+                                        // wire host's auth navigator so QuotaExhaustedDialog Sign In
+                                        // routes to AuthScreen instead of stranding on the Match tab.
+                                        onNavigateToAuth = onNavigateToAuth,
                                         onShowResultChange = { showMatchResult = it },
                                         initialMatchItem = pendingMatchItem,
                                         initialMatchGroup = pendingMatchGroup,
@@ -424,7 +433,11 @@ fun MainScreen(
                     }
                     selectedTab = newTab
                 },
-                modifier = Modifier.align(Alignment.BottomCenter),
+                // 20dp horizontal / 10dp vertical outer padding mirrors iOS
+                // CustomTabBar's outer chrome (Issue P2-7).
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 20.dp, vertical = 10.dp),
             )
         }
     }
@@ -477,32 +490,23 @@ private fun DestinyTabBar(
     onTabSelected: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Outer Box reserves room above the bar (76dp = 64dp row + 12dp FAB overhang)
-    // and disables clipping so the FAB can render above the navy background.
+    // iOS parity (MainTabView CustomTabBar:305-330): tab bar is a SOLID rectangle
+    // filled with mainBackground, with a gold gradient line at the top edge and a
+    // FAB contained INSIDE the bar (no overhang). The full 76dp height is opaque
+    // so content scrolling underneath doesn't bleed through gaps.
     Box(
         modifier = modifier
             .fillMaxWidth()
+            .background(NavyDeep)
             .windowInsetsPadding(WindowInsets.navigationBars)
-            .height(76.dp)
-            .graphicsLayer { clip = false },
+            .height(76.dp),
     ) {
-        // Inner navy bar (64dp) — bottom-anchored so it does not cover the
-        // 12dp transparent overhang region at the top where the FAB protrudes.
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp)
-                .align(Alignment.BottomCenter)
-                .background(NavyDeep),
-        )
-
-        // Gold top border (1dp gradient) — anchored to the top of the navy bar.
+        // Gold top border (1dp gradient) — anchored to the very top of the bar.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(1.dp)
-                .align(Alignment.BottomCenter)
-                .offset(y = (-64).dp)
+                .align(Alignment.TopCenter)
                 .background(
                     Brush.horizontalGradient(
                         listOf(Color.Transparent, Gold.copy(alpha = 0.5f), Color.Transparent),
@@ -510,16 +514,13 @@ private fun DestinyTabBar(
                 ),
         )
 
-        // Row of 3 tab slots — bottom-anchored, fills the navy bar.
+        // Row of 3 tab slots — fills the full 76dp height, anchored center.
         // Center slot is a transparent Spacer placeholder so layout/weights stay
         // consistent; the visible FAB is rendered separately above this Row.
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp)
-                .align(Alignment.BottomCenter)
-                .padding(horizontal = 30.dp, vertical = 4.dp)
-                .graphicsLayer { clip = false },
+                .fillMaxSize()
+                .padding(horizontal = 30.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             TabBarItem(
@@ -546,15 +547,15 @@ private fun DestinyTabBar(
             )
         }
 
-        // Center FAB rendered as a separate child of the outer Box so it can
-        // protrude above the navy bar. zIndex ensures it draws on top.
+        // Center FAB — fully INSIDE the bar (no negative offset). zIndex keeps
+        // it visually layered above the row but every pixel of the bar remains
+        // opaque navy so content underneath never bleeds through.
         AskFabButton(
             isSelected = selectedTab == 1,
             label = stringResource(R.string.ask),
             onClick = { onTabSelected(1) },
             modifier = Modifier
-                .align(Alignment.TopCenter)
-                .offset(y = (-12).dp)
+                .align(Alignment.Center)
                 .zIndex(1f)
                 .testTag("tab_chat"),
         )

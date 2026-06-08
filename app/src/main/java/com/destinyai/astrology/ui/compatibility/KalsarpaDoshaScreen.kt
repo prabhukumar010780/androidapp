@@ -2,6 +2,13 @@
 
 package com.destinyai.astrology.ui.compatibility
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -20,20 +27,35 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.destinyai.astrology.R
 import com.destinyai.astrology.domain.model.KalaSarpaModel
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
+import com.destinyai.astrology.ui.theme.TextTertiary
+import kotlin.random.Random
 
 private enum class KalsarpaScenario { NONE, ONE_BOY, ONE_GIRL, BOTH }
 
+/**
+ * Issue 8: `onBack` lambda is the Android equivalent of iOS `NavigationStack`-provided
+ * back button — both expose the same back affordance with localized
+ * `kalsarpa_back_cd` content description.
+ *
+ * Issue 12: RTL support is handled automatically by Compose via `LocalLayoutDirection`,
+ * which mirrors all Row arrangements and Modifier paddings under Arabic/Hebrew locales.
+ * No explicit handling is required at this screen level.
+ */
 @Composable
 fun KalsarpaDoshaScreen(
     boyData: KalaSarpaModel?,
@@ -41,6 +63,8 @@ fun KalsarpaDoshaScreen(
     boyName: String,
     girlName: String,
     onBack: () -> Unit,
+    isLoading: Boolean = false,
+    errorMessage: String? = null,
 ) {
     val boyHas = boyData?.isPresent ?: false
     val girlHas = girlData?.isPresent ?: false
@@ -53,43 +77,209 @@ fun KalsarpaDoshaScreen(
     }
 
     CosmicBackground {
-        Column(modifier = Modifier.fillMaxSize()) {
+        // Issue 1: subtle 20-star randomized overlay matching iOS starFieldOverlay.
+        StarFieldOverlay()
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .semantics { contentDescription = "kalsarpa_dosha_screen" },
+        ) {
+            // Issue 2: render localized title alongside the back arrow (iOS navigationTitle parity).
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = 8.dp),
+                    .padding(horizontal = 4.dp, vertical = 8.dp)
+                    .semantics { contentDescription = "kalsarpa_top_bar" },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Gold)
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier.semantics { contentDescription = "kalsarpa_back_button" },
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = stringResource(R.string.kalsarpa_back_cd),
+                        tint = Gold,
+                    )
                 }
+                Text(
+                    text = stringResource(R.string.kalsarpa_analysis),
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = CreamText,
+                    modifier = Modifier.semantics { contentDescription = "kalsarpa_analysis_title" },
+                )
             }
 
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                Spacer(Modifier.height(4.dp))
+            when {
+                // Issue 11: loading state composable.
+                isLoading -> KalsarpaLoadingView()
+                // Issue 11: error state composable.
+                errorMessage != null -> KalsarpaErrorView(message = errorMessage)
+                // Issue 7: empty-state for missing data when both are null (parity with iOS noDataView).
+                boyData == null && girlData == null -> KalsarpaNoDataView()
+                else -> Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Spacer(Modifier.height(4.dp))
 
-                when (scenario) {
-                    KalsarpaScenario.NONE -> DivineProtectionView(boyName = boyName, girlName = girlName)
-                    KalsarpaScenario.ONE_BOY -> SingleDoshaView(
-                        affectedName = boyName, safeName = girlName, affectedData = boyData,
-                    )
-                    KalsarpaScenario.ONE_GIRL -> SingleDoshaView(
-                        affectedName = girlName, safeName = boyName, affectedData = girlData,
-                    )
-                    KalsarpaScenario.BOTH -> MutualDoshaView(
-                        boyName = boyName, girlName = girlName, boyData = boyData, girlData = girlData,
-                    )
+                    when (scenario) {
+                        KalsarpaScenario.NONE -> DivineProtectionView(boyName = boyName, girlName = girlName)
+                        KalsarpaScenario.ONE_BOY -> SingleDoshaView(
+                            affectedName = boyName, safeName = girlName, affectedData = boyData,
+                        )
+                        KalsarpaScenario.ONE_GIRL -> SingleDoshaView(
+                            affectedName = girlName, safeName = boyName, affectedData = girlData,
+                        )
+                        KalsarpaScenario.BOTH -> MutualDoshaView(
+                            boyName = boyName, girlName = girlName, boyData = boyData, girlData = girlData,
+                        )
+                    }
+
+                    Spacer(Modifier.height(32.dp))
                 }
-
-                Spacer(Modifier.height(32.dp))
             }
         }
+    }
+}
+
+// ─── Issue 1: Star Field Overlay ─────────────────────────────────────────────
+
+@Composable
+private fun StarFieldOverlay() {
+    // 20 randomized stars — seeded once per composition so positions are stable.
+    val stars = remember {
+        val rng = Random(42)
+        List(20) {
+            Triple(
+                rng.nextFloat(), // x ratio
+                rng.nextFloat(), // y ratio
+                Pair(
+                    1f + rng.nextFloat(), // radius 1..2 px
+                    0.1f + rng.nextFloat() * 0.2f, // alpha 0.1..0.3
+                ),
+            )
+        }
+    }
+    // Subtle twinkle animation using existing animateFloat.
+    val transition = rememberInfiniteTransition(label = "kalsarpa-stars")
+    val twinkle by transition.animateFloat(
+        initialValue = 0.7f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2400, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "twinkle",
+    )
+
+    Canvas(
+        modifier = Modifier
+            .fillMaxSize()
+            .semantics { contentDescription = "kalsarpa_star_field" },
+    ) {
+        stars.forEach { (xRatio, yRatio, sizeAlpha) ->
+            val (radius, alpha) = sizeAlpha
+            drawCircle(
+                color = Color.White.copy(alpha = alpha * twinkle),
+                radius = radius,
+                center = Offset(xRatio * size.width, yRatio * size.height),
+            )
+        }
+    }
+}
+
+// ─── Issue 11: Loading / Error / Empty composables ───────────────────────────
+
+@Composable
+private fun KalsarpaLoadingView() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(50.dp)
+            .semantics { contentDescription = "kalsarpa_loading_view" },
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        CircularProgressIndicator(color = Gold)
+        Spacer(Modifier.height(16.dp))
+        Text(
+            stringResource(R.string.kalsarpa_loading),
+            fontSize = 16.sp,
+            color = CreamDim,
+        )
+    }
+}
+
+@Composable
+private fun KalsarpaErrorView(message: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(50.dp)
+            .semantics { contentDescription = "kalsarpa_error_view" },
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .clip(CircleShape)
+                .background(NavySurface),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("⚠️", fontSize = 32.sp)
+        }
+        Spacer(Modifier.height(16.dp))
+        Text(
+            stringResource(R.string.kalsarpa_error),
+            fontSize = 16.sp,
+            color = CreamText,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            message,
+            fontSize = 13.sp,
+            color = CreamDim,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun KalsarpaNoDataView() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(50.dp)
+            .semantics { contentDescription = "kalsarpa_no_data_view" },
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .clip(CircleShape)
+                .background(NavySurface),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("?", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = TextTertiary)
+        }
+        Spacer(Modifier.height(20.dp))
+        Text(
+            stringResource(R.string.no_kalsarpa_data),
+            fontSize = 16.sp,
+            color = CreamDim,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
@@ -133,11 +323,15 @@ private fun DivineProtectionView(boyName: String, girlName: String) {
             modifier = Modifier.padding(horizontal = 16.dp),
         ) {
             Text(
-                "Divine Protection",
+                stringResource(R.string.kalsarpa_divine_protection_title),
                 fontSize = 24.sp, fontWeight = FontWeight.Bold, color = CreamText,
             )
             Text(
-                text = "Neither $boyName nor $girlName has Kaal Sarp Dosha. All planets move freely.",
+                text = stringResource(
+                    R.string.kalsarpa_divine_protection_message_named,
+                    boyName,
+                    girlName,
+                ),
                 fontSize = 15.sp, color = CreamDim, textAlign = TextAlign.Center, lineHeight = 22.sp,
             )
         }
@@ -149,13 +343,16 @@ private fun DivineProtectionView(boyName: String, girlName: String) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text("✨", fontSize = 16.sp)
-                Text("Relationship Benefits", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = CreamText)
+                Text(
+                    stringResource(R.string.kalsarpa_relationship_benefits),
+                    fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = CreamText,
+                )
             }
             Spacer(Modifier.height(16.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                BenefitItem(icon = "❤️", text = "Emotional\nHarmony")
-                BenefitItem(icon = "⬆️", text = "Smooth\nProgression")
-                BenefitItem(icon = "☀️", text = "Positive\nEnergy")
+                BenefitItem(icon = "❤️", text = stringResource(R.string.kalsarpa_emotional_harmony_short))
+                BenefitItem(icon = "⬆️", text = stringResource(R.string.kalsarpa_smooth_progression_short))
+                BenefitItem(icon = "☀️", text = stringResource(R.string.kalsarpa_positive_energy_short))
             }
         }
     }
@@ -213,7 +410,10 @@ private fun SingleDoshaView(
                             .background(errorColor.copy(alpha = 0.1f))
                             .padding(horizontal = 8.dp, vertical = 4.dp),
                     ) {
-                        Text("Has Dosha", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = errorColor)
+                        Text(
+                            stringResource(R.string.kalsarpa_has_dosha),
+                            fontSize = 10.sp, fontWeight = FontWeight.Bold, color = errorColor,
+                        )
                     }
                 }
 
@@ -248,7 +448,10 @@ private fun SingleDoshaView(
                             .background(successColor.copy(alpha = 0.1f))
                             .padding(horizontal = 8.dp, vertical = 4.dp),
                     ) {
-                        Text("Protected", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = successColor)
+                        Text(
+                            stringResource(R.string.kalsarpa_protected),
+                            fontSize = 10.sp, fontWeight = FontWeight.Bold, color = successColor,
+                        )
                     }
                 }
             }
@@ -257,7 +460,7 @@ private fun SingleDoshaView(
         // Analysis title
         if (affectedData != null) {
             Text(
-                text = "$affectedName — Analysis",
+                text = stringResource(R.string.kalsarpa_analysis_title_named, affectedName),
                 fontSize = 20.sp, fontWeight = FontWeight.Bold, color = CreamText,
             )
             DoshaDetailsCard(data = affectedData)
@@ -300,10 +503,16 @@ private fun MutualDoshaView(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.padding(horizontal = 16.dp),
         ) {
-            Text("Mutual Kaal Sarp", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = CreamText)
-            Text("Dosha Sāmya", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Gold)
             Text(
-                text = "Both partners share this karmic pattern. This creates a unique bond where both understand the journey.",
+                stringResource(R.string.kalsarpa_mutual_kalsarpa),
+                fontSize = 24.sp, fontWeight = FontWeight.Bold, color = CreamText,
+            )
+            Text(
+                stringResource(R.string.kalsarpa_dosha_samya),
+                fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Gold,
+            )
+            Text(
+                text = stringResource(R.string.kalsarpa_mutual_message_short),
                 fontSize = 15.sp, color = CreamDim, textAlign = TextAlign.Center, lineHeight = 22.sp,
             )
         }
@@ -328,7 +537,10 @@ private fun MutualDoshaView(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text("🔶", fontSize = 16.sp)
-                    Text("Shared Remedies", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = CreamText)
+                    Text(
+                        stringResource(R.string.kalsarpa_shared_remedies),
+                        fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = CreamText,
+                    )
                 }
                 Spacer(Modifier.height(12.dp))
                 sharedRemedies.forEachIndexed { i, remedy ->
@@ -353,7 +565,7 @@ private fun MutualDoshaView(
 
 @Composable
 private fun CompactDoshaRow(name: String, data: KalaSarpaModel) {
-    val severityColor = when (data.intensity?.lowercase()) {
+    val severityColor = when (data.severity?.lowercase()) {
         "mild" -> Color(0xFFECC94B)
         "moderate" -> Color(0xFFFFA500)
         "severe" -> Color(0xFFFC8181)
@@ -374,7 +586,7 @@ private fun CompactDoshaRow(name: String, data: KalaSarpaModel) {
                 Text(data.doshaName, fontSize = 12.sp, color = Gold)
             }
         }
-        if (!data.intensity.isNullOrBlank()) {
+        if (!data.severity.isNullOrBlank()) {
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(50))
@@ -391,7 +603,7 @@ private fun CompactDoshaRow(name: String, data: KalaSarpaModel) {
                         .background(severityColor),
                 )
                 Text(
-                    data.intensity.replaceFirstChar { it.uppercase() },
+                    data.severity.replaceFirstChar { it.uppercase() },
                     fontSize = 11.sp, fontWeight = FontWeight.Medium, color = CreamDim,
                 )
             }
@@ -418,7 +630,10 @@ private fun DoshaDetailsCard(data: KalaSarpaModel) {
             ) {
                 Text("✦", fontSize = 14.sp, color = Gold)
             }
-            Text("Dosha Details", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = CreamText)
+            Text(
+                stringResource(R.string.dosha_details),
+                fontSize = 15.sp, fontWeight = FontWeight.Bold, color = CreamText,
+            )
         }
 
         Spacer(Modifier.height(12.dp))
@@ -438,7 +653,7 @@ private fun DoshaDetailsCard(data: KalaSarpaModel) {
             Text("🐍", fontSize = 24.sp)
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    "$displayName Kaal Sarp Dosha",
+                    stringResource(R.string.kalsarpa_dosha_full_named, displayName),
                     fontSize = 16.sp, fontWeight = FontWeight.Bold, color = CreamText,
                 )
                 if (!data.axis.isNullOrBlank()) {
@@ -473,7 +688,10 @@ private fun DoshaDetailsCard(data: KalaSarpaModel) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text("🔮", fontSize = 14.sp)
-                Text("Affected Life Areas", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CreamDim)
+                Text(
+                    stringResource(R.string.affected_areas),
+                    fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CreamDim,
+                )
             }
             Spacer(Modifier.height(8.dp))
             // Wrap chips in rows of 3
@@ -500,10 +718,10 @@ private fun DoshaDetailsCard(data: KalaSarpaModel) {
             }
         }
 
-        // Intensity
-        if (!data.intensity.isNullOrBlank()) {
+        // Severity
+        if (!data.severity.isNullOrBlank()) {
             Spacer(Modifier.height(8.dp))
-            val intColor = when (data.intensity.lowercase()) {
+            val intColor = when (data.severity.lowercase()) {
                 "mild" -> Color(0xFFECC94B)
                 "moderate" -> Color(0xFFFFA500)
                 "severe" -> Color(0xFFFC8181)
@@ -520,8 +738,14 @@ private fun DoshaDetailsCard(data: KalaSarpaModel) {
             ) {
                 Text("⚡", fontSize = 16.sp)
                 Column {
-                    Text("Intensity", fontSize = 12.sp, color = CreamDim)
-                    Text(data.intensity.replaceFirstChar { it.uppercase() }, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = intColor)
+                    Text(
+                        stringResource(R.string.kalsarpa_intensity_label),
+                        fontSize = 12.sp, color = CreamDim,
+                    )
+                    Text(
+                        data.severity.replaceFirstChar { it.uppercase() },
+                        fontSize = 14.sp, fontWeight = FontWeight.Bold, color = intColor,
+                    )
                 }
             }
         }
@@ -534,7 +758,10 @@ private fun DoshaDetailsCard(data: KalaSarpaModel) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text("📝", fontSize = 14.sp)
-                Text("Analysis Notes", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CreamDim)
+                Text(
+                    stringResource(R.string.analysis_notes),
+                    fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CreamDim,
+                )
             }
             Spacer(Modifier.height(8.dp))
             Text(
@@ -551,7 +778,10 @@ private fun DoshaDetailsCard(data: KalaSarpaModel) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text("📝", fontSize = 14.sp)
-                Text("Analysis Notes", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CreamDim)
+                Text(
+                    stringResource(R.string.analysis_notes),
+                    fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CreamDim,
+                )
             }
             Spacer(Modifier.height(8.dp))
             data.analysisNotes.forEach { note ->
@@ -574,7 +804,10 @@ private fun DoshaDetailsCard(data: KalaSarpaModel) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text("🪐", fontSize = 14.sp)
-                Text("Planets Involved", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CreamDim)
+                Text(
+                    stringResource(R.string.planets_involved),
+                    fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CreamDim,
+                )
             }
             Spacer(Modifier.height(8.dp))
             androidx.compose.foundation.layout.FlowRow(
@@ -603,7 +836,10 @@ private fun DoshaDetailsCard(data: KalaSarpaModel) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text("⏳", fontSize = 14.sp)
-                Text("Peak Period", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CreamDim)
+                Text(
+                    stringResource(R.string.peak_period),
+                    fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CreamDim,
+                )
             }
             Spacer(Modifier.height(8.dp))
             Row(
@@ -634,7 +870,10 @@ private fun DoshaRemediesCard(data: KalaSarpaModel) {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text("🔶", fontSize = 14.sp)
-            Text("Remedies", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CreamDim)
+            Text(
+                stringResource(R.string.kalsarpa_remedies_title),
+                fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CreamDim,
+            )
         }
         Spacer(Modifier.height(8.dp))
         data.remedies.forEachIndexed { i, remedy ->

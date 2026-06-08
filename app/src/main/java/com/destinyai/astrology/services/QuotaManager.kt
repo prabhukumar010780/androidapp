@@ -163,6 +163,39 @@ class QuotaManager @Inject constructor(
         }
     }
 
+    /**
+     * iOS parity (Services/QuotaManager.swift:782-816 canAddProfile) —
+     * shared source-of-truth for the partner-add gate. Combines the
+     * `MAINTAIN_PROFILE` feature access check with the local profile count
+     * so PartnersViewModel does not have to re-derive limit math from the
+     * raw FeatureAccessResponse. Returns Allowed (proceed) or Blocked
+     * (showQuotaUpgradePrompt with the server-reported limit). Fails open
+     * on network errors to match iOS catch behavior.
+     */
+    sealed class CanAddProfileResult {
+        object Allowed : CanAddProfileResult()
+        data class Blocked(val limit: Int) : CanAddProfileResult()
+    }
+
+    suspend fun canAddProfile(email: String, currentCount: Int): CanAddProfileResult {
+        return try {
+            val response = canAccessFeature(FeatureID.MAINTAIN_PROFILE, email)
+            if (!response.canAccess) {
+                return CanAddProfileResult.Blocked(limit = 0)
+            }
+            val limit = response.limits?.get("overall")?.limit ?: -1
+            if (limit != -1 && currentCount >= limit) {
+                CanAddProfileResult.Blocked(limit = limit)
+            } else {
+                CanAddProfileResult.Allowed
+            }
+        } catch (e: Exception) {
+            // Fail-open parity with iOS canAddProfile catch (Services/QuotaManager.swift:813-816).
+            Log.w(TAG, "canAddProfile error, allowing: ${e.message}")
+            CanAddProfileResult.Allowed
+        }
+    }
+
     /** Cached sync check using last-seen feature list (mirrors iOS `var canAsk: Bool`). */
     fun hasFeature(feature: FeatureID): Boolean =
         _availableFeatures.value.contains(feature.raw)

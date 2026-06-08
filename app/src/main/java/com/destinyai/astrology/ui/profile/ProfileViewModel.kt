@@ -8,6 +8,7 @@ import com.destinyai.astrology.data.remote.AnalyticsConsentRequest
 import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.remote.DeleteAccountRequest
 import com.destinyai.astrology.data.repository.AuthRepository
+import com.destinyai.astrology.services.ProfileChangeBus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -87,10 +88,31 @@ class ProfileViewModel @Inject constructor(
     private val prefs: UserPreferences,
     private val authRepository: AuthRepository,
     private val billingManager: BillingManager,
+    private val profileChangeBus: ProfileChangeBus,
+    // iOS parity (HistorySettingsManager.clearAllHistory step 2-3 at
+    // HistorySettingsManager.swift:118-122): after the server DELETE succeeds,
+    // wipe local Room mirrors so Chat history sheet + Match list flush
+    // immediately. The API call remains authoritative — these DAOs are only
+    // used to clear the local cache.
+    private val threadDao: com.destinyai.astrology.data.local.db.ChatThreadDao,
+    private val messageDao: com.destinyai.astrology.data.local.db.ChatMessageDao,
+    private val compatibilityHistoryDao: com.destinyai.astrology.data.local.db.CompatibilityHistoryDao,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState
+
+    /**
+     * One-shot event surfaced after a successful Switch Profile so ProfileScreen
+     * can show a "Now viewing as <Name>" Snackbar. Carries just the display
+     * name; the screen joins it with a localized template.
+     */
+    private val _profileSwitchedToName = MutableStateFlow<String?>(null)
+    val profileSwitchedToName: StateFlow<String?> = _profileSwitchedToName
+
+    fun consumeProfileSwitchedEvent() {
+        _profileSwitchedToName.value = null
+    }
 
     init {
         // iOS parity (SubscriptionManager.swift:501-563 +
@@ -113,6 +135,34 @@ class ProfileViewModel @Inject constructor(
                         )
                     }
                 }
+        }
+        // Surface a "Now viewing as <Name>" snackbar after a successful Switch
+        // Profile. The bus emits the new profile id; we resolve it to a display
+        // name via the locally-cached partner list (Room) or, for self, the
+        // current account name in prefs. Mirrors iOS NotificationCenter
+        // .activeProfileChanged handler used to refresh dependent screens.
+        viewModelScope.launch {
+            profileChangeBus.events.collect { newProfileId ->
+                val displayName = resolveProfileDisplayName(newProfileId)
+                if (!displayName.isNullOrBlank()) {
+                    _profileSwitchedToName.value = displayName
+                }
+            }
+        }
+    }
+
+    private suspend fun resolveProfileDisplayName(profileId: String): String? {
+        val email = prefs.getUserEmail()
+        // Self profile keys on the account email.
+        if (email != null && profileId == email) {
+            return prefs.getUserName()?.takeIf { it.isNotBlank() } ?: email
+        }
+        // Otherwise look up the partner row in Room (best-effort; no API call here).
+        return try {
+            val partners = email?.let { api.listPartners(it) } ?: emptyList()
+            partners.firstOrNull { it.id == profileId }?.name
+        } catch (_: Exception) {
+            null
         }
     }
 
@@ -217,11 +267,23 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             val email = prefs.getUserEmail() ?: return@launch
             try {
+                // iOS parity (HistorySettingsManager.clearAllHistory step 1):
+                // server DELETE is the source of truth — local wipe only mirrors
+                // a successful response. API call: DELETE /chat-history/all/<email>.
                 val response = api.deleteAllChatHistory(email)
                 // Mirrors iOS clearedThreadCount alert (ProfileView.swift:227-243):
                 // backend returns {"deleted_count": N}; surface as a count-aware
                 // success dialog (ProfileScreen renders a plurals-formatted alert).
                 val count = response.deletedCount ?: 0
+                // iOS parity (HistorySettingsManager.swift:118-122): after the
+                // server delete succeeds, wipe local mirrors so the Chat history
+                // sheet + Match list flush immediately. Best-effort — Room
+                // failures must not roll back the user-visible success state.
+                runCatching {
+                    messageDao.deleteAllForUser(email)
+                    threadDao.deleteAllForUser(email)
+                    compatibilityHistoryDao.deleteAllForUser(email)
+                }
                 _uiState.update { it.copy(clearedThreadCount = count) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(snackbarMessage = "Failed to clear history") }

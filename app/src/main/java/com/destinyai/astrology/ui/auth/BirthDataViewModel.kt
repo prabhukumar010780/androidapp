@@ -15,6 +15,7 @@ import com.destinyai.astrology.data.remote.LocationResult
 import com.destinyai.astrology.data.remote.PartnerRequest
 import com.destinyai.astrology.data.remote.ProfileRequest
 import com.destinyai.astrology.data.remote.RegisterRequest
+import com.destinyai.astrology.data.repository.ChatRepository
 import com.destinyai.astrology.services.SoundManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -72,6 +73,7 @@ class BirthDataViewModel @Inject constructor(
     private val prefs: UserPreferences,
     private val locationSearchService: LocationSearchService,
     private val soundManager: SoundManager,
+    private val chatRepository: ChatRepository,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -519,16 +521,16 @@ class BirthDataViewModel @Inject constructor(
 
     /**
      * iOS parity (ChatHistorySyncService + CompatibilityHistoryService syncFromServer
-     * fired post-save). The Android equivalents are not yet implemented; this method
-     * is the dedicated hook where they will be wired in. Failures are swallowed by
-     * the caller's runCatching — best-effort, must not block UI.
+     * fired post-save). Both iOS services hit the same endpoint —
+     * GET /chat-history/threads/{userEmail} — and partition the response client-side
+     * (chat threads vs compat_-prefixed threads). On Android the same partitioning
+     * happens inside ChatRepository.syncThreadsFromApi (one row per thread, the
+     * compatibility UI filters on threadId/title at read time). Failures are
+     * swallowed by the caller's runCatching — best-effort, must not block UI.
      */
     private suspend fun syncHistoryFromServer(email: String) {
         if (email.isBlank()) return
-        // TODO(android-history-sync): pull /chat-history/threads/{email} and
-        // /compatibility/history/{email} into local storage to mirror iOS behaviour.
-        // Intentionally a no-op until the Android sync services land — kept here so
-        // the call site exists at the iOS-equivalent moment in the save() flow.
+        chatRepository.syncThreadsFromApi()
     }
 
     /**

@@ -30,9 +30,12 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.LocationOff
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.*
@@ -41,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -76,6 +80,7 @@ import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
 import com.destinyai.astrology.ui.theme.TextTertiary
 import java.util.Calendar
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -426,12 +431,17 @@ fun BirthDataScreen(
 
                 Spacer(Modifier.height(28.dp))
 
-                // R2-A5: Analytics consent checkbox — Android product decision diverges
-                // from iOS by design: always show the consent toggle regardless of
-                // locale. iOS still gates on non-US (BirthDataView.swift:33,426); on
-                // Android we render the Row + trailing Spacer unconditionally so the
-                // checkbox is visible to every user.
-                Row(
+                // R2-A5: Analytics consent checkbox — iOS parity
+                // (BirthDataView.swift:33,426): only show the consent toggle for
+                // non-US locales. US users implicitly consent per backend default
+                // (BirthDataViewModel.swift:572-576 / BirthDataViewModel.kt:435-447).
+                // P2 polish: previously rendered unconditionally; now gated to
+                // match iOS product decision. Divergence note: any future product
+                // decision to show consent globally must update both platforms
+                // and CLAUDE.md.
+                val isUsLocale = Locale.getDefault().country.equals("US", ignoreCase = true)
+                if (!isUsLocale) {
+                    Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
@@ -467,6 +477,7 @@ fun BirthDataScreen(
                             color = CreamDim,
                         )
                     }
+                }
                 }
 
                 Spacer(Modifier.height(12.dp))
@@ -536,8 +547,11 @@ fun BirthDataScreen(
             isSearching = state.isSearchingLocation,
             errorRes = state.locationErrorRes,
             onQueryChange = { viewModel.searchLocation(it) },
-            onSelect = { city, lat, lng ->
-                viewModel.setLocation(city, lat, lng)
+            // iOS parity (LocationSearchView.swift:179-189 selectLocation): pass
+            // place_id back to the ViewModel so re-resolution disambiguates
+            // cities with identical names. Mirrors all four caller bindings on iOS.
+            onSelect = { city, lat, lng, placeId ->
+                viewModel.setLocation(city, lat, lng, placeId)
                 viewModel.clearLocationResults()
                 showLocationSearch = false
             },
@@ -870,10 +884,18 @@ private fun LocationSearchSheet(
     isSearching: Boolean,
     errorRes: Int?,
     onQueryChange: (String) -> Unit,
-    onSelect: (city: String, lat: Double, lng: Double) -> Unit,
+    onSelect: (city: String, lat: Double, lng: Double, placeId: String?) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
+    // iOS parity (LocationSearchView.swift:14, 51-53): @FocusState + onAppear
+    // requestFocus so the keyboard auto-presents when the sheet opens.
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+        keyboardController?.show()
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -894,26 +916,69 @@ private fun LocationSearchSheet(
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 40.dp),
         ) {
-            GoldGradientText(
-                text = stringResource(R.string.place_of_birth),
-                fontSize = 20.sp,
+            // iOS parity (LocationSearchView.swift:37-46 navigationTitle +
+            // toolbar): show 'Select City' centered with a Cancel TextButton
+            // on the leading edge that dismisses the sheet.
+            Box(
                 modifier = Modifier.fillMaxWidth(),
-            )
+                contentAlignment = Alignment.Center,
+            ) {
+                GoldGradientText(
+                    text = stringResource(R.string.select_city_title),
+                    fontSize = 20.sp,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .testTag("location_search_cancel")
+                        .semantics { contentDescription = "location_search_cancel" },
+                ) {
+                    Text(
+                        text = stringResource(R.string.cancel_action),
+                        color = CreamText,
+                        fontSize = 15.sp,
+                    )
+                }
+            }
             Spacer(Modifier.height(12.dp))
 
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it; onQueryChange(it) },
-                placeholder = { Text(stringResource(R.string.select_birth_city), color = TextTertiary) },
+                placeholder = { Text(stringResource(R.string.search_for_city), color = TextTertiary) },
                 leadingIcon = {
                     Icon(
-                        Icons.Default.LocationOn,
+                        Icons.Default.Search,
                         contentDescription = null,
                         tint = Gold.copy(alpha = 0.8f),
                         modifier = Modifier.size(18.dp),
                     )
                 },
-                modifier = Modifier.fillMaxWidth(),
+                // iOS parity (LocationSearchView.swift:79-85): trailing clear
+                // button — visible only when there is text — wipes both the
+                // input and any pending search results.
+                trailingIcon = {
+                    if (query.isNotEmpty()) {
+                        IconButton(
+                            onClick = {
+                                query = ""
+                                onQueryChange("")
+                            },
+                        ) {
+                            Icon(
+                                Icons.Filled.Clear,
+                                contentDescription = stringResource(R.string.cd_clear_search),
+                                tint = TextTertiary,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester),
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = Gold,
@@ -931,14 +996,23 @@ private fun LocationSearchSheet(
 
             when {
                 isSearching -> {
-                    Box(
+                    // iOS parity (LocationSearchView.swift:97-111 loadingView):
+                    // show a 'Searching...' label beside the spinner.
+                    Row(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                        contentAlignment = Alignment.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
                     ) {
                         CircularProgressIndicator(
                             color = Gold,
                             modifier = Modifier.size(24.dp),
                             strokeWidth = 2.dp,
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            text = stringResource(R.string.searching),
+                            fontSize = 15.sp,
+                            color = CreamDim,
                         )
                     }
                 }
@@ -958,15 +1032,32 @@ private fun LocationSearchSheet(
                     }
                 }
                 // Genuine "no matches" state — distinct from a backend failure.
+                // iOS parity (LocationSearchView.swift:113-132 emptyView):
+                // mappin.slash icon, 'No cities found' title, 'try different
+                // search' subtitle.
                 query.length >= 2 && results.isEmpty() -> {
-                    Box(
+                    Column(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
-                        contentAlignment = Alignment.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
+                        Icon(
+                            imageVector = Icons.Filled.LocationOff,
+                            contentDescription = null,
+                            tint = TextTertiary,
+                            modifier = Modifier.size(40.dp),
+                        )
                         Text(
-                            text = stringResource(R.string.location_search_no_results),
-                            fontSize = 14.sp,
-                            color = TextTertiary,
+                            text = stringResource(R.string.no_cities_found),
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = CreamText,
+                            textAlign = TextAlign.Center,
+                        )
+                        Text(
+                            text = stringResource(R.string.try_different_search),
+                            fontSize = 15.sp,
+                            color = CreamDim,
                             textAlign = TextAlign.Center,
                         )
                     }
@@ -983,7 +1074,7 @@ private fun LocationSearchSheet(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        onSelect(result.displayName, result.latitude, result.longitude)
+                                        onSelect(result.displayName, result.latitude, result.longitude, result.placeId)
                                     }
                                     .padding(vertical = 12.dp, horizontal = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically,

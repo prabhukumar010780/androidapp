@@ -4,9 +4,14 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.pdf.PdfDocument
 import android.net.Uri
 import android.view.View
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,21 +20,30 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Cyclone
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.filled.WarningAmber
+import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,11 +57,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -58,22 +78,32 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.FileProvider
+import com.destinyai.astrology.R
 import com.destinyai.astrology.domain.model.CompatibilityResult
 import com.destinyai.astrology.domain.model.KutaDetail
+import com.destinyai.astrology.services.AppEvents
+import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
+import com.destinyai.astrology.ui.theme.NavyDeep
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import java.text.DateFormat
+import java.util.Date
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -86,6 +116,7 @@ fun CompatibilityResultScreen(
     isFromComparison: Boolean = false,
     onCharts: (() -> Unit)? = null,
     onOpenSettings: (() -> Unit)? = null,
+    onOpenProfile: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     var showFullReport by remember { mutableStateOf(false) }
@@ -98,6 +129,25 @@ fun CompatibilityResultScreen(
     var selectedKuta by remember { mutableStateOf<KutaDetail?>(null) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    // iOS parity (CompatibilityResultView.swift:240): HapticManager.shared.play(.medium)
+    // fires on the View Full Report tap.
+    val haptics = LocalHapticFeedback.current
+
+    // iOS parity (CompatibilityResultView.swift:328-333):
+    // .onReceive(NotificationCenter.default.publisher(for: .openProfileSettings))
+    // hooks the global notification bus and routes the result screen into the
+    // Profile destination. On Android, AppEvents is the equivalent SharedFlow bus.
+    val appEvents = remember(context) {
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            CompatResultAppEventsEntryPoint::class.java,
+        ).appEvents()
+    }
+    LaunchedEffect(appEvents, onOpenProfile) {
+        appEvents.openProfileSettings.collect {
+            onOpenProfile?.invoke()
+        }
+    }
 
     var contentVisible by remember { mutableStateOf(false) }
     val contentAlpha by animateFloatAsState(
@@ -120,6 +170,7 @@ fun CompatibilityResultScreen(
                         percentage = result.adjustedPercentage,
                         isRecommended = result.isRecommended,
                         adjustedScore = result.adjustedScore,
+                        forSharing = true,
                     )
                 }
             }
@@ -135,28 +186,51 @@ fun CompatibilityResultScreen(
             shareView.draw(canvas)
 
             val sessionTag = result.boyName.take(4) + result.girlName.take(4)
-            val file = File(context.cacheDir, "share-$sessionTag.png")
+            val pngFile = File(context.cacheDir, "share-$sessionTag.png")
+            val pdfFile = File(context.cacheDir, "share-$sessionTag.pdf")
             withContext(Dispatchers.IO) {
-                FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 90, it) }
+                FileOutputStream(pngFile).use { bitmap.compress(Bitmap.CompressFormat.PNG, 90, it) }
+                // iOS parity (CompatibilityResultSheets.swift:107-152): include
+                // a branded PDF alongside the PNG so partners get the same
+                // bundle the iOS share sheet attaches.
+                runCatching {
+                    val pdfBytes = buildCompatibilityPdfBytes(result, emptyList())
+                    FileOutputStream(pdfFile).use { it.write(pdfBytes) }
+                }
             }
-            val uri: Uri = FileProvider.getUriForFile(
-                context,
-                "com.destinyai.astrology.fileprovider",
-                file,
-            )
-            val intent = Intent(Intent.ACTION_SEND).apply {
-                type = "image/png"
-                putExtra(Intent.EXTRA_STREAM, uri)
-                putExtra(Intent.EXTRA_TEXT, "${result.boyName} ♡ ${result.girlName} — Analysed with Destiny AI Astrology")
+            val authority = "${context.packageName}.fileprovider"
+            val pngUri: Uri = FileProvider.getUriForFile(context, authority, pngFile)
+            val pdfUri: Uri? = if (pdfFile.exists() && pdfFile.length() > 0L) {
+                runCatching { FileProvider.getUriForFile(context, authority, pdfFile) }.getOrNull()
+            } else null
+
+            val streamUris = ArrayList<Uri>().apply {
+                add(pngUri)
+                pdfUri?.let { add(it) }
+            }
+
+            val intent = Intent(if (streamUris.size > 1) Intent.ACTION_SEND_MULTIPLE else Intent.ACTION_SEND).apply {
+                type = if (streamUris.size > 1) "*/*" else "image/png"
+                if (streamUris.size > 1) {
+                    putParcelableArrayListExtra(Intent.EXTRA_STREAM, streamUris)
+                } else {
+                    putExtra(Intent.EXTRA_STREAM, pngUri)
+                }
+                putExtra(
+                    Intent.EXTRA_TEXT,
+                    "${result.boyName} ♡ ${result.girlName} — Analysed with Destiny AI Astrology",
+                )
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            context.startActivity(Intent.createChooser(intent, "Share compatibility report"))
+            context.startActivity(
+                Intent.createChooser(intent, context.getString(R.string.compat_share_compat_chooser))
+            )
         }
     }
 
     CosmicBackground(modifier = modifier.graphicsLayer { alpha = contentAlpha }) {
         Box(modifier = Modifier.fillMaxSize()) {
-            Column(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
                 ResultHeader(
                     boyName = result.boyName,
                     girlName = result.girlName,
@@ -194,30 +268,17 @@ fun CompatibilityResultScreen(
 
                     Spacer(Modifier.height(16.dp))
 
-                    // Glass grid below recommendation
-                    AshtakootGlassGrid(
-                        kutas = result.kutas,
-                        selectedKuta = selectedKuta,
-                        onKutaSelected = { selectedKuta = it },
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                    )
-
-                    Spacer(Modifier.height(20.dp))
-
-                    Text(
-                        text = "System Checks",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Gold.copy(alpha = 0.7f),
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                    )
-
-                    Spacer(Modifier.height(8.dp))
+                    // iOS parity (CompatibilityResultView.swift:177-178): the
+                    // AshtakootGlassGrid + "System Checks" header are
+                    // intentionally omitted — kuta details live in the orbit
+                    // tooltip above and the section header was removed to save
+                    // vertical space.
 
                     val mangalStatus = deriveMangalStatus(result)
                     DoshaStatusRow(
                         title = "Mangal Dosha",
                         iconLabel = "🔥",
+                        iconVector = Icons.Filled.Whatshot,
                         statusText = mangalStatus.first,
                         statusColor = mangalStatus.second,
                         onClick = { showMangalDetail = true },
@@ -230,6 +291,7 @@ fun CompatibilityResultScreen(
                     DoshaStatusRow(
                         title = "Kaal Sarp Dosha",
                         iconLabel = "🌪",
+                        iconVector = Icons.Filled.Cyclone,
                         statusText = kalsarpaStatus.first,
                         statusColor = kalsarpaStatus.second,
                         onClick = { showKalsarpaDetail = true },
@@ -241,6 +303,7 @@ fun CompatibilityResultScreen(
                     DoshaStatusRow(
                         title = "Additional Yogas",
                         iconLabel = "✨",
+                        iconVector = Icons.Filled.AutoAwesome,
                         statusText = "View All",
                         statusColor = CreamDim,
                         onClick = { showYogasDetail = true },
@@ -251,7 +314,10 @@ fun CompatibilityResultScreen(
 
                     ShimmerButton(
                         text = "View Full Report",
-                        onClick = { showFullReport = true },
+                        onClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            showFullReport = true
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp),
@@ -378,66 +444,100 @@ fun CompatibilityResultScreen(
 
 // ─── Header ──────────────────────────────────────────────────────────────────
 
+// Mirrors iOS AppHeader.swift MatchResultHeader exactly:
+// back chevron | history clock | Spacer | "Name ⊕ Name" | Spacer | globe | square.and.pencil
 @Composable
 private fun ResultHeader(
     boyName: String,
     girlName: String,
-    subtitle: String = "",
+    subtitle: String = "",   // kept for call-site compat, not displayed (no subtitle in iOS)
     onBack: () -> Unit,
     onNewAnalysis: (() -> Unit)? = null,
     onHistoryTap: (() -> Unit)? = null,
     onChartTap: (() -> Unit)? = null,
     onShareTap: (() -> Unit)? = null,
 ) {
-    Column {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Gold)
-            }
-            if (onHistoryTap != null) {
-                IconButton(onClick = onHistoryTap) {
-                    Icon(Icons.Filled.History, contentDescription = "History", tint = Gold)
-                }
-            }
-            Column(
-                modifier = Modifier.weight(1f),
-                horizontalAlignment = Alignment.CenterHorizontally,
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // Back button
+        IconButton(onClick = onBack) {
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = stringResource(R.string.compat_back_a11y),
+                tint = Gold,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+        // History button
+        if (onHistoryTap != null) {
+            IconButton(
+                onClick = onHistoryTap,
+                modifier = Modifier.semantics { contentDescription = "compat_history_button" },
             ) {
-                Text(
-                    text = "${firstNameFrom(boyName)} ♡ ${firstNameFrom(girlName)}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Gold,
-                    textAlign = TextAlign.Center,
+                Icon(
+                    Icons.Filled.History,
+                    contentDescription = stringResource(R.string.compat_history_a11y),
+                    tint = Gold,
+                    modifier = Modifier.size(20.dp),
                 )
-                if (subtitle.isNotBlank()) {
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = CreamDim,
-                        textAlign = TextAlign.Center,
-                    )
-                }
             }
-            if (onChartTap != null) {
-                IconButton(onClick = onChartTap) {
-                    Icon(Icons.Filled.Public, contentDescription = "Charts", tint = Gold)
-                }
+        }
+
+        Spacer(Modifier.weight(1f))
+
+        // Center: "Name ⊕ Name" — mirrors iOS HStack(spacing: 4) with match_icon
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = firstNameFrom(boyName),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = Gold,
+                maxLines = 1,
+            )
+            Image(
+                painter = painterResource(R.drawable.match_icon),
+                contentDescription = null,
+                modifier = Modifier.size(22.dp),
+                contentScale = ContentScale.Fit,
+            )
+            Text(
+                text = firstNameFrom(girlName),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = Gold,
+                maxLines = 1,
+            )
+        }
+
+        Spacer(Modifier.weight(1f))
+
+        // Charts button — globe.asia.australia equivalent
+        if (onChartTap != null) {
+            IconButton(onClick = onChartTap) {
+                Icon(
+                    Icons.Filled.Public,
+                    contentDescription = stringResource(R.string.compat_charts_a11y),
+                    tint = Gold,
+                    modifier = Modifier.size(20.dp),
+                )
             }
-            if (onShareTap != null) {
-                IconButton(onClick = onShareTap) {
-                    Icon(Icons.Filled.Share, contentDescription = "Share", tint = Gold)
-                }
-            }
-            if (onNewAnalysis != null) {
-                IconButton(onClick = onNewAnalysis) {
-                    Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = "New Analysis", tint = Gold)
-                }
+        }
+        // New match button — square.and.pencil equivalent
+        if (onNewAnalysis != null) {
+            IconButton(onClick = onNewAnalysis) {
+                Icon(
+                    Icons.Filled.EditNote,
+                    contentDescription = stringResource(R.string.compat_new_analysis_a11y),
+                    tint = Gold,
+                    modifier = Modifier.size(22.dp),
+                )
             }
         }
     }
@@ -460,7 +560,6 @@ private fun OrbitTooltipView(
     val successColor = Color(0xFF48BB78)
     val errorColor = Color(0xFFFC8181)
     val statusColor = when (kuta.statusTier) { 1 -> successColor; 2 -> errorColor; else -> Gold }
-    val displayScore = "${formatScore(kuta.displayScore)}/${formatScore(kuta.maxScore)}"
 
     Column(
         modifier = Modifier
@@ -473,7 +572,8 @@ private fun OrbitTooltipView(
                 interactionSource = remember { MutableInteractionSource() },
             ) { /* consume — prevent dismiss */ },
     ) {
-        // Header
+        // Header: tinted vector icon + label/subtitle + score badge + close button.
+        // Mirrors iOS OrbitTooltipView.tooltipHeader (ScoreBadge has 4 variants).
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -481,26 +581,40 @@ private fun OrbitTooltipView(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(kutaIcons[kuta.key] ?: "✦", fontSize = 18.sp)
-            Spacer(Modifier.width(10.dp))
-            Text(
-                text = kuta.label,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = CreamText,
-                modifier = Modifier.weight(1f),
-            )
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(statusColor.copy(alpha = 0.2f))
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-            ) {
+            kutaVectorIcons[kuta.key]?.let { vector ->
+                Icon(
+                    imageVector = vector,
+                    contentDescription = null,
+                    tint = statusColor,
+                    modifier = Modifier.size(20.dp),
+                )
+                Spacer(Modifier.width(10.dp))
+            }
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = displayScore,
-                    style = MaterialTheme.typography.labelMedium,
+                    text = kuta.label,
+                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    color = statusColor,
+                    color = CreamText,
+                )
+                Text(
+                    text = kutaScoreSubtitle(kuta),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CreamDim,
+                    fontSize = 10.sp,
+                )
+            }
+            ScoreBadge(kuta = kuta)
+            Spacer(Modifier.width(6.dp))
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier.size(28.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = "Close",
+                    tint = CreamDim,
+                    modifier = Modifier.size(16.dp),
                 )
             }
         }
@@ -763,6 +877,7 @@ fun ShimmerButton(
 
 // ─── Ask Destiny Dialog ───────────────────────────────────────────────────────
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AskDestinyDialog(
     boyName: String,
@@ -776,27 +891,41 @@ fun AskDestinyDialog(
 ) {
     val vmMessages by viewModel.followUpMessages.collectAsState()
     val isLoading by viewModel.isFollowUpLoading.collectAsState()
+    // iOS parity (CompatibilityResultSheets.swift:1056-1073): inline error
+    // banner shown above the input bar; tap to dismiss.
+    val errorMessage by viewModel.followUpError.collectAsState()
     var inputText by remember { mutableStateOf("") }
     val scrollState = androidx.compose.foundation.lazy.rememberLazyListState()
     val scope = rememberCoroutineScope()
     var scrollJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    // iOS parity (CompatibilityResultSheets.swift): explicit IME dismissal on
+    // send / quick-question taps so the keyboard collapses immediately like
+    // SwiftUI's .onSubmit { focus = nil }.
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    fun dismissIme() {
+        focusManager.clearFocus(force = true)
+        keyboardController?.hide()
+    }
 
     // iOS parity (CompatibilityResultSheets.swift:1261-1269): response-length selector
     var showStyleSelector by remember { mutableStateOf(false) }
     val responseLength by viewModel.responseLength.collectAsState(initial = "standard")
 
-    val cosmicMessages = remember {
-        listOf(
-            "✦ Reading the stars…",
-            "✦ Aligning planetary positions…",
-            "✦ Calculating karmic bonds…",
-            "✦ Consulting ancient wisdom…",
-            "✦ Mapping celestial influences…",
-            "✦ Analyzing doshas…",
-            "✦ Weighing ashtakoot…",
-            "✦ Tracing destiny threads…",
-            "✦ Synthesizing cosmic signals…",
-            "✦ Preparing your answer…",
+    // iOS parity (CompatibilityResultSheets.swift:1599-1604): localized cosmic
+    // progress message keys cycled every 1.5 s while a follow-up is in-flight.
+    val cosmicMessageResIds = remember {
+        intArrayOf(
+            R.string.compat_progress_connecting,
+            R.string.compat_progress_mapping_sky,
+            R.string.compat_progress_reading_planets,
+            R.string.compat_progress_planetary_voice,
+            R.string.compat_progress_chart_secrets,
+            R.string.compat_progress_deeper_patterns,
+            R.string.compat_progress_river_of_time,
+            R.string.compat_progress_cosmic_windows,
+            R.string.compat_progress_destiny_shaped,
+            R.string.compat_progress_oracle_weaving,
         )
     }
     var cosmicStepIndex by remember { mutableIntStateOf(0) }
@@ -820,16 +949,45 @@ fun AskDestinyDialog(
     }
 
     LaunchedEffect(Unit) {
-        viewModel.clearFollowUpMessages()
-        if (result != null) viewModel.setCompatibilityResult(result)
+        // iOS parity (CompatibilityResultSheets.swift:1082-1089 .onAppear):
+        // load any persisted follow-up chat for this session BEFORE sending an
+        // optional initial prompt — do NOT clear messages on open.
+        if (result != null) {
+            viewModel.setCompatibilityResult(result)
+            // iOS parity (CompatibilityResultSheets.swift:1112-1154): the
+            // sessionId is set by the calling flow on result hydration; the VM
+            // also sets it during analyze(). Loading is a no-op when no
+            // matching history row exists.
+            viewModel.loadStoredFollowUpMessages()
+        }
         if (initialPrompt != null) {
             viewModel.sendFollowUp(initialPrompt)
         }
     }
 
-    LaunchedEffect(vmMessages.size, isLoading) {
+    // iOS parity (CompatibilityResultSheets.swift): a single coalesced
+    // DispatchWorkItem reschedules whenever any of the six triggers fire —
+    // messages count, last message length, last message text, info flag,
+    // loading state, and error state — so multiple rapid changes collapse
+    // into one debounced scroll-to-bottom instead of competing animations.
+    val lastMessageLength = vmMessages.lastOrNull()?.text?.length ?: 0
+    val lastMessageText = vmMessages.lastOrNull()?.text ?: ""
+    val lastIsInfo = vmMessages.lastOrNull()?.isInfo ?: false
+    LaunchedEffect(
+        vmMessages.size,
+        lastMessageLength,
+        lastMessageText,
+        lastIsInfo,
+        isLoading,
+        errorMessage,
+    ) {
         requestScroll()
     }
+
+    // iOS parity (CompatibilityResultSheets.swift:1216-1222): localized
+    // fallback questions for the empty state — captured here so they are
+    // accessible from the non-composable remember block below.
+    RememberDefaultStrings()
 
     val displaySuggestions = remember(vmMessages) {
         val lastAiSuggestions = vmMessages.lastOrNull { !it.isUser }?.suggestions ?: emptyList()
@@ -837,43 +995,50 @@ fun AskDestinyDialog(
             apiSuggestions = lastAiSuggestions,
             defaultSuggestions = suggestions.ifEmpty {
                 listOf(
-                    "What are the strongest points in this match?",
-                    "What challenges should they watch out for?",
-                    "How compatible are they for marriage?",
+                    // Fall back to localized defaults parity with iOS hardcoded
+                    // strings on first show (no API suggestions yet).
+                    LocalContextDefaultStrings.q_strengths,
+                    LocalContextDefaultStrings.q_challenges,
+                    LocalContextDefaultStrings.q_marriage,
                 )
             },
         )
     }
 
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.85f)
-                .clip(RoundedCornerShape(20.dp))
-                .background(NavySurface)
-                .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(20.dp)),
-        ) {
-            // Header
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "Ask About $boyName & $girlName",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = CreamText,
-                    modifier = Modifier.weight(1f),
-                )
-                TextButton(onClick = onDismiss) {
-                    Text("Done", color = Gold)
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        dragHandle = null,
+        containerColor = Color.Transparent,
+    ) {
+        // ModalBottomSheet passes infinite height — we must bound it explicitly.
+        // fillMaxHeight() resolves against the window, giving LazyColumn a finite constraint.
+        CosmicBackground(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
+            Column(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
+                // Header — mirrors iOS AskDestinySheet header: centered title + trailing Done
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // Leading spacer to balance trailing Done button
+                    Spacer(Modifier.width(64.dp))
+                    Text(
+                        text = stringResource(R.string.ask_destiny_title),
+                        fontFamily = CanelaFontFamily,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = CreamText,
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center,
+                    )
+                    TextButton(onClick = onDismiss) {
+                        Text(stringResource(R.string.done_action), color = Gold, fontWeight = FontWeight.SemiBold)
+                    }
                 }
-            }
-
-            HorizontalDivider(color = Gold.copy(alpha = 0.15f))
 
             // Messages list
             androidx.compose.foundation.lazy.LazyColumn(
@@ -886,30 +1051,86 @@ fun AskDestinyDialog(
             ) {
                 if (vmMessages.isEmpty() && !isLoading) {
                     item {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // iOS parity (AskDestinySheet.welcomeView): sparkles orb + serif title + subtitle + gold pill suggestions
+                        Column(
+                            modifier = Modifier
+                                .fillParentMaxSize()
+                                .padding(horizontal = 24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                        ) {
+                            Spacer(Modifier.weight(1f))
+
+                            // Gold sparkles orb — mirrors iOS ZStack Circle + sparkles SF symbol
+                            Box(
+                                modifier = Modifier
+                                    .size(72.dp)
+                                    .clip(CircleShape)
+                                    .background(Gold.copy(alpha = 0.10f)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.AutoAwesome,
+                                    contentDescription = null,
+                                    tint = Gold,
+                                    modifier = Modifier.size(32.dp),
+                                )
+                            }
+
+                            Spacer(Modifier.height(16.dp))
+
+                            // Title — mirrors iOS Text(ask_about_match_title) in Canela serif bold 18sp
                             Text(
-                                "Ask anything about this compatibility match.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = CreamDim,
-                                modifier = Modifier.padding(bottom = 4.dp),
+                                text = stringResource(R.string.compat_ask_about_pair, boyName, girlName),
+                                fontFamily = CanelaFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                                color = CreamText,
+                                textAlign = TextAlign.Center,
                             )
-                            displaySuggestions.forEach { suggestion ->
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(NavyVariant)
-                                        .border(1.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(10.dp))
-                                        .clickable { viewModel.sendFollowUp(suggestion) }
-                                        .padding(12.dp),
-                                ) {
-                                    Text(
-                                        text = suggestion,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = CreamText,
-                                    )
+
+                            Spacer(Modifier.height(8.dp))
+
+                            // Subtitle — mirrors iOS Text(ask_destiny_welcome)
+                            Text(
+                                text = stringResource(R.string.compat_ask_anything_prompt),
+                                fontSize = 14.sp,
+                                color = CreamDim,
+                                textAlign = TextAlign.Center,
+                            )
+
+                            Spacer(Modifier.height(24.dp))
+
+                            // Suggestion pills — mirrors iOS quickQuestionButton: gold pill, gold text
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                displaySuggestions.forEach { suggestion ->
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(20.dp))
+                                            .background(Gold.copy(alpha = 0.10f))
+                                            .border(1.dp, Gold.copy(alpha = 0.30f), RoundedCornerShape(20.dp))
+                                            .clickable {
+                                                dismissIme()
+                                                viewModel.sendFollowUp(suggestion)
+                                            }
+                                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(
+                                            text = suggestion,
+                                            fontSize = 13.sp,
+                                            color = Gold,
+                                            textAlign = TextAlign.Center,
+                                        )
+                                    }
                                 }
                             }
+
+                            Spacer(Modifier.weight(1f))
                         }
                     }
                 } else {
@@ -922,6 +1143,9 @@ fun AskDestinyDialog(
                         AskChatBubble(
                             isUser = msg.isUser,
                             text = msg.text,
+                            isInfo = msg.isInfo,
+                            timestampMs = msg.timestampMs,
+                            executionTimeMs = msg.executionTimeMs,
                             queryForRating = lastQuery,
                             onRate = { rating ->
                                 viewModel.submitCompatRating(
@@ -934,17 +1158,12 @@ fun AskDestinyDialog(
                     }
                     if (isLoading) {
                         item {
-                            Box(
-                                modifier = Modifier.fillMaxWidth(),
-                                contentAlignment = Alignment.CenterStart,
-                            ) {
-                                Text(
-                                    cosmicProgressKey(cosmicStepIndex, cosmicMessages),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Gold.copy(alpha = 0.7f),
-                                    modifier = Modifier.padding(start = 8.dp, top = 4.dp),
-                                )
-                            }
+                            // iOS parity (CompatibilityResultSheets.swift:1599-1625
+                            // CosmicProgressView): localized stepped animation
+                            // instead of a single hardcoded loading line.
+                            CompatCosmicProgressView(
+                                stepResId = cosmicMessageResIds[cosmicStepIndex % cosmicMessageResIds.size],
+                            )
                         }
                     }
                 }
@@ -953,27 +1172,75 @@ fun AskDestinyDialog(
                     item {
                         Column(
                             verticalArrangement = Arrangement.spacedBy(6.dp),
-                            modifier = Modifier.padding(top = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
                         ) {
                             displaySuggestions.forEach { suggestion ->
                                 Box(
                                     modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(NavyVariant)
-                                        .border(1.dp, Gold.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
-                                        .clickable { viewModel.sendFollowUp(suggestion) }
-                                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                                        .clip(RoundedCornerShape(20.dp))
+                                        .background(Gold.copy(alpha = 0.10f))
+                                        .border(1.dp, Gold.copy(alpha = 0.30f), RoundedCornerShape(20.dp))
+                                        .clickable {
+                                            dismissIme()
+                                            viewModel.sendFollowUp(suggestion)
+                                        }
+                                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                                    contentAlignment = Alignment.Center,
                                 ) {
                                     Text(
                                         text = suggestion,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = CreamDim,
+                                        fontSize = 13.sp,
+                                        color = Gold,
+                                        textAlign = TextAlign.Center,
                                     )
                                 }
                             }
                         }
                     }
+                }
+            }
+
+            // iOS parity (CompatibilityResultSheets.swift:1056-1073): inline
+            // error banner — tap to clear errorMessage.
+            AnimatedVisibility(
+                visible = errorMessage != null,
+                enter = fadeIn(),
+                exit = fadeOut(),
+            ) {
+                val msg = errorMessage ?: ""
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFFC53030).copy(alpha = 0.85f))
+                        .clickable { viewModel.dismissFollowUpError() }
+                        .semantics { contentDescription = "compat_error_banner" }
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Filled.WarningAmber,
+                        contentDescription = null,
+                        tint = CreamText,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = msg,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = CreamText,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Icon(
+                        Icons.Filled.Close,
+                        contentDescription = null,
+                        tint = CreamText.copy(alpha = 0.85f),
+                        modifier = Modifier.size(14.dp),
+                    )
                 }
             }
 
@@ -983,6 +1250,7 @@ fun AskDestinyDialog(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .background(NavyDeep)
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -997,14 +1265,19 @@ fun AskDestinyDialog(
                 ) {
                     Icon(
                         Icons.Filled.Tune,
-                        contentDescription = "Response length",
+                        contentDescription = stringResource(R.string.compat_response_length_a11y),
                         tint = if (isLoading) CreamDim.copy(alpha = 0.4f) else Gold,
                     )
                 }
                 OutlinedTextField(
                     value = inputText,
                     onValueChange = { inputText = it },
-                    placeholder = { Text("Ask a question…", color = CreamDim.copy(alpha = 0.5f)) },
+                    placeholder = {
+                        Text(
+                            stringResource(R.string.ask_question_placeholder),
+                            color = CreamDim.copy(alpha = 0.5f),
+                        )
+                    },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(20.dp),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -1024,6 +1297,7 @@ fun AskDestinyDialog(
                     onClick = {
                         val trimmed = inputText.trim()
                         if (trimmed.isNotEmpty()) {
+                            dismissIme()
                             viewModel.sendFollowUp(trimmed)
                             inputText = ""
                         }
@@ -1032,9 +1306,15 @@ fun AskDestinyDialog(
                     modifier = Modifier
                         .size(44.dp)
                         .clip(CircleShape)
-                        .background(if (inputText.isNotBlank() && !isLoading) Gold else NavyVariant),
+                        .background(if (inputText.isNotBlank() && !isLoading) Gold else NavyVariant)
+                        .semantics { contentDescription = "compat_send_button" },
                 ) {
-                    Text("↑", fontSize = 20.sp, color = if (inputText.isNotBlank() && !isLoading) Color(0xFF0D0D1A) else CreamDim.copy(alpha = 0.4f))
+                    Text(
+                        "↑",
+                        fontSize = 20.sp,
+                        color = if (inputText.isNotBlank() && !isLoading) Color(0xFF0D0D1A) else CreamDim.copy(alpha = 0.4f),
+                    )
+                }
                 }
             }
         }
@@ -1051,6 +1331,59 @@ fun AskDestinyDialog(
             onDismiss = { showStyleSelector = false },
         )
     }
+}
+
+/**
+ * iOS parity (CompatibilityResultSheets.swift:1599-1625 CosmicProgressView):
+ * localized cosmic progress indicator shown while a follow-up call is in-flight.
+ * The step text is rotated by the caller every 1.5 s.
+ */
+@Composable
+private fun CompatCosmicProgressView(stepResId: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 4.dp)
+            .semantics { contentDescription = "compat_cosmic_progress" },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(14.dp),
+            color = Gold,
+            strokeWidth = 2.dp,
+        )
+        Text(
+            text = stringResource(stepResId),
+            style = MaterialTheme.typography.bodySmall,
+            color = Gold.copy(alpha = 0.85f),
+        )
+    }
+}
+
+/**
+ * Default localized fallback questions read at composition time. Held in an
+ * object so they can be referenced from non-composable lambdas (e.g. inside
+ * remember blocks) without re-fetching the context on every recomposition.
+ */
+private object LocalContextDefaultStrings {
+    val q_strengths get() = ResultStringsHolder.qStrengths
+    val q_challenges get() = ResultStringsHolder.qChallenges
+    val q_marriage get() = ResultStringsHolder.qMarriage
+}
+
+/** Captured at first composition by [RememberDefaultStrings]. */
+private object ResultStringsHolder {
+    var qStrengths: String = ""
+    var qChallenges: String = ""
+    var qMarriage: String = ""
+}
+
+@Composable
+internal fun RememberDefaultStrings() {
+    ResultStringsHolder.qStrengths = stringResource(R.string.compat_default_q_strengths)
+    ResultStringsHolder.qChallenges = stringResource(R.string.compat_default_q_challenges)
+    ResultStringsHolder.qMarriage = stringResource(R.string.compat_default_q_marriage)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1072,21 +1405,21 @@ private fun CompatResponseLengthSheet(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                "Response Style",
+                stringResource(R.string.compat_response_style_title),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = Gold,
             )
             CompatLengthOption(
-                title = "Concise",
-                desc = "Short, focused answers",
-                value = "short",
-                isSelected = current == "short",
+                title = stringResource(R.string.response_length_concise),
+                desc = stringResource(R.string.compat_response_length_concise_desc),
+                value = "concise",
+                isSelected = current == "concise" || current == "short",
                 onSelect = onSelect,
             )
             CompatLengthOption(
-                title = "Detailed",
-                desc = "Longer, more thorough answers",
+                title = stringResource(R.string.response_length_expanded),
+                desc = stringResource(R.string.compat_response_length_detailed_desc),
                 value = "detailed",
                 isSelected = current == "detailed" || current == "standard",
                 onSelect = onSelect,
@@ -1132,6 +1465,9 @@ private fun CompatLengthOption(
 private fun AskChatBubble(
     isUser: Boolean,
     text: String,
+    isInfo: Boolean = false,
+    timestampMs: Long = 0L,
+    executionTimeMs: Long = 0L,
     queryForRating: String = "",
     onRate: (Int) -> Unit = {},
 ) {
@@ -1140,13 +1476,43 @@ private fun AskChatBubble(
     var ratedStars by remember(text) { mutableIntStateOf(0) }
     val showCopy = !isUser && text.length > 50
     val showRating = !isUser && text.length > 50
+    val showMeta = !isUser && !isInfo
+
+    // iOS parity (CompatibilityResultSheets.swift typewriter reveal): on iOS the
+    // AI bubble streams character-by-character and the metadata row (timestamp /
+    // copy / stars) is gated until the typewriter completes. Compose's shared
+    // MarkdownText doesn't support char-stream rendering without re-parsing
+    // markdown every frame, so we approximate with a fade-in over the bubble
+    // and a delayed metadata reveal proportional to text length (mirrors how
+    // long a typewriter at ~25 chars/sec would have taken). User and info
+    // bubbles skip the gating entirely so they remain instant.
+    val metaRevealMillis = remember(text, isUser, isInfo) {
+        if (isUser || isInfo) 0
+        else (text.length * 40).coerceIn(300, 1800)
+    }
+    var metaRevealed by remember(text) { mutableStateOf(isUser || isInfo) }
+    LaunchedEffect(text, isUser, isInfo) {
+        if (metaRevealMillis > 0) {
+            kotlinx.coroutines.delay(metaRevealMillis.toLong())
+            metaRevealed = true
+        } else {
+            metaRevealed = true
+        }
+    }
+    val bubbleAlpha by animateFloatAsState(
+        targetValue = if (metaRevealed || isUser || isInfo) 1f else 0.85f,
+        animationSpec = tween(durationMillis = 240),
+        label = "ask_bubble_alpha",
+    )
 
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = if (isUser) Alignment.End else Alignment.Start,
     ) {
         Box(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer { alpha = bubbleAlpha },
             contentAlignment = if (isUser) Alignment.CenterEnd else Alignment.CenterStart,
         ) {
             Box(
@@ -1173,25 +1539,82 @@ private fun AskChatBubble(
                     )
                     .padding(12.dp),
             ) {
-                Text(
-                    text = text,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (isUser) Gold else CreamText,
-                    lineHeight = 20.sp,
-                )
+                when {
+                    isUser -> {
+                        Text(
+                            text = text,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Gold,
+                            lineHeight = 20.sp,
+                        )
+                    }
+                    isInfo -> {
+                        // iOS parity (CompatibilityResultSheets.swift:1714-1731):
+                        // info-type messages render in italic gold (used for
+                        // redirect/lookup placeholders and backend hints).
+                        Text(
+                            text = text,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Gold,
+                            lineHeight = 20.sp,
+                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                        )
+                    }
+                    else -> {
+                        // iOS parity (CompatibilityResultSheets.swift:1737-1741
+                        // MarkdownTextView): render full markdown — bold,
+                        // italic, lists, and headers — instead of a
+                        // bold-only fallback. Uses the shared MarkdownText
+                        // composable from ChatScreen.kt that mirrors
+                        // MarkdownTextView.swift block-by-block.
+                        com.destinyai.astrology.ui.chat.MarkdownText(
+                            content = text,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
             }
         }
 
-        // iOS parity (CompatibilityResultSheets.swift:1782-1799 + 1801-1803):
-        // metadata row with copy button + 5-star inline rating below long AI replies.
-        if (showCopy || showRating) {
-            Row(
+        // iOS parity (CompatibilityResultSheets.swift:1764-1806 metadataRow):
+        // timestamp · execution time · copy · stars below long AI replies.
+        // Gated by the typewriter-equivalent reveal so meta only appears once
+        // the AI text would have finished streaming on iOS.
+        if (showMeta && (showCopy || showRating || timestampMs > 0L)) {
+            AnimatedVisibility(
+                visible = metaRevealed,
+                enter = fadeIn(animationSpec = tween(durationMillis = 200)),
+                exit = fadeOut(),
+            ) {
+                Row(
                 modifier = Modifier
                     .fillMaxWidth(0.85f)
                     .padding(top = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
+                if (timestampMs > 0L) {
+                    Text(
+                        text = formatBubbleTimestamp(timestampMs),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CreamDim.copy(alpha = 0.7f),
+                    )
+                }
+                if (timestampMs > 0L && executionTimeMs > 0L) {
+                    Text(
+                        text = " • ",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CreamDim.copy(alpha = 0.5f),
+                    )
+                }
+                if (executionTimeMs > 0L) {
+                    Text(
+                        text = formatBubbleExecTime(executionTimeMs),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CreamDim.copy(alpha = 0.7f),
+                    )
+                }
+                Spacer(Modifier.weight(1f))
                 if (showCopy) {
                     IconButton(
                         onClick = {
@@ -1204,14 +1627,16 @@ private fun AskChatBubble(
                     ) {
                         Icon(
                             imageVector = if (copied) Icons.Filled.Check else Icons.Filled.ContentCopy,
-                            contentDescription = if (copied) "Copied" else "Copy",
+                            contentDescription = if (copied)
+                                stringResource(R.string.compat_copied_a11y)
+                            else
+                                stringResource(R.string.compat_copy_a11y),
                             tint = if (copied) Gold else CreamDim,
                             modifier = Modifier.size(14.dp),
                         )
                     }
                 }
                 if (showRating) {
-                    Spacer(Modifier.weight(1f))
                     Row(
                         modifier = Modifier.semantics { contentDescription = "compat_inline_rating" },
                         horizontalArrangement = Arrangement.spacedBy(2.dp),
@@ -1237,7 +1662,26 @@ private fun AskChatBubble(
                         }
                     }
                 }
+                }
             }
+        }
+    }
+}
+
+private fun formatBubbleTimestamp(timestampMs: Long): String {
+    val fmt = DateFormat.getTimeInstance(DateFormat.SHORT)
+    return fmt.format(Date(timestampMs))
+}
+
+private fun formatBubbleExecTime(ms: Long): String {
+    val seconds = ms / 1000.0
+    return when {
+        seconds < 1.0 -> "${ms}ms"
+        seconds < 60.0 -> "%.1fs".format(seconds)
+        else -> {
+            val m = (seconds / 60).toInt()
+            val s = (seconds % 60).toInt()
+            "${m}m ${s}s"
         }
     }
 }
@@ -1282,8 +1726,19 @@ internal fun fallbackCancelledDoshaText(
     }
 }
 
-internal fun formatScore(value: Double): String =
-    if (value % 1.0 == 0.0) value.toInt().toString() else "%.1f".format(value)
+internal fun formatScore(value: Double): String {
+    // iOS calls Double.formatted() which is locale-aware. Mirror that on Android using
+    // NumberFormat in the user's default locale so digits/decimal separators match.
+    val nf = java.text.NumberFormat.getInstance(java.util.Locale.getDefault())
+    return if (value % 1.0 == 0.0) {
+        nf.format(value.toLong())
+    } else {
+        nf.apply {
+            minimumFractionDigits = 0
+            maximumFractionDigits = 1
+        }.format(value)
+    }
+}
 
 private fun deriveMangalStatus(result: CompatibilityResult): Pair<String, Color> {
     val successColor = Color(0xFF48BB78)
@@ -1387,3 +1842,15 @@ internal fun redirectTargetName(target: String?, boyName: String, girlName: Stri
 }
 
 // kutaRichDescription and kutaClassicalPrompt live in KutaTextBuilder.kt
+
+/**
+ * Hilt EntryPoint exposing the application-scoped [AppEvents] bus to the
+ * non-Hilt result composable. Mirrors HomeSoundEntryPoint in HomeScreen.kt and
+ * lets the result screen subscribe to [AppEvents.openProfileSettings] without
+ * adding the bus to [CompatibilityViewModel]'s constructor.
+ */
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface CompatResultAppEventsEntryPoint {
+    fun appEvents(): AppEvents
+}

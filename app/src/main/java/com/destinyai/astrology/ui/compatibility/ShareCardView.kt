@@ -1,5 +1,6 @@
 package com.destinyai.astrology.ui.compatibility
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,15 +20,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.destinyai.astrology.R
 import com.destinyai.astrology.ui.theme.Gold
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import java.util.Locale
 
 private val GoldColor = Color(0xFFD4B03A)
 
@@ -44,6 +50,28 @@ internal fun shareCardStarCount(isRecommended: Boolean, percentage: Double): Int
     }
 }
 
+/**
+ * Returns the string-resource id for the rating label so the caller can resolve
+ * it via `stringResource()` in a Composable scope. Mirrors iOS `ratingText`
+ * which routes through `*.localized` keys.
+ */
+internal fun shareCardRatingTextResId(isRecommended: Boolean, percentage: Double): Int {
+    if (!isRecommended) return R.string.not_recommended
+    val pct = percentage * 100
+    return when {
+        pct >= 90 -> R.string.excellent
+        pct >= 75 -> R.string.very_good
+        pct >= 60 -> R.string.good
+        pct >= 50 -> R.string.average
+        else -> R.string.not_recommended
+    }
+}
+
+/**
+ * Non-localized rating-label helper retained for unit tests / non-Composable
+ * call sites. The composable should prefer [shareCardRatingTextResId] +
+ * `stringResource(...)` for true localization parity with iOS.
+ */
 internal fun shareCardRatingText(isRecommended: Boolean, percentage: Double): String {
     if (!isRecommended) return "Not Recommended"
     val pct = percentage * 100
@@ -66,15 +94,25 @@ fun ShareCardView(
     isRecommended: Boolean = true,
     adjustedScore: Int? = null,
     modifier: Modifier = Modifier,
+    forSharing: Boolean = false,
 ) {
     val displayScore = adjustedScore ?: totalScore
     val displayPercentage = if (maxScore > 0) displayScore.toDouble() / maxScore else 0.0
     val starCount = shareCardStarCount(isRecommended, percentage)
-    val ratingText = shareCardRatingText(isRecommended, percentage)
+    val ratingText = stringResource(shareCardRatingTextResId(isRecommended, percentage))
+
+    // iOS parity: when used for export, the card is rendered at a fixed
+    // 1080dp x 1080dp surface so the off-screen bitmap matches the iOS
+    // 1080x1080 social-share dimensions exactly. In-app previews continue to
+    // honor the caller-provided modifier (square via aspectRatio).
+    val sizeModifier = if (forSharing) {
+        Modifier.size(1080.dp)
+    } else {
+        modifier.aspectRatio(1f)
+    }
 
     Box(
-        modifier = modifier
-            .aspectRatio(1f)
+        modifier = sizeModifier
             .clip(RoundedCornerShape(24.dp))
             .background(
                 Brush.linearGradient(
@@ -82,8 +120,8 @@ fun ShareCardView(
                         Color(0xFF0B0F19),
                         Color(0xFF141A2E),
                         Color(0xFF0B0F19),
-                    )
-                )
+                    ),
+                ),
             )
             .drawBehind {
                 val cornerSize = 20.dp.toPx()
@@ -114,7 +152,7 @@ fun ShareCardView(
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(GoldColor.copy(alpha = 0.12f), Color.Transparent),
-                        )
+                        ),
                     )
                 },
         )
@@ -127,9 +165,19 @@ fun ShareCardView(
         ) {
             Spacer(Modifier.height(16.dp))
 
-            // Brand
+            // Brand logo (iOS parity: logo_gold rendered above the wordmark, 80dp tall)
+            Image(
+                painter = painterResource(id = R.drawable.logo_gold),
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.height(80.dp),
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            // Brand wordmark
             Text(
-                "✦  DESTINY AI  ✦",
+                stringResource(id = R.string.destiny_ai_astrology_brand),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 color = GoldColor,
@@ -140,7 +188,7 @@ fun ShareCardView(
 
             // Names
             Text(
-                boyName.uppercase(),
+                boyName.uppercase(Locale.getDefault()),
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
@@ -158,7 +206,7 @@ fun ShareCardView(
             }
 
             Text(
-                girlName.uppercase(),
+                girlName.uppercase(Locale.getDefault()),
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
@@ -220,7 +268,7 @@ fun ShareCardView(
             }
 
             Text(
-                ratingText.uppercase(),
+                ratingText.uppercase(Locale.getDefault()),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = if (!isRecommended) Color(0xFFFC8181) else GoldColor,
@@ -228,23 +276,30 @@ fun ShareCardView(
                 modifier = Modifier.padding(top = 6.dp),
             )
 
-            if (adjustedScore != null && adjustedScore != totalScore) {
-                Text(
-                    "Raw: $totalScore/$maxScore · Adjusted: $adjustedScore",
-                    fontSize = 10.sp,
-                    color = Color.White.copy(alpha = 0.4f),
-                    modifier = Modifier.padding(top = 4.dp),
+            // Transparency: always render a score caption (iOS parity). Use the
+            // adjusted-score format when an override is in effect, otherwise
+            // fall back to the plain raw-score format.
+            val scoreCaption = if (adjustedScore != null && adjustedScore != totalScore) {
+                stringResource(
+                    id = R.string.ashtakoot_adjusted_score_format,
+                    totalScore,
+                    maxScore,
+                    adjustedScore,
+                    maxScore,
                 )
+            } else {
+                stringResource(id = R.string.ashtakoot_score_format, totalScore, maxScore)
             }
-
-            val doshaOverrideText = shareCardDoshaOverrideText(
-                isRecommended = isRecommended,
-                adjustedScore = adjustedScore ?: totalScore,
-                totalScore = totalScore,
+            Text(
+                scoreCaption,
+                fontSize = 10.sp,
+                color = Color.White.copy(alpha = 0.4f),
+                modifier = Modifier.padding(top = 4.dp),
             )
-            if (doshaOverrideText.isNotBlank()) {
+
+            if (!isRecommended && adjustedScore != null && adjustedScore != totalScore) {
                 Text(
-                    doshaOverrideText,
+                    stringResource(id = R.string.overridden_due_to_dosha),
                     fontSize = 9.sp,
                     color = Color(0xFFFC8181).copy(alpha = 0.7f),
                     textAlign = TextAlign.Center,
@@ -261,8 +316,8 @@ fun ShareCardView(
                     .height(1.dp)
                     .background(
                         Brush.horizontalGradient(
-                            listOf(Color.Transparent, GoldColor.copy(alpha = 0.5f), Color.Transparent)
-                        )
+                            listOf(Color.Transparent, GoldColor.copy(alpha = 0.5f), Color.Transparent),
+                        ),
                     ),
             )
             Spacer(Modifier.height(8.dp))
@@ -283,18 +338,44 @@ private fun GoldDividerLine(modifier: Modifier = Modifier) {
             .height(1.dp)
             .background(
                 Brush.horizontalGradient(
-                    listOf(Color.Transparent, GoldColor.copy(alpha = 0.6f), Color.Transparent)
-                )
+                    listOf(Color.Transparent, GoldColor.copy(alpha = 0.6f), Color.Transparent),
+                ),
             ),
     )
 }
 
+/**
+ * Pure helper used by unit tests to assert that the dosha-override caption is
+ * shown when (and only when) an override actually fired (not recommended AND
+ * the adjusted score differs from the raw total). Returns the string-resource
+ * id (or `null` when no caption should be shown) so the Composable caller can
+ * resolve via `stringResource(...)` for true localization parity with iOS.
+ * Kept as a side-effect-free utility so test coverage doesn't depend on
+ * Composable rendering.
+ */
+internal fun shareCardDoshaOverrideTextResId(
+    isRecommended: Boolean,
+    adjustedScore: Int,
+    totalScore: Int,
+): Int? = if (!isRecommended && adjustedScore != totalScore) {
+    R.string.overridden_due_to_dosha
+} else {
+    null
+}
+
+/**
+ * Backwards-compatible wrapper retained so existing unit tests can assert
+ * blank vs non-blank without a Composable scope. Returns a sentinel
+ * non-blank string when the caption would be shown — callers that need
+ * the actual localized text must use [shareCardDoshaOverrideTextResId] +
+ * `stringResource(...)`.
+ */
 internal fun shareCardDoshaOverrideText(
     isRecommended: Boolean,
     adjustedScore: Int,
     totalScore: Int,
-): String = if (!isRecommended && adjustedScore != totalScore) {
-    "Score overridden due to active dosha"
+): String = if (shareCardDoshaOverrideTextResId(isRecommended, adjustedScore, totalScore) != null) {
+    "overridden_due_to_dosha"
 } else {
     ""
 }

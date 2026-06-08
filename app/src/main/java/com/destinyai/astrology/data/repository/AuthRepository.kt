@@ -33,4 +33,14 @@ interface AuthRepository {
     suspend fun fetchProfile(email: String): ProfileResponse?
     suspend fun clearSession()
     suspend fun signOut() = clearSession()
+    /**
+     * Mirrors iOS QuotaExhaustedView.signOutAndReauth (ChatView.swift:180-191):
+     * a partial sign-out used when a guest hits the quota wall and taps Sign In.
+     * Clears the secure email (so AuthRepository.getSavedUser() returns null and
+     * AuthScreen routes to the login UI instead of bouncing back to Main) and the
+     * isAuthenticated prefs flag, BUT preserves guest birth data so performSignIn
+     * can carry it forward to the new registered account. Subscription / quota
+     * caches are also cleared so account-A state does not leak to account-B.
+     */
+    suspend fun signOutPreserveBirthData()
 }

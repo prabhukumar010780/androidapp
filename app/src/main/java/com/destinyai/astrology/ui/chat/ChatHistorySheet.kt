@@ -336,48 +336,57 @@ fun HistoryThreadRow(
             .testTag("history_thread_row_swipe")
             .semantics { contentDescription = "history_thread_row_swipe" },
         backgroundContent = {
-            val isPin = dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd
-            val bg = if (isPin) Gold.copy(alpha = 0.18f) else Color(0xFFB71C1C).copy(alpha = 0.85f)
-            val align = if (isPin) Alignment.CenterStart else Alignment.CenterEnd
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(bg)
-                    .padding(horizontal = 24.dp),
-                contentAlignment = align,
-            ) {
-                if (isPin) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.PushPin, contentDescription = null, tint = Gold, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            text = if (thread.isPinned) stringResource(R.string.unpin) else stringResource(R.string.pin),
-                            color = Gold,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
-                } else {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            stringResource(R.string.delete),
-                            color = CreamText,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Icon(Icons.Default.Delete, contentDescription = null, tint = CreamText, modifier = Modifier.size(18.dp))
+            // iOS parity: only paint the swipe background WHILE the row is being swiped.
+            // SwiftUI's `.swipeActions` shows actions only during the gesture; M3
+            // SwipeToDismissBox would otherwise paint `backgroundContent` at rest, which
+            // bleeds the red destructive band through any margin around the foreground
+            // and makes every row look red-bordered.
+            val isSettled = dismissState.dismissDirection == SwipeToDismissBoxValue.Settled
+            if (!isSettled) {
+                val isPin = dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd
+                val bg = if (isPin) Gold.copy(alpha = 0.18f) else Color(0xFFB71C1C).copy(alpha = 0.85f)
+                val align = if (isPin) Alignment.CenterStart else Alignment.CenterEnd
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(bg)
+                        .padding(horizontal = 24.dp),
+                    contentAlignment = align,
+                ) {
+                    if (isPin) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.PushPin, contentDescription = null, tint = Gold, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = if (thread.isPinned) stringResource(R.string.unpin) else stringResource(R.string.pin),
+                                color = Gold,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    } else {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                stringResource(R.string.delete),
+                                color = CreamText,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Icon(Icons.Default.Delete, contentDescription = null, tint = CreamText, modifier = Modifier.size(18.dp))
+                        }
                     }
                 }
             }
         },
     ) {
+        // iOS parity (HistoryRow in ChatView.swift:781-823): non-selected rows are
+        // transparent, only the selected row paints `cardBackground`. The List view
+        // takes care of subtle separator lines; we add a thin manual divider below.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 2.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(if (isSelected) NavySurface else Color(0xFF0D0D1A))
+                .background(if (isSelected) NavySurface else Color.Transparent)
                 // iOS parity (ChatView.swift:825-850): both swipe-actions AND a context menu surface
                 // pin/delete.  SwipeToDismissBox above provides the swipe path; long-press still
                 // exposes the dropdown for users who prefer tap-and-hold.

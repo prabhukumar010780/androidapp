@@ -70,6 +70,7 @@ class BirthDataViewModelTest {
             prefs,
             locationSearchService,
             soundManager,
+            mockk(relaxed = true), // ChatRepository
             context,
         )
     }

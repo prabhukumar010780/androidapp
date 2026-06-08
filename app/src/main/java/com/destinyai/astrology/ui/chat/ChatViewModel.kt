@@ -70,6 +70,16 @@ data class ChatUiState(
     // ── Account quota interstitial (parity with iOS QuotaExhaustedView for non-guest path) ──
     /** Custom server-supplied quota message body. Empty = use default upgrade copy. */
     val quotaDetails: String = "",
+    /**
+     * Mirrors iOS QuotaExhaustedView fair-use detection — server-supplied `reason` code
+     * (e.g. "fair_use_violation", "upgrade_required") that the sheet uses to branch
+     * between the upgrade interstitial and the "Usage Restricted / Contact Support" copy.
+     */
+    val quotaReason: String? = null,
+    /** Server-supplied plan id when `reason=upgrade_required`, used for analytics. */
+    val quotaPlanId: String? = null,
+    /** Optional support email passed through to the fair-use mailto handler. */
+    val quotaSupportEmail: String? = null,
     /** Toggle for the upgrade interstitial sheet (account users only). */
     val showQuotaExhaustedAccountSheet: Boolean = false,
     /** Set when the user taps Upgrade in the interstitial — host opens SubscriptionScreen. */
@@ -87,10 +97,15 @@ class GuestLimitException(message: String? = null) : Exception(message ?: "overa
 @HiltViewModel
 class ChatViewModel @Inject constructor(
     private val repository: ChatRepository,
+    // iOS parity (ChatView.swift signOutAndReauth): used by requestSignInFromQuota
+    // to perform a partial sign-out so AuthScreen routes to login UI without
+    // bouncing back to Main.
+    private val authRepository: com.destinyai.astrology.data.repository.AuthRepository,
     private val api: AstroApiService,
     private val prefs: UserPreferences,
     private val quotaManager: QuotaManager,
     private val profileChangeBus: ProfileChangeBus,
+    private val profileContextManager: com.destinyai.astrology.services.ProfileContextManager,
     @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
 
@@ -188,6 +203,7 @@ class ChatViewModel @Inject constructor(
                                     toolCalls = if (ev.toolCalls.isNotEmpty()) ev.toolCalls else msg.toolCalls,
                                     sources = if (ev.sources.isNotEmpty()) ev.sources else msg.sources,
                                     advice = ev.advice ?: msg.advice,
+                                    timing = ev.timing ?: msg.timing,
                                     executionTimeMs = if (ev.executionTimeMs > 0.0) ev.executionTimeMs else msg.executionTimeMs,
                                     traceId = ev.traceId ?: msg.traceId,
                                 )
@@ -250,15 +266,23 @@ class ChatViewModel @Inject constructor(
     }
 
     /**
-     * Reads the active partner profile name from prefs (best-effort) and updates the
-     * "Viewing as <name>" capsule in the chat header. When activeId is null or matches
-     * the signed-in user's email/profile id, the capsule is hidden (isUsingSelfProfile=true).
+     * Reads the active partner profile name and updates the "Viewing as <name>"
+     * capsule. iOS parity (AppHeader.swift:122-138 + ProfileContextManager.swift:36-43):
+     * the capsule is hidden when `isUsingSelf` (i.e. the active profile is the
+     * account owner's own profile, even if it's stored as a partner row with a
+     * UUID id and `isSelf=true`). Comparing activeId to email alone is wrong —
+     * the primary profile's id is a UUID, not the email.
      */
     private suspend fun refreshProfileContextIndicator(activeId: String?, email: String) {
-        val isSelf = activeId.isNullOrBlank() || activeId == email
-        val name = when {
-            isSelf -> ""
-            else -> prefs.getUserName().orEmpty().substringBefore(' ')
+        val isSelf = runCatching { profileContextManager.isUsingSelfProfile() }
+            .getOrDefault(activeId.isNullOrBlank() || activeId == email)
+        val name = if (isSelf) {
+            ""
+        } else {
+            runCatching { profileContextManager.activeProfileName() }
+                .getOrNull()
+                .orEmpty()
+                .substringBefore(' ')
         }
         _uiState.update { it.copy(isUsingSelfProfile = isSelf, activeProfileName = name) }
     }
@@ -273,8 +297,15 @@ class ChatViewModel @Inject constructor(
         streamJob = null
         stopCosmicProgressTimer()
         viewModelScope.launch {
-            val name = prefs.getUserName().orEmpty().trim()
-            profileFirstName = if (name.isNotEmpty()) name.substringBefore(' ') else ""
+            // iOS parity (ChatViewModel.swift:247): the welcome greeting uses the
+            // **active** profile name (partner when one is selected), not the
+            // owner's. Falls back to owner's prefs name for self.
+            val activeName = runCatching { profileContextManager.activeProfileName() }
+                .getOrNull()
+                .orEmpty()
+                .ifBlank { prefs.getUserName().orEmpty() }
+                .trim()
+            profileFirstName = if (activeName.isNotEmpty()) activeName.substringBefore(' ') else ""
             _uiState.update {
                 it.copy(
                     sessionId = UUID.randomUUID().toString(),
@@ -333,12 +364,30 @@ class ChatViewModel @Inject constructor(
                                     errorMessage = "Daily question limit reached. Resets at ${access.resetAt}",
                                 )
                             }
-                            "overall_limit_reached" -> _uiState.update {
-                                it.copy(
-                                    canAskQuestion = false,
-                                    canSend = false,
-                                    errorMessage = "Question limit reached. Upgrade to continue.",
-                                )
+                            "overall_limit_reached" -> {
+                                // iOS parity (ChatViewModel.swift:339-349): overall-limit must surface the
+                                // QuotaExhaustedView sheet — guest path shows sign-in CTA, account path
+                                // shows the upgrade interstitial. NEVER fall back to a red error banner.
+                                if (_uiState.value.isGuestUser) {
+                                    _uiState.update {
+                                        it.copy(
+                                            canAskQuestion = false,
+                                            canSend = false,
+                                            showPaywall = true,
+                                        )
+                                    }
+                                } else {
+                                    _uiState.update {
+                                        it.copy(
+                                            canAskQuestion = false,
+                                            canSend = false,
+                                            showQuotaExhaustedAccountSheet = true,
+                                            quotaDetails = access.upgradeCta?.message ?: "",
+                                            quotaReason = "overall_limit_reached",
+                                            quotaPlanId = access.planId,
+                                        )
+                                    }
+                                }
                             }
                             "upgrade_required", "feature_not_available" -> {
                                 // iOS QuotaExhaustedView (ChatView.swift:93-112) shows BOTH guests and
@@ -359,6 +408,7 @@ class ChatViewModel @Inject constructor(
                                             canSend = false,
                                             showQuotaExhaustedAccountSheet = true,
                                             quotaDetails = access.reason ?: "",
+                                            quotaReason = access.reason,
                                         )
                                     }
                                 }
@@ -434,6 +484,7 @@ class ChatViewModel @Inject constructor(
                                             isStreaming = false,
                                             showQuotaExhaustedAccountSheet = true,
                                             quotaDetails = e.message ?: "",
+                                            quotaReason = if (e is UpgradeRequiredException) "upgrade_required" else "overall_limit_reached",
                                         )
                                     }
                                 }
@@ -678,13 +729,19 @@ class ChatViewModel @Inject constructor(
     }
 
     /**
-     * Mirrors iOS QuotaExhaustedView.onSignIn (ChatView.swift:93-109, 180-191): when a guest hits
-     * the quota wall, dismiss the paywall, mark navigateToAuth so the host can route to AuthScreen.
-     * Guest birth data lives in UserPreferences and is preserved across sign-out so re-auth
-     * picks it up automatically.
+     * Mirrors iOS QuotaExhaustedView.onSignIn → signOutAndReauth() (ChatView.swift:97, 180-191):
+     * partial sign-out (preserves birth data) so AuthScreen lands on the login UI instead of
+     * bouncing back to Main via its LaunchedEffect(state.isAuthenticated). The new registered
+     * account flow re-uses the preserved guest birth data automatically.
      */
     fun requestSignInFromQuota() {
-        _uiState.update { it.copy(showPaywall = false, navigateToAuth = true) }
+        viewModelScope.launch {
+            // iOS parity (ChatView.swift:187-188): clear the auth/session state to
+            // trigger AuthScreen's login UI; AuthScreen.loadSession() returning a
+            // null user is what makes state.isAuthenticated=false stick.
+            runCatching { authRepository.signOutPreserveBirthData() }
+            _uiState.update { it.copy(showPaywall = false, navigateToAuth = true) }
+        }
     }
 
     fun consumeNavigateToAuth() {

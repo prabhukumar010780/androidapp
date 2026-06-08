@@ -17,11 +17,13 @@ import com.destinyai.astrology.ui.chat.GuestLimitException
 import com.destinyai.astrology.ui.chat.UpgradeRequiredException
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
@@ -33,6 +35,7 @@ class ChatRepositoryImpl @Inject constructor(
     private val threadDao: ChatThreadDao,
     private val messageDao: ChatMessageDao,
     private val prefs: UserPreferences,
+    private val profileContextManager: com.destinyai.astrology.services.ProfileContextManager,
 ) : ChatRepository {
 
     private val _progressEvents = MutableSharedFlow<ChatStreamEvent>(extraBufferCapacity = 32)
@@ -43,7 +46,11 @@ class ChatRepositoryImpl @Inject constructor(
             emit(Result.failure(IllegalStateException("No user email")))
             return@flow
         }
-        val birthProfile = prefs.getBirthProfile() ?: run {
+        // iOS parity (ChatViewModel.swift:565-582 + ProfileContextManager.swift:60-77):
+        // chat predictions use the **active profile's** birth data — owner when
+        // self is active, partner birth data otherwise. Falling back to the
+        // owner's prefs.getBirthProfile() ignored the Switch Profile selection.
+        val birthProfile = profileContextManager.activeBirthData() ?: run {
             emit(Result.failure(IllegalStateException("No birth profile")))
             return@flow
         }
@@ -101,6 +108,7 @@ class ChatRepositoryImpl @Inject constructor(
                     language = language,
                     responseStyle = responseStyle,
                     responseLength = responseLength,
+                    profileId = prefs.getActiveProfileId()?.takeIf { it.isNotBlank() && it != email },
                 )
             )
             body.byteStream().bufferedReader().use { reader ->
@@ -181,17 +189,19 @@ class ChatRepositoryImpl @Inject constructor(
                                         val sourcesArr = json.get("sources")?.takeIf { !it.isJsonNull }?.asJsonArray
                                         val sources = sourcesArr?.mapNotNull { e -> runCatching { e.asString }.getOrNull() } ?: emptyList()
                                         val advice = json.get("advice")?.takeIf { !it.isJsonNull }?.asString
+                                        val timing = json.get("timing")?.takeIf { !it.isJsonNull }?.asString
                                         val execMs = json.get("execution_time_ms")?.takeIf { !it.isJsonNull }
                                             ?.let { runCatching { it.asDouble }.getOrNull() } ?: 0.0
                                         val traceId = json.get("trace_id")?.takeIf { !it.isJsonNull }?.asString
                                             ?: json.get("prediction_id")?.takeIf { !it.isJsonNull }?.asString
                                         if (tools.isNotEmpty() || sources.isNotEmpty() || !advice.isNullOrBlank() ||
-                                            execMs > 0.0 || !traceId.isNullOrBlank()) {
+                                            !timing.isNullOrBlank() || execMs > 0.0 || !traceId.isNullOrBlank()) {
                                             _progressEvents.emit(
                                                 ChatStreamEvent.Metadata(
                                                     toolCalls = tools,
                                                     sources = sources,
                                                     advice = advice,
+                                                    timing = timing,
                                                     executionTimeMs = execMs,
                                                     traceId = traceId,
                                                 ),
@@ -250,28 +260,60 @@ class ChatRepositoryImpl @Inject constructor(
                 }
             }
         } catch (e: retrofit2.HttpException) {
+            android.util.Log.e("ChatRepo", "HttpException ${e.code()}: ${e.message()}", e)
             if (e.code() == 402 || e.code() == 429) {
                 emit(Result.failure(UpgradeRequiredException()))
             } else {
                 emit(Result.failure(e))
             }
         } catch (e: Exception) {
+            android.util.Log.e("ChatRepo", "stream failed: ${e.javaClass.simpleName}: ${e.message}", e)
             emit(Result.failure(e))
         }
-    }
+    }.flowOn(Dispatchers.IO)
+    // Move upstream blocking work (SSE BufferedReader.readLine, Room insert, OkHttp socket
+    // reads) OFF the Main thread. ChatViewModel collects this flow inside
+    // viewModelScope.launch which defaults to Main; without flowOn(IO) the SSE loop runs
+    // on Main and trips StrictMode's NetworkOnMainThreadException, killing the stream
+    // before any chunk reaches the UI ("Unable to reach the prediction service").
 
     override suspend fun loadHistory(): List<ChatThread> {
         val email = prefs.getUserEmail() ?: return emptyList()
         // Best-effort server pull so threads created on iOS / other devices show up.
         runCatching { syncThreadsFromApi() }
-        return threadDao.getThreadsForUser(email).map { it.toDomain() }
+        return threadDao.getThreadsForUser(email).map { it.toDomainHydrated() }
     }
 
     override suspend fun loadHistoryPaginated(offset: Int, limit: Int): List<ChatThread> {
         val email = prefs.getUserEmail() ?: return emptyList()
         // Only sync from API on the first page so we don't repeat full pulls per page.
         if (offset == 0) runCatching { syncThreadsFromApi() }
-        return threadDao.getThreadsForUserPaginated(email, limit, offset).map { it.toDomain() }
+        return threadDao.getThreadsForUserPaginated(email, limit, offset).map { it.toDomainHydrated() }
+    }
+
+    /**
+     * iOS parity (LocalChatThread): the History sheet shows a one-line preview drawn
+     * from the latest message in the thread, plus a small message-count badge.
+     * Room joins would be cleaner, but the entity-to-domain mapping happens row-by-row
+     * and the page size is bounded (20), so two single-row queries per thread is fine.
+     */
+    private suspend fun com.destinyai.astrology.data.local.db.LocalChatThreadEntity.toDomainHydrated(): ChatThread {
+        val updatedMs = parseIsoToMs(updatedAt)
+        val count = runCatching { messageDao.countMessagesForThread(id) }.getOrDefault(0)
+        val preview = runCatching { messageDao.latestMessageContent(id) }
+            .getOrNull()
+            ?.replace('\n', ' ')
+            ?.trim()
+            ?.take(120)
+            .orEmpty()
+        return ChatThread(
+            id = id,
+            title = title,
+            preview = preview,
+            isPinned = isPinned,
+            updatedAtMs = updatedMs,
+            messageCount = count,
+        )
     }
 
     /**

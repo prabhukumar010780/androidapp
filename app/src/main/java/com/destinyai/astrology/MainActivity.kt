@@ -13,6 +13,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.destinyai.astrology.services.FcmTokenManager
 import com.destinyai.astrology.services.NotificationRouter
+import com.destinyai.astrology.ui.compatibility.E2EPartnerOverrides
 import com.destinyai.astrology.ui.nav.AppNav
 import com.destinyai.astrology.ui.theme.DestinyTheme
 import com.google.firebase.messaging.FirebaseMessaging
@@ -39,6 +40,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Debug-only: capture E2E partner pre-fill extras before any Compose
+        // graph runs so CompatibilityViewModel.loadUserData() can consume them
+        // on its first invocation. No-op in release builds (BuildConfig.DEBUG
+        // gate inside E2EPartnerOverrides).
+        E2EPartnerOverrides.captureFromIntent(intent)
         requestNotificationPermissionIfNeeded()
         handleNotificationIntent(intent)
         try {
@@ -60,6 +66,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        E2EPartnerOverrides.captureFromIntent(intent)
         handleNotificationIntent(intent)
     }
 

@@ -91,23 +91,23 @@ fun defaultLifeAreas(): List<HomeLifeArea> = listOf(
         ),
     ),
     HomeLifeArea(
-        name = "Love",
+        name = "Relationship",
         emoji = "❤️",
-        briefDescription = "Romance, relationships and partnerships",
+        briefDescription = "Romance, partnerships and emotional bonds",
         questions = listOf(
-            "What does my chart say about romance?",
+            "What does my chart say about my love life?",
             "When will I meet my life partner?",
-            "Is my relationship going in the right direction?",
+            "How is my 7th house influencing my relationships?",
         ),
     ),
     HomeLifeArea(
         name = "Finance",
         emoji = "💰",
-        briefDescription = "Wealth, investments and financial flow",
+        briefDescription = "Wealth, income and financial flow",
         questions = listOf(
             "Will my financial situation improve this year?",
-            "Is this a good time to invest?",
             "What planetary periods favor wealth accumulation?",
+            "How is my 2nd and 11th house supporting income?",
         ),
     ),
     HomeLifeArea(
@@ -121,16 +121,6 @@ fun defaultLifeAreas(): List<HomeLifeArea> = listOf(
         ),
     ),
     HomeLifeArea(
-        name = "Spiritual",
-        emoji = "🕉️",
-        briefDescription = "Inner growth, dharma and higher purpose",
-        questions = listOf(
-            "What is my spiritual path according to my chart?",
-            "Which practices will deepen my spiritual growth?",
-            "How does my 12th house influence my inner life?",
-        ),
-    ),
-    HomeLifeArea(
         name = "Family",
         emoji = "👨‍👩‍👧",
         briefDescription = "Harmony, lineage and home environment",
@@ -138,6 +128,36 @@ fun defaultLifeAreas(): List<HomeLifeArea> = listOf(
             "What does my chart say about family harmony?",
             "How are my family relationships influenced this year?",
             "What is the best time for family decisions?",
+        ),
+    ),
+    HomeLifeArea(
+        name = "Education",
+        emoji = "📚",
+        briefDescription = "Learning, study and intellectual growth",
+        questions = listOf(
+            "What does my chart say about higher education?",
+            "Is this a favorable time for learning a new skill?",
+            "How is my 5th house supporting my studies?",
+        ),
+    ),
+    HomeLifeArea(
+        name = "Investment",
+        emoji = "📈",
+        briefDescription = "Markets, assets and long-term growth",
+        questions = listOf(
+            "Is this a good time to invest?",
+            "Which sectors are favored by my planetary periods?",
+            "What does my chart say about long-term wealth growth?",
+        ),
+    ),
+    HomeLifeArea(
+        name = "Sudden Events",
+        emoji = "⭐",
+        briefDescription = "Unexpected turns, breakthroughs and shocks",
+        questions = listOf(
+            "Are any sudden changes indicated in my chart?",
+            "How is Rahu/Ketu influencing unexpected events?",
+            "What does my 8th house say about transformation?",
         ),
     ),
 )

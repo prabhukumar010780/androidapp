@@ -24,6 +24,7 @@ import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
+import com.destinyai.astrology.ui.theme.TextTertiary
 
 /**
  * R2-S5: Language settings as a ModalBottomSheet.
@@ -67,7 +68,7 @@ fun LanguageSettingsSheet(
                 )
                 TextButton(
                     onClick = {
-                        haptic.light()
+                        // iOS parity (LanguageSettingsSheet.swift:80): no haptic on Done tap.
                         onDismiss()
                     },
                     modifier = Modifier.testTag("language_sheet_done"),
@@ -83,15 +84,36 @@ fun LanguageSettingsSheet(
             HorizontalDivider(color = Gold.copy(alpha = 0.1f), thickness = 0.5.dp)
 
             LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                // iOS parity (LanguageSettingsSheet.swift:63-66): gold "select_language" section header
+                item {
+                    Text(
+                        text = stringResource(R.string.select_language),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        fontFamily = CanelaFontFamily,
+                        color = Gold,
+                        modifier = Modifier.padding(
+                            start = 24.dp,
+                            end = 24.dp,
+                            top = 16.dp,
+                            bottom = 8.dp,
+                        ),
+                    )
+                }
                 items(supportedLanguages) { lang ->
                     val isSelected = state.selectedLanguage == lang.code
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                haptic.light()
+                                // iOS parity (LanguageSettingsSheet.swift:101):
+                                // .medium impact — distinct from the .light tap
+                                // used for chart-style / response-style picks so
+                                // the user feels a stronger ack on language flip.
+                                haptic.medium()
                                 viewModel.setLanguageWithLocale(lang.code)
-                                onDismiss()
+                                // iOS parity (LanguageSettingsSheet.swift:36-38, 80):
+                                // sheet stays open until Done is tapped.
                             }
                             .padding(horizontal = 24.dp, vertical = 16.dp)
                             .testTag("language_${lang.code}"),
@@ -103,7 +125,9 @@ fun LanguageSettingsSheet(
                                 text = lang.nativeName,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = if (isSelected) Gold else CreamText,
+                                // iOS parity (LanguageSettingsSheet.swift:42-43):
+                                // selection indicated by checkmark only, no gold tint.
+                                color = CreamText,
                             )
                             if (lang.name != lang.nativeName) {
                                 Text(
@@ -123,13 +147,22 @@ fun LanguageSettingsSheet(
                             )
                         }
                     }
-                    if (lang.code != supportedLanguages.last().code) {
-                        HorizontalDivider(
-                            color = Gold.copy(alpha = 0.08f),
-                            thickness = 0.5.dp,
-                            modifier = Modifier.padding(horizontal = 24.dp),
-                        )
-                    }
+                    // iOS parity (LanguageSettingsSheet.swift:33-72): default List separators —
+                    // no explicit dividers between rows.
+                }
+                // iOS parity (LanguageSettingsSheet.swift:67-71): "language_note" footer caption
+                item {
+                    Text(
+                        text = stringResource(R.string.language_note),
+                        fontSize = 12.sp,
+                        color = TextTertiary,
+                        modifier = Modifier.padding(
+                            start = 24.dp,
+                            end = 24.dp,
+                            top = 8.dp,
+                            bottom = 16.dp,
+                        ),
+                    )
                 }
                 item { Spacer(Modifier.height(16.dp)) }
             }

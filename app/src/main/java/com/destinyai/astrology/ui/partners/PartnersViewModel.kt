@@ -12,6 +12,7 @@ import com.destinyai.astrology.data.remote.CreatePartnerRequest
 import com.destinyai.astrology.data.remote.LocationResult
 import com.destinyai.astrology.data.remote.PartnerDto
 import com.destinyai.astrology.data.remote.PartnerRequest
+import com.destinyai.astrology.services.ProfileContextManager
 import com.destinyai.astrology.services.QuotaManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -54,21 +55,32 @@ data class PartnersUiState(
     // a protected partner card is tapped — explains why edit is blocked.
     val showProtectionAlertFor: PartnerDto? = null,
     val error: String? = null,
+    // One-shot success event surfaced via the parent screen's SnackbarHost
+    // (PartnersScreen.kt). Cleared by consumePartnerSuccess() after display.
+    // Mirrors iOS sound + haptic confirmations on PartnerManagerView.swift:42-46
+    // (add) and :53-57 (edit), but adds a visible toast Android lacked.
+    val successEvent: PartnerSuccessEvent? = null,
+    // iOS parity (ProfileView.swift:339-347): guests are gated out of
+    // PartnerManagerView at the entry point. Track isGuest here as
+    // defense-in-depth so PartnersScreen can route guests to AuthScreen if any
+    // other code path lands them on this screen.
+    val isGuest: Boolean = false,
 ) {
     /**
      * Mirrors iOS PartnerFormView.isValid (lines 75-81):
      * - Name non-blank, gender non-blank, DOB selected
      * - Time selected OR birthTimeUnknown=true
-     * - Lat/Lon set
      * - Under-13 requires guardian consent
+     *
+     * iOS does NOT require city / lat / lon — place_of_birth is optional and
+     * sent as nil when empty (PartnerFormView.swift:385-387). Android relaxed
+     * to match (Gap 1).
      */
     val isFormValid: Boolean
         get() = formName.isNotBlank() &&
             formGender.isNotBlank() &&
             formDob.isNotBlank() &&
             (formTime.isNotBlank() || formBirthTimeUnknown) &&
-            formCity.isNotBlank() &&
-            (formLatitude != 0.0 || formLongitude != 0.0) &&
             (!isUnder13(formDob) || formGuardianConsentGiven)
 
     /** iOS PartnerFormView.swift:54-59 isUnder13. */
@@ -96,6 +108,18 @@ private fun ageInYears(dob: String): Int? {
 private fun isUnder13(dob: String): Boolean = (ageInYears(dob) ?: 100) < 13
 private fun isUnder18(dob: String): Boolean = (ageInYears(dob) ?: 100) < 18
 
+/**
+ * One-shot success events emitted by [PartnersViewModel] after a save / delete
+ * succeeds. Resolved to a localized string at the screen layer so the VM stays
+ * Context-free. Carries the partner's display name so the snackbar can read
+ * "Birth chart for X added" the same way iOS reads the new card's title.
+ */
+sealed class PartnerSuccessEvent {
+    data class Added(val partnerName: String) : PartnerSuccessEvent()
+    data class Updated(val partnerName: String) : PartnerSuccessEvent()
+    data class Deleted(val partnerName: String) : PartnerSuccessEvent()
+}
+
 @HiltViewModel
 class PartnersViewModel @Inject constructor(
     private val api: AstroApiService,
@@ -103,6 +127,7 @@ class PartnersViewModel @Inject constructor(
     private val quotaManager: QuotaManager,
     private val locationSearchService: LocationSearchService,
     private val partnerDao: PartnerDao,
+    private val profileContextManager: ProfileContextManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PartnersUiState())
@@ -152,6 +177,10 @@ class PartnersViewModel @Inject constructor(
 
     fun loadPartners() {
         viewModelScope.launch {
+            // iOS parity (ProfileView.swift:339-347): track isGuest so
+            // PartnersScreen can defensively route guests back to AuthScreen.
+            val isGuest = prefs.isGuestUser()
+            _uiState.update { it.copy(isGuest = isGuest) }
             val email = prefs.getUserEmail() ?: return@launch
             // iOS parity: show cached partners immediately while a network refresh runs.
             val cached = loadFromCache(email)
@@ -194,6 +223,18 @@ class PartnersViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Save handler — covers both create and update paths.
+     *
+     * Layering note (Cleanup Issues 4 & 5): iOS PartnerFormView passes an `onSave`
+     * callback up to PartnerManagerView, which performs the create/update via
+     * PartnerProfileService. On Android the form sheet calls `viewModel.addPartner()`
+     * directly because the sheet and list share the same PartnersViewModel — there's
+     * no second layer to bubble through. The branching on `editingPartnerId` here
+     * (line 223) is the Android equivalent of iOS's `service.update(...)` vs
+     * `service.create(...)` split inside the parent view's `onSave` closure. Net
+     * effect is identical; only the call site differs.
+     */
     fun addPartner() {
         viewModelScope.launch {
             val email = prefs.getUserEmail() ?: return@launch
@@ -225,11 +266,20 @@ class PartnersViewModel @Inject constructor(
                     api.addPartner(request)
                 }
                 saveToCache(email, listOf(partner))
+                // Invalidate the cached partner-name lookup so Home shows the
+                // updated name after rename, and so Add/Edit-then-Switch
+                // immediately resolves the new partner without a stale hit.
+                profileContextManager.invalidate()
                 _uiState.update { state ->
                     val updatedList = if (s.editingPartnerId != null) {
                         state.partners.map { if (it.id == partner.id) partner else it }
                     } else {
                         state.partners + partner
+                    }
+                    val event = if (s.editingPartnerId != null) {
+                        PartnerSuccessEvent.Updated(partner.name)
+                    } else {
+                        PartnerSuccessEvent.Added(partner.name)
                     }
                     state.copy(
                         partners = updatedList,
@@ -244,6 +294,7 @@ class PartnersViewModel @Inject constructor(
                         formLatitude = 0.0,
                         formLongitude = 0.0,
                         formBirthTimeUnknown = false,
+                        successEvent = event,
                     )
                 }
             } catch (e: retrofit2.HttpException) {
@@ -273,8 +324,12 @@ class PartnersViewModel @Inject constructor(
             try {
                 api.deletePartner(partnerId, email)
                 try { partnerDao.delete(partnerId) } catch (_: Exception) {}
+                profileContextManager.invalidate()
                 _uiState.update { state ->
-                    state.copy(partners = state.partners.filterNot { it.id == partnerId })
+                    state.copy(
+                        partners = state.partners.filterNot { it.id == partnerId },
+                        successEvent = target?.let { PartnerSuccessEvent.Deleted(it.name) },
+                    )
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = e.message ?: "Failed to delete") }
@@ -310,6 +365,9 @@ class PartnersViewModel @Inject constructor(
      * iOS parity (PartnerManagerView.swift:108-125 + QuotaManager.canAddProfile):
      * Pre-flight check before opening the add form. Surfaces upgrade prompt for free
      * users at the maintain_profile limit. On error, fails open (allows form).
+     *
+     * Delegates the gate logic to QuotaManager.canAddProfile so iOS and Android share
+     * a single source of truth for "can the user add another profile" (Cleanup Issue 1).
      */
     fun requestAddPartner() {
         viewModelScope.launch {
@@ -318,28 +376,33 @@ class PartnersViewModel @Inject constructor(
                 _uiState.update { it.copy(showAddForm = true, editingPartnerId = null, error = null) }
                 return@launch
             }
-            try {
-                val response = quotaManager.canAccessFeature(QuotaManager.FeatureID.MAINTAIN_PROFILE, email)
-                if (!response.canAccess) {
-                    _uiState.update { it.copy(showQuotaUpgradePrompt = true, quotaLimit = 0) }
-                    return@launch
+            val current = _uiState.value.partners.size
+            when (val result = quotaManager.canAddProfile(email, current)) {
+                is QuotaManager.CanAddProfileResult.Blocked -> {
+                    _uiState.update {
+                        it.copy(showQuotaUpgradePrompt = true, quotaLimit = result.limit)
+                    }
                 }
-                val overall = response.limits?.get("overall")
-                val limit = overall?.limit ?: -1
-                val current = _uiState.value.partners.size
-                if (limit != -1 && current >= limit) {
-                    _uiState.update { it.copy(showQuotaUpgradePrompt = true, quotaLimit = limit) }
-                    return@launch
+                QuotaManager.CanAddProfileResult.Allowed -> {
+                    _uiState.update {
+                        it.copy(showAddForm = true, editingPartnerId = null, error = null)
+                    }
                 }
-                _uiState.update { it.copy(showAddForm = true, editingPartnerId = null, error = null) }
-            } catch (e: Exception) {
-                // Fail-open parity with iOS canAddProfile catch (Services/QuotaManager.swift:813-816).
-                _uiState.update { it.copy(showAddForm = true, editingPartnerId = null, error = null) }
             }
         }
     }
 
     fun dismissQuotaUpgradePrompt() = _uiState.update { it.copy(showQuotaUpgradePrompt = false) }
+
+    /**
+     * iOS parity (PartnerManagerView.swift:78-82): top-level system alert bound to
+     * viewModel.showError — list-level errors must surface to the user. Manager
+     * dialog dismisses by clearing the field.
+     */
+    fun clearError() = _uiState.update { it.copy(error = null) }
+
+    /** Consume the one-shot success snackbar event after the screen has shown it. */
+    fun consumeSuccessEvent() = _uiState.update { it.copy(successEvent = null) }
 
     /**
      * iOS parity (PartnerManagerView.swift:386-404): tapping a protected card opens an

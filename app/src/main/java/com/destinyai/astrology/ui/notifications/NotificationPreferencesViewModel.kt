@@ -140,6 +140,21 @@ class NotificationPreferencesViewModel @Inject constructor(
         viewModelScope.launch { prefs.saveAlertItems(updated) }
     }
 
+    // ── iOS parity: error/isSaved consumption helpers ────────────────────────
+
+    /** iOS parity: clear the modal error after the user dismisses the alert. */
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
+    }
+
+    /**
+     * iOS parity: reset the isSaved flag on screen entry (and after consumption)
+     * so a stale flag from a previous save doesn't auto-dismiss the screen on re-entry.
+     */
+    fun resetIsSaved() {
+        _uiState.update { it.copy(isSaved = false) }
+    }
+
     // ── Save channel prefs to API ─────────────────────────────────────────────
 
     fun save() {
@@ -148,24 +163,33 @@ class NotificationPreferencesViewModel @Inject constructor(
             val s = _uiState.value
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                // Mirrors iOS NotificationPreferencesViewModel.savePreferences — sends
-                // channel toggles AND custom alert items so backend can generate pushes.
+                // iOS parity (NotificationPreferencesViewModel.swift:145-153): iOS sends
+                //   is_enabled, email_enabled, push_enabled, in_app_enabled, alert_items,
+                //   preferred_time_utc, timezone
+                // and does NOT send the 3 legacy booleans (daily_insight/transits/compatibility),
+                // so we leave those null here so Gson omits them and the server keeps its
+                // own state for those fields.
+                //
+                // Frequency rawValue on iOS is uppercase ("DAILY" / "WEEKLY" / "MONTHLY"),
+                // matching backend AlertItemRequest enum, so we uppercase here for parity.
                 val alertDtos = s.alertItems.map {
                     AlertItemDto(id = it.id, text = it.text, frequency = it.frequency.uppercase(), frequencyDay = it.frequencyDay)
                 }
+                // iOS parity: master switch is_enabled = any channel on. If every channel is
+                // off, the user has effectively disabled notifications — mirror iOS so the
+                // backend's master flag stays in sync.
+                val masterEnabled = s.pushEnabled || s.emailEnabled || s.inAppEnabled
                 api.updateNotificationPrefs(
                     email,
                     NotificationPrefsRequest(
-                        dailyInsight = s.dailyInsight,
-                        transits = s.transits,
-                        compatibility = s.compatibility,
+                        isEnabled = masterEnabled,
                         pushEnabled = s.pushEnabled,
                         emailEnabled = s.emailEnabled,
                         inAppEnabled = s.inAppEnabled,
                         alertItems = alertDtos,
-                    )
+                        timezone = java.util.TimeZone.getDefault().id,
+                    ),
                 )
-                prefs.setNotifPrefs(s.dailyInsight, s.transits, s.compatibility)
                 prefs.saveAlertItems(s.alertItems)
                 _uiState.update { it.copy(isLoading = false, isSaved = true) }
             } catch (e: Exception) {

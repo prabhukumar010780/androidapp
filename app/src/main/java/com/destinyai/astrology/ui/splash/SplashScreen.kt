@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.destinyai.astrology.R
 import com.destinyai.astrology.services.SoundManager
+import com.destinyai.astrology.services.motionParallax
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
@@ -120,9 +121,12 @@ fun SplashScreen(soundManager: SoundManager? = null) {
             verticalArrangement = Arrangement.Center,
         ) {
             // Logo: gold circle with logo + pulsing glow + orbital ring + heartbeat + shimmer
+            // iOS parity (SplashView.swift:74): .premiumInertia(intensity: 20) — gravity-driven
+            // parallax so the logo lags behind device tilt like a heavy gold object.
             Box(
                 modifier = Modifier
                     .size(200.dp)
+                    .motionParallax(intensity = 20f)
                     .graphicsLayer {
                         scaleX = logoScale.value
                         scaleY = logoScale.value
@@ -130,7 +134,9 @@ fun SplashScreen(soundManager: SoundManager? = null) {
                     },
                 contentAlignment = Alignment.Center,
             ) {
-                PulsingGlow()
+                // iOS parity (SplashView.swift:36-49): outer (0.2) + inner (0.4) glow stack.
+                PulsingGlow(alpha = 0.2f, sizeDp = 220.dp)
+                PulsingGlow(alpha = 0.4f, sizeDp = 160.dp)
                 OrbitalRing()
                 LogoWithShimmerAndHeartbeat()
             }
@@ -405,12 +411,54 @@ private fun LiquidGoldBackground() {
 }
 
 /**
- * Canvas-drawn twinkling star field — mirrors iOS ParallaxStarField (3-layer).
- * Stars are deterministic per composition (seeded Random) and twinkle via alpha animation.
+ * Canvas-drawn twinkling star field — iOS parity (SplashView.swift:175-206)
+ * with 3 depth layers: Far (25 stars, small + dim), Mid (20), Near (15, large + bright).
+ * Each layer renders a separate Canvas so they read as independent parallax planes.
  */
 @Composable
 private fun StarField() {
-    val infiniteTransition = rememberInfiniteTransition(label = "stars")
+    Box(modifier = Modifier.fillMaxSize()) {
+        StarLayer(
+            starCount = 25,
+            minSize = 1f,
+            maxSize = 1.5f,
+            minAlpha = 0.2f,
+            maxAlpha = 0.4f,
+            seed = 11,
+            label = "stars_far",
+        )
+        StarLayer(
+            starCount = 20,
+            minSize = 1.5f,
+            maxSize = 2.5f,
+            minAlpha = 0.4f,
+            maxAlpha = 0.6f,
+            seed = 22,
+            label = "stars_mid",
+        )
+        StarLayer(
+            starCount = 15,
+            minSize = 2f,
+            maxSize = 3f,
+            minAlpha = 0.6f,
+            maxAlpha = 0.9f,
+            seed = 33,
+            label = "stars_near",
+        )
+    }
+}
+
+@Composable
+private fun StarLayer(
+    starCount: Int,
+    minSize: Float,
+    maxSize: Float,
+    minAlpha: Float,
+    maxAlpha: Float,
+    seed: Int,
+    label: String,
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = label)
     val twinkle by infiniteTransition.animateFloat(
         initialValue = 0.3f,
         targetValue = 1f,
@@ -418,23 +466,24 @@ private fun StarField() {
             animation = tween(1800, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse,
         ),
-        label = "twinkle",
+        label = "${label}_twinkle",
     )
-    val stars = remember {
-        val rng = Random(42)
-        List(80) {
-            Triple(rng.nextFloat(), rng.nextFloat(), rng.nextFloat())
+    val stars = remember(seed, starCount) {
+        val rng = Random(seed)
+        List(starCount) {
+            // x, y, sizeFrac, alphaFrac
+            listOf(rng.nextFloat(), rng.nextFloat(), rng.nextFloat(), rng.nextFloat())
         }
     }
     Canvas(modifier = Modifier.fillMaxSize()) {
-        stars.forEachIndexed { idx, (x, y, sizeFrac) ->
-            val radius = 0.4f + sizeFrac * 1.6f
-            val baseAlpha = 0.25f + sizeFrac * 0.55f
+        stars.forEachIndexed { idx, s ->
+            val radius = minSize + s[2] * (maxSize - minSize)
+            val baseAlpha = minAlpha + s[3] * (maxAlpha - minAlpha)
             val alpha = if (idx % 3 == 0) baseAlpha * twinkle else baseAlpha
             drawCircle(
                 color = Color.White.copy(alpha = alpha),
                 radius = radius,
-                center = Offset(x * size.width, y * size.height),
+                center = Offset(s[0] * size.width, s[1] * size.height),
             )
         }
     }
@@ -442,9 +491,14 @@ private fun StarField() {
 
 /**
  * Pulsing radial glow behind the logo — mirrors iOS PulsingGlowView (outer+inner).
+ * Stacked with two instances at alpha 0.2 (outer, larger) and 0.4 (inner, smaller)
+ * to match SplashView.swift:36-49 double-glow.
  */
 @Composable
-private fun PulsingGlow() {
+private fun PulsingGlow(
+    alpha: Float = 0.4f,
+    sizeDp: androidx.compose.ui.unit.Dp = 180.dp,
+) {
     val infiniteTransition = rememberInfiniteTransition(label = "glow")
     val pulse by infiniteTransition.animateFloat(
         initialValue = 0.6f,
@@ -457,8 +511,8 @@ private fun PulsingGlow() {
     )
     Box(
         modifier = Modifier
-            .size((180 * pulse).dp)
-            .alpha(0.55f)
+            .size(sizeDp * pulse)
+            .alpha(alpha)
             .background(
                 brush = Brush.radialGradient(
                     colors = listOf(

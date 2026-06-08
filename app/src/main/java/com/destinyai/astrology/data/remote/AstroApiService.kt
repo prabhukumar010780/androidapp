@@ -90,6 +90,10 @@ data class PredictRequest(
     @SerializedName("response_style") val responseStyle: String? = null,
     @SerializedName("response_length") val responseLength: String? = null,
     @SerializedName("platform") val platform: String = "android",
+    // iOS parity (StreamingPredictionService.swift:58): scope chat threads to the
+    // active profile so backend persistence + history filtering match owner+profile,
+    // not just owner. Optional — backend treats null/absent as the self profile.
+    @SerializedName("profile_id") val profileId: String? = null,
 )
 
 data class DeviceTokenRequest(
@@ -224,9 +228,12 @@ data class NotificationListResponse(
 // Backend fields: is_enabled, email_enabled, push_enabled, in_app_enabled,
 //   custom_instruction, alert_items, frequency, frequency_day, preferred_time_utc, timezone
 data class NotificationPrefsRequest(
-    @SerializedName("daily_insight") val dailyInsight: Boolean = true,
-    @SerializedName("transits") val transits: Boolean = true,
-    @SerializedName("compatibility") val compatibility: Boolean = true,
+    // iOS parity (NotificationPreferencesSheet.swift): the iOS preferences sheet does
+    // NOT expose or send the 3 legacy booleans, so we make them nullable here and let
+    // the screen omit them on save to avoid clobbering server-side state with defaults.
+    @SerializedName("daily_insight") val dailyInsight: Boolean? = null,
+    @SerializedName("transits") val transits: Boolean? = null,
+    @SerializedName("compatibility") val compatibility: Boolean? = null,
     // Backend channel toggles
     @SerializedName("is_enabled") val isEnabled: Boolean? = null,
     @SerializedName("push_enabled") val pushEnabled: Boolean? = null,
@@ -557,6 +564,10 @@ data class UserAstroDataRequest(
 data class TodaysPredictionResponse(
     @SerializedName(value = "text", alternate = ["todays_insight"]) val text: String? = null,
     @SerializedName("current_dasha") val current_dasha: Any? = null,
+    // Rich dasha insight (parity with iOS DashaInsight): backend's dasha_insight object
+    // carries period, quality (Good/Steady/Caution), theme, end_date, and a meaning
+    // paragraph used by HomeView's DashaInsightCard.
+    @SerializedName("dasha_insight") val dashaInsight: DashaInsightDto? = null,
     @SerializedName("life_areas") val life_areas: Map<String, Map<String, Any?>>? = null,
     @SerializedName("transit_influences") val transit_influences: List<Map<String, Any?>>? = null,
     @SerializedName(value = "suggested_questions", alternate = ["mind_questions"]) val suggested_questions: List<String>? = null,
@@ -564,6 +575,15 @@ data class TodaysPredictionResponse(
     @SerializedName("insight_area") val insightArea: String? = null,
     @SerializedName("target_date") val targetDate: String? = null,
     @SerializedName("prediction_id") val predictionId: String? = null,
+)
+
+/** Mirrors iOS DashaInsight (UserAstroDataModels.swift:480). */
+data class DashaInsightDto(
+    @SerializedName("period") val period: String? = null,
+    @SerializedName("quality") val quality: String? = null,
+    @SerializedName("theme") val theme: String? = null,
+    @SerializedName("end_date") val endDate: String? = null,
+    @SerializedName("meaning") val meaning: String? = null,
 )
 
 // Mirrors iOS AstroAnalysisData — yogas + dosha verdicts surfaced from the prediction endpoint
@@ -683,7 +703,10 @@ interface AstroApiService {
     suspend fun signInWithApple(@Body request: AppleSignInRequest): RegisterResponse
 
     @GET("subscription/status")
-    suspend fun getStatus(@Query("email") email: String): StatusResponse
+    suspend fun getStatus(
+        @Query("email") email: String,
+        @Query("force") force: Boolean? = null,
+    ): StatusResponse
 
     // App-level gate config — mirrors iOS AppStartupService.fetchConfig
     // (AppStartupService.swift:24-45). Drives guest button visibility + gate mode.

@@ -53,7 +53,7 @@ class ChatViewModelExtendedTest {
         every { prefs.responseLengthFlow } returns flowOf("standard")
         every { profileChangeBus.events } returns MutableSharedFlow()
         coEvery { prefs.getUserEmail() } returns null
-        viewModel = ChatViewModel(repository, api, prefs, quotaManager, profileChangeBus, appContext)
+        viewModel = ChatViewModel(repository, api, prefs, quotaManager, profileChangeBus, mockk(relaxed = true), appContext)
     }
 
     // ── suggestedQuestions ────────────────────────────────────────────────────

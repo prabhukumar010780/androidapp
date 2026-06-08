@@ -61,7 +61,19 @@ class ProfileViewModelTest {
         every { billingManager.purchasedProductIds } returns MutableStateFlow<Set<String>>(emptySet())
         coEvery { prefs.getUserEmail() } returns "u@x.com"
         coEvery { prefs.getUserName() } returns "Prabhu"
-        vm = ProfileViewModel(api, prefs, authRepository, billingManager)
+        // ProfileChangeBus is a @Singleton with a non-arg constructor — instantiate
+        // a real one so the VM's collector subscribes to a live SharedFlow.
+        val profileChangeBus = com.destinyai.astrology.services.ProfileChangeBus()
+        vm = ProfileViewModel(
+            api,
+            prefs,
+            authRepository,
+            billingManager,
+            profileChangeBus,
+            mockk(relaxed = true), // threadDao
+            mockk(relaxed = true), // messageDao
+            mockk(relaxed = true), // compatibilityHistoryDao
+        )
     }
 
     @Test

@@ -121,6 +121,9 @@
     <string name="continue_as_guest">Continue as Guest</string>
     <string name="by_continuing">By continuing, you agree to our</string>
     <string name="signing_in">Signing in...</string>
+    <!-- iOS parity (AuthView.swift loadingOverlay): shown after sign-in completes
+         while LoginSyncCoordinator.syncAll fetches chat history, quota, profile. -->
+    <string name="syncing_your_data">Syncing your data...</string>
     <string name="skip">Skip</string>
     <string name="get_started">Get Started</string>
     <string name="create_birth_chart">Create your birth chart</string>
@@ -280,6 +283,10 @@ history will appear here.</string>
     <string name="ask_more_match">Ask more about this match...</string>
     <string name="see_classical_analysis">See classical analysis →</string>
     <string name="kuta_detail_placeholder_format">Detailed explanation for %@ will appear here.</string>
+    <string name="kuta_detail_placeholder_format_android">Detailed explanation for %1$s will appear here.</string>
+    <string name="ashtakoot_kutas_section">Ashtakoot Kutas</string>
+    <string name="kuta_dosha_cancelled">✓ Dosha cancelled</string>
+    <string name="kuta_dosha_active">⚠ Dosha active</string>
     <string name="report_generated_label_format">Generated: %@</string>
     <string name="mangal_dosha">Mangal Dosha</string>
     <string name="mangal_dosha_desc">Mars placement analysis</string>
@@ -1474,6 +1481,14 @@ history will appear here.</string>
     <string name="add_new_alert">Add new alert preference</string>
     <string name="max_alerts_reached">Maximum 5 alerts reached</string>
     <string name="alerts_saved">Alerts saved</string>
+    <!-- Snackbar success messages for Manage Birth Charts (PartnersScreen). %1$s = partner name. -->
+    <string name="birth_chart_added_toast">Birth chart for %1$s added</string>
+    <string name="birth_chart_updated_toast">Birth chart for %1$s updated</string>
+    <string name="birth_chart_deleted_toast">Birth chart for %1$s deleted</string>
+    <!-- Snackbar shown on Profile after successful Switch Profile. %1$s = active profile name. -->
+    <string name="now_viewing_as">Now viewing as %1$s</string>
+    <!-- Snackbar surfaced when BirthDetails local save fails. -->
+    <string name="birth_details_save_failed">Couldn\'t save your changes. Please try again.</string>
     <string name="remove_alert">Remove this alert?</string>
     <string name="push_notifications">Push notifications</string>
     <string name="permission_required_ios">Permission required in iOS Settings</string>
@@ -1510,6 +1525,7 @@ history will appear here.</string>
     <string name="select_year_transits">Select a year to view transits</string>
     <string name="select_year_dasha">Select a year to view dasha periods</string>
     <string name="failed_to_load_chart">Failed to load chart</string>
+    <string name="no_birth_profile_found">No birth profile found.</string>
     <string name="planet_details">Planet Details</string>
     <string name="planet_cards">Planet Cards</string>
     <string name="boy_chart_not_available">Boy chart data not available</string>
@@ -1756,7 +1772,10 @@ Please share deeper insights on how this transit influences my life and any prac
         <item quantity="other">%1$d events</item>
     </plurals>
     <string name="planet_event_count_fmt">%1$s (%2$s)</string>
-    <string name="ashtakoot_analysis_title">Ashtakoot Analysis</string>
+    <!-- iOS parity (Localizable.strings:274 `ashtakoot_analysis = "Birth Chart Compatibility"`):
+         the input-screen hero title reads "Birth Chart Compatibility", NOT "Ashtakoot Analysis".
+         The "Ashtakoot Analysis" label is only used as the result-screen subtitle. -->
+    <string name="ashtakoot_analysis_title">Birth Chart Compatibility</string>
     <string name="kuta_varna_label">Work</string>
     <string name="kuta_varna_theme">Work</string>
     <string name="kuta_vashya_label">Attraction</string>
@@ -1831,8 +1850,14 @@ Please share deeper insights on how this transit influences my life and any prac
     <string name="high_manglik">High Manglik</string>
     <string name="severe_manglik">Severe Manglik</string>
     <string name="manglik">Manglik</string>
-    <string name="mars_in_house">Mars in House %@</string>
+    <string name="mars_in_house">Mars in House %1$s</string>
     <string name="safe_status">Safe</string>
+    <string name="cancellation_factors_title">Cancellation Factors</string>
+    <string name="classical_analysis_title">✨ Classical Analysis</string>
+    <string name="severity_manglik_format">%1$s Manglik</string>
+    <string name="dosha_cancelled_default_desc">The Mangal Dosha has been neutralized by classical exceptions</string>
+    <string name="mutual_neutralization_short">Classical exceptions apply that neutralize the dosha effect:</string>
+    <string name="vedic_exceptions_short">Classical Vedic exceptions reduce the Mars effect:</string>
     <string name="dosha_cancellation_title">Dosha Cancellation</string>
     <string name="astrological_exceptions_subtitle">Astrological exceptions applied</string>
     <string name="low_score_warning_title">Low Score Warning</string>
@@ -1952,7 +1977,8 @@ Please share deeper insights on how this transit influences my life and any prac
     <string name="a11y_destiny_thinking">Destiny is thinking</string>
     <string name="a11y_send_message">Send message</string>
     <string name="a11y_copy_response">Copy response</string>
-    <string name="a11y_orb_status_format">%@: %@</string>
+    <string name="a11y_orb_status_format">%1$s: %2$s</string>
+    <string name="a11y_double_tap_for_details">Double tap for details</string>
     <string name="history_title">History</string>
     <!-- History date-section headers (mirrors iOS HistoryViewModel.formatSectionDate) -->
     <string name="history_section_today">Today</string>
@@ -2346,6 +2372,49 @@ Until then: Use this period for strategic positioning.</string>
     <string name="compat_partner_already_saved_msg">This partner is already in your history. Would you like to use the saved entry or continue?</string>
     <string name="compat_save_anyway">Save anyway</string>
     <string name="compat_use_saved">Use saved</string>
+    <!-- iOS parity (CompatibilityView.swift:976-985 + Localizable.strings:152): primary CTA + state strings. -->
+    <string name="compat_check_compatibility">Check Compatibility</string>
+    <string name="compat_analyzing">Analyzing…</string>
+    <string name="compat_compare_all_format">Compare All (%d)</string>
+    <!-- iOS parity (CompatibilityView.swift:496,540): section header strings (lowercase 'd' to match iOS). -->
+    <string name="compat_your_details">Your details</string>
+    <string name="compat_partner_details_lc">Partner details</string>
+    <!-- iOS parity (CompatibilityView.swift:823 / 833): "You" label + "Me" name fallback. -->
+    <string name="compat_you_label">You</string>
+    <string name="compat_me_fallback">Me</string>
+    <!-- iOS parity (CompatibilityView.swift:842): time-unknown placeholder. -->
+    <string name="compat_unknown_label">Unknown</string>
+    <!-- iOS parity (CompatibilityViewModel.swift:289): age-block warning. -->
+    <string name="compat_age_block_warning">Destiny matching requires both individuals to be 18 or older</string>
+    <!-- iOS parity (CompatibilityView.swift:805): birth-data warning. -->
+    <string name="compat_birth_data_warning">✦  Save your birth details first to run compatibility analysis.</string>
+    <!-- iOS parity (PremiumSelectionSheet) gender sheet title + options. -->
+    <string name="compat_gender_identity_title">Gender Identity</string>
+    <string name="compat_gender_male">Male</string>
+    <string name="compat_gender_female">Female</string>
+    <string name="compat_gender_non_binary">Non-Binary</string>
+    <string name="compat_gender_prefer_not_to_say">Prefer not to say</string>
+    <!-- iOS parity (LocationSearchView): city dialog labels. -->
+    <string name="compat_location_title">City of Birth</string>
+    <string name="compat_location_input_label">Enter city name</string>
+    <string name="compat_location_searching">Searching…</string>
+    <string name="compat_location_select">Select</string>
+    <string name="compat_location_cancel">Cancel</string>
+    <string name="compat_location_not_found">Location not found</string>
+    <!-- Top-bar a11y. -->
+    <string name="compat_partners_a11y">Partners</string>
+    <string name="compat_reset_form_a11y">Reset form</string>
+    <string name="compat_add_partner_a11y">Add partner</string>
+    <string name="compat_remove_partner_a11y">Remove partner</string>
+    <!-- iOS parity (Localizable.strings:152) — single-stream "Analyze Compatibility" canonical CTA = "Check Compatibility". -->
+    <!-- iOS parity (MultiPartnerStreamingView.swift:63,94 + Localizable.strings):
+         multi-partner streaming modal copy. -->
+    <string name="compat_comparing_partners_format">Comparing %d Partners</string>
+    <string name="compat_partners_complete_format">%1$d / %2$d partners complete</string>
+    <string name="compat_this_may_take_a_moment">This may take a moment…</string>
+    <string name="compat_pending_label">Pending</string>
+    <string name="compat_analyzing_partner_format">Analyzing %1$s…</string>
+    <string name="compat_retrying_partner_format">Retrying %1$s…</string>
     <string name="partner_form_add_button">+ Add</string>
     <string name="partner_form_dob_label">Date of Birth (YYYY-MM-DD)</string>
     <string name="partner_form_time_label">Time of Birth (HH:MM)</string>
@@ -2379,7 +2448,9 @@ Until then: Use this period for strategic positioning.</string>
     <string name="partner_form_search_city">Search city</string>
     <!-- Quota gate (iOS PartnerManagerView.swift:108-125) -->
     <string name="partner_quota_upgrade_title">Upgrade required</string>
+    <string name="profile_limit_reached_title">Profile Limit Reached</string>
     <string name="partner_quota_upgrade_message">You have reached the maximum number of saved birth charts on your current plan. Upgrade to add more.</string>
+    <string name="partner_quota_upgrade_message_with_limit">You can save up to %1$d birth charts. Upgrade to Plus for unlimited.</string>
     <string name="partner_quota_upgrade_action">Upgrade</string>
     <!-- Profile screen — parity with iOS Localizable.strings -->
     <string name="profile_switch_profile">Switch Profile</string>
@@ -2395,7 +2466,9 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_chat_history_cleared">Chat history cleared</string>
     <string name="profile_chat_history_clear_failed">Failed to clear history</string>
     <string name="profile_analytics">Analytics</string>
-    <string name="profile_help_faq">Help &amp; FAQ</string>
+    <!-- Note: key name reads "help_faq" for legacy reasons; value intentionally
+         reads "FAQ & Help" for parity with iOS faq_and_help (Localizable.strings:223). -->
+    <string name="profile_help_faq">FAQ &amp; Help</string>
     <string name="profile_upgrade_premium">✦  Upgrade to Premium</string>
     <string name="profile_sign_up_cta">✦  Sign Up</string>
     <string name="profile_manage_subscription">Manage subscription</string>
@@ -2425,9 +2498,9 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_premium_badge_sign_up">Sign Up</string>
     <string name="profile_birth_details">Birth Details</string>
     <string name="profile_preferences_section">Preferences</string>
-    <string name="profile_contact_us">Contact us</string>
-    <string name="profile_privacy_policy">Privacy policy</string>
-    <string name="profile_terms_of_service">Terms of service</string>
+    <string name="profile_contact_us">Contact Us</string>
+    <string name="profile_privacy_policy">Privacy Policy</string>
+    <string name="profile_terms_of_service">Terms of Service</string>
     <string name="profile_maybe_later">Maybe later</string>
     <string name="profile_sign_in_or_sign_up">Sign In / Sign Up</string>
     <string name="profile_guest_signin_switch_title">Sign in to manage profiles</string>
@@ -2563,8 +2636,21 @@ Until then: Use this period for strategic positioning.</string>
     <string name="birth_update_request_body">Please update my birth data:\nDate: %1$s\nTime: %2$s\nCity: %3$s</string>
 
     <!-- Chat reading layout — DepthLayersView, message rating, quota interstitial -->
-    <string name="depth_why_this_prediction">Why this prediction</string>
+    <string name="depth_why_this_prediction">Why this is happening</string>
+    <!-- DepthLayersView timing window row (parity with iOS DepthLayersView) -->
+    <string name="depth_timing_window">Timing window</string>
     <string name="quota_exhausted_title">You\'ve reached today\'s limit</string>
+    <!-- Guest paywall title — mirrors iOS QuotaExhaustedView "Sign up to continue!" header -->
+    <string name="sign_up_to_continue">Sign up to continue!</string>
+    <!-- Fair-use violation interstitial (parity with iOS QuotaExhaustedView fair_use branch) -->
+    <string name="usage_restricted_title">Usage Restricted</string>
+    <string name="fair_use_violation_message">Your account has been flagged for unusual usage patterns. Please contact support to restore access.</string>
+    <string name="fair_use_contact_support">Contact Support</string>
+    <string name="fair_use_email_subject">Fair Use Review Request</string>
+    <string name="fair_use_support_email">support@destinyai.app</string>
+    <!-- Plan benefit labels rendered next to upgrade messaging -->
+    <string name="paid_user_benefit">Unlimited questions, advanced insights, priority support</string>
+    <string name="guest_user_benefit">Sign in to unlock saved history and more questions</string>
 
     <!-- DeleteAccountSheet localization (parity with iOS DeleteAccountSheet) -->
     <string name="delete_account_title">Delete your account</string>
@@ -2650,6 +2736,9 @@ Until then: Use this period for strategic positioning.</string>
     <!-- CompatibilityHistory screen — parity with iOS CompatibilityHistorySheet.swift localized strings. -->
     <string name="compat_history_delete_match_title">Delete Match?</string>
     <string name="compat_history_delete_match_message">This will permanently remove this compatibility result from your history.</string>
+    <string name="compat_history_delete_match_message_format">Are you sure you want to delete \"%1$s\"?</string>
+    <string name="compat_history_group_title_format">%1$s + %2$s</string>
+    <string name="cd_chevron_right">Open</string>
     <string name="compat_history_empty_title">No Match History</string>
     <string name="compat_history_empty_subtitle">Your compatibility analyses will\nappear here after running them.</string>
     <string name="compat_history_disabled_title">History is Turned Off</string>
@@ -2657,4 +2746,96 @@ Until then: Use this period for strategic positioning.</string>
     <string name="compat_history_best_match_cd">Best match</string>
     <string name="compat_history_partners_best_format">%1$d partners • Best: %2$s</string>
     <string name="compat_history_partners_best_dash">—</string>
+    <!-- Kalsarpa Dosha screen — Android-format keys for parity with iOS KalsarpaDoshaSheet.swift -->
+    <string name="kalsarpa_back_cd">Back</string>
+    <string name="kalsarpa_divine_protection_message_named">Neither %1$s nor %2$s has Kaal Sarp Dosha. All planets move freely.</string>
+    <string name="kalsarpa_emotional_harmony_short">Emotional\nHarmony</string>
+    <string name="kalsarpa_smooth_progression_short">Smooth\nProgression</string>
+    <string name="kalsarpa_positive_energy_short">Positive\nEnergy</string>
+    <string name="kalsarpa_analysis_title_named">%1$s — Analysis</string>
+    <string name="kalsarpa_mutual_message_short">Both partners share this karmic pattern. This creates a unique bond where both understand the journey.</string>
+    <string name="kalsarpa_shared_remedies">Shared Remedies</string>
+    <string name="kalsarpa_dosha_full_named">%1$s Kaal Sarp Dosha</string>
+    <string name="kalsarpa_intensity_label">Intensity</string>
+    <string name="kalsarpa_remedies_title">Remedies</string>
+    <string name="kalsarpa_loading">Loading Kalsarpa analysis...</string>
+    <string name="kalsarpa_error">Unable to load Kalsarpa analysis</string>
+
+    <!-- Compatibility Result / Ask Destiny dialog (iOS CompatibilityResultSheets.swift parity). -->
+    <string name="compat_share_compat_chooser">Share compatibility report</string>
+    <string name="compat_ask_about_pair">Ask About %1$s &amp; %2$s</string>
+    <string name="compat_ask_anything_prompt">Ask anything about this compatibility match.</string>
+    <string name="compat_default_q_strengths">What are the strongest points in this match?</string>
+    <string name="compat_default_q_challenges">What challenges should they watch out for?</string>
+    <string name="compat_default_q_marriage">How compatible are they for marriage?</string>
+    <string name="compat_response_style_title">Response Style</string>
+    <string name="compat_response_length_concise_desc">Short, focused answers</string>
+    <string name="compat_response_length_detailed_desc">Longer, more thorough answers</string>
+    <string name="compat_response_length_a11y">Response length</string>
+    <string name="compat_copy_a11y">Copy</string>
+    <string name="compat_copied_a11y">Copied</string>
+    <string name="compat_back_a11y">Back</string>
+    <string name="compat_history_a11y">History</string>
+    <string name="compat_charts_a11y">Charts</string>
+    <string name="compat_share_a11y">Share</string>
+    <string name="compat_new_analysis_a11y">New Analysis</string>
+
+    <!-- Cosmic progress steps for Ask Destiny chat (iOS CompatibilityResultSheets.swift:1599-1604). -->
+    <string name="compat_progress_connecting">Connecting to the cosmos…</string>
+    <string name="compat_progress_mapping_sky">Mapping the sky for you…</string>
+    <string name="compat_progress_reading_planets">Reading planetary positions…</string>
+    <string name="compat_progress_planetary_voice">Listening to the planets…</string>
+    <string name="compat_progress_chart_secrets">Unveiling chart secrets…</string>
+    <string name="compat_progress_deeper_patterns">Tracing deeper karmic patterns…</string>
+    <string name="compat_progress_river_of_time">Flowing through the river of time…</string>
+    <string name="compat_progress_cosmic_windows">Locating cosmic windows…</string>
+    <string name="compat_progress_destiny_shaped">Letting destiny take shape…</string>
+    <string name="compat_progress_oracle_weaving">Weaving the oracle\'s words…</string>
+
+    <!-- Full Report screen (iOS FullReportSheet parity). -->
+    <string name="full_report_share">Share Report</string>
+    <string name="full_report_save_pdf">Save to Files (PDF)</string>
+    <string name="full_report_share_chooser">Share Report</string>
+    <string name="full_report_analysis_default">Analysis</string>
+    <string name="full_report_brand_label">DESTINY AI ASTROLOGY</string>
+    <string name="full_report_born_label">Born: %1$s  •  %2$s</string>
+    <string name="full_report_ashtakoot_label">Ashtakoot Score: %1$d/%2$d</string>
+    <string name="full_report_not_recommended_label">Not recommended due to:</string>
+    <string name="full_report_report_generated_format">Report generated %1$s</string>
+    <string name="full_report_ai_label">AI GENERATED ANALYSIS</string>
+    <string name="full_report_ai_disclaimer">This report is generated by AI based on classical Vedic astrology principles. Results are for guidance and entertainment purposes only. Consult a qualified astrologer for major life decisions.</string>
+    <string name="full_report_copyright">© 2026 Destiny AI Astrology · destinyaiastrology.com</string>
+    <string name="full_report_save_success">Report saved to Downloads</string>
+    <string name="full_report_save_failed">Save failed</string>
+    <string name="full_report_save_failed_format">Save failed: %1$s</string>
+    <string name="full_report_rating_excellent">Excellent</string>
+    <string name="full_report_rating_very_good">Very Good</string>
+    <string name="full_report_rating_good">Good</string>
+    <string name="full_report_rating_average">Average</string>
+    <string name="full_report_rating_not_recommended">Not Recommended</string>
+    <string name="cosmic_progress_a11y">Cosmic progress: %1$s</string>
+    <string name="reading_your_stars">Reading your stars…</string>
+    <string name="chart_complete">Chart complete</string>
+    <string name="a11y_chart_analysis_progress">Chart analysis progress</string>
+    <string name="a11y_destiny_said">Destiny said: %1$s</string>
+    <string name="a11y_you_said">You said: %1$s</string>
+    <!-- Sanskrit display names — proper nouns, used universally in Vedic astrology -->
+    <string name="kuta_sanskrit_varna" tools:ignore="MissingTranslation">Varna</string>
+    <string name="kuta_sanskrit_vashya" tools:ignore="MissingTranslation">Vashya</string>
+    <string name="kuta_sanskrit_tara" tools:ignore="MissingTranslation">Tara</string>
+    <string name="kuta_sanskrit_yoni" tools:ignore="MissingTranslation">Yoni</string>
+    <string name="kuta_sanskrit_maitri" tools:ignore="MissingTranslation">Maitri</string>
+    <string name="kuta_sanskrit_gana" tools:ignore="MissingTranslation">Gana</string>
+    <string name="kuta_sanskrit_bhakoot" tools:ignore="MissingTranslation">Bhakoot</string>
+    <string name="kuta_sanskrit_nadi" tools:ignore="MissingTranslation">Nadi</string>
+    <!-- "<Sanskrit> Koota · score" subtitle -->
+    <string name="kuta_koota_subtitle">%1$s Koota · %2$s</string>
+    <!-- Bubble accessibility id format: orbit_bubble_<key> -->
+    <string name="orbit_bubble_close">Close tooltip</string>
+    <!-- Notification mark/markAll failure surface -->
+    <string name="notification_mark_failed">Couldn\'t update notification. Please try again.</string>
+    <string name="notification_mark_all_failed">Couldn\'t mark all as read. Please try again.</string>
+    <string name="dismiss">Dismiss</string>
+    <!-- History screen — generic error fallback shown in Snackbar when load/mutation fails -->
+    <string name="history_load_error">Something went wrong. Please try again.</string>
 </resources>

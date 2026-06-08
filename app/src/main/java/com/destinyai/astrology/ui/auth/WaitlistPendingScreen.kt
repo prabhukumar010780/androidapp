@@ -70,7 +70,10 @@ fun WaitlistPendingScreen(
 
     CosmicBackground {
         Box(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding(),
             contentAlignment = Alignment.Center,
         ) {
             Column(
@@ -99,10 +102,8 @@ fun WaitlistPendingScreen(
                 )
                 Spacer(Modifier.height(8.dp))
 
-                if (state.userEmail.isNotEmpty()) {
-                    Text(text = state.userEmail, fontSize = 14.sp, color = CreamDim)
-                    Spacer(Modifier.height(8.dp))
-                }
+                // iOS parity (WaitlistPendingView.swift): email is not displayed
+                // under the title; userEmail is only used for the Tally URL.
 
                 Text(
                     text = stringResource(R.string.waitlist_body_1),

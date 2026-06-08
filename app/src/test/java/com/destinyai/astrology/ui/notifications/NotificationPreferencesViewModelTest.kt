@@ -123,7 +123,8 @@ class NotificationPreferencesViewModelTest {
         vm.save()
 
         coVerify { api.updateNotificationPrefs("u@x.com", any()) }
-        coVerify { prefs.setNotifPrefs(any(), any(), any()) }
+        // iOS parity: legacy daily_insight/transits/compatibility booleans are no longer
+        // sent or written from this screen, so prefs.setNotifPrefs is not expected here.
         vm.uiState.test {
             assertTrue(awaitItem().isSaved)
             cancelAndIgnoreRemainingEvents()

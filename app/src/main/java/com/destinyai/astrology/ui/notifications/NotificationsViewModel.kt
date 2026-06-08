@@ -29,7 +29,12 @@ data class NotificationsUiState(
     val isGuest: Boolean = false,
     val hasAlertsFeature: Boolean = false,
     val error: String? = null,
+    /** iOS parity gap fix — surface mark/markAll failures so the UI can render a Snackbar
+     *  instead of silently swallowing the error. Cleared via [clearMarkError]. */
+    val markErrorKind: MarkErrorKind? = null,
 )
+
+enum class MarkErrorKind { MARK_READ, MARK_ALL_READ }
 
 @HiltViewModel
 class NotificationsViewModel @Inject constructor(
@@ -124,7 +129,9 @@ class NotificationsViewModel @Inject constructor(
                         },
                     )
                 }
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+                _uiState.update { it.copy(markErrorKind = MarkErrorKind.MARK_ALL_READ) }
+            }
         }
     }
 
@@ -142,8 +149,15 @@ class NotificationsViewModel @Inject constructor(
                     val unread = updated.count { !it.isRead }
                     state.copy(notifications = updated, unreadCount = unread)
                 }
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+                _uiState.update { it.copy(markErrorKind = MarkErrorKind.MARK_READ) }
+            }
         }
+    }
+
+    /** Clear the transient mark/markAll error after the Snackbar dismisses or the user retries. */
+    fun clearMarkError() {
+        _uiState.update { it.copy(markErrorKind = null) }
     }
 
     private fun nowIso8601(): String {

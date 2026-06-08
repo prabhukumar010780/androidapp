@@ -19,6 +19,8 @@ data class ChatMessage(
     val sources: List<String> = emptyList(),
     /** "Why this is happening" body for DepthLayersView. */
     val advice: String? = null,
+    /** Timing window body rendered as a second row in DepthLayersView (mirrors iOS LocalChatMessage.timing). */
+    val timing: String? = null,
     /** End-to-end execution time in milliseconds. >0 renders as "• 1.4s" pill. */
     val executionTimeMs: Double = 0.0,
     /** Server trace id used for inline rating submission. */

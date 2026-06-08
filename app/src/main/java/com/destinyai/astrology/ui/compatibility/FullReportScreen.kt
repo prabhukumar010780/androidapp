@@ -13,6 +13,8 @@ import android.widget.Toast
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -25,6 +27,7 @@ import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.SaveAlt
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,12 +44,14 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import com.destinyai.astrology.R
 import com.destinyai.astrology.domain.model.CompatibilityResult
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
@@ -95,6 +100,7 @@ fun FullReportScreen(
                     percentage = result.adjustedPercentage,
                     isRecommended = result.isRecommended,
                     adjustedScore = result.adjustedScore,
+                    forSharing = true,
                 )
             }
         }
@@ -120,25 +126,26 @@ fun FullReportScreen(
                 withContext(Dispatchers.IO) {
                     FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 90, it) }
                 }
-                val uri = FileProvider.getUriForFile(
-                    context,
-                    "com.destinyai.astrology.fileprovider",
-                    file,
-                )
+                val authority = "${context.packageName}.fileprovider"
+                val uri = FileProvider.getUriForFile(context, authority, file)
                 val intent = Intent(Intent.ACTION_SEND).apply {
                     type = "image/png"
                     putExtra(Intent.EXTRA_STREAM, uri)
                     putExtra(Intent.EXTRA_TEXT, shareText)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
-                context.startActivity(Intent.createChooser(intent, "Share Report"))
+                context.startActivity(
+                    Intent.createChooser(intent, context.getString(R.string.full_report_share_chooser))
+                )
             } catch (_: Exception) {
                 // Fallback to text-only share
                 val intent = Intent(Intent.ACTION_SEND).apply {
                     type = "text/plain"
                     putExtra(Intent.EXTRA_TEXT, shareText)
                 }
-                context.startActivity(Intent.createChooser(intent, "Share Report"))
+                context.startActivity(
+                    Intent.createChooser(intent, context.getString(R.string.full_report_share_chooser))
+                )
             }
         }
     }
@@ -170,15 +177,22 @@ fun FullReportScreen(
                     withContext(Dispatchers.IO) {
                         FileOutputStream(file).use { it.write(pdfBytes) }
                     }
-                    FileProvider.getUriForFile(context, "com.destinyai.astrology.fileprovider", file)
+                    FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
                 }
                 Toast.makeText(
                     context,
-                    if (savedUri != null) "Report saved to Downloads" else "Save failed",
+                    if (savedUri != null)
+                        context.getString(R.string.full_report_save_success)
+                    else
+                        context.getString(R.string.full_report_save_failed),
                     Toast.LENGTH_SHORT,
                 ).show()
             } catch (e: Exception) {
-                Toast.makeText(context, "Save failed: ${e.message ?: "unknown"}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.full_report_save_failed_format, e.message ?: "unknown"),
+                    Toast.LENGTH_SHORT,
+                ).show()
             }
         }
     }
@@ -190,15 +204,16 @@ fun FullReportScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .statusBarsPadding()
                         .padding(horizontal = 4.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Gold)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.compat_back_a11y), tint = Gold)
                     }
                     Spacer(Modifier.weight(1f))
                     IconButton(onClick = { shareWithImage() }) {
-                        Icon(Icons.Filled.IosShare, contentDescription = "Share", tint = Gold)
+                        Icon(Icons.Filled.IosShare, contentDescription = stringResource(R.string.compat_share_a11y), tint = Gold)
                     }
                 }
 
@@ -229,7 +244,7 @@ fun FullReportScreen(
                     ) {
                         Icon(Icons.Filled.SaveAlt, contentDescription = null, tint = CreamText, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(12.dp))
-                        Text("Share Report", fontSize = 16.sp, color = CreamText, modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.full_report_share), fontSize = 16.sp, color = CreamText, modifier = Modifier.weight(1f))
                         Icon(Icons.Filled.IosShare, contentDescription = null, tint = CreamDim, modifier = Modifier.size(14.dp))
                     }
 
@@ -247,13 +262,13 @@ fun FullReportScreen(
                     ) {
                         Icon(Icons.Filled.PictureAsPdf, contentDescription = null, tint = CreamText, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(12.dp))
-                        Text("Save to Files (PDF)", fontSize = 16.sp, color = CreamText, modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.full_report_save_pdf), fontSize = 16.sp, color = CreamText, modifier = Modifier.weight(1f))
                         Icon(Icons.Filled.SaveAlt, contentDescription = null, tint = CreamDim, modifier = Modifier.size(14.dp))
                     }
 
                     // 3. Section cards (parsed from LLM output)
                     if (sections.isEmpty()) {
-                        SectionCard(emoji = "📋", title = "Analysis", content = result.summary)
+                        SectionCard(emoji = "📋", title = stringResource(R.string.full_report_analysis_default), content = result.summary)
                     } else {
                         sections.forEach { section ->
                             SectionCard(
@@ -305,7 +320,7 @@ private fun BrandedHeaderCard(result: CompatibilityResult) {
     }
     val displayScore = result.adjustedScore ?: result.totalScore
     val stars = starCount(result)
-    val rating = ratingText(result)
+    val rating = stringResource(ratingTextResId(result))
     val reportDate = remember {
         SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()).format(Date())
     }
@@ -328,7 +343,7 @@ private fun BrandedHeaderCard(result: CompatibilityResult) {
     ) {
         // Brand label
         Text(
-            text = "DESTINY AI ASTROLOGY",
+            text = stringResource(R.string.full_report_brand_label),
             fontSize = 10.sp,
             fontWeight = FontWeight.Medium,
             color = Gold.copy(alpha = 0.6f),
@@ -359,7 +374,7 @@ private fun BrandedHeaderCard(result: CompatibilityResult) {
         // Birth dates
         if (result.boyDob != null && result.girlDob != null) {
             Text(
-                text = "Born: ${result.boyDob}  •  ${result.girlDob}",
+                text = stringResource(R.string.full_report_born_label, result.boyDob, result.girlDob),
                 fontSize = 11.sp,
                 color = CreamDim,
             )
@@ -431,7 +446,7 @@ private fun BrandedHeaderCard(result: CompatibilityResult) {
             )
         } else {
             Text(
-                text = "Ashtakoot Score: ${result.totalScore}/${result.maxScore}",
+                text = stringResource(R.string.full_report_ashtakoot_label, result.totalScore, result.maxScore),
                 fontSize = 10.sp,
                 color = CreamDim.copy(alpha = 0.7f),
             )
@@ -441,7 +456,7 @@ private fun BrandedHeaderCard(result: CompatibilityResult) {
         if (!result.isRecommended && result.rejectionReasons.isNotEmpty()) {
             Spacer(Modifier.height(2.dp))
             Text(
-                text = "Not recommended due to:",
+                text = stringResource(R.string.full_report_not_recommended_label),
                 fontSize = 10.sp,
                 color = errorColor.copy(alpha = 0.7f),
             )
@@ -465,7 +480,7 @@ private fun BrandedHeaderCard(result: CompatibilityResult) {
 
         // Report date
         Text(
-            text = "Report generated $reportDate",
+            text = stringResource(R.string.full_report_report_generated_format, reportDate),
             fontSize = 10.sp,
             color = CreamDim.copy(alpha = 0.6f),
         )
@@ -512,13 +527,8 @@ private fun SectionCard(emoji: String, title: String, content: String) {
                 ),
         )
 
-        // Content with basic bold markdown
-        Text(
-            text = parseMarkdownBold(content),
-            style = MaterialTheme.typography.bodyMedium,
-            color = CreamText,
-            lineHeight = 22.sp,
-        )
+        // Content — full block-based markdown renderer (mirrors iOS MarkdownTextView)
+        ReportMarkdownContent(content = content)
     }
 }
 
@@ -550,7 +560,7 @@ private fun DisclaimerFooter() {
         ) {
             Text("ℹ️", fontSize = 11.sp)
             Text(
-                text = "AI GENERATED ANALYSIS",
+                text = stringResource(R.string.full_report_ai_label),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = Gold.copy(alpha = 0.6f),
@@ -558,9 +568,7 @@ private fun DisclaimerFooter() {
         }
 
         Text(
-            text = "This report is generated by AI based on classical Vedic astrology principles. " +
-                "Results are for guidance and entertainment purposes only. " +
-                "Consult a qualified astrologer for major life decisions.",
+            text = stringResource(R.string.full_report_ai_disclaimer),
             fontSize = 10.sp,
             color = CreamDim.copy(alpha = 0.5f),
             lineHeight = 15.sp,
@@ -568,10 +576,236 @@ private fun DisclaimerFooter() {
         )
 
         Text(
-            text = "© 2026 Destiny AI Astrology · destinyaiastrology.com",
+            text = stringResource(R.string.full_report_copyright),
             fontSize = 9.sp,
             color = CreamDim.copy(alpha = 0.4f),
         )
+    }
+}
+
+// ─── Full Markdown Renderer (mirrors iOS MarkdownTextView) ───────────────────
+
+private sealed class MdBlock {
+    data class Header(val level: Int, val text: String) : MdBlock()
+    data class Paragraph(val text: String) : MdBlock()
+    data class BulletList(val items: List<String>) : MdBlock()
+    data class NumberedList(val items: List<String>) : MdBlock()
+    data class TableBlock(val headers: List<String>, val rows: List<List<String>>) : MdBlock()
+    data class Divider(val dummy: Unit = Unit) : MdBlock()
+}
+
+private fun parseReportBlocks(content: String): List<MdBlock> {
+    val blocks = mutableListOf<MdBlock>()
+    val lines = content.split("\n")
+    var i = 0
+    while (i < lines.count()) {
+        val trimmed = lines[i].trim()
+        if (trimmed.isEmpty()) { i++; continue }
+
+        // Horizontal rule
+        if (trimmed == "---" || trimmed == "***" || trimmed == "___") {
+            blocks += MdBlock.Divider(); i++; continue
+        }
+        // Header
+        if (trimmed.startsWith("#")) {
+            val level = trimmed.indexOfFirst { it != '#' }.coerceAtLeast(1)
+            val text = trimmed.trimStart('#').trim()
+            blocks += MdBlock.Header(level, text); i++; continue
+        }
+        // Table: line has | and next line is a separator like |---|
+        if (trimmed.contains("|") && i + 1 < lines.size) {
+            val next = lines[i + 1].trim()
+            if (next.contains("---") && next.contains("|")) {
+                // Parse table
+                val headerCells = trimmed.trim('|').split("|").map { it.trim() }
+                i += 2 // skip header + separator
+                val rows = mutableListOf<List<String>>()
+                while (i < lines.size) {
+                    val row = lines[i].trim()
+                    if (!row.contains("|")) break
+                    rows += row.trim('|').split("|").map { it.trim() }
+                    i++
+                }
+                blocks += MdBlock.TableBlock(headerCells, rows); continue
+            }
+        }
+        // Bullet list
+        if (trimmed.startsWith("- ") || trimmed.startsWith("* ") || trimmed.startsWith("• ")) {
+            val items = mutableListOf<String>()
+            while (i < lines.size) {
+                val l = lines[i].trim()
+                when {
+                    l.startsWith("- ") -> { items += l.removePrefix("- "); i++ }
+                    l.startsWith("* ") -> { items += l.removePrefix("* "); i++ }
+                    l.startsWith("• ") -> { items += l.removePrefix("• "); i++ }
+                    l.isEmpty() -> { i++; break }
+                    else -> break
+                }
+            }
+            if (items.isNotEmpty()) blocks += MdBlock.BulletList(items); continue
+        }
+        // Numbered list
+        val numMatch = Regex("^\\d+\\.\\s(.+)").find(trimmed)
+        if (numMatch != null) {
+            val items = mutableListOf<String>()
+            while (i < lines.size) {
+                val l = lines[i].trim()
+                val m = Regex("^\\d+\\.\\s(.+)").find(l)
+                when {
+                    m != null -> { items += m.groupValues[1]; i++ }
+                    l.isEmpty() -> { i++; break }
+                    else -> break
+                }
+            }
+            if (items.isNotEmpty()) blocks += MdBlock.NumberedList(items); continue
+        }
+        // Paragraph — accumulate consecutive non-special lines
+        val paraLines = mutableListOf<String>()
+        while (i < lines.size) {
+            val l = lines[i].trim()
+            if (l.isEmpty() || l.startsWith("#") || l.startsWith("- ") || l.startsWith("* ") ||
+                l.startsWith("• ") || l == "---" || l == "***" ||
+                Regex("^\\d+\\.\\s").containsMatchIn(l) ||
+                (l.contains("|") && i + 1 < lines.size && lines[i + 1].contains("---") && lines[i + 1].contains("|"))
+            ) break
+            paraLines += l; i++
+        }
+        if (paraLines.isNotEmpty()) blocks += MdBlock.Paragraph(paraLines.joinToString("\n"))
+    }
+    return blocks
+}
+
+/** Inline bold/italic/code AnnotatedString — no table pipe replacement */
+private fun inlineAnnotated(text: String, baseBold: Boolean = false): AnnotatedString = buildAnnotatedString {
+    var j = 0
+    while (j < text.length) {
+        if (j + 1 < text.length && text[j] == '*' && text[j + 1] == '*') {
+            val end = text.indexOf("**", j + 2)
+            if (end > 0) {
+                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(text.substring(j + 2, end)) }
+                j = end + 2; continue
+            }
+        }
+        if (text[j] == '*') {
+            val end = text.indexOf('*', j + 1)
+            if (end > 0) {
+                withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(text.substring(j + 1, end)) }
+                j = end + 1; continue
+            }
+        }
+        if (baseBold) {
+            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(text[j]) }
+        } else {
+            append(text[j])
+        }
+        j++
+    }
+}
+
+@Composable
+private fun ReportMarkdownContent(content: String) {
+    val blocks = remember(content) { parseReportBlocks(content) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        blocks.forEach { block ->
+            when (block) {
+                is MdBlock.Header -> Text(
+                    text = inlineAnnotated(block.text, baseBold = true),
+                    fontSize = when (block.level) { 1 -> 16.sp; 2 -> 15.sp; else -> 14.sp },
+                    fontWeight = FontWeight.Bold,
+                    color = if (block.level <= 2) Gold else CreamText,
+                    lineHeight = 22.sp,
+                )
+                is MdBlock.Paragraph -> Text(
+                    text = inlineAnnotated(block.text),
+                    style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                    color = CreamText,
+                    lineHeight = 22.sp,
+                )
+                is MdBlock.BulletList -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    block.items.forEach { item ->
+                        androidx.compose.foundation.layout.Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Text("•", fontSize = 14.sp, color = Gold.copy(alpha = 0.8f))
+                            Text(
+                                text = inlineAnnotated(item),
+                                style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                                color = CreamText,
+                                lineHeight = 20.sp,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                }
+                is MdBlock.NumberedList -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    block.items.forEachIndexed { idx, item ->
+                        androidx.compose.foundation.layout.Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Text("${idx + 1}.", fontSize = 13.sp, color = Gold.copy(alpha = 0.8f),
+                                modifier = Modifier.width(20.dp))
+                            Text(
+                                text = inlineAnnotated(item),
+                                style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                                color = CreamText,
+                                lineHeight = 20.sp,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                }
+                is MdBlock.TableBlock -> ReportTable(block)
+                is MdBlock.Divider -> Box(
+                    modifier = Modifier.fillMaxWidth().height(1.dp)
+                        .background(Gold.copy(alpha = 0.2f))
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReportTable(table: MdBlock.TableBlock) {
+    val colWidths = remember(table) {
+        val cols = table.headers.size.coerceAtLeast(1)
+        (0 until cols).map { col ->
+            val headerLen = table.headers.getOrNull(col)?.length ?: 0
+            val maxRowLen = table.rows.maxOfOrNull { row -> row.getOrNull(col)?.length ?: 0 } ?: 0
+            ((headerLen.coerceAtLeast(maxRowLen) * 8) + 24).dp
+        }
+    }
+    androidx.compose.foundation.layout.Column(
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
+            .border(1.dp, Gold.copy(alpha = 0.2f), androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp)),
+    ) {
+        // Header row
+        androidx.compose.foundation.layout.Row(
+            modifier = Modifier.fillMaxWidth().background(Gold.copy(alpha = 0.15f)),
+        ) {
+            table.headers.forEachIndexed { idx, h ->
+                Text(
+                    text = h,
+                    modifier = Modifier.width(colWidths.getOrElse(idx) { 80.dp }).padding(horizontal = 8.dp, vertical = 6.dp),
+                    fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Gold,
+                )
+            }
+        }
+        // Data rows
+        table.rows.forEachIndexed { rowIdx, row ->
+            val bg = if (rowIdx % 2 == 0) Color.Transparent else Color.White.copy(alpha = 0.04f)
+            androidx.compose.foundation.layout.Row(
+                modifier = Modifier.fillMaxWidth().background(bg),
+            ) {
+                row.forEachIndexed { idx, cell ->
+                    Text(
+                        text = cell,
+                        modifier = Modifier.width(colWidths.getOrElse(idx) { 80.dp }).padding(horizontal = 8.dp, vertical = 5.dp),
+                        fontSize = 11.sp, color = CreamText, lineHeight = 16.sp,
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -669,6 +903,24 @@ private fun ratingText(result: CompatibilityResult): String {
         pct >= 60 -> "Good"
         pct >= 50 -> "Average"
         else -> "Not Recommended"
+    }
+}
+
+/**
+ * iOS parity (FullReportSheet.swift:20-28 ratingText): localized rating label
+ * for the on-screen header. Non-composable callers (PDF renderer) keep using
+ * [ratingText] which returns the English fallback to ensure the PDF stays
+ * uniform regardless of system locale.
+ */
+private fun ratingTextResId(result: CompatibilityResult): Int {
+    if (!result.isRecommended) return R.string.full_report_rating_not_recommended
+    val pct = result.adjustedPercentage * 100
+    return when {
+        pct >= 90 -> R.string.full_report_rating_excellent
+        pct >= 75 -> R.string.full_report_rating_very_good
+        pct >= 60 -> R.string.full_report_rating_good
+        pct >= 50 -> R.string.full_report_rating_average
+        else -> R.string.full_report_rating_not_recommended
     }
 }
 

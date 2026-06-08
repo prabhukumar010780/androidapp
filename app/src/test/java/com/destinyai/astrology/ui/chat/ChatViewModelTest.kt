@@ -28,6 +28,7 @@ class ChatViewModelTest {
 
     private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var repository: ChatRepository
+    private lateinit var authRepository: com.destinyai.astrology.data.repository.AuthRepository
     private lateinit var api: AstroApiService
     private lateinit var prefs: UserPreferences
     private lateinit var quotaManager: QuotaManager
@@ -44,6 +45,7 @@ class ChatViewModelTest {
     @BeforeEach
     fun setUp() {
         repository = mockk(relaxed = true)
+        authRepository = mockk(relaxed = true)
         api = mockk(relaxed = true)
         prefs = mockk(relaxed = true)
         quotaManager = mockk(relaxed = true)
@@ -62,7 +64,7 @@ class ChatViewModelTest {
         // append + repository.sendMessage call site can be exercised. Tests that
         // specifically exercise the quota path stub canAccessFeature directly.
         coEvery { prefs.getUserEmail() } returns null
-        viewModel = ChatViewModel(repository, api, prefs, quotaManager, profileChangeBus, appContext)
+        viewModel = ChatViewModel(repository, authRepository, api, prefs, quotaManager, profileChangeBus, mockk(relaxed = true), appContext)
     }
 
     // --- Init ---

@@ -34,6 +34,7 @@ class HomeViewModelTest {
     private lateinit var prefs: UserPreferences
     private lateinit var api: AstroApiService
     private lateinit var profileChangeBus: ProfileChangeBus
+    private lateinit var profileContextManager: com.destinyai.astrology.services.ProfileContextManager
     private lateinit var quotaManager: QuotaManager
     private lateinit var networkMonitor: NetworkMonitor
     private lateinit var viewModel: HomeViewModel
@@ -54,6 +55,7 @@ class HomeViewModelTest {
         prefs = mockk(relaxed = true)
         api = mockk(relaxed = true)
         profileChangeBus = mockk(relaxed = true)
+        profileContextManager = mockk(relaxed = true)
         quotaManager = mockk(relaxed = true)
         networkMonitor = mockk(relaxed = true)
         every { networkMonitor.isOnline } returns flowOf(true)
@@ -63,9 +65,11 @@ class HomeViewModelTest {
         // flow that suspends forever on collect, which is what we want for tests that
         // don't simulate profile switches.
         every { profileChangeBus.events } returns kotlinx.coroutines.flow.MutableSharedFlow()
+        coEvery { profileContextManager.activeBirthData() } returns null
+        coEvery { profileContextManager.activeProfileName() } returns "Guest"
         coEvery { prefs.getUserEmail() } returns null
         coEvery { prefs.getBirthProfile() } returns null
-        viewModel = HomeViewModel(repository, prefs, api, profileChangeBus, quotaManager, networkMonitor)
+        viewModel = HomeViewModel(repository, prefs, api, profileChangeBus, profileContextManager, quotaManager, mockk(relaxed = true), networkMonitor)
     }
 
     // --- Defaults ---
@@ -74,7 +78,7 @@ class HomeViewModelTest {
     fun `init sets quota to plan default (10 for free registered)`() = runTest {
         coEvery { repository.getDailyQuota() } returns 10
 
-        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, quotaManager, networkMonitor)
+        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, profileContextManager, quotaManager, mockk(relaxed = true), networkMonitor)
 
         vm.uiState.test {
             assertEquals(10, awaitItem().dailyQuota)
@@ -117,7 +121,7 @@ class HomeViewModelTest {
             isGuestEmail = true,
         )
 
-        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, quotaManager, networkMonitor)
+        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, profileContextManager, quotaManager, mockk(relaxed = true), networkMonitor)
 
         vm.uiState.test {
             assertEquals("Guest", awaitItem().displayName)
@@ -132,7 +136,7 @@ class HomeViewModelTest {
             name = "Prabhu Kushwaha",
         )
 
-        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, quotaManager, networkMonitor)
+        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, profileContextManager, quotaManager, mockk(relaxed = true), networkMonitor)
 
         vm.uiState.test {
             assertEquals("Prabhu", awaitItem().displayName)
@@ -146,7 +150,7 @@ class HomeViewModelTest {
         coEvery { repository.getDailyQuota() } returns 10
         coEvery { repository.getDailyUsed() } returns 5
 
-        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, quotaManager, networkMonitor)
+        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, profileContextManager, quotaManager, mockk(relaxed = true), networkMonitor)
 
         vm.uiState.test {
             assertEquals(0.5f, awaitItem().quotaProgress, 0.001f)
@@ -186,7 +190,7 @@ class HomeViewModelTest {
         )
         coEvery { repository.getDailyQuota() } returns -1
 
-        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, quotaManager, networkMonitor)
+        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, profileContextManager, quotaManager, mockk(relaxed = true), networkMonitor)
 
         vm.uiState.test {
             assertTrue(awaitItem().isUnlimited)
@@ -220,7 +224,7 @@ class HomeViewModelTest {
 
     @Test
     fun `loadHomeData populates dailyInsight`() = runTest {
-        coEvery { repository.getDailyInsight() } returns "A powerful day for decisions."
+        coEvery { repository.getDailyInsight(any(), any()) } returns "A powerful day for decisions."
 
         viewModel.loadHomeData()
 
@@ -251,7 +255,7 @@ class HomeViewModelTest {
             latitude = 28.6,
             longitude = 77.2,
         )
-        coEvery { repository.getRichHomeData(any(), any()) } returns fakeRichData
+        coEvery { repository.getRichHomeData(any(), any(), any()) } returns fakeRichData
 
         viewModel.loadHomeData()
 

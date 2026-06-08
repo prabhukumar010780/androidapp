@@ -62,6 +62,7 @@ class CompatibilityViewModelTest {
     private lateinit var compatibilityRepo: CompatibilityRepository
     private lateinit var historyDao: CompatibilityHistoryDao
     private lateinit var chatRepository: com.destinyai.astrology.data.repository.ChatRepository
+    private lateinit var authRepository: com.destinyai.astrology.data.repository.AuthRepository
     private lateinit var vm: CompatibilityViewModel
 
     @BeforeAll
@@ -81,6 +82,7 @@ class CompatibilityViewModelTest {
         compatibilityRepo = mockk(relaxed = true)
         historyDao = mockk(relaxed = true)
         chatRepository = mockk(relaxed = true)
+        authRepository = mockk(relaxed = true)
         coEvery { prefs.getUserEmail() } returns "u@x.com"
         coEvery { prefs.getUserName() } returns "Prabhu"
         coEvery { prefs.getBirthProfile() } returns fakeBirthProfile()
@@ -91,7 +93,7 @@ class CompatibilityViewModelTest {
         // routes analyze() into the paywall branch and short-circuits the SSE consumer.
         coEvery { api.canAccessFeature(any(), any(), any(), any()) } returns
             com.destinyai.astrology.data.remote.CanAccessResponse(allowed = true)
-        vm = CompatibilityViewModel(api, prefs, compatibilityRepo, historyDao, chatRepository)
+        vm = CompatibilityViewModel(api, prefs, compatibilityRepo, historyDao, chatRepository, authRepository, mockk(relaxed = true), mockk(relaxed = true))
     }
 
     @Test

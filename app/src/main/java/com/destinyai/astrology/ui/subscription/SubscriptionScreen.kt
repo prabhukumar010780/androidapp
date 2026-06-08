@@ -235,6 +235,24 @@ fun SubscriptionScreen(
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = Gold, modifier = Modifier.size(28.dp))
                 }
+            } else if (!state.isLoading && displayPlans.isEmpty()) {
+                // iOS parity (SubscriptionView.swift:33-36) — explicit
+                // "no_plans_available" empty state when the backend returned
+                // zero paid plans (e.g. only free tier seeded).
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .semantics { testTag = "subscription_empty_state" },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = stringResource(R.string.no_plans_available),
+                        color = CreamDim,
+                        fontSize = 14.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(40.dp),
+                    )
+                }
             } else {
                 // iOS parity (SubscriptionView.swift:77-82): pull-to-refresh
                 // wrapper so users with a redeemed offer code or lagged Play
@@ -249,28 +267,20 @@ fun SubscriptionScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     item {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Text(text = "✦", fontSize = 56.sp, color = Gold)
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                text = stringResource(R.string.unlock_premium),
-                                fontSize = 22.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = CanelaFontFamily,
-                                color = Gold,
-                                textAlign = TextAlign.Center,
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                text = stringResource(R.string.get_cosmic_guidance),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = CreamDim,
-                                textAlign = TextAlign.Center,
-                            )
-                        }
+                        // iOS parity (SubscriptionView.swift:39-44): single
+                        // centered subheader "Upgrade to keep going..." instead
+                        // of a separate icon + title + body block.
+                        Text(
+                            text = stringResource(R.string.upgrade_to_keep_going),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontSize = 16.sp,
+                            color = CreamDim,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp)
+                                .semantics { testTag = "subscription_subheader" },
+                        )
                     }
 
                     // iOS BUG-2 parity (SubscriptionView.swift:243-276):
@@ -514,6 +524,16 @@ fun SubscriptionScreen(
                                                         )
                                                     }
                                                 }
+                                            }
+                                            // iOS parity (SubscriptionView.swift:638-642):
+                                            // plan.description rendered below the plan name.
+                                            plan.description?.takeIf { it.isNotBlank() }?.let { desc ->
+                                                Spacer(Modifier.height(2.dp))
+                                                Text(
+                                                    text = desc,
+                                                    fontSize = 14.sp,
+                                                    color = CreamDim,
+                                                )
                                             }
                                             if (isYearly) {
                                                 Spacer(Modifier.height(2.dp))

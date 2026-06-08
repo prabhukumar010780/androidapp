@@ -21,6 +21,7 @@ import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
+import com.destinyai.astrology.ui.theme.TextTertiary
 
 private data class ChartStyleOption(
     val key: String,
@@ -93,6 +94,16 @@ fun ChartStylePickerSheet(
 
             HorizontalDivider(color = Gold.copy(alpha = 0.1f), thickness = 0.5.dp)
 
+            // iOS parity (ChartStylePickerSheet.swift:67): section header above the picker list.
+            Text(
+                text = stringResource(R.string.select_chart_style),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Gold,
+                modifier = Modifier
+                    .padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 8.dp),
+            )
+
             chartStyleOptions.forEach { option ->
                 val isSelected = currentStyle == option.key
                 Row(
@@ -101,7 +112,6 @@ fun ChartStylePickerSheet(
                         .clickable {
                             haptic.light()
                             onSelect(option.key)
-                            onDismiss()
                         }
                         .padding(horizontal = 24.dp, vertical = 16.dp)
                         .testTag("chart_style_${option.key}"),
@@ -139,6 +149,15 @@ fun ChartStylePickerSheet(
                     )
                 }
             }
+
+            // iOS parity (ChartStylePickerSheet.swift:71): footer caption below the chart style list.
+            Text(
+                text = stringResource(R.string.chart_style_note),
+                fontSize = 13.sp,
+                color = TextTertiary,
+                modifier = Modifier
+                    .padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 4.dp),
+            )
         }
     }
 }

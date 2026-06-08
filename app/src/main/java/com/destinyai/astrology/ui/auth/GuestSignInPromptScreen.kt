@@ -25,12 +25,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.destinyai.astrology.R
 import com.destinyai.astrology.services.HapticManager
+import com.destinyai.astrology.services.SoundManager
+import com.destinyai.astrology.ui.theme.AuthDimens
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.components.auth.AuthOrbitalRings
 import com.destinyai.astrology.ui.theme.CosmicBackground
@@ -38,16 +42,30 @@ import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 
 @Composable
 fun GuestSignInPromptScreen(
     message: String? = null,
     onSignIn: () -> Unit,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
     provider: String? = null,
 ) {
     val context = LocalContext.current
     val haptic = remember { HapticManager(context) }
+    // iOS parity (GuestSignInPromptView.swift:261): SoundManager.shared.playButtonTap()
+    // is invoked alongside haptics on every sign-in / back tap. Pull the singleton
+    // SoundManager via the Hilt EntryPoint so this composable doesn't need a
+    // ViewModel injection.
+    val soundManager = remember(context) {
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            GuestPromptSoundEntryPoint::class.java,
+        ).soundManager()
+    }
     // If the original account was created with Apple Sign-In (iOS-only path), the
     // user cannot complete sign-in here — Apple has no native Android UI and we no
     // longer launch the OAuth web fallback. Surface a contact-support message so
@@ -65,6 +83,7 @@ fun GuestSignInPromptScreen(
     // (or unmounting this screen) when the async flow completes.
     val handleGoogle = {
         haptic.playButtonTap()
+        soundManager.playButtonTap()
         isSigningIn = true
         onSignIn()
     }
@@ -98,6 +117,30 @@ fun GuestSignInPromptScreen(
         label = "logoPulse",
     )
 
+    // iOS parity (GuestSignInPromptView.swift:46-66, 246-249): content section fades
+    // in (opacity 0->1) and slides up (offset 20->0) on first composition. Driven by
+    // a one-shot LaunchedEffect that flips a target state to trigger animateFloatAsState.
+    var contentVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { contentVisible = true }
+    val contentOpacity by animateFloatAsState(
+        targetValue = if (contentVisible) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = AuthDimens.entranceDurationMs,
+            delayMillis = AuthDimens.entranceDelayMs,
+            easing = FastOutSlowInEasing,
+        ),
+        label = "contentOpacity",
+    )
+    val contentOffsetY by animateFloatAsState(
+        targetValue = if (contentVisible) 0f else 20f,
+        animationSpec = tween(
+            durationMillis = AuthDimens.entranceDurationMs,
+            delayMillis = AuthDimens.entranceDelayMs,
+            easing = FastOutSlowInEasing,
+        ),
+        label = "contentOffset",
+    )
+
     CosmicBackground {
         // Ambient orbital rings overlay (0.25 opacity like iOS)
         Box(
@@ -112,6 +155,8 @@ fun GuestSignInPromptScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
                 .padding(horizontal = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
@@ -187,6 +232,10 @@ fun GuestSignInPromptScreen(
                 fontFamily = CanelaFontFamily,
                 color = Gold,
                 textAlign = TextAlign.Center,
+                modifier = Modifier.graphicsLayer {
+                    alpha = contentOpacity
+                    translationY = contentOffsetY
+                },
             )
             Spacer(Modifier.height(12.dp))
             Text(
@@ -195,6 +244,10 @@ fun GuestSignInPromptScreen(
                 color = CreamDim,
                 textAlign = TextAlign.Center,
                 lineHeight = 24.sp,
+                modifier = Modifier.graphicsLayer {
+                    alpha = contentOpacity
+                    translationY = contentOffsetY
+                },
             )
 
             Spacer(Modifier.weight(1f))
@@ -211,7 +264,12 @@ fun GuestSignInPromptScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(54.dp)
-                    .testTag("guest_prompt_google_button"),
+                    .graphicsLayer {
+                        alpha = contentOpacity
+                        translationY = contentOffsetY
+                    }
+                    .testTag("guest_prompt_google_button")
+                    .semantics { contentDescription = "guest_prompt_google_button" },
                 shape = RoundedCornerShape(14.dp),
                 enabled = !isSigningIn,
                 border = ButtonDefaults.outlinedButtonBorder(enabled = !isSigningIn).copy(
@@ -250,6 +308,7 @@ fun GuestSignInPromptScreen(
                 OutlinedButton(
                     onClick = {
                         haptic.playButtonTap()
+                        soundManager.playButtonTap()
                         val mailto = "mailto:support@destinyaiastrology.com" +
                             "?subject=" + Uri.encode("Apple account access from Android") +
                             "&body=" + Uri.encode(
@@ -266,7 +325,12 @@ fun GuestSignInPromptScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(54.dp)
-                        .testTag("guest_prompt_apple_support_button"),
+                        .graphicsLayer {
+                            alpha = contentOpacity
+                            translationY = contentOffsetY
+                        }
+                        .testTag("guest_prompt_apple_support_button")
+                        .semantics { contentDescription = "guest_prompt_apple_support_button" },
                     shape = RoundedCornerShape(14.dp),
                     enabled = !isSigningIn,
                     border = ButtonDefaults.outlinedButtonBorder(enabled = !isSigningIn).copy(
@@ -289,27 +353,35 @@ fun GuestSignInPromptScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            // Back button — gold with chevron (matching iOS)
-            TextButton(
-                onClick = {
-                    haptic.light()
-                    onBack()
-                },
-                modifier = Modifier.testTag("guest_prompt_back"),
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = null,
-                    tint = Gold,
-                    modifier = Modifier.size(16.dp),
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    text = stringResource(R.string.action_back),
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Gold,
-                )
+            // iOS parity (GuestSignInPromptView.swift:62-65): back button is rendered
+            // only when onBack is non-nil. Opacity animates with the rest of the
+            // content (no offset on iOS — matched here).
+            if (onBack != null) {
+                TextButton(
+                    onClick = {
+                        haptic.light()
+                        soundManager.playButtonTap()
+                        onBack()
+                    },
+                    modifier = Modifier
+                        .graphicsLayer { alpha = contentOpacity }
+                        .testTag("guest_prompt_back")
+                        .semantics { contentDescription = "guest_prompt_back" },
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = null,
+                        tint = Gold,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = stringResource(R.string.action_back),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Gold,
+                    )
+                }
             }
 
             Spacer(Modifier.height(32.dp))
@@ -344,4 +416,13 @@ fun GuestSignInPromptScreen(
             }
         }
     }
+}
+
+// Hilt EntryPoint that exposes the application-scoped SoundManager to this
+// non-Hilt composable. Mirrors the HomeSoundEntryPoint pattern in HomeScreen.kt
+// — keeps SoundManager out of the BirthDataViewModel / MainScreen call chain.
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface GuestPromptSoundEntryPoint {
+    fun soundManager(): SoundManager
 }

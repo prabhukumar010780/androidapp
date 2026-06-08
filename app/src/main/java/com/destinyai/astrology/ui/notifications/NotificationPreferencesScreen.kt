@@ -3,6 +3,7 @@ package com.destinyai.astrology.ui.notifications
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
@@ -35,6 +37,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -45,8 +49,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.destinyai.astrology.BuildConfig
 import com.destinyai.astrology.R
 import com.destinyai.astrology.data.local.prefs.AlertItem
+import com.destinyai.astrology.services.FcmTokenManager
 import com.destinyai.astrology.services.HapticManager
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
@@ -54,6 +60,11 @@ import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
+import com.google.firebase.messaging.FirebaseMessaging
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.launch
 
 private val suggestions: List<Int> = listOf(
@@ -62,6 +73,19 @@ private val suggestions: List<Int> = listOf(
     R.string.notif_suggestion_compat_results,
     R.string.notif_suggestion_renewal,
 )
+
+/**
+ * iOS parity (NotificationPreferencesSheet.swift:357-359): on permission grant the iOS
+ * sheet calls `UIApplication.shared.registerForRemoteNotifications()`. Android counterpart
+ * is fetching the FCM token and POSTing it to the backend via [FcmTokenManager]. Since
+ * this Composable runs outside a Hilt-aware ViewModel scope, we use a Hilt EntryPoint to
+ * obtain the singleton.
+ */
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+internal interface FcmTokenManagerEntryPoint {
+    fun fcmTokenManager(): FcmTokenManager
+}
 
 /**
  * Returns true when the OS will deliver notifications: POST_NOTIFICATIONS granted on Android 13+
@@ -96,6 +120,13 @@ fun NotificationPreferencesScreen(
     var editingAlert by remember { mutableStateOf<AlertItem?>(null) }
     // iOS parity (NotificationPreferencesSheet.swift:225-239): require explicit confirm before deleting an alert.
     var alertToDelete by remember { mutableStateOf<AlertItem?>(null) }
+    // iOS parity (NotificationPreferencesSheet.swift:43-46): the body is hidden behind a
+    // full-screen ProgressView during the first load. Once the first load completes,
+    // subsequent isLoading flips (e.g. during save) drive the in-toolbar spinner only.
+    var hasLoadedOnce by remember { mutableStateOf(false) }
+    LaunchedEffect(state.isLoading) {
+        if (!state.isLoading) hasLoadedOnce = true
+    }
 
     // R2-S8: Android 13+ runtime permission launcher (mirrors iOS requestPermission)
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -104,6 +135,17 @@ fun NotificationPreferencesScreen(
         viewModel.setPermissionGranted(granted && NotificationManagerCompat.from(context).areNotificationsEnabled())
         if (granted) {
             viewModel.setPushEnabled(true)
+            // iOS parity (NotificationPreferencesSheet.swift:357-359): immediately register
+            // for remote notifications after permission is granted. On Android we fetch a
+            // fresh FCM token and POST it to the backend so pushes can be delivered.
+            val fcmTokenManager = EntryPointAccessors
+                .fromApplication(context.applicationContext, FcmTokenManagerEntryPoint::class.java)
+                .fcmTokenManager()
+            FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
+                if (!token.isNullOrBlank()) {
+                    scope.launch { fcmTokenManager.registerToken(token, BuildConfig.VERSION_NAME) }
+                }
+            }
         }
     }
 
@@ -119,6 +161,10 @@ fun NotificationPreferencesScreen(
     }
 
     LaunchedEffect(Unit) {
+        // iOS parity (NotificationPreferencesSheet.swift): clear any stale isSaved/error
+        // flags from a previous lifecycle so the screen does not auto-dismiss on re-entry.
+        viewModel.resetIsSaved()
+        viewModel.clearError()
         viewModel.setPermissionGranted(isNotificationsEffectivelyEnabled(context))
         viewModel.loadPrefs()
     }
@@ -134,6 +180,8 @@ fun NotificationPreferencesScreen(
                 )
             }
             haptic.success()
+            // Consume the flag so it can't fire again next time the screen is opened.
+            viewModel.resetIsSaved()
             onBack()
         }
     }
@@ -191,6 +239,32 @@ fun NotificationPreferencesScreen(
         )
     }
 
+    // iOS parity (NotificationPreferencesSheet.swift:217-224): save errors render as a
+    // modal alert with a single OK action. Dismiss clears the error so it cannot persist
+    // silently across the screen lifecycle.
+    state.error?.let { errorMessage ->
+        AlertDialog(
+            onDismissRequest = { viewModel.clearError() },
+            title = { Text(stringResource(R.string.error)) },
+            text = { Text(errorMessage) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        haptic.light()
+                        viewModel.clearError()
+                    },
+                    modifier = Modifier.testTag("notif_error_ok"),
+                ) {
+                    Text(
+                        stringResource(R.string.ok_action),
+                        color = Gold,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            },
+        )
+    }
+
     CosmicBackground {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize()) {
@@ -223,26 +297,74 @@ fun NotificationPreferencesScreen(
                         )
                     }
                     Text(
-                        text = stringResource(R.string.notif_preferences_title),
+                        text = stringResource(R.string.personalized_alerts_title),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = CanelaFontFamily,
                         color = Gold,
                         modifier = Modifier.weight(1f),
                     )
+                    // iOS parity (NotificationPreferencesSheet.swift:193-213): trailing
+                    // toolbar Save action with inline ProgressView while saving. The
+                    // toolbar Save is hidden during the very first load to mirror iOS
+                    // (which renders the body as a ProgressView and no toolbar Save yet).
+                    if (state.isLoading && hasLoadedOnce) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .padding(end = 12.dp)
+                                .testTag("notif_save_spinner"),
+                            color = Gold,
+                            strokeWidth = 2.dp,
+                        )
+                    } else if (hasLoadedOnce) {
+                        TextButton(
+                            onClick = {
+                                haptic.light()
+                                viewModel.save()
+                            },
+                            enabled = !state.isLoading,
+                            modifier = Modifier
+                                .testTag("notif_save_button")
+                                .semantics { contentDescription = "notif_save_button" },
+                        ) {
+                            Text(
+                                text = stringResource(R.string.save_action),
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Gold,
+                            )
+                        }
+                    }
                 }
 
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    Spacer(Modifier.height(4.dp))
+                // iOS parity (NotificationPreferencesSheet.swift:43-46): block the body
+                // behind a full-screen ProgressView during the very first load.
+                if (!hasLoadedOnce) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .testTag("notif_initial_loader")
+                            .semantics { contentDescription = "notif_initial_loader" },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(color = Gold, strokeWidth = 2.dp)
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        Spacer(Modifier.height(4.dp))
 
                     // ── R2-S7: Channel toggles ────────────────────────────────────
-                    NotifSectionCard(title = stringResource(R.string.notif_channels_section)) {
+                    NotifSectionCard(
+                        title = stringResource(R.string.notif_channels_section),
+                        description = stringResource(R.string.notif_channels_desc),
+                    ) {
                         NotifChannelToggleRow(
                             label = stringResource(R.string.notif_channel_push),
                             checked = state.pushEnabled,
@@ -324,21 +446,28 @@ fun NotificationPreferencesScreen(
                             TextButton(
                                 onClick = {
                                     haptic.light()
-                                    // R2-S8: Try runtime request on Android 13+ if not yet permanently denied,
-                                    // otherwise fall through to OS notification settings (mirrors iOS denied → settings).
-                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                                        ContextCompat.checkSelfPermission(
-                                            context,
-                                            Manifest.permission.POST_NOTIFICATIONS,
-                                        ) != PackageManager.PERMISSION_GRANTED
-                                    ) {
-                                        permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                    } else {
-                                        val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
-                                            putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-                                        }
-                                        context.startActivity(intent)
+                                    // iOS parity (NotificationPreferencesSheet.swift:375-382
+                                    // openAppSettings): when the banner is showing,
+                                    // notifications are blocked at the system level
+                                    // (NotificationManagerCompat.areNotificationsEnabled == false).
+                                    // Runtime POST_NOTIFICATIONS launcher silently no-ops in
+                                    // the permanently-denied case (Android 13+, declined twice)
+                                    // and cannot re-enable channel-level toggles, so we
+                                    // unconditionally deep-link to system Settings — same
+                                    // affordance iOS uses via UIApplication.openSettingsURLString.
+                                    val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                        putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
                                     }
+                                    runCatching { context.startActivity(intent) }
+                                        .onFailure {
+                                            // Fallback for OEMs that don't honour the
+                                            // app-notification-settings action — open the
+                                            // generic app details page.
+                                            val fallback = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                                data = Uri.fromParts("package", context.packageName, null)
+                                            }
+                                            context.startActivity(fallback)
+                                        }
                                 },
                             ) {
                                 Text(stringResource(R.string.notif_enable), color = Gold, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
@@ -347,14 +476,39 @@ fun NotificationPreferencesScreen(
                     }
 
                     // ── R2-S13c: Custom alerts section ───────────────────────────
-                    NotifSectionCard(title = stringResource(R.string.notif_custom_alerts_section)) {
+                    NotifSectionCard(
+                        title = stringResource(R.string.notif_custom_alerts_section),
+                        description = stringResource(R.string.notif_alert_prefs_desc),
+                    ) {
                         if (state.alertItems.isEmpty()) {
-                            Text(
-                                text = stringResource(R.string.notif_no_custom_alerts),
-                                fontSize = 13.sp,
-                                color = CreamDim,
-                                modifier = Modifier.padding(vertical = 8.dp),
-                            )
+                            // iOS parity (NotificationPreferencesSheet.swift:62-78): empty
+                            // alerts state shows a bell.slash icon plus two-line helper text.
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 20.dp)
+                                    .semantics { contentDescription = "notif_empty_alerts" },
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.NotificationsOff,
+                                    contentDescription = null,
+                                    tint = CreamDim,
+                                    modifier = Modifier.size(28.dp),
+                                )
+                                Text(
+                                    text = stringResource(R.string.no_alerts_yet),
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = CreamDim,
+                                )
+                                Text(
+                                    text = stringResource(R.string.add_first_personalized_alert),
+                                    fontSize = 12.sp,
+                                    color = CreamDim,
+                                )
+                            }
                         } else {
                             state.alertItems.forEachIndexed { index, item ->
                                 AlertItemRow(
@@ -454,33 +608,17 @@ fun NotificationPreferencesScreen(
                     }
 
                     if (state.error != null) {
-                        Text(text = state.error ?: "", color = Color(0xFFFF8A80), fontSize = 13.sp)
+                        // iOS parity (NotificationPreferencesSheet.swift:217-224): save errors
+                        // are surfaced as a modal alert with a single OK action — not as
+                        // silent inline text. The inline Text was removed for parity.
                     }
 
-                    Button(
-                        onClick = {
-                            haptic.light()
-                            viewModel.save()
-                        },
-                        enabled = !state.isLoading,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(54.dp)
-                            .testTag("notif_save_button"),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Gold,
-                            contentColor = Color(0xFF0D0D1A),
-                        ),
-                    ) {
-                        if (state.isLoading) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color(0xFF0D0D1A), strokeWidth = 2.dp)
-                        } else {
-                            Text(stringResource(R.string.notif_save_preferences), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                        }
-                    }
+                    // iOS parity (NotificationPreferencesSheet.swift:193-213): the Save
+                    // action lives in the top toolbar. The full-width gold Save button
+                    // was removed from the body for parity.
 
                     Spacer(Modifier.height(32.dp))
+                    }
                 }
             }
 
@@ -524,17 +662,29 @@ fun NotificationPreferencesScreen(
 @Composable
 private fun NotifSectionCard(
     title: String?,
+    description: String? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         if (title != null) {
-            Text(
-                text = title,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Gold.copy(alpha = 0.5f),
-                modifier = Modifier.padding(bottom = 6.dp),
-            )
+            // iOS parity (NotificationPreferencesSheet.swift:454-463): section header is
+            // a two-line stack — gold title + tertiary description subtitle.
+            Column(modifier = Modifier.padding(bottom = 6.dp)) {
+                Text(
+                    text = title,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Gold.copy(alpha = 0.5f),
+                )
+                if (description != null) {
+                    Text(
+                        text = description,
+                        fontSize = 12.sp,
+                        color = CreamDim.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                }
+            }
         }
         Column(
             modifier = Modifier

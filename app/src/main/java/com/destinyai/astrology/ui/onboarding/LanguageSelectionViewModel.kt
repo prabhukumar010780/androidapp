@@ -59,10 +59,19 @@ class LanguageSelectionViewModel @Inject constructor(
         // sound on every language card tap, plus a particle burst overlay (deferred).
         hapticManager.light()
         soundManager.playCardSelect()
+        // iOS parity (LanguageSelectionView.swift:258-259): persist appLanguageCode on
+        // every tap so backgrounding the app retains the choice without confirmation.
+        viewModelScope.launch {
+            prefs.setSelectedLanguage(code)
+        }
     }
 
     fun confirmSelection() {
-        val code = _selectedCode.value ?: "en"
+        // iOS parity (LanguageSelectionView.swift:267-268): button is disabled until
+        // a code is picked, so this is a hard requirement — assert non-null.
+        val code = checkNotNull(_selectedCode.value) {
+            "confirmSelection called with no language selected"
+        }
         viewModelScope.launch {
             prefs.setSelectedLanguage(code)
             prefs.setLanguageSelectionComplete(true)

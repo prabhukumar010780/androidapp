@@ -40,6 +40,7 @@ class BirthDataScreenTest {
             prefs,
             mockk(relaxed = true), // LocationSearchService
             mockk(relaxed = true), // SoundManager
+            mockk(relaxed = true), // ChatRepository
             mockk(relaxed = true), // ApplicationContext
         ).also(block)
         composeTestRule.setContent {

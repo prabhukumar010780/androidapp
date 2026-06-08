@@ -17,14 +17,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.destinyai.astrology.ui.theme.Gold
+import com.destinyai.astrology.ui.theme.GoldLight
 
 @Composable
 fun FloatingContextButton(
@@ -34,6 +38,7 @@ fun FloatingContextButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+    val haptic = LocalHapticFeedback.current
     val buttonScale by animateFloatAsState(
         targetValue = if (isPressed) 0.88f else 1.0f,
         animationSpec = spring(
@@ -62,10 +67,16 @@ fun FloatingContextButton(
             modifier = Modifier
                 .scale(buttonScale)
                 .size(56.dp)
+                .shadow(
+                    elevation = 10.dp,
+                    shape = CircleShape,
+                    ambientColor = Gold,
+                    spotColor = Gold,
+                )
                 .clip(CircleShape)
                 .background(
                     Brush.linearGradient(
-                        colors = listOf(Color(0xFFF5D060), Gold),
+                        colors = listOf(GoldLight, Gold),
                         start = Offset(0f, 0f),
                         end = Offset(100f, 100f),
                     )
@@ -73,7 +84,10 @@ fun FloatingContextButton(
                 .clickable(
                     indication = null,
                     interactionSource = interactionSource,
-                    onClick = onClick,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onClick()
+                    },
                 ),
             contentAlignment = Alignment.Center,
         ) {

@@ -3,8 +3,10 @@ package com.destinyai.astrology.ui.profile
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.Delete
@@ -18,8 +20,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
@@ -27,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import com.destinyai.astrology.R
 import com.destinyai.astrology.services.HapticManager
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
+import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
@@ -49,6 +55,8 @@ fun DeleteAccountSheet(
     val canDelete = inputMatches && !hasActiveSubscription && !isDeleting
     val context = LocalContext.current
     val haptic = remember { HapticManager(context) }
+    val focusManager = LocalFocusManager.current
+    val scrollState = rememberScrollState()
 
     // iOS parity: DeleteAccountSheet.swift:164 .interactiveDismissDisabled(isDeleting).
     // confirmValueChange returns false while deleting so swipe-down/scrim taps cannot
@@ -79,14 +87,19 @@ fun DeleteAccountSheet(
             )
         },
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 40.dp)
-                .testTag("delete_account_sheet"),
-            horizontalAlignment = Alignment.CenterHorizontally,
+        CosmicBackground(
+            modifier = Modifier.fillMaxWidth(),
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(scrollState)
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 40.dp)
+                    .testTag("delete_account_sheet")
+                    .semantics { contentDescription = "delete_account_sheet" },
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
             // Warning icon
             Box(
                 modifier = Modifier
@@ -114,13 +127,7 @@ fun DeleteAccountSheet(
                 color = CreamText,
             )
 
-            Spacer(Modifier.height(4.dp))
-
-            Text(
-                text = stringResource(R.string.delete_account_subtitle),
-                fontSize = 13.sp,
-                color = CreamDim,
-            )
+            // iOS parity: DeleteAccountSheet.swift has no subtitle line — removed for visual parity.
 
             Spacer(Modifier.height(20.dp))
 
@@ -174,19 +181,23 @@ fun DeleteAccountSheet(
                 value = inputText,
                 onValueChange = { inputText = it },
                 label = { Text(stringResource(R.string.type_delete_to_confirm), color = CreamDim) },
-                enabled = !isDeleting,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .testTag("delete_account_confirm_input"),
+                    .testTag("delete_account_confirm_input")
+                    .semantics { contentDescription = "delete_account_confirm_input" },
                 shape = RoundedCornerShape(12.dp),
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Characters,
+                    autoCorrect = false,
+                ),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = if (inputMatches) Gold else Color(0xFFFF5252).copy(alpha = 0.6f),
-                    unfocusedBorderColor = if (inputMatches) Gold.copy(alpha = 0.6f) else CreamDim.copy(alpha = 0.3f),
+                    // iOS parity: matched-state border uses error red (DeleteAccountSheet.swift:99-103).
+                    focusedBorderColor = if (inputMatches) Color(0xFFFF5252) else Color(0xFFFF5252).copy(alpha = 0.6f),
+                    unfocusedBorderColor = if (inputMatches) Color(0xFFFF5252).copy(alpha = 0.6f) else CreamDim.copy(alpha = 0.3f),
                     focusedTextColor = CreamText,
                     unfocusedTextColor = CreamText,
                     cursorColor = Gold,
-                    focusedLabelColor = if (inputMatches) Gold else CreamDim,
+                    focusedLabelColor = if (inputMatches) Color(0xFFFF5252) else CreamDim,
                     unfocusedContainerColor = NavySurface,
                     focusedContainerColor = NavySurface,
                 ),
@@ -209,6 +220,9 @@ fun DeleteAccountSheet(
 
             Button(
                 onClick = {
+                    // iOS parity: DeleteAccountSheet.swift:123 sets isTextFieldFocused=false before
+                    // invoking onConfirmDelete — clear focus to dismiss keyboard before the RPC.
+                    focusManager.clearFocus()
                     haptic.heavy()
                     // Do NOT dismiss here — sheet must stay open while delete is in flight.
                     // ProfileViewModel will dismiss on success (isDeleted->true) or surface
@@ -220,7 +234,8 @@ fun DeleteAccountSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
-                    .testTag("delete_account_confirm_button"),
+                    .testTag("delete_account_confirm_button")
+                    .semantics { contentDescription = "delete_account_confirm_button" },
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFFFF5252),
@@ -252,9 +267,11 @@ fun DeleteAccountSheet(
                 enabled = !isDeleting,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .testTag("delete_account_cancel_button"),
+                    .testTag("delete_account_cancel_button")
+                    .semantics { contentDescription = "delete_account_cancel_button" },
             ) {
                 Text(stringResource(R.string.delete_account_cancel), color = CreamDim, fontSize = 15.sp)
+            }
             }
         }
     }

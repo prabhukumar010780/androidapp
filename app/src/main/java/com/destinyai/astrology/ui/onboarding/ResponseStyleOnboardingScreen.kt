@@ -1,5 +1,9 @@
 package com.destinyai.astrology.ui.onboarding
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,6 +21,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -84,7 +89,24 @@ fun ResponseStyleOnboardingScreen(
     LaunchedEffect(Unit) { viewModel.loadCurrent() }
 
     CosmicBackground {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // iOS parity (ResponseStyleOnboardingView.swift:23-35): subtle gold radial
+            // glow at top above the cosmic background.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp)
+                    .offset(y = (-60).dp)
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                Gold.copy(alpha = 0.07f),
+                                Color.Transparent,
+                            ),
+                        ),
+                    ),
+            )
+            Column(modifier = Modifier.fillMaxSize()) {
             if (isSettingsMode) {
                 Row(
                     modifier = Modifier
@@ -209,6 +231,7 @@ fun ResponseStyleOnboardingScreen(
                 Spacer(Modifier.height(40.dp))
             }
         }
+        }
     }
 }
 
@@ -218,14 +241,38 @@ private fun ResponseStyleCard(
     isSelected: Boolean,
     onSelect: () -> Unit,
 ) {
+    // iOS parity (ResponseStyleOnboardingView.swift:135, 163, 214):
+    // spring animation (response 0.25) on selection state transitions.
+    val cardSpring = spring<Color>(stiffness = Spring.StiffnessMedium)
+    val dpSpring = spring<androidx.compose.ui.unit.Dp>(stiffness = Spring.StiffnessMedium)
+    val backgroundColor by animateColorAsState(
+        targetValue = if (isSelected) Gold.copy(alpha = 0.06f) else NavySurface,
+        animationSpec = cardSpring,
+        label = "card_background",
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (isSelected) Gold.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.06f),
+        animationSpec = cardSpring,
+        label = "card_border",
+    )
+    val radioBorderColor by animateColorAsState(
+        targetValue = if (isSelected) Gold else CreamDim.copy(alpha = 0.5f),
+        animationSpec = cardSpring,
+        label = "radio_border",
+    )
+    val radioInnerSize by animateDpAsState(
+        targetValue = if (isSelected) 14.dp else 0.dp,
+        animationSpec = dpSpring,
+        label = "radio_inner_size",
+    )
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(if (isSelected) Gold.copy(alpha = 0.06f) else NavySurface)
+            .background(backgroundColor)
             .border(
                 width = 1.5.dp,
-                color = if (isSelected) Gold.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.06f),
+                color = borderColor,
                 shape = RoundedCornerShape(16.dp),
             )
             .clickable { onSelect() }
@@ -259,15 +306,15 @@ private fun ResponseStyleCard(
                         .clip(CircleShape)
                         .border(
                             width = 1.5.dp,
-                            color = if (isSelected) Gold else CreamDim.copy(alpha = 0.5f),
+                            color = radioBorderColor,
                             shape = CircleShape,
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (isSelected) {
+                    if (radioInnerSize > 0.dp) {
                         Box(
                             modifier = Modifier
-                                .size(14.dp)
+                                .size(radioInnerSize)
                                 .clip(CircleShape)
                                 .background(Gold),
                         )

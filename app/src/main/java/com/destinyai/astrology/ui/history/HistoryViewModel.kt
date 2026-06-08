@@ -7,6 +7,11 @@ import com.destinyai.astrology.data.local.db.CompatibilityHistoryEntity
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.repository.ChatRepository
 import com.destinyai.astrology.domain.model.ChatThread
+import com.destinyai.astrology.domain.model.CompatChatMessageData
+import com.destinyai.astrology.domain.model.CompatibilityHistoryItem
+import com.destinyai.astrology.domain.model.ComparisonGroup
+import com.destinyai.astrology.domain.model.CompatibilityResult
+import com.google.gson.Gson
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -270,6 +275,14 @@ class HistoryViewModel @Inject constructor(
             .launchIn(viewModelScope)
     }
 
+    /**
+     * Clears the surfaced error after the user dismisses the Snackbar — mirrors
+     * the iOS pattern of single-shot error toasts (HistoryView.swift:53-58).
+     */
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
+    }
+
     fun loadHistory() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
@@ -429,21 +442,79 @@ class HistoryViewModel @Inject constructor(
     fun setCompatibilitySearchText(text: String) =
         _uiState.update { it.copy(compatibilitySearchText = text) }
 
-    private fun CompatibilityHistoryEntity.toDisplayItem() = CompatibilityHistoryDisplayItem(
-        sessionId = sessionId,
-        boyName = boyName,
-        girlName = girlName,
-        totalScore = totalScore,
-        maxScore = maxScore,
-        displayDate = formatTimestamp(timestampMs),
-        isPinned = isPinned,
-        comparisonGroupId = comparisonGroupId,
-        timestampMs = timestampMs,
-        // Compat history follow-up chat count is not yet persisted on Android —
-        // default 0 so the badge stays hidden until the schema gains a column,
-        // matching iOS behaviour where userQuestionCount=0 hides the badge.
-        userQuestionCount = 0,
-    )
+    private fun CompatibilityHistoryEntity.toDisplayItem(): CompatibilityHistoryDisplayItem {
+        // Mirrors iOS HistoryView.swift:413 — derive userQuestionCount from
+        // `match.chatMessages.filter { $0.isUser }.count` rather than hardcoding 0.
+        // We hydrate the full domain object first so the count reflects real chat
+        // activity once chatMessages are populated (entity currently stores them
+        // only via in-memory result hydration; once a chat-messages column lands
+        // this naturally lights up).
+        val domain = toDomainItem()
+        val userCount = domain.chatMessages.count { it.isUser }
+        return CompatibilityHistoryDisplayItem(
+            sessionId = sessionId,
+            boyName = boyName,
+            girlName = girlName,
+            totalScore = totalScore,
+            maxScore = maxScore,
+            displayDate = formatTimestamp(timestampMs),
+            isPinned = isPinned,
+            comparisonGroupId = comparisonGroupId,
+            timestampMs = timestampMs,
+            userQuestionCount = userCount,
+        )
+    }
+
+    /**
+     * Hydrate the full [CompatibilityHistoryItem] for a saved session. Mirrors iOS
+     * `CompatibilityHistoryService.shared.get(sessionId:)` — used by the History
+     * screen when the user taps a row so the navigation callback receives the
+     * complete object (not the lite display variant).
+     */
+    suspend fun getCompatibilityItem(sessionId: String): CompatibilityHistoryItem? =
+        compatibilityHistoryDao.getById(sessionId)?.toDomainItem()
+
+    /**
+     * Hydrate every saved session in a comparison group. Mirrors iOS
+     * `HistoryView.handleSelection` for `.matchGroup` — the navigation callback
+     * receives a fully-rehydrated [ComparisonGroup] instead of a stripped lite
+     * payload.
+     */
+    suspend fun getCompatibilityGroup(groupId: String): ComparisonGroup? {
+        val items = compatibilityHistoryDao.getByGroupId(groupId).map { it.toDomainItem() }
+        if (items.isEmpty()) return null
+        return ComparisonGroup(
+            id = groupId,
+            timestamp = items.first().timestampMs,
+            userName = items.first().boyName,
+            items = items,
+        )
+    }
+
+    private fun CompatibilityHistoryEntity.toDomainItem(): CompatibilityHistoryItem =
+        CompatibilityHistoryItem(
+            sessionId = sessionId,
+            timestampMs = timestampMs,
+            boyName = boyName,
+            boyDob = boyDob,
+            boyCity = boyCity,
+            boyTime = boyTime,
+            girlName = girlName,
+            girlDob = girlDob,
+            girlCity = girlCity,
+            girlTime = girlTime,
+            totalScore = totalScore,
+            maxScore = maxScore,
+            isPinned = isPinned,
+            comparisonGroupId = comparisonGroupId,
+            partnerIndex = partnerIndex,
+            chatMessages = emptyList<CompatChatMessageData>(),
+            result = resultJson.takeIf { it.isNotEmpty() }?.let {
+                runCatching { gson.fromJson(it, CompatibilityResult::class.java) }.getOrNull()
+            },
+        )
+
+    private val gson = Gson()
 
     private fun formatTimestamp(ms: Long): String {
         val sdf = java.text.SimpleDateFormat("MMM d, yyyy", java.util.Locale.ENGLISH)

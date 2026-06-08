@@ -60,6 +60,7 @@ import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.CreamDim
+import com.destinyai.astrology.ui.theme.Features
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
@@ -145,7 +146,9 @@ fun AuthScreen(
             } catch (e: ApiException) {
                 android.util.Log.e("AuthScreen", "Legacy GoogleSignIn ApiException code=${e.statusCode} msg=${e.message}", e)
                 if (e.statusCode == com.google.android.gms.common.api.CommonStatusCodes.CANCELED) {
-                    // User cancelled — silent
+                    // User cancelled — silent. Clear the loading overlay so the
+                    // auth screen becomes interactive again (iOS parity).
+                    viewModel.cancelGoogleSignIn()
                 } else {
                     viewModel.reportGoogleSignInError(
                         context.getString(R.string.google_sign_in_failed_generic)
@@ -154,6 +157,9 @@ fun AuthScreen(
             }
         } else {
             android.util.Log.w("AuthScreen", "Legacy launcher non-OK result: resultCode=${result.resultCode}")
+            // Result wasn't OK — most commonly the user dismissed the chooser.
+            // Clear the loading overlay (iOS parity user-cancel behavior).
+            viewModel.cancelGoogleSignIn()
             // Try to extract error from intent anyway
             result.data?.let { intent ->
                 val task = GoogleSignIn.getSignedInAccountFromIntent(intent)
@@ -171,6 +177,10 @@ fun AuthScreen(
     // Returns a GoogleIdTokenCredential whose .idToken is exchanged with the
     // backend exactly like the legacy account.idToken.
     suspend fun signInWithGoogle() {
+        // iOS parity (AuthViewModel.swift:176-179 performSignIn): flip isLoading
+        // BEFORE the native credential picker opens so the loading overlay is
+        // visible during picker startup, the user's pick, and the backend round-trip.
+        viewModel.beginGoogleSignIn()
         if (BuildConfig.GOOGLE_SERVER_CLIENT_ID.isBlank()) {
             viewModel.reportGoogleSignInError(
                 context.getString(R.string.google_sign_in_unavailable)
@@ -242,6 +252,8 @@ fun AuthScreen(
         } catch (e: GetCredentialCancellationException) {
             android.util.Log.i("AuthScreen", "User cancelled Google sign-in")
             // User cancelled — silent (matches iOS user-cancel behavior).
+            // Clear the loading overlay so the auth screen is interactive again.
+            viewModel.cancelGoogleSignIn()
         } catch (e: NoCredentialException) {
             android.util.Log.w("AuthScreen", "NoCredentialException — falling back to legacy GoogleSignIn web flow")
             // No Google account on device (common on emulators). Fall back to the
@@ -610,7 +622,17 @@ fun AuthScreen(
                         CircularProgressIndicator(color = Gold, strokeWidth = 2.dp)
                         Spacer(Modifier.height(12.dp))
                         Text(
-                            text = stringResource(R.string.signing_in),
+                            // iOS parity (AuthView.swift loadingOverlay): the message changes
+                            // from "Signing in" to "Syncing your data" once authentication
+                            // completes and LoginSyncCoordinator.syncAll begins, so the user
+                            // understands the second pause is the post-sign-in sync phase.
+                            text = stringResource(
+                                if (state.isSyncingData) {
+                                    R.string.syncing_your_data
+                                } else {
+                                    R.string.signing_in
+                                },
+                            ),
                             color = CreamText,
                             fontSize = 14.sp,
                         )
@@ -619,27 +641,31 @@ fun AuthScreen(
             }
         }
 
-        // R2-A1: Sound toggle — top-right corner overlay
-        IconToggleButton(
-            checked = state.isSoundEnabled,
-            onCheckedChange = {
-                // iOS parity (AuthView.swift:111-112): light haptic before
-                // SoundManager.toggleSound() so the user feels the tap even
-                // when audio is off.
-                haptic.light()
-                viewModel.toggleSound()
-            },
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .statusBarsPadding()
-                .padding(end = 8.dp, top = 4.dp)
-                .testTag("auth_sound_toggle"),
-        ) {
-            Icon(
-                imageVector = if (state.isSoundEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
-                contentDescription = if (state.isSoundEnabled) stringResource(R.string.sound_on_a11y) else stringResource(R.string.sound_off_a11y),
-                tint = Gold.copy(alpha = 0.8f),
-            )
+        // R2-A1: Sound toggle — top-right corner overlay.
+        // iOS parity (AuthView.swift:106 `if AppTheme.Features.showSoundToggle`):
+        // gate visibility on the same feature flag so platforms stay in sync.
+        if (Features.showSoundToggle) {
+            IconToggleButton(
+                checked = state.isSoundEnabled,
+                onCheckedChange = {
+                    // iOS parity (AuthView.swift:111-112): light haptic before
+                    // SoundManager.toggleSound() so the user feels the tap even
+                    // when audio is off.
+                    haptic.light()
+                    viewModel.toggleSound()
+                },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(end = 8.dp, top = 4.dp)
+                    .testTag("auth_sound_toggle"),
+            ) {
+                Icon(
+                    imageVector = if (state.isSoundEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
+                    contentDescription = if (state.isSoundEnabled) stringResource(R.string.sound_on_a11y) else stringResource(R.string.sound_off_a11y),
+                    tint = Gold.copy(alpha = 0.8f),
+                )
+            }
         }
         } // end wrapping Box
     }

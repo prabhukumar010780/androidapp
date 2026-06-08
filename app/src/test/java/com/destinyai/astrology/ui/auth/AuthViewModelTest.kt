@@ -31,6 +31,7 @@ class AuthViewModelTest {
     private lateinit var prefs: UserPreferences
     private lateinit var appStartup: AppStartupService
     private lateinit var soundManager: SoundManager
+    private lateinit var loginSync: com.destinyai.astrology.services.LoginSyncCoordinator
     private lateinit var context: Context
     private lateinit var viewModel: AuthViewModel
 
@@ -51,6 +52,7 @@ class AuthViewModelTest {
         prefs = mockk(relaxed = true)
         appStartup = mockk(relaxed = true)
         soundManager = mockk(relaxed = true)
+        loginSync = mockk(relaxed = true)
         context = mockk(relaxed = true)
         coEvery { prefs.isSoundEnabled() } returns true
         // Stub the flows that AuthViewModel.init() collects/reads — relaxed mocks return
@@ -59,7 +61,7 @@ class AuthViewModelTest {
         every { prefs.isSoundEnabledFlow() } returns flowOf(true)
         every { appStartup.allowGuest } returns MutableStateFlow(true)
         every { appStartup.gateMode } returns MutableStateFlow("off")
-        viewModel = AuthViewModel(repository, haptic, prefs, appStartup, soundManager, context)
+        viewModel = AuthViewModel(repository, haptic, prefs, appStartup, soundManager, loginSync, context)
     }
 
     // --- Session state ---
@@ -69,7 +71,7 @@ class AuthViewModelTest {
         val savedUser = User(email = "test@example.com", isGuestEmail = false)
         coEvery { repository.getSavedUser() } returns savedUser
 
-        val vm = AuthViewModel(repository, haptic, prefs, appStartup, soundManager, context)
+        val vm = AuthViewModel(repository, haptic, prefs, appStartup, soundManager, loginSync, context)
 
         vm.uiState.test {
             val state = awaitItem()
@@ -81,7 +83,7 @@ class AuthViewModelTest {
     fun `unauthenticated state shown when no saved session`() = runTest {
         coEvery { repository.getSavedUser() } returns null
 
-        val vm = AuthViewModel(repository, haptic, prefs, appStartup, soundManager, context)
+        val vm = AuthViewModel(repository, haptic, prefs, appStartup, soundManager, loginSync, context)
 
         vm.uiState.test {
             val state = awaitItem()
@@ -230,7 +232,7 @@ class AuthViewModelTest {
     fun `403 account_deleted on any call forces logout`() = runTest {
         coEvery { repository.getSavedUser() } throws AccountDeletedException()
 
-        val vm = AuthViewModel(repository, haptic, prefs, appStartup, soundManager, context)
+        val vm = AuthViewModel(repository, haptic, prefs, appStartup, soundManager, loginSync, context)
 
         vm.uiState.test {
             val state = awaitItem()

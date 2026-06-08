@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
@@ -18,12 +19,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.animation.core.*
+import com.destinyai.astrology.R
 import com.destinyai.astrology.domain.model.AnalysisStep
 import com.destinyai.astrology.domain.model.ComparisonResult
 import com.destinyai.astrology.domain.model.PartnerData
@@ -52,59 +55,73 @@ fun MultiPartnerStreamingView(
         onDismissRequest = {},
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-        Column(
-            modifier = modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(NavySurface)
-                .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+        // iOS parity: explicit black 0.7 backdrop overlay (issue 1)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.7f)),
+            contentAlignment = Alignment.Center,
         ) {
-            // Header
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("✨", fontSize = 20.sp)
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    "Comparing $totalPartners Partners",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = CreamText,
-                )
-            }
-
-            // Progress bar
-            MultiPartnerProgressBar(
-                fraction = multiPartnerProgressFraction(completedResults.size, totalPartners),
-                completedCount = completedResults.size,
-                totalCount = totalPartners,
-            )
-
-            // Partner list
-            LazyColumn(
-                modifier = Modifier.heightIn(max = 300.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+            Column(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(NavySurface)
+                    .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
-                itemsIndexed(partners) { index, partner ->
-                    val isCompleted = completedResults.any { it.partner.id == partner.id }
-                    val isActive = index == currentPartnerIndex && !isCompleted
-                    MultiPartnerCard(
-                        partner = partner,
-                        index = index,
-                        isCompleted = isCompleted,
-                        isActive = isActive,
-                        currentStep = currentStep,
-                        completedResult = completedResults.firstOrNull { it.partner.id == partner.id },
+                // Header
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // iOS parity: tinted gold sparkles icon instead of plain emoji (issue 2)
+                    Icon(
+                        imageVector = Icons.Filled.AutoAwesome,
+                        contentDescription = null,
+                        tint = Gold,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        stringResource(R.string.compat_comparing_partners_format, totalPartners),
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = CreamText,
                     )
                 }
-            }
 
-            Text(
-                "This may take a moment…",
-                fontSize = 13.sp,
-                color = CreamDim.copy(alpha = 0.6f),
-            )
+                // Progress bar
+                MultiPartnerProgressBar(
+                    fraction = multiPartnerProgressFraction(completedResults.size, totalPartners),
+                    completedCount = completedResults.size,
+                    totalCount = totalPartners,
+                )
+
+                // Partner list
+                LazyColumn(
+                    modifier = Modifier.heightIn(max = 300.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    itemsIndexed(partners) { index, partner ->
+                        val isCompleted = completedResults.any { it.partner.id == partner.id }
+                        val isActive = index == currentPartnerIndex && !isCompleted
+                        MultiPartnerCard(
+                            partner = partner,
+                            index = index,
+                            isCompleted = isCompleted,
+                            isActive = isActive,
+                            currentStep = currentStep,
+                            completedResult = completedResults.firstOrNull { it.partner.id == partner.id },
+                        )
+                    }
+                }
+
+                Text(
+                    stringResource(R.string.compat_this_may_take_a_moment),
+                    fontSize = 13.sp,
+                    color = CreamDim.copy(alpha = 0.6f),
+                )
+            }
         }
     }
 }
@@ -216,7 +233,7 @@ private fun MultiPartnerCard(
             )
             when {
                 isActive -> Text(currentStep.title, fontSize = 12.sp, color = Gold)
-                isPending -> Text("Pending", fontSize = 12.sp, color = CreamDim.copy(alpha = 0.5f))
+                isPending -> Text(stringResource(R.string.compat_pending_label), fontSize = 12.sp, color = CreamDim.copy(alpha = 0.5f))
             }
         }
 

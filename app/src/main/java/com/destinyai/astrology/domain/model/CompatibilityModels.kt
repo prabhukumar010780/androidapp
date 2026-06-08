@@ -23,6 +23,25 @@ data class KutaDetail(
     val taraBoyToGirl: Int? = null,
     val taraGirlToBoy: Int? = null,
     val plainEnglishSummary: String? = null,
+    // iOS parity (Views/Compatibility/Components/OrbitAshtakootView.swift orbitItems)
+    // — full DoshaDetail enrichment surfaced into per-kuta data so the orbit view
+    // can render without a separate doshaSummary lookup.
+    val cancellationReasons: List<String>? = null,
+    val classicalEffect: String? = null,
+    val boyConstitution: String? = null,
+    val girlConstitution: String? = null,
+    val severity: String? = null,
+    val housePositions: String? = null,
+    val sadbhakootWarning: String? = null,
+    val boyVashya: String? = null,
+    val girlVashya: String? = null,
+    val boyToGirlScore: Double? = null,
+    val girlToBoyScore: Double? = null,
+    val boyVarna: String? = null,
+    val girlVarna: String? = null,
+    val complementarityNote: String? = null,
+    val boyValueDescription: String? = null,
+    val girlValueDescription: String? = null,
 ) {
     val displayScore: Double get() = if (doshaPresent && doshaCancelled && adjustedScore != null) adjustedScore else score
     val percentage: Double get() = if (maxScore > 0) score / maxScore else 0.0
@@ -90,6 +109,27 @@ data class DoshaDetailModel(
     val plainEnglishSummary: String?,
     val boyValue: String?,
     val girlValue: String?,
+    // iOS parity (Models/SupportModels.swift DoshaDetail) — full transparency
+    // payload from dosha_summary.details[<key>], piped into KutaDetail by the
+    // mapper so the orbit view's enrichment matches iOS field-for-field.
+    val doshaType: String? = null,
+    val classicalEffect: String? = null,
+    val boyConstitution: String? = null,
+    val girlConstitution: String? = null,
+    val severity: String? = null,
+    val housePositions: String? = null,
+    val sadbhakootWarning: String? = null,
+    val taraBoyToGirl: Int? = null,
+    val taraGirlToBoy: Int? = null,
+    val boyVashya: String? = null,
+    val girlVashya: String? = null,
+    val boyToGirlScore: Double? = null,
+    val girlToBoyScore: Double? = null,
+    val boyVarna: String? = null,
+    val girlVarna: String? = null,
+    val complementarityNote: String? = null,
+    val boyValueDescription: String? = null,
+    val girlValueDescription: String? = null,
 )
 
 data class KalaSarpaModel(
@@ -97,7 +137,13 @@ data class KalaSarpaModel(
     val yogaName: String?,
     val doshaName: String?,
     val axis: String?,
-    val intensity: String?,
+    /**
+     * Severity classification from backend payload `severity` field
+     * (none|mild|moderate|severe). Renamed from `intensity` to align with
+     * the iOS `KalaSarpaData.severity` parser key — single shared key prevents
+     * platform drift if backend payload field names change.
+     */
+    val severity: String?,
     val lifeAreas: List<String>,
     val description: String?,
     val peakPeriod: String? = null,
@@ -257,7 +303,17 @@ data class ComparisonResult(
     val adjustedScore: Int,
     val summary: String = "",
     val kutaDetails: Map<String, KutaDetail> = emptyMap(),
-)
+    // iOS parity (PartnerData.swift:111-129): one-liner verdict and structured
+    // mangal compatibility data surfaced from analysis_data.joint so the
+    // comparison overview footer + Manglik row mirror iOS behaviour.
+    val oneLiner: String? = null,
+    val mangalCompatibility: Map<String, Any>? = null,
+    val rejectionReasons: List<String> = emptyList(),
+) {
+    /** iOS parity (PartnerData.swift:124-129) — short status label shown next to the analysis dot. */
+    val statusLabel: String
+        get() = if (isRecommended) "Recommended" else "Not Recommended"
+}
 
 // ── YogaItem — exact iOS parity ────────────────────────────────────────────────
 
@@ -325,6 +381,20 @@ enum class DestinyTileType {
         WISDOM -> "Wisdom"
         HEALTH -> "Health"
         DOSHA -> "Doshas"
+    }
+
+    /**
+     * Per-tile accent color — mirrors iOS DestinyTileType.accentColor.
+     * Used by MagicTabbar for the active indicator dot fill.
+     */
+    val accentColor: Color get() = when (this) {
+        WEALTH -> Color(0xFFD4AF37) // gold
+        CAREER -> Color(0xFFAF52DE) // SwiftUI .purple
+        LOVE -> Color(0xFFFF2D55)   // SwiftUI .pink
+        FAMILY -> Color(0xFFFF9500) // SwiftUI .orange
+        WISDOM -> Color(0xFF32ADE6) // SwiftUI .cyan
+        HEALTH -> Color(0xFF34C759) // SwiftUI .green
+        DOSHA -> Color(0xFFFF3B30)  // iOS AppTheme.Colors.error
     }
 
     companion object {
@@ -406,13 +476,29 @@ enum class AnalysisStep {
     GENERATING_ANALYSIS,
     COMPLETE;
 
+    /**
+     * iOS parity (CompatibilityStreamingView.swift:77-106 + Localizable.strings:1430-1435):
+     * the streaming modal labels are localized — DO NOT use the hard-coded `title` getter
+     * below in UI code; use [titleRes] with `stringResource()` instead. The `title` getter
+     * is retained only as a sentinel string for tests and non-Composable call sites.
+     */
+    @get:androidx.annotation.StringRes
+    val titleRes: Int get() = when (this) {
+        CALCULATING_CHARTS -> com.destinyai.astrology.R.string.analysis_step_mapping_charts
+        ASHTAKOOT_MATCHING -> com.destinyai.astrology.R.string.analysis_step_ashtakoot
+        MANGAL_DOSHA -> com.destinyai.astrology.R.string.analysis_step_mangal
+        COLLECTING_YOGAS -> com.destinyai.astrology.R.string.analysis_step_yogas
+        GENERATING_ANALYSIS -> com.destinyai.astrology.R.string.analysis_step_generating
+        COMPLETE -> com.destinyai.astrology.R.string.analysis_step_ready
+    }
+
     val title: String get() = when (this) {
-        CALCULATING_CHARTS -> "Mapping Charts"
-        ASHTAKOOT_MATCHING -> "Ashtakoot Matching"
-        MANGAL_DOSHA -> "Mangal Dosha Check"
-        COLLECTING_YOGAS -> "Collecting Yogas"
-        GENERATING_ANALYSIS -> "Generating Analysis"
-        COMPLETE -> "Ready"
+        CALCULATING_CHARTS -> "Mapping birth charts"
+        ASHTAKOOT_MATCHING -> "Calculating astrological compatibility"
+        MANGAL_DOSHA -> "Checking Manglik compatibility"
+        COLLECTING_YOGAS -> "Evaluating yogas and doshas"
+        GENERATING_ANALYSIS -> "Preparing your compatibility insights"
+        COMPLETE -> "Your compatibility insights are ready"
     }
 
     val icon: String get() = when (this) {
