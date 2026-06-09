@@ -43,6 +43,7 @@ class BirthDetailsViewModelTest {
         coEvery { prefs.getUserEmail() } returns "u@x.com"
         coEvery { prefs.getUserName() } returns "Prabhu"
         coEvery { prefs.isGuestUser() } returns false
+        coEvery { prefs.getUserGender(email = any()) } returns null
         vm = BirthDetailsViewModel(prefs)
     }
 

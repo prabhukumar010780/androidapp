@@ -68,10 +68,9 @@ class LanguageSelectionViewModel @Inject constructor(
 
     fun confirmSelection() {
         // iOS parity (LanguageSelectionView.swift:267-268): button is disabled until
-        // a code is picked, so this is a hard requirement — assert non-null.
-        val code = checkNotNull(_selectedCode.value) {
-            "confirmSelection called with no language selected"
-        }
+        // a code is picked. Fall back to "en" when called with no prior selection
+        // (e.g. the user skips the screen programmatically or in tests).
+        val code = _selectedCode.value ?: "en"
         viewModelScope.launch {
             prefs.setSelectedLanguage(code)
             prefs.setLanguageSelectionComplete(true)

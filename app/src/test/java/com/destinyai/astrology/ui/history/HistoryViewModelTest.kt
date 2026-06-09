@@ -52,6 +52,7 @@ class HistoryViewModelTest {
         every { compatibilityHistoryDao.observeAll(any()) } returns flowOf(emptyList())
         every { prefs.isHistoryEnabledFlow } returns flowOf(true)
         every { prefs.activeProfileIdFlow } returns flowOf(null)
+        coEvery { prefs.getUserEmail() } returns "u@x.com"
         vm = HistoryViewModel(repository, compatibilityHistoryDao, prefs)
     }
 

@@ -80,6 +80,7 @@ data class PartnersUiState(
         get() = formName.isNotBlank() &&
             formGender.isNotBlank() &&
             formDob.isNotBlank() &&
+            formCity.isNotBlank() &&
             (formTime.isNotBlank() || formBirthTimeUnknown) &&
             (!isUnder13(formDob) || formGuardianConsentGiven)
 

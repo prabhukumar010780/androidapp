@@ -4,12 +4,13 @@ import com.destinyai.astrology.domain.model.KutaDetail
 
 internal object AffirmationBuilder {
 
-    // Ordered weight list (descending). Varna (max=1) is intentionally absent — matches iOS spec.
-    val weightOrder = listOf("nadi", "bhakoot", "gana", "maitri", "yoni", "tara", "vashya")
+    // Ordered weight list (descending) — includes all 8 kootas (parity with iOS spec).
+    val weightOrder = listOf("nadi", "bhakoot", "gana", "maitri", "yoni", "tara", "vashya", "varna")
 
     private val displayNames = mapOf(
         "nadi" to "Nadi", "bhakoot" to "Bhakoot", "gana" to "Gana",
         "maitri" to "Graha Maitri", "yoni" to "Yoni", "tara" to "Tara", "vashya" to "Vashya",
+        "varna" to "Varna",
     )
 
     private val themes = mapOf(
@@ -20,6 +21,7 @@ internal object AffirmationBuilder {
         "yoni" to "physical intimacy",
         "tara" to "destiny & fortune",
         "vashya" to "attraction & influence",
+        "varna" to "spiritual compatibility",
     )
 
     data class PerfectKoota(val displayName: String, val theme: String)

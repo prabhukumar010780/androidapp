@@ -17,7 +17,7 @@ import javax.inject.Inject
 
 data class ChartsUiState(
     val hasData: Boolean = false,
-    val isLoading: Boolean = true,
+    val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val dateOfBirth: String = "",
     val timeOfBirth: String = "",

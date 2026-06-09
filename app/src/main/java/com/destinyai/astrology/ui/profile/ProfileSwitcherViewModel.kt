@@ -193,12 +193,18 @@ class ProfileSwitcherViewModel @Inject constructor(
             _isSwitching.value = true
             try {
                 val selfEmail = prefs.getUserEmail() ?: return@launch
-                // iOS parity (ProfileSwitcherSheet.swift:101-135): rely on the
-                // switchProfile call itself to surface upgrade-required failures
-                // — iOS does not pre-flight /subscription/status and instead
-                // inspects the switch error message. Removing the pre-check
-                // saves a network round-trip and keeps the two platforms aligned
-                // on a single approach.
+                // R2-P22: pre-flight /subscription/status check — if accessState is
+                // "upgrade_required" the user cannot switch profiles without upgrading.
+                // Abort early and raise the upgrade prompt; do NOT call switchProfile.
+                try {
+                    val status = api.getStatus(selfEmail)
+                    if (status.accessState == "upgrade_required") {
+                        _uiState.value = _uiState.value.copy(upgradeRequiredPrompt = true)
+                        return@launch
+                    }
+                } catch (_: Exception) {
+                    // Pre-flight failure is non-fatal — proceed with the switch attempt.
+                }
                 api.switchProfile(SwitchProfileRequest(userEmail = selfEmail, profileId = profileId))
                 // Persist the active profile ID (UUID for partners, email for self).
                 // The owner email never changes — never store a UUID into the email field.

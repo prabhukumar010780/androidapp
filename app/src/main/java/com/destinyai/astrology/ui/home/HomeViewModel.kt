@@ -223,7 +223,7 @@ class HomeViewModel @Inject constructor(
         val name = when {
             user == null || user.isGuestEmail -> "Guest"
             !storedName.isNullOrBlank() -> storedName
-            user.name != null -> user.name
+            user.name != null -> user.name.split(" ").firstOrNull()?.takeIf { it.isNotBlank() } ?: user.name
             else -> user.email.substringBefore("@")
         }
         _uiState.update {
