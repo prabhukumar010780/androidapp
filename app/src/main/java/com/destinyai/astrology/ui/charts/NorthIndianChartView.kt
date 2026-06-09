@@ -4,8 +4,10 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -23,7 +25,18 @@ fun NorthIndianChartView(
     Box(
         modifier = Modifier
             .size(gridSizeDp.dp)
-            .padding(8.dp),
+            .padding(8.dp)
+            // iOS parity: outer chart shadow + inner grid glow (issue 6)
+            .shadow(
+                elevation = 4.dp,
+                ambientColor = goldColor.copy(alpha = 0.1f),
+                spotColor = goldColor.copy(alpha = 0.1f),
+            )
+            .shadow(
+                elevation = 2.dp,
+                ambientColor = goldColor.copy(alpha = 0.3f),
+                spotColor = goldColor.copy(alpha = 0.3f),
+            ),
     ) {
         NorthIndianCanvas(
             chartData = chartData,
@@ -55,20 +68,36 @@ private fun NorthIndianCanvas(
         val medPx = 1.5f
         val thinPx = 1.0f
 
-        // 1. Double outer border
-        drawRect(color = goldColor, size = size, style = androidx.compose.ui.graphics.drawscope.Stroke(medPx))
+        // 1. Double outer border — gradient stroke (issue 1)
         drawRect(
-            color = goldColor.copy(alpha = 0.6f),
+            brush = goldGradient,
+            size = size,
+            style = Stroke(width = medPx, cap = StrokeCap.Round, join = StrokeJoin.Round),
+        )
+        drawRect(
+            brush = goldGradient,
             topLeft = Offset(4f, 4f),
             size = androidx.compose.ui.geometry.Size(w - 8f, h - 8f),
-            style = androidx.compose.ui.graphics.drawscope.Stroke(thinPx),
+            style = Stroke(width = thinPx, cap = StrokeCap.Round, join = StrokeJoin.Round),
         )
 
-        // 2. Diagonals
-        drawLine(goldColor, Offset(0f, 0f), Offset(w, h), medPx)
-        drawLine(goldColor, Offset(w, 0f), Offset(0f, h), medPx)
+        // 2. Diagonals — gradient + round cap (issue 2)
+        drawLine(
+            brush = goldGradient,
+            start = Offset(0f, 0f),
+            end = Offset(w, h),
+            strokeWidth = medPx,
+            cap = StrokeCap.Round,
+        )
+        drawLine(
+            brush = goldGradient,
+            start = Offset(w, 0f),
+            end = Offset(0f, h),
+            strokeWidth = medPx,
+            cap = StrokeCap.Round,
+        )
 
-        // 3. Inner diamond
+        // 3. Inner diamond — gradient + round join (issue 3)
         val diamond = Path().apply {
             moveTo(w / 2, 0f)
             lineTo(w, h / 2)
@@ -76,7 +105,11 @@ private fun NorthIndianCanvas(
             lineTo(0f, h / 2)
             close()
         }
-        drawPath(diamond, color = goldColor, style = androidx.compose.ui.graphics.drawscope.Stroke(medPx))
+        drawPath(
+            path = diamond,
+            brush = goldGradient,
+            style = Stroke(width = medPx, cap = StrokeCap.Round, join = StrokeJoin.Round),
+        )
 
         // 4. House content (sign number + planet codes)
         for (house in 1..12) {
@@ -85,11 +118,11 @@ private fun NorthIndianCanvas(
             val planets = chartData.d1.filter { it.value.house == house }.map { it.key }
             val isDiamond = house in listOf(1, 4, 7, 10)
 
-            // Sign number
+            // Sign number — gold gradient brush (issue 4)
             val signStyle = TextStyle(
                 fontSize = if (isDiamond) 12.sp else 10.sp,
                 fontWeight = FontWeight.Bold,
-                color = goldColor,
+                brush = goldGradient,
             )
             val signLayout = textMeasurer.measure("$signNum", signStyle)
             val contentSize = if (isDiamond) w * 0.22f else w * 0.15f
@@ -110,10 +143,16 @@ private fun NorthIndianCanvas(
                     if (idx < offsets.size) {
                         val code = ChartConstants.planetShortCodes[planetName] ?: planetName.take(2)
                         val pt = offsets[idx]
+                        // Planet text with iOS-parity black drop shadow (issue 5)
                         val planetStyle = TextStyle(
                             fontSize = if (isDiamond) 10.sp else 9.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White,
+                            shadow = Shadow(
+                                color = Color.Black.copy(alpha = 0.6f),
+                                offset = Offset(0f, 1f),
+                                blurRadius = 1f,
+                            ),
                         )
                         val pl = textMeasurer.measure(code, planetStyle)
                         drawText(

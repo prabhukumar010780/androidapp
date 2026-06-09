@@ -30,6 +30,8 @@ class ProfileSwitcherViewModelTest {
     private lateinit var api: AstroApiService
     private lateinit var prefs: UserPreferences
     private lateinit var bus: ProfileChangeBus
+    private lateinit var quotaManager: com.destinyai.astrology.services.QuotaManager
+    private lateinit var partnerDao: com.destinyai.astrology.data.local.db.PartnerDao
     private lateinit var vm: ProfileSwitcherViewModel
 
     @BeforeAll
@@ -47,12 +49,14 @@ class ProfileSwitcherViewModelTest {
         api = mockk(relaxed = true)
         prefs = mockk(relaxed = true)
         bus = ProfileChangeBus()
+        quotaManager = mockk(relaxed = true)
+        partnerDao = mockk(relaxed = true)
         coEvery { prefs.getUserEmail() } returns "self@example.com"
         coEvery { prefs.getUserName() } returns "Prabhu"
         coEvery { prefs.getActiveProfileEmail() } returns null
         coEvery { prefs.getActiveProfileId() } returns null
         coEvery { api.listPartners(any()) } returns emptyList()
-        vm = ProfileSwitcherViewModel(api, prefs, bus)
+        vm = ProfileSwitcherViewModel(api, prefs, bus, quotaManager, partnerDao)
     }
 
     @Test
@@ -80,7 +84,7 @@ class ProfileSwitcherViewModelTest {
                 longitude = 77.2090,
             ),
         )
-        vm = ProfileSwitcherViewModel(api, prefs, bus)
+        vm = ProfileSwitcherViewModel(api, prefs, bus, quotaManager, partnerDao)
 
         vm.profiles.test {
             val profiles = awaitItem()
@@ -105,7 +109,7 @@ class ProfileSwitcherViewModelTest {
         // identity is exposed via activeProfileId (UUID for partners, email for self).
         // The test now asserts activeProfileId reflects the persisted active profile id.
         coEvery { prefs.getActiveProfileId() } returns "partner-uuid-1"
-        vm = ProfileSwitcherViewModel(api, prefs, bus)
+        vm = ProfileSwitcherViewModel(api, prefs, bus, quotaManager, partnerDao)
 
         vm.activeProfileId.test {
             assertEquals("partner-uuid-1", awaitItem())

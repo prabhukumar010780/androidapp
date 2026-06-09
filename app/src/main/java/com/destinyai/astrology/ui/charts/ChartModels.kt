@@ -71,6 +71,13 @@ data class ChartApiResponse(
     @SerializedName("nakshatra") val nakshatra: Map<String, NakshatraApiData>,
     @SerializedName("divisional_charts") val divisionalCharts: Map<String, DivisionalPlanetData>,
     @SerializedName("birth_details") val birthDetails: BirthDetailsApiData,
+    // Server-side yoga + dosha analysis. iOS reads this via UserChartService, then
+    // surfaces it on Home (yoga combinations) and Charts (yoga detail). Android
+    // mirrors the same payload shape so HomeRepositoryImpl.getRichHomeData can
+    // populate the "Positive & Negative Combinations" section without an extra
+    // network call. (See backend astrodata/full response: analysis.yogas.yogas[]
+    // + analysis.yogas.doshas[] + mangal_dosha + kala_sarpa.)
+    @SerializedName("analysis") val analysis: com.destinyai.astrology.data.remote.AstroAnalysisDto? = null,
 )
 
 // ── Dasha / Transit DTOs ──────────────────────────────────────────────────────

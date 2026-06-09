@@ -1,5 +1,8 @@
 package com.destinyai.astrology.ui.compatibility
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -7,9 +10,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,11 +24,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.destinyai.astrology.R
 import com.destinyai.astrology.domain.model.KutaDetail
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
@@ -40,10 +49,13 @@ fun AshtakootGlassGrid(
 ) {
     // iOS parity (AshtakootGlassGrid.swift:148-216): pill tap opens a description sheet.
     var detailKuta by remember { mutableStateOf<KutaDetail?>(null) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
-    Column(modifier = modifier) {
+    Column(
+        modifier = modifier.semantics { contentDescription = "ashtakoot_glass_grid" },
+    ) {
         Text(
-            text = "Ashtakoot Kutas",
+            text = stringResource(R.string.ashtakoot_kutas_section),
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold,
             color = Gold.copy(alpha = 0.7f),
@@ -57,11 +69,10 @@ fun AshtakootGlassGrid(
                 row.forEach { kuta ->
                     GlassPill(
                         kuta = kuta,
-                        isSelected = selectedKuta?.key == kuta.key,
                         onClick = {
-                            // Toggle parent selection (highlight) AND open the details sheet,
-                            // matching the iOS behavior where tapping reveals a description sheet.
-                            onKutaSelected(if (selectedKuta?.key == kuta.key) null else kuta)
+                            // iOS GlassPill has no isSelected highlight — tap only opens the sheet.
+                            // Still notify parent so other surfaces (orbit) can sync if needed.
+                            onKutaSelected(kuta)
                             detailKuta = kuta
                         },
                         modifier = Modifier.weight(1f),
@@ -75,7 +86,20 @@ fun AshtakootGlassGrid(
     detailKuta?.let { kuta ->
         ModalBottomSheet(
             onDismissRequest = { detailKuta = null },
+            sheetState = sheetState,
             containerColor = NavySurface,
+            // iOS parity: explicit capsule grip at the top of the sheet (AshtakootGlassGrid.swift:190-193).
+            dragHandle = {
+                Box(
+                    modifier = Modifier
+                        .padding(top = 10.dp, bottom = 4.dp)
+                        .width(40.dp)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Color.White.copy(alpha = 0.30f))
+                        .semantics { contentDescription = "kuta_sheet_drag_handle" },
+                )
+            },
         ) {
             KutaDetailSheetContent(kuta = kuta)
         }
@@ -97,10 +121,23 @@ private fun KutaDetailSheetContent(kuta: KutaDetail) {
             .padding(horizontal = 20.dp, vertical = 16.dp)
             .semantics { contentDescription = "kuta_detail_sheet" },
         verticalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(kutaIcons[kuta.key] ?: "✦", fontSize = 24.sp)
-            Spacer(Modifier.width(10.dp))
+        // iOS parity (AshtakootGlassGrid.swift:195-197): a single 48pt SF Symbol tinted statusColor at the top.
+        kutaVectorIcons[kuta.key]?.let { vector ->
+            Icon(
+                imageVector = vector,
+                contentDescription = "kuta_${kuta.key}_icon",
+                tint = statusColor,
+                modifier = Modifier
+                    .size(48.dp)
+                    .semantics { contentDescription = "kuta_detail_icon_${kuta.key}" },
+            )
+        }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
             Text(
                 kuta.label,
                 style = MaterialTheme.typography.titleMedium,
@@ -122,16 +159,19 @@ private fun KutaDetailSheetContent(kuta: KutaDetail) {
                 )
             }
         }
-        if (kuta.doshaPresent) {
-            val doshaColor = if (kuta.doshaCancelled) Color(0xFF48BB78) else Color(0xFFFC8181)
-            Text(
-                if (kuta.doshaCancelled) "✓ Dosha cancelled" else "⚠ Dosha active",
-                style = MaterialTheme.typography.bodySmall,
-                color = doshaColor,
-            )
+        // iOS parity (AshtakootGlassGrid.swift:187-215): the kuta detail sheet shows ONLY
+        // icon, label, score, and description. Cancellation status is NOT rendered here —
+        // it surfaces on the global cancelled-doshas summary banner in CompatibilityResultScreen
+        // and the orbit/comparison badges. Keeping the sheet minimal preserves iOS parity and
+        // avoids duplicating the same status across multiple surfaces.
+        // iOS uses a localized placeholder when no rich description is provided. Mirror that
+        // fallback chain so we never display the empty string on Android either.
+        val descriptionText = kuta.description.ifBlank {
+            kuta.plainEnglishSummary?.takeIf { it.isNotBlank() }
+                ?: stringResource(R.string.kuta_detail_placeholder_format_android, kuta.label)
         }
         Text(
-            text = kuta.description.ifBlank { kuta.plainEnglishSummary.orEmpty() },
+            text = descriptionText,
             style = MaterialTheme.typography.bodyMedium,
             color = CreamDim,
             lineHeight = 20.sp,
@@ -143,12 +183,10 @@ private fun KutaDetailSheetContent(kuta: KutaDetail) {
 @Composable
 fun GlassPill(
     kuta: KutaDetail,
-    isSelected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val successColor = Color(0xFF48BB78)
-    val errorColor = Color(0xFFFC8181)
+    val haptics = LocalHapticFeedback.current
     val statusColor = glassPillStatusColor(
         doshaPresent = kuta.doshaPresent,
         doshaCancelled = kuta.doshaCancelled,
@@ -156,17 +194,33 @@ fun GlassPill(
         maxScore = kuta.maxScore,
         key = kuta.key,
     )
-    val borderColor = if (isSelected) statusColor else statusColor.copy(alpha = 0.2f)
-    val bgColor = if (isSelected) statusColor.copy(alpha = 0.08f) else NavySurface
+    // iOS GlassPill has no selection highlight — uses a fixed 30% statusColor stroke.
+    val borderColor by animateColorAsState(
+        targetValue = statusColor.copy(alpha = 0.3f),
+        animationSpec = tween(durationMillis = 200),
+        label = "glass_pill_border",
+    )
+    val borderWidth by animateDpAsState(
+        targetValue = 1.dp,
+        animationSpec = tween(durationMillis = 200),
+        label = "glass_pill_border_width",
+    )
 
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(bgColor)
-            .border(1.dp, borderColor, RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 10.dp),
+            // ultraThinMaterial parity stub — translucent navy + faint gradient overlay until
+            // an AGSL blur is wired in. Strict glass sampling is tracked separately.
+            .background(NavySurface.copy(alpha = 0.55f))
+            .border(borderWidth, borderColor, RoundedCornerShape(12.dp))
+            .clickable {
+                // iOS triggers HapticManager.play(.light) — closest Android equivalent is TextHandleMove.
+                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onClick()
+            }
+            .padding(horizontal = 10.dp, vertical = 10.dp)
+            .semantics { contentDescription = "kuta_pill_${kuta.key}" },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -176,7 +230,15 @@ fun GlassPill(
                 .background(statusColor),
         )
         Spacer(Modifier.width(6.dp))
-        Text(kutaIcons[kuta.key] ?: "✦", fontSize = 13.sp)
+        // iOS parity: tinted SF Symbol — Android draws the matching vector tinted with statusColor.
+        kutaVectorIcons[kuta.key]?.let { vector ->
+            Icon(
+                imageVector = vector,
+                contentDescription = null,
+                tint = CreamDim,
+                modifier = Modifier.size(14.dp),
+            )
+        }
         Spacer(Modifier.width(5.dp))
         Text(
             text = kuta.label,

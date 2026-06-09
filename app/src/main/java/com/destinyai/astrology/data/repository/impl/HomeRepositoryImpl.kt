@@ -8,7 +8,6 @@ import com.destinyai.astrology.data.remote.BirthProfileDto
 import com.destinyai.astrology.data.repository.HomeRepository
 import com.destinyai.astrology.domain.model.User
 import com.destinyai.astrology.ui.charts.BirthData
-import com.destinyai.astrology.ui.charts.ChartConstants
 import com.destinyai.astrology.ui.charts.ChartDataRequest
 import com.destinyai.astrology.ui.charts.DashaPeriod
 import com.destinyai.astrology.ui.charts.DashaResponse
@@ -18,6 +17,8 @@ import com.destinyai.astrology.ui.home.HomeDoshaStatus
 import com.destinyai.astrology.ui.home.HomeRichData
 import com.destinyai.astrology.ui.home.HomeTransit
 import com.destinyai.astrology.ui.home.HomeYoga
+import com.destinyai.astrology.ui.home.HomeLifeArea
+import com.destinyai.astrology.ui.home.LifeAreaStatus
 import com.destinyai.astrology.ui.home.defaultLifeAreas
 import com.google.gson.Gson
 import kotlinx.coroutines.async
@@ -71,9 +72,8 @@ class HomeRepositoryImpl @Inject constructor(
         )
     }
 
-    override suspend fun getDailyInsight(): String {
+    override suspend fun getDailyInsight(birth: BirthProfileDto, profileCacheId: String): String {
         val email = prefs.getUserEmail() ?: return ""
-        val birth = prefs.getBirthProfile() ?: return ""
         // iOS parity (TodaysPredictionCache.swift:32-53): if a today-keyed cache
         // entry exists for this profile, hydrate the in-memory lastTodaysPrediction
         // immediately so HomeView renders without a network call. The cache is
@@ -85,7 +85,7 @@ class HomeRepositoryImpl @Inject constructor(
         val cachedEntity = runCatching {
             astroDataCacheDao.get(
                 kind = TODAY_KIND,
-                profileId = email,
+                profileId = profileCacheId,
                 birthHash = birthHash,
                 year = today.year,
                 month = dayKey,
@@ -136,7 +136,7 @@ class HomeRepositoryImpl @Inject constructor(
             astroDataCacheDao.upsert(
                 AstroDataCacheEntity(
                     kind = TODAY_KIND,
-                    profileId = email,
+                    profileId = profileCacheId,
                     birthHash = birthHash,
                     year = today.year,
                     month = dayKey,
@@ -164,6 +164,18 @@ class HomeRepositoryImpl @Inject constructor(
     companion object {
         /** Discriminator for the today-prediction kind in astro_data_cache. */
         private const val TODAY_KIND = "today"
+
+        /**
+         * Full English sign names indexed by signNum-1. Returned to HomeScreen
+         * so localizedSignName(sign) can lowercase-match "gemini" → R.string.sign_ge
+         * and resolve to the localized "Gemini" / "मिथुन" / etc. resource. The
+         * 2-letter glyphs in ChartConstants.orderedSigns are intentionally kept
+         * for the South-Indian chart grid rendering and are NOT used here.
+         */
+        private val FULL_SIGN_NAMES: List<String> = listOf(
+            "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
+            "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
+        )
     }
 
     @Volatile private var lastTodaysPrediction: com.destinyai.astrology.data.remote.TodaysPredictionResponse? = null
@@ -171,12 +183,17 @@ class HomeRepositoryImpl @Inject constructor(
     override suspend fun getDashaPeriods(birthProfile: BirthProfileDto): DashaResponse? {
         return runCatching {
             val authHeader = "Bearer ${com.destinyai.astrology.BuildConfig.API_KEY}"
+            // Parity with ChatRepositoryImpl — pass user-selected ayanamsa / house_system.
+            val ayanamsa = runCatching { prefs.getAyanamsa() }.getOrDefault("lahiri")
+            val houseSystem = runCatching { prefs.getHouseSystem() }.getOrDefault("whole_sign")
             val request = DashaTransitRequest(
                 birthData = BirthData(
                     dob = birthProfile.dateOfBirth,
                     time = birthProfile.timeOfBirth,
                     latitude = birthProfile.latitude,
                     longitude = birthProfile.longitude,
+                    ayanamsa = ayanamsa,
+                    houseSystem = houseSystem,
                     cityOfBirth = birthProfile.cityOfBirth,
                     birthTimeUnknown = birthProfile.birthTimeUnknown,
                 ),
@@ -186,8 +203,15 @@ class HomeRepositoryImpl @Inject constructor(
         }.getOrNull()
     }
 
-    override suspend fun getRichHomeData(email: String, birthProfile: BirthProfileDto): HomeRichData? {
+    override suspend fun getRichHomeData(
+        email: String,
+        birthProfile: BirthProfileDto,
+        profileCacheId: String,
+    ): HomeRichData? {
         return runCatching {
+            // Parity with ChatRepositoryImpl — pass user-selected ayanamsa / house_system.
+            val ayanamsa = runCatching { prefs.getAyanamsa() }.getOrDefault("lahiri")
+            val houseSystem = runCatching { prefs.getHouseSystem() }.getOrDefault("whole_sign")
             // Parity with iOS HomeViewModel.loadHomeData TaskGroup — fan out chart-data and
             // dasha-periods fetches in parallel instead of running them sequentially. Mirrors
             // the iOS 3-parallel pattern (todays-prediction is fired separately by getDailyInsight).
@@ -200,6 +224,8 @@ class HomeRepositoryImpl @Inject constructor(
                                 time = birthProfile.timeOfBirth,
                                 latitude = birthProfile.latitude,
                                 longitude = birthProfile.longitude,
+                                ayanamsa = ayanamsa,
+                                houseSystem = houseSystem,
                                 cityOfBirth = birthProfile.cityOfBirth,
                                 birthTimeUnknown = birthProfile.birthTimeUnknown,
                             ),
@@ -257,9 +283,13 @@ class HomeRepositoryImpl @Inject constructor(
 
             // Yogas: prefer server-supplied analysis.yogas (parity with iOS HomeViewModel
             // which uses response.analysis.yogas.yogas + response.analysis.yogas.doshas).
-            // Fall back to the legacy combust/vargottama heuristic only when the prediction
-            // endpoint did not return any classical yoga analysis.
+            // Two server sources can populate this: /vedic/api/todays-prediction's
+            // (rare) analysis block, or /vedic/api/astrodata/full's analysis.yogas
+            // (always present when chart data loads). Fall back to the legacy
+            // combust/vargottama heuristic only when neither source returns any
+            // classical yoga analysis.
             val serverYogas = lastTodaysPrediction?.analysis?.yogas
+                ?: chartResponse.analysis?.yogas
             val yogas: List<HomeYoga> = run {
                 val combined = mutableListOf<HomeYoga>()
                 serverYogas?.yogas?.forEach { y ->
@@ -301,7 +331,7 @@ class HomeRepositoryImpl @Inject constructor(
                     // Sort by status (active first) then strength desc, like iOS
                     combined.sortedWith(
                         compareByDescending<HomeYoga> {
-                            it.status.equals("active", ignoreCase = true)
+                            it.status.equals("active", ignoreCase = true) || it.status.equals("a", ignoreCase = true)
                         }
                     )
                 } else {
@@ -319,7 +349,9 @@ class HomeRepositoryImpl @Inject constructor(
             // payload (parity with iOS doshaStatus = (analysis.mangalDosha, analysis.kalaSarpa)).
             // The naive house-membership rules are kept only as last-resort fallback.
             val serverMangal = lastTodaysPrediction?.analysis?.mangalDosha
+                ?: chartResponse.analysis?.mangalDosha
             val serverKalaSarpa = lastTodaysPrediction?.analysis?.kalaSarpa
+                ?: chartResponse.analysis?.kalaSarpa
 
             val marsHouse = chartResponse.planets["Mars"]?.house ?: 0
             val mangalDoshaHouses = setOf(1, 4, 7, 8, 12)
@@ -359,6 +391,11 @@ class HomeRepositoryImpl @Inject constructor(
             // current_dasha summary when the dasha endpoint failed or returned no
             // matching period (offline / pre-fetch states).
             val dashaInfo: HomeDashaInfo? = run {
+                // iOS parity: backend's dasha_insight payload carries quality/theme/
+                // meaning that drive the Steady pill + Theme line + Meaning paragraph
+                // on DashaInsightCard. Cache it here so all branches below can layer
+                // it on top of the period data.
+                val insight = lastTodaysPrediction?.dashaInsight
                 val today = LocalDate.now()
                 val current: DashaPeriod? = dashaResponse?.periods?.firstOrNull { p ->
                     runCatching {
@@ -376,9 +413,12 @@ class HomeRepositoryImpl @Inject constructor(
                         mahadasha = current.mahadasha,
                         antardasha = current.antardasha,
                         endsAt = current.end,
-                        upcomingAntardasha = upcoming?.antardasha,
+                        upcomingAntardasha = current.pratyantardasha.ifBlank { upcoming?.antardasha },
                         periodStartIso = current.start,
                         periodEndIso = current.end,
+                        quality = insight?.quality,
+                        theme = insight?.theme,
+                        meaning = insight?.meaning,
                     )
                 } else {
                     // current_dasha is Any? — backend may send a Map (structured) or a String like "Venus-Rahu-Moon"
@@ -392,6 +432,9 @@ class HomeRepositoryImpl @Inject constructor(
                                     mahadasha = maha,
                                     antardasha = antar,
                                     endsAt = ends,
+                                    quality = insight?.quality,
+                                    theme = insight?.theme,
+                                    meaning = insight?.meaning,
                                 )
                             } else null
                         }
@@ -404,10 +447,32 @@ class HomeRepositoryImpl @Inject constructor(
                                     mahadasha = maha,
                                     antardasha = antar,
                                     endsAt = "",
+                                    quality = insight?.quality,
+                                    theme = insight?.theme,
+                                    meaning = insight?.meaning,
                                 )
                             } else null
                         }
-                        else -> null
+                        else -> {
+                            // Synthesize a minimum HomeDashaInfo from dasha_insight alone
+                            // when neither dashaResponse nor current_dasha is populated —
+                            // mirrors iOS HomeViewModel which surfaces dashaInsight even
+                            // without periods so the card still renders quality/theme.
+                            insight?.let {
+                                val parts = it.period.orEmpty().split('-', '/').map { s -> s.trim() }
+                                val maha = parts.getOrNull(0).orEmpty()
+                                val antar = parts.getOrNull(1).orEmpty()
+                                if (maha.isBlank() && antar.isBlank()) null
+                                else HomeDashaInfo(
+                                    mahadasha = maha,
+                                    antardasha = antar,
+                                    endsAt = it.endDate.orEmpty(),
+                                    quality = it.quality,
+                                    theme = it.theme,
+                                    meaning = it.meaning,
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -422,16 +487,67 @@ class HomeRepositoryImpl @Inject constructor(
                     mangalSeverity = mangalSeverity,
                     kalasarpaType = kalasarpaType,
                 ),
-                lifeAreas = defaultLifeAreas(),
+                lifeAreas = mapLifeAreas(lastTodaysPrediction?.life_areas),
                 ascendantSign = run {
                     // Parity with ChartsViewModel — derive ascendant sign name from
                     // houses["1"].signNum so the Home greeting subtitle (R2-H30)
                     // can render "Gemini Ascendant" without a separate API call.
+                    // Use the full English sign name (not the 2-letter glyph from
+                    // ChartConstants.orderedSigns) so HomeScreen.localizedSignName
+                    // can map it to the localized R.string.sign_* resource.
                     val signNum = chartResponse.houses["1"]?.signNum ?: 1
                     val idx = (signNum - 1).coerceIn(0, 11)
-                    ChartConstants.orderedSigns.getOrNull(idx).orEmpty()
+                    FULL_SIGN_NAMES.getOrNull(idx).orEmpty()
                 },
             )
         }.getOrNull()
     }
+}
+
+/**
+ * Merges server life_areas payload into the default area list.
+ * Mirrors iOS applyPredictionResponse (HomeViewModel.swift:401-411):
+ *   - status "Good"/"Excellent" → Positive (green)
+ *   - status "Caution"/"Difficult"/"Challenging" → Caution (orange/red)
+ *   - "Steady" or any other → Neutral (gold)
+ *   - Populates briefDescription from the server "brief" field
+ *   - If no area maps to Positive, forces the first (alphabetically) to Positive
+ *     so there's always at least one green orb (iOS green-guarantee, line 408-411)
+ * Falls back to defaultLifeAreas() when the payload is null or empty.
+ */
+private fun mapLifeAreas(
+    payload: Map<String, Map<String, Any?>>?,
+): List<HomeLifeArea> {
+    val defaults = defaultLifeAreas()
+    if (payload.isNullOrEmpty()) return defaults
+
+    val mapped: List<HomeLifeArea> = defaults.map { area ->
+        // Match case-insensitively: "Career" matches "career", etc.
+        val serverEntry: Map<String, Any?>? = payload.entries.firstOrNull {
+            it.key.equals(area.name, ignoreCase = true)
+        }?.value
+
+        if (serverEntry == null) {
+            area // keep default (Neutral, default brief)
+        } else {
+            val statusStr = (serverEntry["status"] as? String).orEmpty()
+            val brief = (serverEntry["brief"] as? String).orEmpty()
+            val status = when (statusStr.lowercase()) {
+                "good", "excellent" -> LifeAreaStatus.Positive
+                "caution", "difficult", "challenging" -> LifeAreaStatus.Caution
+                else -> LifeAreaStatus.Neutral
+            }
+            area.copy(
+                status = status,
+                briefDescription = brief.ifEmpty { area.briefDescription },
+            )
+        }
+    }
+
+    // iOS green-guarantee: at least one Positive orb
+    return if (mapped.none { it.status == LifeAreaStatus.Positive }) {
+        val list = mapped.toMutableList()
+        if (list.isNotEmpty()) list[0] = list[0].copy(status = LifeAreaStatus.Positive)
+        list
+    } else mapped
 }

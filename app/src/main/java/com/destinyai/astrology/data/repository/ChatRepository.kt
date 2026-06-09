@@ -36,6 +36,7 @@ sealed class ChatStreamEvent {
         val toolCalls: List<String> = emptyList(),
         val sources: List<String> = emptyList(),
         val advice: String? = null,
+        val timing: String? = null,
         val executionTimeMs: Double = 0.0,
         val traceId: String? = null,
     ) : ChatStreamEvent()

@@ -17,7 +17,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -47,6 +51,7 @@ fun PartnerPickerSheet(
 ) {
     val savedPartners by viewModel.savedPartners.collectAsStateWithLifecycle()
     var searchText by remember { mutableStateOf("") }
+    val haptic = LocalHapticFeedback.current
 
     LaunchedEffect(Unit) { viewModel.loadSavedPartners() }
 
@@ -143,7 +148,9 @@ fun PartnerPickerSheet(
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(NavySurface)
                                 .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+                                .semantics { contentDescription = "compat_saved_partner_row" }
                                 .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     viewModel.selectSavedPartner(partner)
                                     onDismiss()
                                 }

@@ -38,6 +38,11 @@ class ProfileSetupLoadingViewModel @Inject constructor(
     private val prefs: UserPreferences,
     private val hapticManager: HapticManager,
     private val soundManager: SoundManager,
+    // iOS parity (AuthViewModel.swift:672 LoginSyncCoordinator.shared.syncAll):
+    // chat history + quota state are pulled in parallel during the same setup
+    // window so Home + Chat + Match all render with fresh data when the popup
+    // dismisses, NOT later on first navigation.
+    private val loginSync: com.destinyai.astrology.services.LoginSyncCoordinator,
 ) : ViewModel() {
 
     enum class Phase { CALCULATING_CHART, ANALYZING_PLANETS, GENERATING_INSIGHTS, COMPLETE }
@@ -71,10 +76,20 @@ class ProfileSetupLoadingViewModel @Inject constructor(
                 // Run chart prefetch in parallel with phase pacing — matches iOS
                 // which awaits chart, then spaces the next phase by 800ms.
                 val chartJob = async(Dispatchers.IO) {
-                    runCatching { homeRepository.getRichHomeData(email, birth) }
+                    // Onboarding only ever runs with the self profile active —
+                    // no switch has happened yet — so email is a safe cache key.
+                    runCatching { homeRepository.getRichHomeData(email, birth, email) }
                         .onFailure { android.util.Log.w("ProfileSetup", "Chart fetch failed: ${it.message}") }
                 }
+                // iOS parity (AuthViewModel.swift:672): chat history + quota sync
+                // run in parallel with chart prefetch so the popup window covers
+                // ALL post-sign-in API calls instead of just chart + prediction.
+                val syncJob = async(Dispatchers.IO) {
+                    runCatching { loginSync.syncAll(userEmail = email) }
+                        .onFailure { android.util.Log.w("ProfileSetup", "loginSync.syncAll failed: ${it.message}") }
+                }
                 chartJob.await()
+                syncJob.await()
             } else {
                 android.util.Log.w("ProfileSetup", "Missing email or birth profile — skipping prefetch")
             }
@@ -86,7 +101,11 @@ class ProfileSetupLoadingViewModel @Inject constructor(
             // Phase 3 — generating insights (target 0.9), fetch today's prediction
             _state.value = _state.value.copy(phaseIndex = 2, progress = 0.9f)
             runCatching {
-                withContext(Dispatchers.IO) { homeRepository.getDailyInsight() }
+                withContext(Dispatchers.IO) {
+                    if (birth != null && email != null) {
+                        homeRepository.getDailyInsight(birth, email)
+                    } else ""
+                }
             }.onFailure { android.util.Log.w("ProfileSetup", "Prediction fetch failed: ${it.message}") }
 
             // Stop heartbeat before completion — mirrors iOS line 153 heartbeatTask.cancel()

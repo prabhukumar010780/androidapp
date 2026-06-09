@@ -2,11 +2,17 @@ package com.destinyai.astrology.ui.partners
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -38,11 +44,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -52,6 +63,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.destinyai.astrology.R
 import com.destinyai.astrology.data.remote.LocationResult
 import com.destinyai.astrology.services.HapticManager
+import com.destinyai.astrology.services.SoundManager
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
@@ -60,23 +72,61 @@ import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
 import com.destinyai.astrology.data.remote.PartnerDto
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun PartnersScreen(
     onBack: () -> Unit,
     onUpgrade: () -> Unit = {},
+    // iOS parity (ProfileView.swift:339-347 + QuotaExhaustedView.onSignIn):
+    // defense-in-depth route for guests. ProfileScreen already gates entry to
+    // this screen behind GuestSignInPromptSheet, but if any other entry point
+    // lands a guest here we must redirect to AuthScreen — never to home.
+    onNavigateToAuth: () -> Unit = {},
     viewModel: PartnersViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val haptic = remember { HapticManager(context) }
     var partnerToDelete by remember { mutableStateOf<PartnerDto?>(null) }
+    // iOS parity (PartnerManagerView.swift:90-92): present SubscriptionView as
+    // a sheet from this screen instead of relying on host nav (Gap 4).
+    var showSubscriptionSheet by remember { mutableStateOf(false) }
+
+    // Local SnackbarHost — surfaces successEvent (Add/Edit/Delete) the way iOS
+    // emits SoundManager.playSuccess + HapticManager. Android needs a visible
+    // toast in addition to the audio/haptic cue (Audit gap #1, #2a, #2b).
+    val snackbarHostState = remember { SnackbarHostState() }
+    val addedTemplate = stringResource(R.string.birth_chart_added_toast)
+    val updatedTemplate = stringResource(R.string.birth_chart_updated_toast)
+    val deletedTemplate = stringResource(R.string.birth_chart_deleted_toast)
+    LaunchedEffect(state.successEvent) {
+        val event = state.successEvent ?: return@LaunchedEffect
+        val message = when (event) {
+            is PartnerSuccessEvent.Added -> addedTemplate.format(event.partnerName)
+            is PartnerSuccessEvent.Updated -> updatedTemplate.format(event.partnerName)
+            is PartnerSuccessEvent.Deleted -> deletedTemplate.format(event.partnerName)
+        }
+        snackbarHostState.showSnackbar(message)
+        viewModel.consumeSuccessEvent()
+    }
 
     LaunchedEffect(Unit) { viewModel.loadPartners() }
+
+    // iOS parity (ProfileView.swift:339-347): guests must never reach
+    // PartnerManagerView. ProfileScreen already gates entry, but if a guest
+    // somehow lands here we route to AuthScreen — NOT home — matching iOS
+    // QuotaExhaustedView.onSignIn behavior.
+    LaunchedEffect(state.isGuest) {
+        if (state.isGuest) onNavigateToAuth()
+    }
 
     // iOS parity (PartnerFormView.swift:284-303): native date picker dialog.
     LaunchedEffect(state.showDatePicker) {
@@ -114,6 +164,7 @@ fun PartnersScreen(
     }
 
     CosmicBackground {
+        Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Header
             Row(
@@ -164,8 +215,21 @@ fun PartnersScreen(
             // composable to mirror iOS .sheet(isPresented:) presentation. See PartnerFormSheet.
 
             if (state.isLoading) {
+                // iOS parity (PartnerManagerView.swift loading state): label beneath the spinner.
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Gold, modifier = Modifier.size(28.dp))
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier
+                            .semantics { contentDescription = "partners_loading_indicator" },
+                    ) {
+                        CircularProgressIndicator(color = Gold, modifier = Modifier.size(28.dp))
+                        Text(
+                            text = stringResource(R.string.loading_birth_charts),
+                            color = CreamDim,
+                            fontSize = 13.sp,
+                        )
+                    }
                 }
             } else if (state.partners.isEmpty()) {
                 // iOS parity (PartnerManagerView.swift:189-223): rich empty state
@@ -233,8 +297,11 @@ fun PartnersScreen(
                         modifier = Modifier.fillMaxSize(),
                     ) {
                     items(state.partners, key = { it.id }) { partner ->
+                        // iOS parity (PartnerManagerView.swift interpolatingSpring on insertion):
+                        // animate inter-row placement when items reorder/insert/remove.
                         Row(
                             modifier = Modifier
+                                .animateItemPlacement()
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(16.dp))
                                 .background(NavySurface)
@@ -361,6 +428,17 @@ fun PartnersScreen(
                 }
             }
         }
+        // SnackbarHost overlay — sibling to the Column inside the Box wrapper.
+        // Sits above the Column so the toast renders above list content / form
+        // sheets (sheet has its own composition scope, but the host is rooted
+        // here, surviving the sheet dismissal that triggers the success event).
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(16.dp),
+        )
+        }
     }
 
     // iOS parity (PartnerManagerView.swift:357-370, 388-404): protection alert explaining
@@ -405,15 +483,24 @@ fun PartnersScreen(
                 )
             },
             text = {
-                Text(
-                    text = stringResource(R.string.partner_quota_upgrade_message),
-                    color = CreamDim,
-                )
+                // iOS parity (PartnerManagerView.swift:121): interpolate
+                // result.limit into the message ("You can save up to N
+                // birth charts...") for Core users at limit. Free users
+                // (limit == 0) keep the generic message (Gaps 3, 6).
+                val limit = state.quotaLimit
+                val msg = if (limit > 0) {
+                    stringResource(R.string.partner_quota_upgrade_message_with_limit, limit)
+                } else {
+                    stringResource(R.string.partner_quota_upgrade_message)
+                }
+                Text(text = msg, color = CreamDim)
             },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.dismissQuotaUpgradePrompt()
-                    onUpgrade()
+                    // iOS parity (PartnerManagerView.swift:94-97): present
+                    // SubscriptionView in-screen instead of delegating up (Gap 4).
+                    showSubscriptionSheet = true
                 }) {
                     Text(
                         stringResource(R.string.partner_quota_upgrade_action),
@@ -428,6 +515,45 @@ fun PartnersScreen(
                 }
             },
         )
+    }
+
+    // iOS parity (PartnerManagerView.swift:78-82): list-level errors must
+    // surface to the user. Bind a top-level dialog to viewModel.error so
+    // delete/refresh/load failures are visible outside the form (Gaps 2, 7).
+    state.error?.takeIf { !state.showAddForm }?.let { msg ->
+        AlertDialog(
+            onDismissRequest = { viewModel.clearError() },
+            containerColor = NavySurface,
+            title = {
+                Text(
+                    text = stringResource(R.string.error),
+                    color = CreamText,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            },
+            text = { Text(text = msg, color = CreamDim) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.clearError() }) {
+                    Text(
+                        stringResource(R.string.ok),
+                        color = Gold,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            },
+        )
+    }
+
+    // iOS parity (PartnerManagerView.swift:90-92): SubscriptionView sheet.
+    if (showSubscriptionSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showSubscriptionSheet = false },
+            containerColor = NavySurface,
+        ) {
+            com.destinyai.astrology.ui.subscription.SubscriptionScreen(
+                onBack = { showSubscriptionSheet = false },
+            )
+        }
     }
 
     // iOS parity (PartnerFormView.swift:276-283 LocationSearchView): debounced city lookup with results list.
@@ -692,12 +818,15 @@ private fun PartnerTextField(
     onValueChange: (String) -> Unit,
     label: String,
     keyboardType: KeyboardType = KeyboardType.Text,
+    modifier: Modifier = Modifier,
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label, color = CreamDim) },
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(modifier),
         shape = RoundedCornerShape(12.dp),
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         colors = OutlinedTextFieldDefaults.colors(
@@ -776,20 +905,57 @@ private fun BadgeChip(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PartnerFormSheet(
+internal fun PartnerFormSheet(
     state: PartnersUiState,
     viewModel: PartnersViewModel,
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
     val haptic = remember { HapticManager(context) }
+    // iOS parity (PartnerFormView.swift): SoundManager.playSuccess + Shimmer haptic on save.
+    val soundManager = remember(context) {
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            PartnerSoundEntryPoint::class.java,
+        ).soundManager()
+    }
+    // iOS parity (PartnerFormView.swift:27, 116, 126,137,150,245): @FocusState for the
+    // name field — auto-focus on open and dismiss on row taps.
+    val nameFocusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    LaunchedEffect(Unit) {
+        runCatching { nameFocusRequester.requestFocus() }
+    }
+    // iOS parity (PartnerFormView.swift:127, 304-316): gender row opens a
+    // PremiumSelectionSheet (ModalBottomSheet on Android), not inline chips.
+    var showGenderSheet by remember { mutableStateOf(false) }
+    // Track previous saving state to detect a successful save transition.
+    val wasSaving = remember { mutableStateOf(false) }
+    LaunchedEffect(state.isSaving, state.showAddForm, state.error) {
+        if (wasSaving.value && !state.isSaving && !state.showAddForm && state.error == null) {
+            // iOS parity (PartnerFormView.swift:361 + ShimmerButton): success cue on save.
+            soundManager.playSuccess()
+            haptic.playShimmer()
+        }
+        wasSaving.value = state.isSaving
+    }
+    // iOS parity (PartnerFormView.swift sheet presentation): iOS `.sheet`
+    // defaults to a full-height card with no partial detent, and the keyboard
+    // pushes the content up via SwiftUI's automatic safe-area handling. On
+    // Android, ModalBottomSheet's default partial-expanded detent makes the
+    // form half-height so the keyboard covers fields. Force the sheet to
+    // skip the partial detent (full-height only) and pad for the IME so
+    // the Name/Date/Time fields stay visible while typing.
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        sheetState = sheetState,
         containerColor = NavySurface,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .imePadding()
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -831,10 +997,19 @@ private fun PartnerFormSheet(
                 value = state.formName,
                 onValueChange = viewModel::setFormName,
                 label = stringResource(R.string.partner_form_name_label),
+                modifier = Modifier
+                    .focusRequester(nameFocusRequester)
+                    .semantics { contentDescription = "partner_form_name_field" },
             )
-            GenderSelector(
+            // iOS parity (PartnerFormView.swift:120-128): tappable selection row that
+            // opens a ModalBottomSheet hosting the four gender options (Issues 2, 3).
+            GenderSelectionRow(
                 selected = state.formGender,
-                onSelect = viewModel::setFormGender,
+                onClick = {
+                    haptic.light()
+                    keyboardController?.hide()
+                    showGenderSheet = true
+                },
             )
             PickerRow(
                 label = stringResource(R.string.partner_form_dob_label),
@@ -964,7 +1139,8 @@ private fun PartnerFormSheet(
                     modifier = Modifier
                         .weight(1f)
                         .height(44.dp)
-                        .testTag("partner_form_save"),
+                        .testTag("partner_form_save")
+                        .semantics { contentDescription = "partner_form_save_button" },
                     shape = RoundedCornerShape(10.dp),
                     contentPadding = PaddingValues(horizontal = 0.dp),
                     // iOS parity (PartnerFormView.swift:252-256 ShimmerButton): leading
@@ -1018,6 +1194,19 @@ private fun PartnerFormSheet(
                 }
             }
         }
+    }
+
+    // iOS parity (PartnerFormView.swift:304-316): gender selection presented as a
+    // modal sheet, not inline chips.
+    if (showGenderSheet) {
+        GenderModalSheet(
+            selected = state.formGender,
+            onSelect = { value ->
+                haptic.light()
+                viewModel.setFormGender(value)
+            },
+            onDismiss = { showGenderSheet = false },
+        )
     }
 }
 
@@ -1112,4 +1301,121 @@ private fun shimmeringGoldBrush(): Brush {
     return Brush.linearGradient(
         colors = listOf(Gold, mid, Color(0xFFF5D060)),
     )
+}
+
+/**
+ * iOS parity (PartnerFormView.swift:120-128): tappable gender selection row.
+ * Replaces the previous inline FilterChip set with a row that opens a modal sheet,
+ * matching iOS PremiumSelectionRow visual + interaction model.
+ */
+@Composable
+private fun GenderSelectionRow(
+    selected: String,
+    onClick: () -> Unit,
+) {
+    val labelRes = when (selected) {
+        "male" -> R.string.gender_male
+        "female" -> R.string.gender_female
+        "non-binary" -> R.string.gender_non_binary
+        "prefer_not_to_say" -> R.string.gender_prefer_not_say
+        else -> null
+    }
+    val display = labelRes?.let { stringResource(it) }
+        ?: stringResource(R.string.partner_form_gender_label)
+    PickerRow(
+        label = stringResource(R.string.partner_form_gender_label),
+        value = display,
+        isPlaceholder = labelRes == null,
+        onClick = onClick,
+    )
+}
+
+/**
+ * iOS parity (PartnerFormView.swift:304-316): bottom-sheet gender picker that
+ * mirrors PremiumSelectionSheet — title, four options with check on the active
+ * choice, light haptic per selection, dismiss on tap.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun GenderModalSheet(
+    selected: String,
+    onSelect: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val options = listOf(
+        "male" to R.string.gender_male,
+        "female" to R.string.gender_female,
+        "non-binary" to R.string.gender_non_binary,
+        "prefer_not_to_say" to R.string.gender_prefer_not_say,
+    )
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = NavySurface,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 32.dp)
+                .semantics { contentDescription = "partner_form_gender_sheet" },
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.partner_form_gender_label),
+                color = Gold,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp,
+                fontFamily = CanelaFontFamily,
+                modifier = Modifier.padding(vertical = 8.dp),
+            )
+            options.forEach { (value, labelRes) ->
+                val isSelected = value == selected
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (isSelected) Gold.copy(alpha = 0.12f) else NavyVariant)
+                        .border(
+                            0.5.dp,
+                            if (isSelected) Gold.copy(alpha = 0.5f) else Gold.copy(alpha = 0.2f),
+                            RoundedCornerShape(10.dp),
+                        )
+                        .clickable {
+                            onSelect(value)
+                            onDismiss()
+                        }
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                        .testTag("partner_form_gender_option_$value"),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(labelRes),
+                        color = CreamText,
+                        fontSize = 15.sp,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (isSelected) {
+                        Icon(
+                            imageVector = Icons.Filled.Check,
+                            contentDescription = null,
+                            tint = Gold,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Hilt EntryPoint that exposes the application-scoped SoundManager to the
+ * PartnerFormSheet composable. Mirrors the HomeScreen.kt HomeSoundEntryPoint
+ * pattern so we can play success cues without forcing SoundManager into the
+ * ViewModel constructor.
+ */
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface PartnerSoundEntryPoint {
+    fun soundManager(): SoundManager
 }

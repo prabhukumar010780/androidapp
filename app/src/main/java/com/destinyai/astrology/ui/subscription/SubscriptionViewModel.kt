@@ -140,23 +140,30 @@ class SubscriptionViewModel @Inject constructor(
     val subscriptionConflict: StateFlow<SubscriptionConflict?> =
         billingManager.subscriptionConflict
 
-    /** iOS parity (SubscriptionView.swift:308-340) — explode each paid PlanDto
-     *  into 2 cards (monthly + yearly). Free plan is filtered out here so the
-     *  screen does not need to filter again. */
+    /** iOS parity (SubscriptionView.swift:308-340) — render ONE card per plan
+     *  tied to monthlyProduct(for:planId), matching iOS's one-card-per-PlanInfo
+     *  model. Free plan is filtered out here so the screen does not need to
+     *  filter again.
+     *
+     *  GAP FIX (Issues 2, 4): Android previously exploded each PlanDto into 2
+     *  variants (monthly + yearly) producing 4 cards versus iOS's 2-card paywall.
+     *  Aligned to iOS canonical model: one DisplayPlan per PlanDto, period
+     *  pinned to "monthly" so price + product lookup map to monthlyProduct. */
     val displayPlans: StateFlow<List<DisplayPlan>> =
         _uiState
             .map { state ->
                 state.plans
                     .filter { !it.isFree }
-                    .flatMap { plan ->
+                    // iOS parity (SubscriptionView.swift:139, 151) — paid plans
+                    // are sorted by priceMonthly ascending so Core renders
+                    // before Plus regardless of backend ordering.
+                    .sortedBy { it.priceMonthly }
+                    .map { plan ->
                         val tier = when {
                             plan.planId.contains("plus", ignoreCase = true) -> "plus"
                             else -> "core"
                         }
-                        listOf(
-                            DisplayPlan(source = plan, tier = tier, period = "monthly"),
-                            DisplayPlan(source = plan, tier = tier, period = "yearly"),
-                        )
+                        DisplayPlan(source = plan, tier = tier, period = "monthly")
                     }
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -309,11 +316,14 @@ class SubscriptionViewModel @Inject constructor(
         }
     }
 
-    fun loadCurrentPlan() {
+    /** iOS parity (SubscriptionView.swift:183-185 + QuotaManager.syncStatus(force:)).
+     *  When [force] is true, bypasses any 60s status cache so a manual
+     *  user-initiated refresh sees fresh server state immediately. */
+    fun loadCurrentPlan(force: Boolean = false) {
         viewModelScope.launch {
             val email = prefs.getUserEmail() ?: return@launch
             try {
-                val status = api.getStatus(email)
+                val status = api.getStatus(email, if (force) true else null)
                 _uiState.update {
                     it.copy(
                         currentPlanId = status.planId ?: "",
@@ -376,11 +386,14 @@ class SubscriptionViewModel @Inject constructor(
 
     /** iOS parity (SubscriptionView.swift:168-192 refreshStatus): force a
      *  reconcile + reload backend status. Wired to the toolbar refresh
-     *  button and pull-to-refresh. */
+     *  button and pull-to-refresh.
+     *
+     *  GAP FIX (Issues 3, 5): pass force=true to bypass the 60s status cache
+     *  on user-initiated refresh, mirroring iOS QuotaManager.syncStatus(force:true). */
     fun refreshStatus() {
         viewModelScope.launch {
             billingManager.reconcileEntitlements()
-            loadCurrentPlan()
+            loadCurrentPlan(force = true)
             loadPlans()
         }
     }

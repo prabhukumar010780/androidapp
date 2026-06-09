@@ -1,5 +1,6 @@
 package com.destinyai.astrology.ui.compatibility
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.destinyai.astrology.BuildConfig
@@ -60,6 +61,10 @@ data class CompatibilityUiState(
     val showStreamingView: Boolean = false,
     val showComparisonOverview: Boolean = false,
     val showPaywall: Boolean = false,
+    // iOS parity (CompatibilityView.swift signOutAndReauth + ChatViewModel.kt:55):
+    // set when the user taps Sign In on the QuotaExhaustedDialog so the host can
+    // consume the flag and navigate to AuthScreen exactly once.
+    val navigateToAuth: Boolean = false,
     val showPartnerPicker: Boolean = false,
     val showDuplicateAlert: Boolean = false,
     val duplicateSessionId: String? = null,
@@ -85,7 +90,25 @@ class CompatibilityViewModel @Inject constructor(
     private val compatibilityRepo: CompatibilityRepository,
     private val historyDao: CompatibilityHistoryDao,
     private val chatRepository: com.destinyai.astrology.data.repository.ChatRepository,
+    // iOS parity (ChatView.swift signOutAndReauth): used by requestSignInFromQuota
+    // to perform a partial sign-out so AuthScreen routes to login UI without
+    // bouncing back to Main.
+    private val authRepository: com.destinyai.astrology.data.repository.AuthRepository,
+    // iOS parity (CompatibilityView.swift:345-351 + CompatibilityViewModel.swift:178-210):
+    // when the active profile flips, "You" reflects the active profile's name +
+    // birth data, not the owner's. Bus injection lets us re-run loadUserData()
+    // without relying on a screen-side LaunchedEffect(Unit) that fires once.
+    private val profileChangeBus: com.destinyai.astrology.services.ProfileChangeBus,
+    private val profileContextManager: com.destinyai.astrology.services.ProfileContextManager,
 ) : ViewModel() {
+
+    init {
+        // Reload "You" + saved-history bucket whenever the active profile flips.
+        // Mirrors iOS CompatibilityView's `.onChange(of: activeProfileId)` path.
+        viewModelScope.launch {
+            profileChangeBus.events.collect { loadUserData() }
+        }
+    }
 
     private val gson = Gson()
 
@@ -106,6 +129,20 @@ class CompatibilityViewModel @Inject constructor(
     // Multi-partner comparison results
     private val _comparisonResults = MutableStateFlow<List<ComparisonResult>>(emptyList())
     val comparisonResults: StateFlow<List<ComparisonResult>> = _comparisonResults
+
+    // iOS parity (CompatibilityViewModel.swift:87): brief "Loaded from history" toast flag.
+    // Set true when a saved match is hydrated from local history without an API call;
+    // the screen renders an animated transient toast and auto-clears after a short delay.
+    private val _historyLoadedToast = MutableStateFlow(false)
+    val historyLoadedToast: StateFlow<Boolean> = _historyLoadedToast
+
+    fun showHistoryLoadedToast() {
+        _historyLoadedToast.value = true
+    }
+
+    fun dismissHistoryLoadedToast() {
+        _historyLoadedToast.value = false
+    }
 
     // iOS parity (CompatibilityView.swift:218-227): expose the active profile id so the
     // partner picker can exclude it from saved-partner suggestions.
@@ -144,8 +181,14 @@ class CompatibilityViewModel @Inject constructor(
     fun loadUserData() {
         viewModelScope.launch {
             val email = prefs.getUserEmail() ?: return@launch
-            val profile = prefs.getBirthProfile() ?: return@launch
-            val name = prefs.getUserName() ?: ""
+            // iOS parity (CompatibilityViewModel.swift:178-210): the "You" card
+            // reflects the **active** profile (partner when one is selected),
+            // not the owner. Resolve via ProfileContextManager so partner birth
+            // data + name are sent to the Ashtakoot endpoint, not the owner's.
+            val profile = profileContextManager.activeBirthData() ?: return@launch
+            val name = profileContextManager.activeProfileName().ifBlank {
+                prefs.getUserName().orEmpty()
+            }
             personAProfile = profile
             personAEmail = email
             _uiState.update {
@@ -161,6 +204,36 @@ class CompatibilityViewModel @Inject constructor(
             }
             // Load history so cache lookup in analyze() works (parity with iOS).
             loadHistory()
+            // iOS parity (CompatibilityView.swift:289-315): when launched under
+            // UI_TEST_MODE with E2E_PARTNER_* extras, pre-fill the partner form
+            // so Appium tests can skip the location-search + date-picker dance.
+            applyE2EPartnerOverridesIfPresent()
+        }
+    }
+
+    /**
+     * Debug-only E2E hook that mirrors the iOS `UI_TEST_MODE` pre-fill block in
+     * CompatibilityView.swift. Reads partner fields stashed by MainActivity
+     * (which copies them out of the launch intent's extras) and pushes them
+     * into the form state so the analyze button is immediately tappable.
+     *
+     * Stripped from release builds via `BuildConfig.DEBUG` and a no-op when
+     * UI_TEST_MODE is not set. Production code paths are unaffected.
+     */
+    private fun applyE2EPartnerOverridesIfPresent() {
+        if (!BuildConfig.DEBUG) return
+        val overrides = E2EPartnerOverrides.consume() ?: return
+        if (overrides.name.isBlank()) return
+        _uiState.update {
+            it.copy(
+                partnerName = overrides.name,
+                partnerDob = overrides.dob.ifBlank { it.partnerDob },
+                partnerTime = overrides.time.ifBlank { it.partnerTime },
+                partnerCity = overrides.city.ifBlank { it.partnerCity },
+                partnerLatitude = overrides.latitude.takeIf { v -> v != 0.0 } ?: it.partnerLatitude,
+                partnerLongitude = overrides.longitude.takeIf { v -> v != 0.0 } ?: it.partnerLongitude,
+                partnerTimeUnknown = false,
+            )
         }
     }
 
@@ -197,12 +270,29 @@ class CompatibilityViewModel @Inject constructor(
     fun dismissPaywall() = _uiState.update { it.copy(showPaywall = false) }
     fun showPaywallSheet() = _uiState.update { it.copy(showPaywall = true) }
     fun dismissError() = _uiState.update { it.copy(error = null) }
+
+    /**
+     * Mirrors iOS ChatView.swift signOutAndReauth + CompatibilityView.swift onSignIn:
+     * partial sign-out (preserves birth data) so AuthScreen routes to login UI instead
+     * of bouncing back to Main.
+     */
+    fun requestSignInFromQuota() {
+        viewModelScope.launch {
+            runCatching { authRepository.signOutPreserveBirthData() }
+            _uiState.update { it.copy(showPaywall = false, navigateToAuth = true) }
+        }
+    }
+
+    fun consumeNavigateToAuth() {
+        _uiState.update { it.copy(navigateToAuth = false) }
+    }
     fun setSavePartnerToBirthCharts(save: Boolean) = _uiState.update { it.copy(savePartnerToBirthCharts = save) }
     fun dismissDuplicateAlert() = _uiState.update { it.copy(showDuplicateAlert = false, duplicateSessionId = null) }
     fun showDuplicateAlert(sessionId: String) = _uiState.update { it.copy(showDuplicateAlert = true, duplicateSessionId = sessionId) }
 
     /** Reset the partner form back to its blank state. */
     fun resetPartnerForm() {
+        _compatibilityResult.value = null  // clear result so a re-analysis always hits fresh API
         _uiState.update {
             it.copy(
                 partnerName = "",
@@ -326,6 +416,10 @@ class CompatibilityViewModel @Inject constructor(
                         }
                     }
                     "overall_limit_reached" -> {
+                        // iOS parity (CompatibilityViewModel.swift:501-507): set marker only —
+                        // the View renders QuotaExhaustedDialog (interstitial) which routes to
+                        // SubscriptionScreen on Upgrade tap. Do NOT pre-set showPaywall — that
+                        // would skip the interstitial and jump straight to the subscription view.
                         val marker = if (email.contains("guest") || email.contains("@gen.com")) {
                             "FREE_LIMIT_GUEST"
                         } else {
@@ -335,18 +429,19 @@ class CompatibilityViewModel @Inject constructor(
                             it.copy(
                                 isAnalyzing = false,
                                 showStreamingView = false,
-                                showPaywall = true,
+                                showPaywall = false,
                                 error = marker,
                             )
                         }
                     }
                     else -> {
-                        // upgrade_required / feature_upgrade_required / unknown -> paywall sheet
+                        // upgrade_required / feature_upgrade_required / unknown -> interstitial sheet
+                        // mirrors iOS QuotaExhaustedView (CompatibilityViewModel.swift:508-511).
                         _uiState.update {
                             it.copy(
                                 isAnalyzing = false,
                                 showStreamingView = false,
-                                showPaywall = true,
+                                showPaywall = false,
                                 error = "FEATURE_UPGRADE_REQUIRED",
                             )
                         }
@@ -369,24 +464,40 @@ class CompatibilityViewModel @Inject constructor(
 
             // STEP 1: Local cache lookup — if matching match exists, load from history (FREE, no API call)
             // Mirrors iOS CompatibilityHistoryService.findExistingMatch behaviour.
+            // Also match on girlName to prevent cross-contamination when different partners
+            // share the same DOB/time/city (e.g. testing with multiple people).
             val cached = _historyItems.value.firstOrNull { item ->
                 item.boyDob == profile.dateOfBirth &&
                     item.boyTime == profile.timeOfBirth &&
                     item.boyCity.equals(profile.cityOfBirth, ignoreCase = true) &&
                     item.girlDob == s.partnerDob &&
                     item.girlTime == s.partnerTime &&
-                    item.girlCity.equals(s.partnerCity, ignoreCase = true)
+                    item.girlCity.equals(s.partnerCity, ignoreCase = true) &&
+                    item.girlName.equals(s.partnerName, ignoreCase = true)
             }
             if (cached?.result != null) {
-                _compatibilityResult.value = cached.result
+                // Re-derive isCancelledByExceptions from mangalCompatibility so cached results
+                // correctly show exceptions even if stored before this field was introduced.
+                val jointCancels = cached.result.mangalCompatibility?.get("cancellation_occurs") as? Boolean ?: false
+                val fixedResult = if (jointCancels) {
+                    cached.result.copy(
+                        mangalBoyData = cached.result.mangalBoyData?.takeIf { it.hasMangalDosha }
+                            ?.copy(isCancelledByExceptions = true) ?: cached.result.mangalBoyData,
+                        mangalGirlData = cached.result.mangalGirlData?.takeIf { it.hasMangalDosha }
+                            ?.copy(isCancelledByExceptions = true) ?: cached.result.mangalGirlData,
+                    )
+                } else cached.result
+                _compatibilityResult.value = fixedResult
                 _uiState.update {
                     it.copy(
-                        result = cached.result.summary,
-                        score = cached.result.totalScore,
+                        result = fixedResult.summary,
+                        score = fixedResult.totalScore,
                         isAnalyzing = false,
                         showStreamingView = false,
                     )
                 }
+                // iOS parity (CompatibilityViewModel.swift:466): toast on cache-hit re-open
+                _historyLoadedToast.value = true
                 return@launch
             }
 
@@ -434,15 +545,31 @@ class CompatibilityViewModel @Inject constructor(
                     when (event) {
                         is SseEvent.Step -> _currentStep.value = mapStepName(event.stepName)
                         is SseEvent.FinalJson -> {
-                            val result = mapCompatibilityResponse(
-                                json = event.json,
-                                boyName = s.personAName,
-                                girlName = s.partnerName,
-                                boyDob = profile.dateOfBirth,
-                                girlDob = s.partnerDob,
-                                boyCity = profile.cityOfBirth,
-                                girlCity = s.partnerCity,
-                            )
+                            val result = try {
+                                mapCompatibilityResponse(
+                                    json = event.json,
+                                    boyName = s.personAName,
+                                    girlName = s.partnerName,
+                                    boyDob = profile.dateOfBirth,
+                                    girlDob = s.partnerDob,
+                                    boyCity = profile.cityOfBirth,
+                                    girlCity = s.partnerCity,
+                                )
+                            } catch (e: Exception) {
+                                Log.e(
+                                    "CompatVM",
+                                    "mapCompatibilityResponse failed: ${e.message}",
+                                    e,
+                                )
+                                _uiState.update {
+                                    it.copy(
+                                        isAnalyzing = false,
+                                        showStreamingView = false,
+                                        error = "Failed to parse compatibility response: ${e.message ?: e.javaClass.simpleName}",
+                                    )
+                                }
+                                return@collect
+                            }
                             _compatibilityResult.value = result
                             saveToHistory(result, email, profile, s)
                             // R2-CM5: persist partner to user's birth charts when checkbox is set
@@ -459,11 +586,30 @@ class CompatibilityViewModel @Inject constructor(
                             }
                         }
                         is SseEvent.Error -> {
-                            _uiState.update { it.copy(isAnalyzing = false, showStreamingView = false, error = event.message) }
+                            // iOS parity (CompatibilityViewModel.swift:601-606 + StreamingPredictionService:192-207):
+                            // SSE quota errors route to the QuotaExhaustedDialog interstitial, NOT a red banner.
+                            val email = prefs.getUserEmail() ?: ""
+                            val marker = when (event.reason) {
+                                "daily_limit_reached" -> null // banner
+                                "overall_limit_reached" ->
+                                    if (email.contains("guest") || email.contains("@gen.com")) "FREE_LIMIT_GUEST"
+                                    else "FREE_LIMIT_REGISTERED"
+                                "quota_exceeded", "upgrade_required", "feature_not_available" -> "FEATURE_UPGRADE_REQUIRED"
+                                else -> null
+                            }
+                            _uiState.update {
+                                it.copy(
+                                    isAnalyzing = false,
+                                    showStreamingView = false,
+                                    showPaywall = false,
+                                    error = marker ?: event.message,
+                                )
+                            }
                         }
                     }
                 }
             } catch (e: Exception) {
+                Log.e("CompatVM", "analyze() collector threw: ${e.message}", e)
                 _uiState.update { it.copy(isAnalyzing = false, showStreamingView = false, error = e.message ?: "Analysis failed") }
             }
         }
@@ -487,7 +633,21 @@ class CompatibilityViewModel @Inject constructor(
     private var currentSessionId: String? = null
     private var currentCompatibilityResult: CompatibilityResult? = null
 
-    data class FollowUpMessage(val text: String, val isUser: Boolean, val suggestions: List<String> = emptyList())
+    /**
+     * iOS parity (CompatibilityResultSheets.swift:1893-1913 CompatChatMessage):
+     * carries timestamp + executionTimeMs metadata so the chat bubble can render
+     * the metadata footer (time · exec · copy · stars). [isInfo] flags the
+     * redirect/info placeholder so the bubble can render a cosmic progress
+     * indicator instead of plain text.
+     */
+    data class FollowUpMessage(
+        val text: String,
+        val isUser: Boolean,
+        val suggestions: List<String> = emptyList(),
+        val timestampMs: Long = System.currentTimeMillis(),
+        val executionTimeMs: Long = 0L,
+        val isInfo: Boolean = false,
+    )
 
     private val _followUpMessages = MutableStateFlow<List<FollowUpMessage>>(emptyList())
     val followUpMessages: StateFlow<List<FollowUpMessage>> = _followUpMessages
@@ -495,70 +655,326 @@ class CompatibilityViewModel @Inject constructor(
     private val _isFollowUpLoading = MutableStateFlow(false)
     val isFollowUpLoading: StateFlow<Boolean> = _isFollowUpLoading
 
+    /**
+     * iOS parity (CompatibilityResultSheets.swift:1056-1073): inline error banner
+     * shown above the input bar; user taps to dismiss.
+     */
+    private val _followUpError = MutableStateFlow<String?>(null)
+    val followUpError: StateFlow<String?> = _followUpError
+
+    fun dismissFollowUpError() { _followUpError.value = null }
+    fun setFollowUpError(message: String) { _followUpError.value = message }
+
     fun setSessionId(sessionId: String) { currentSessionId = sessionId }
 
     fun setCompatibilityResult(result: CompatibilityResult) { currentCompatibilityResult = result }
 
     fun clearFollowUpMessages() { _followUpMessages.value = emptyList() }
 
+    /**
+     * iOS parity (CompatibilityResultSheets.swift:1112-1154 loadStoredMessages):
+     * load chat history for the current session, trying both raw and `compat_`
+     * prefixed sessionIds. Filters out the initial compatibility report row
+     * (markdown table or KEY STRENGTHS marker) so the chat starts at the user's
+     * first follow-up question.
+     */
+    fun loadStoredFollowUpMessages() {
+        val sessionId = currentSessionId ?: return
+        val prefixed = if (sessionId.startsWith("compat_")) sessionId else "compat_$sessionId"
+        val raw = readFollowUpHistory(prefixed) ?: readFollowUpHistory(sessionId)
+        if (raw.isNullOrEmpty()) return
+        val msgs = runCatching {
+            gson.fromJson(raw, Array<FollowUpMessage>::class.java).toList()
+        }.getOrNull().orEmpty()
+        if (msgs.isEmpty()) return
+        val filtered = msgs.filter { m ->
+            !(m.text.contains("---|") ||
+                m.text.contains("|---") ||
+                m.text.contains("KEY STRENGTHS"))
+        }
+        _followUpMessages.value = filtered
+    }
+
+    /**
+     * iOS parity (CompatibilityResultSheets.swift:1156-1168 saveMessagesToHistory):
+     * persist follow-up chat under prefixed sessionId. Best-effort.
+     */
+    private fun saveFollowUpHistory() {
+        val sessionId = currentSessionId ?: return
+        val prefixed = if (sessionId.startsWith("compat_")) sessionId else "compat_$sessionId"
+        runCatching { writeFollowUpHistory(prefixed, gson.toJson(_followUpMessages.value)) }
+    }
+
+    /**
+     * In-memory + optional caller-supplied persistence for follow-up chat
+     * history. Mirrors the chat-restore-within-session behaviour iOS gets via
+     * CompatibilityHistoryService — full cross-process durability can be added
+     * later by wiring a SharedPreferences-backed reader/writer through
+     * [setFollowUpHistoryPersistence] without changing this VM.
+     */
+    private val followUpHistoryStore = mutableMapOf<String, String>()
+    private var followUpHistoryReader: ((String) -> String?)? = null
+    private var followUpHistoryWriter: ((String, String) -> Unit)? = null
+
+    fun setFollowUpHistoryPersistence(
+        reader: (String) -> String?,
+        writer: (String, String) -> Unit,
+    ) {
+        followUpHistoryReader = reader
+        followUpHistoryWriter = writer
+    }
+
+    private fun readFollowUpHistory(key: String): String? {
+        followUpHistoryStore[key]?.let { return it }
+        return followUpHistoryReader?.invoke(key)?.also { followUpHistoryStore[key] = it }
+    }
+
+    private fun writeFollowUpHistory(key: String, value: String) {
+        followUpHistoryStore[key] = value
+        followUpHistoryWriter?.invoke(key, value)
+    }
+
     fun sendFollowUp(query: String) {
         viewModelScope.launch {
             val email = personAEmail ?: return@launch
             val sessionId = currentSessionId ?: return@launch
             if (query.isBlank()) return@launch
-            _followUpMessages.update { it + FollowUpMessage(query, isUser = true) }
+            // iOS parity (CompatibilityResultSheets.swift:1346-1348): optimistic
+            // user-message append — rolled back below on quota/limit errors so
+            // the banner does not flash above a stale transcript entry.
+            val userMessage = FollowUpMessage(query, isUser = true)
+            _followUpMessages.update { it + userMessage }
             _isFollowUpLoading.value = true
+            val startMs = System.currentTimeMillis()
             try {
                 val response = api.compatibilityFollowUp(
                     CompatibilityFollowUpRequest(
                         query = query,
                         sessionId = sessionId,
                         userEmail = email,
+                        responseLength = runCatching { prefs.getResponseLength() }.getOrNull(),
+                        responseStyle = runCatching { prefs.getResponseStyle() }.getOrNull(),
                     )
                 )
-                if (response.status == "redirect") {
-                    handleFollowUpRedirect(target = response.target, email = email)
-                } else {
-                    val answerText = followUpDisplayAnswer(response.status, response.answer, response.message)
-                    val suggestions = response.followUpSuggestions ?: emptyList()
-                    _followUpMessages.update { it + FollowUpMessage(answerText, isUser = false, suggestions = suggestions) }
+                val elapsed = System.currentTimeMillis() - startMs
+                val rawStatus = response.status
+                if (rawStatus == "redirect" || rawStatus == "redirect_no_data") {
+                    handleFollowUpRedirect(target = response.target, email = email, redirectQuery = response.redirectQuery)
+                } else if (response.answer != null) {
+                    val answer = response.answer
+                    val cleaned = stripFollowUpQuestionsBlock(answer)
+                    val embedded = extractFollowUpQuestions(answer)
+                    val apiSuggestions = response.followUpSuggestions ?: emptyList()
+                    val suggestions = if (apiSuggestions.isNotEmpty()) apiSuggestions else embedded
+                    _followUpMessages.update {
+                        it + FollowUpMessage(
+                            text = cleaned,
+                            isUser = false,
+                            suggestions = suggestions,
+                            executionTimeMs = elapsed,
+                        )
+                    }
+                    saveFollowUpHistory()
+                } else if (response.message != null) {
+                    val msg = response.message
+                    // iOS parity (CompatibilityResultSheets.swift:1417-1424):
+                    // when the backend leaks a redirect through the message body
+                    // (e.g. "None's chart", "birth details"), fall through to
+                    // local data lookup using boy as the default target.
+                    val looksLikeRedirect = msg.contains("Redirecting", ignoreCase = true) ||
+                        msg.contains("individual analysis", ignoreCase = true) ||
+                        msg.contains("None's chart", ignoreCase = true) ||
+                        msg.contains("birth details", ignoreCase = true)
+                    val result = currentCompatibilityResult
+                    if (looksLikeRedirect && result != null) {
+                        handleFollowUpRedirectWithLocalData(target = result.boyName, email = email, redirectQuery = null)
+                    } else {
+                        _followUpMessages.update {
+                            it + FollowUpMessage(
+                                text = msg,
+                                isUser = false,
+                                isInfo = true,
+                                executionTimeMs = elapsed,
+                            )
+                        }
+                        saveFollowUpHistory()
+                    }
                 }
             } catch (e: Exception) {
-                _followUpMessages.update { it + FollowUpMessage("Something went wrong. Please try again.", isUser = false) }
+                val msg = (e.message ?: "").lowercase()
+                val isQuota = msg.contains("quota") || msg.contains("limit") ||
+                    msg.contains("maximum free")
+                if (isQuota) {
+                    _followUpMessages.update { list -> list.filter { it !== userMessage } }
+                }
+                _followUpError.value = "Failed to get response. Please try again."
             } finally {
                 _isFollowUpLoading.value = false
             }
         }
     }
 
-    private suspend fun handleFollowUpRedirect(target: String?, email: String) {
+    private suspend fun handleFollowUpRedirect(target: String?, email: String, redirectQuery: String? = null) {
         val result = currentCompatibilityResult ?: return
-        val isGirl = target != null && (
-            target.lowercase().contains(result.girlName.lowercase()) ||
-            target.lowercase().contains("girl")
-        )
-        val name = if (isGirl) result.girlName else result.boyName
-        val dob = (if (isGirl) result.girlDob else result.boyDob) ?: return
-        val city = if (isGirl) result.girlCity ?: "" else result.boyCity ?: ""
+        val (displayName, isGirl) = resolveRedirectTarget(target, result.boyName, result.girlName)
+        runRedirectPredict(displayName = displayName, isGirl = isGirl, email = email, redirectQuery = redirectQuery)
+    }
+
+    /**
+     * iOS parity (CompatibilityResultSheets.swift:1437-1451 handleRedirectWithLocalData):
+     * fall-through path used when the backend leaks a redirect through the
+     * message body instead of the status field. Uses the local result/profile
+     * pair (Android equivalent of iOS analysisData).
+     */
+    private suspend fun handleFollowUpRedirectWithLocalData(
+        target: String,
+        email: String,
+        redirectQuery: String?,
+    ) {
+        val result = currentCompatibilityResult ?: return
+        val (displayName, isGirl) = resolveRedirectTarget(target, result.boyName, result.girlName)
+        runRedirectPredict(displayName = displayName, isGirl = isGirl, email = email, redirectQuery = redirectQuery)
+    }
+
+    /**
+     * iOS parity (CompatibilityResultSheets.swift:1454-1484): multi-token
+     * resolver — matches "boy"/"his"/"him" → boy, "girl"/"her"/"she" → girl, and
+     * also accepts the actual first name (or a prefix of it) on either side.
+     * Falls back to boy on ambiguous targets.
+     *
+     * Returns Pair(displayFirstName, isGirl).
+     */
+    internal fun resolveRedirectTarget(
+        target: String?,
+        boyName: String,
+        girlName: String,
+    ): Pair<String, Boolean> {
+        val boyFirst = boyName.split(' ').firstOrNull().orEmpty().ifBlank { boyName }
+        val girlFirst = girlName.split(' ').firstOrNull().orEmpty().ifBlank { girlName }
+        if (target.isNullOrBlank()) return boyFirst to false
+        val t = target.lowercase().trim()
+        val boyLower = boyName.lowercase()
+        val girlLower = girlName.lowercase()
+        val isBoy = listOf("boy", "him", "his", "he ").any { t.contains(it) } ||
+            t == boyLower ||
+            boyLower.startsWith(t) ||
+            t.startsWith(boyLower)
+        val isGirl = listOf("girl", "her", "she ").any { t.contains(it) } ||
+            t == girlLower ||
+            girlLower.startsWith(t) ||
+            t.startsWith(girlLower)
+        return when {
+            isBoy && !isGirl -> boyFirst to false
+            isGirl && !isBoy -> girlFirst to true
+            else -> boyFirst to false // ambiguous → default to boy (matches iOS log line)
+        }
+    }
+
+    private suspend fun runRedirectPredict(
+        displayName: String,
+        isGirl: Boolean,
+        email: String,
+        redirectQuery: String?,
+    ) {
+        val result = currentCompatibilityResult ?: return
+        val s = _uiState.value
+        val boyProfile = personAProfile
+
+        val dob = if (isGirl) result.girlDob else result.boyDob
+        if (dob.isNullOrBlank()) {
+            _followUpMessages.update {
+                it + FollowUpMessage(
+                    text = "Could not retrieve $displayName's birth data for individual analysis.",
+                    isUser = false,
+                    isInfo = true,
+                )
+            }
+            saveFollowUpHistory()
+            return
+        }
+        val city = if (isGirl) (result.girlCity ?: "") else (result.boyCity ?: "")
+        val time: String
+        val latitude: Double
+        val longitude: Double
+        if (isGirl) {
+            time = if (s.partnerTimeUnknown || s.partnerTime.isBlank()) "12:00" else s.partnerTime
+            latitude = Math.round(s.partnerLatitude * 1_000_000.0) / 1_000_000.0
+            longitude = Math.round(s.partnerLongitude * 1_000_000.0) / 1_000_000.0
+        } else {
+            time = when {
+                boyProfile == null -> "12:00"
+                boyProfile.birthTimeUnknown || boyProfile.timeOfBirth.isBlank() -> "12:00"
+                else -> boyProfile.timeOfBirth
+            }
+            latitude = boyProfile?.let { Math.round(it.latitude * 1_000_000.0) / 1_000_000.0 } ?: 0.0
+            longitude = boyProfile?.let { Math.round(it.longitude * 1_000_000.0) / 1_000_000.0 } ?: 0.0
+        }
+        val startMs = System.currentTimeMillis()
         try {
             val predictResponse = api.predict(
                 PredictRequest(
-                    query = "Give a brief individual astrology reading",
+                    query = redirectQuery ?: "Give a brief individual astrology reading",
                     userEmail = email,
                     birthData = PredictBirthDataDto(
                         dob = dob,
-                        time = "",
+                        time = time,
                         cityOfBirth = city,
-                        latitude = 0.0,
-                        longitude = 0.0,
+                        latitude = latitude,
+                        longitude = longitude,
                     ),
                 )
             )
-            val answerText = "**Individual Analysis ($name):**\n${predictResponse.text}"
-            _followUpMessages.update { it + FollowUpMessage(answerText, isUser = false) }
+            val elapsed = System.currentTimeMillis() - startMs
+            val analysisContent = "**Individual Analysis ($displayName):**\n\n${predictResponse.text}"
+            val cleaned = stripFollowUpQuestionsBlock(analysisContent)
+            val embedded = extractFollowUpQuestions(analysisContent)
+            _followUpMessages.update {
+                it + FollowUpMessage(
+                    text = cleaned,
+                    isUser = false,
+                    suggestions = embedded,
+                    executionTimeMs = elapsed,
+                )
+            }
+            saveFollowUpHistory()
         } catch (e: Exception) {
-            _followUpMessages.update { it + FollowUpMessage("Could not fetch individual chart for $name.", isUser = false) }
+            _followUpMessages.update {
+                it + FollowUpMessage(
+                    text = "Failed to get individual analysis: ${e.message ?: "unknown error"}",
+                    isUser = false,
+                    isInfo = true,
+                )
+            }
         }
+    }
+
+    /**
+     * iOS parity (CompatibilityResultSheets.swift:1583-1595 extractFollowUpQuestions):
+     * parse `\nFOLLOW_UP_QUESTIONS:` block from the answer body. Used as the
+     * fallback source of suggestions when the backend does not include them in
+     * the JSON response.
+     */
+    internal fun extractFollowUpQuestions(content: String): List<String> {
+        val markerIndex = content.indexOf("\nFOLLOW_UP_QUESTIONS:")
+        if (markerIndex < 0) return emptyList()
+        val block = content.substring(markerIndex + "\nFOLLOW_UP_QUESTIONS:".length).trim()
+        if (block.isEmpty()) return emptyList()
+        return block.split('\n').mapNotNull { line ->
+            val trimmed = line.trim()
+            if (trimmed.isEmpty()) return@mapNotNull null
+            val cleaned = trimmed
+                .replace(Regex("^[-•*]\\s*"), "")
+                .replace(Regex("^\\d+\\.\\s*"), "")
+                .trim()
+            cleaned.ifEmpty { null }
+        }
+    }
+
+    /** Strip the embedded FOLLOW_UP_QUESTIONS block from displayed content. */
+    internal fun stripFollowUpQuestionsBlock(content: String): String {
+        val markerIndex = content.indexOf("\nFOLLOW_UP_QUESTIONS:")
+        if (markerIndex < 0) return content
+        return content.substring(0, markerIndex).trim()
     }
 
     // -- History — Room-backed
@@ -896,6 +1312,8 @@ class CompatibilityViewModel @Inject constructor(
             }
         }
         currentSessionId = item.sessionId
+        // iOS parity (CompatibilityViewModel.swift:466): surface the transient toast
+        _historyLoadedToast.value = true
     }
 
     /**

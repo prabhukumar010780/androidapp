@@ -202,11 +202,13 @@ private fun PersonChartSection(
             }
         }
 
-        // Chart visualization
-        if (chartStyle == "north") {
-            NorthIndianChartView(chartData = chartData, ascendantSign = ascendant)
-        } else {
-            SouthIndianChartView(chartData = chartData, chartType = chartType, ascendantSign = ascendant)
+        // Chart visualization — centered horizontally within the full-width column
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            if (chartStyle == "north") {
+                NorthIndianChartView(chartData = chartData, ascendantSign = ascendant)
+            } else {
+                SouthIndianChartView(chartData = chartData, chartType = chartType, ascendantSign = ascendant)
+            }
         }
 
         // R2-C4: 3x3 planet grid for D1 only (D9 has no degree/nakshatra/retro fields — mirrors iOS)

@@ -12,6 +12,7 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -62,6 +63,9 @@ class CompatibilityViewModelTest {
     private lateinit var compatibilityRepo: CompatibilityRepository
     private lateinit var historyDao: CompatibilityHistoryDao
     private lateinit var chatRepository: com.destinyai.astrology.data.repository.ChatRepository
+    private lateinit var authRepository: com.destinyai.astrology.data.repository.AuthRepository
+    private lateinit var profileChangeBus: com.destinyai.astrology.services.ProfileChangeBus
+    private lateinit var profileContextManager: com.destinyai.astrology.services.ProfileContextManager
     private lateinit var vm: CompatibilityViewModel
 
     @BeforeAll
@@ -81,17 +85,25 @@ class CompatibilityViewModelTest {
         compatibilityRepo = mockk(relaxed = true)
         historyDao = mockk(relaxed = true)
         chatRepository = mockk(relaxed = true)
+        authRepository = mockk(relaxed = true)
+        profileChangeBus = mockk(relaxed = true)
+        every { profileChangeBus.events } returns kotlinx.coroutines.flow.MutableSharedFlow()
+        profileContextManager = mockk(relaxed = true)
+        coEvery { profileContextManager.activeBirthData() } returns fakeBirthProfile()
+        coEvery { profileContextManager.activeProfileName() } returns "Prabhu"
         coEvery { prefs.getUserEmail() } returns "u@x.com"
         coEvery { prefs.getUserName() } returns "Prabhu"
         coEvery { prefs.getBirthProfile() } returns fakeBirthProfile()
         every { prefs.isHistoryEnabledFlow } returns flowOf(true)
+        every { prefs.activeProfileIdFlow } returns kotlinx.coroutines.flow.MutableStateFlow(null)
+        every { prefs.responseLengthFlow } returns flowOf("medium")
         every { compatibilityRepo.streamAnalysis(any()) } returns flowOf(SseEvent.FinalJson(FAKE_FINAL_JSON))
         every { historyDao.observeAll(any()) } returns flowOf(emptyList())
         // Stub the quota check inside analyze() — relaxed mocks return allowed=false which
         // routes analyze() into the paywall branch and short-circuits the SSE consumer.
         coEvery { api.canAccessFeature(any(), any(), any(), any()) } returns
             com.destinyai.astrology.data.remote.CanAccessResponse(allowed = true)
-        vm = CompatibilityViewModel(api, prefs, compatibilityRepo, historyDao, chatRepository)
+        vm = CompatibilityViewModel(api, prefs, compatibilityRepo, historyDao, chatRepository, authRepository, profileChangeBus, profileContextManager)
     }
 
     @Test

@@ -34,8 +34,10 @@ class HomeViewModelTest {
     private lateinit var prefs: UserPreferences
     private lateinit var api: AstroApiService
     private lateinit var profileChangeBus: ProfileChangeBus
+    private lateinit var profileContextManager: com.destinyai.astrology.services.ProfileContextManager
     private lateinit var quotaManager: QuotaManager
     private lateinit var networkMonitor: NetworkMonitor
+    private lateinit var localeManager: com.destinyai.astrology.services.LocaleManager
     private lateinit var viewModel: HomeViewModel
 
     @BeforeAll
@@ -54,6 +56,7 @@ class HomeViewModelTest {
         prefs = mockk(relaxed = true)
         api = mockk(relaxed = true)
         profileChangeBus = mockk(relaxed = true)
+        profileContextManager = mockk(relaxed = true)
         quotaManager = mockk(relaxed = true)
         networkMonitor = mockk(relaxed = true)
         every { networkMonitor.isOnline } returns flowOf(true)
@@ -63,9 +66,13 @@ class HomeViewModelTest {
         // flow that suspends forever on collect, which is what we want for tests that
         // don't simulate profile switches.
         every { profileChangeBus.events } returns kotlinx.coroutines.flow.MutableSharedFlow()
+        coEvery { profileContextManager.activeBirthData() } returns null
+        coEvery { profileContextManager.activeProfileName() } returns "Guest"
         coEvery { prefs.getUserEmail() } returns null
         coEvery { prefs.getBirthProfile() } returns null
-        viewModel = HomeViewModel(repository, prefs, api, profileChangeBus, quotaManager, networkMonitor)
+        localeManager = mockk(relaxed = true)
+        every { localeManager.languageChanges } returns kotlinx.coroutines.flow.MutableSharedFlow()
+        viewModel = HomeViewModel(repository, prefs, api, profileChangeBus, profileContextManager, quotaManager, localeManager, networkMonitor)
     }
 
     // --- Defaults ---
@@ -74,7 +81,8 @@ class HomeViewModelTest {
     fun `init sets quota to plan default (10 for free registered)`() = runTest {
         coEvery { repository.getDailyQuota() } returns 10
 
-        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, quotaManager, networkMonitor)
+        val lm1 = mockk<com.destinyai.astrology.services.LocaleManager>(relaxed = true).also { every { it.languageChanges } returns kotlinx.coroutines.flow.MutableSharedFlow() }
+        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, profileContextManager, quotaManager, lm1, networkMonitor)
 
         vm.uiState.test {
             assertEquals(10, awaitItem().dailyQuota)
@@ -117,7 +125,8 @@ class HomeViewModelTest {
             isGuestEmail = true,
         )
 
-        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, quotaManager, networkMonitor)
+        val lm2 = mockk<com.destinyai.astrology.services.LocaleManager>(relaxed = true).also { every { it.languageChanges } returns kotlinx.coroutines.flow.MutableSharedFlow() }
+        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, profileContextManager, quotaManager, lm2, networkMonitor)
 
         vm.uiState.test {
             assertEquals("Guest", awaitItem().displayName)
@@ -132,7 +141,8 @@ class HomeViewModelTest {
             name = "Prabhu Kushwaha",
         )
 
-        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, quotaManager, networkMonitor)
+        val lm3 = mockk<com.destinyai.astrology.services.LocaleManager>(relaxed = true).also { every { it.languageChanges } returns kotlinx.coroutines.flow.MutableSharedFlow() }
+        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, profileContextManager, quotaManager, lm3, networkMonitor)
 
         vm.uiState.test {
             assertEquals("Prabhu", awaitItem().displayName)
@@ -146,7 +156,8 @@ class HomeViewModelTest {
         coEvery { repository.getDailyQuota() } returns 10
         coEvery { repository.getDailyUsed() } returns 5
 
-        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, quotaManager, networkMonitor)
+        val lm4 = mockk<com.destinyai.astrology.services.LocaleManager>(relaxed = true).also { every { it.languageChanges } returns kotlinx.coroutines.flow.MutableSharedFlow() }
+        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, profileContextManager, quotaManager, lm4, networkMonitor)
 
         vm.uiState.test {
             assertEquals(0.5f, awaitItem().quotaProgress, 0.001f)
@@ -186,7 +197,8 @@ class HomeViewModelTest {
         )
         coEvery { repository.getDailyQuota() } returns -1
 
-        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, quotaManager, networkMonitor)
+        val lm5 = mockk<com.destinyai.astrology.services.LocaleManager>(relaxed = true).also { every { it.languageChanges } returns kotlinx.coroutines.flow.MutableSharedFlow() }
+        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, profileContextManager, quotaManager, lm5, networkMonitor)
 
         vm.uiState.test {
             assertTrue(awaitItem().isUnlimited)
@@ -209,6 +221,11 @@ class HomeViewModelTest {
     fun `loadHomeData populates suggestedQuestions`() = runTest {
         val questions = listOf("What's my luck today?", "Career outlook this week?")
         coEvery { repository.getSuggestedQuestions() } returns questions
+        coEvery { prefs.getUserEmail() } returns "u@x.com"
+        coEvery { profileContextManager.activeBirthData() } returns BirthProfileDto(
+            dateOfBirth = "1990-01-01", timeOfBirth = "06:00", cityOfBirth = "Delhi",
+            latitude = 28.6, longitude = 77.2,
+        )
 
         viewModel.loadHomeData()
 
@@ -220,7 +237,12 @@ class HomeViewModelTest {
 
     @Test
     fun `loadHomeData populates dailyInsight`() = runTest {
-        coEvery { repository.getDailyInsight() } returns "A powerful day for decisions."
+        coEvery { repository.getDailyInsight(any(), any()) } returns "A powerful day for decisions."
+        coEvery { prefs.getUserEmail() } returns "u@x.com"
+        coEvery { profileContextManager.activeBirthData() } returns BirthProfileDto(
+            dateOfBirth = "1990-01-01", timeOfBirth = "06:00", cityOfBirth = "Delhi",
+            latitude = 28.6, longitude = 77.2,
+        )
 
         viewModel.loadHomeData()
 
@@ -244,14 +266,16 @@ class HomeViewModelTest {
         val fakeDasha = HomeDashaInfo(mahadasha = "Venus", antardasha = "Sun", endsAt = "2027-01")
         val fakeRichData = HomeRichData(dashaInfo = fakeDasha)
         coEvery { prefs.getUserEmail() } returns "test@example.com"
-        coEvery { prefs.getBirthProfile() } returns BirthProfileDto(
+        val fakeBirth = BirthProfileDto(
             dateOfBirth = "1990-01-01",
             timeOfBirth = "06:00",
             cityOfBirth = "Delhi",
             latitude = 28.6,
             longitude = 77.2,
         )
-        coEvery { repository.getRichHomeData(any(), any()) } returns fakeRichData
+        coEvery { prefs.getBirthProfile() } returns fakeBirth
+        coEvery { profileContextManager.activeBirthData() } returns fakeBirth
+        coEvery { repository.getRichHomeData(any(), any(), any()) } returns fakeRichData
 
         viewModel.loadHomeData()
 

@@ -1,10 +1,7 @@
-@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
-
 package com.destinyai.astrology.ui.compatibility
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -12,7 +9,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,17 +21,22 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.destinyai.astrology.R
 import com.destinyai.astrology.domain.model.MangalDoshaModel
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
+import com.destinyai.astrology.util.DoshaDescriptions
 
 private enum class MarsScenario { SAFE, CANCELLED, EFFECTIVE }
 
@@ -55,7 +60,7 @@ fun MangalDoshaScreen(
     }
 
     CosmicBackground {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -63,8 +68,19 @@ fun MangalDoshaScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Gold)
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back), tint = Gold)
                 }
+                Text(
+                    text = stringResource(R.string.mars_compatibility_title),
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = CreamText,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 48.dp)
+                        .semantics { contentDescription = "mars_compatibility_nav_title" },
+                    textAlign = TextAlign.Center,
+                )
             }
 
             Column(
@@ -118,14 +134,20 @@ private fun SafeScenarioView(boyName: String, girlName: String) {
                     .size(120.dp)
                     .clip(CircleShape)
                     .background(successColor.copy(alpha = 0.15f))
-                    .border(1.dp, successColor.copy(alpha = 0.5f), CircleShape),
+                    .border(1.dp, successColor.copy(alpha = 0.5f), CircleShape)
+                    .semantics { contentDescription = "safe_hero_shield" },
                 contentAlignment = Alignment.Center,
             ) {
-                Text("🛡️", fontSize = 50.sp)
+                Icon(
+                    imageVector = Icons.Filled.Shield,
+                    contentDescription = null,
+                    tint = successColor,
+                    modifier = Modifier.size(50.dp),
+                )
             }
-            Text("Perfectly Safe", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = successColor)
+            Text(stringResource(R.string.perfectly_safe), fontSize = 24.sp, fontWeight = FontWeight.Bold, color = successColor)
             Text(
-                text = "No Mangal Dosha detected for either partner",
+                text = stringResource(R.string.no_mangal_dosha_detected),
                 fontSize = 15.sp, color = CreamDim, textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
@@ -142,10 +164,10 @@ private fun SafeScenarioView(boyName: String, girlName: String) {
 
         // Educational note card
         MarsGlassCard {
-            Text("Why is this good?", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = CreamText)
+            Text(stringResource(R.string.why_is_this_good), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = CreamText)
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Neither partner has Mars placed in any of the sensitive houses (1, 4, 7, 8, 12). This means Mars energy will not create friction in the marital relationship, supporting harmony and longevity.",
+                text = stringResource(R.string.non_manglik_explanation),
                 fontSize = 13.sp, color = CreamDim, lineHeight = 20.sp,
             )
         }
@@ -177,7 +199,7 @@ private fun SafePersonCard(name: String, modifier: Modifier = Modifier) {
                     .background(successColor.copy(alpha = 0.15f))
                     .padding(horizontal = 10.dp, vertical = 4.dp),
             ) {
-                Text("Non Manglik", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = successColor)
+                Text(stringResource(R.string.non_manglik), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = successColor)
             }
         }
     }
@@ -213,35 +235,26 @@ private fun CancelledScenarioView(
                 modifier = Modifier
                     .size(100.dp)
                     .clip(CircleShape)
-                    .background(cancelBlue.copy(alpha = 0.15f)),
+                    .background(cancelBlue.copy(alpha = 0.15f))
+                    .semantics { contentDescription = "cancelled_hero_icon" },
                 contentAlignment = Alignment.Center,
             ) {
-                Text("✅", fontSize = 40.sp)
+                Icon(
+                    imageVector = Icons.Filled.CheckCircle,
+                    contentDescription = null,
+                    tint = cancelBlue,
+                    modifier = Modifier.size(40.dp),
+                )
             }
-            Text("Dosha Cancelled", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = cancelBlue)
+            Text(stringResource(R.string.dosha_cancelled_title), fontSize = 22.sp, fontWeight = FontWeight.Bold, color = cancelBlue)
             Text(
-                text = cancellationFactors.firstOrNull() ?: "The Mangal Dosha has been neutralized by classical exceptions",
+                text = cancellationFactors.firstOrNull() ?: stringResource(R.string.dosha_cancelled_default_desc),
                 fontSize = 13.sp, color = CreamDim, textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
         }
 
-        // All cancellation factors (iOS shows full list)
-        if (cancellationFactors.size > 1) {
-            MarsGlassCard {
-                Text("Cancellation Factors", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = CreamDim, letterSpacing = 0.5.sp)
-                Spacer(Modifier.height(8.dp))
-                cancellationFactors.forEach { factor ->
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.padding(vertical = 2.dp),
-                    ) {
-                        Text("✓", fontSize = 12.sp, color = cancelBlue)
-                        Text(factor, fontSize = 12.sp, color = CreamText, lineHeight = 18.sp)
-                    }
-                }
-            }
-        }
+        // Issue 3+11: All-cancellation-factors list card removed — iOS shows only the first factor inline in the hero
 
         // Cancellation reason card
         if (!reason.isNullOrBlank()) {
@@ -251,7 +264,7 @@ private fun CancelledScenarioView(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text("ℹ️", fontSize = 16.sp)
-                    Text("Why Cancelled", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = CreamText)
+                    Text(stringResource(R.string.why_cancelled), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = CreamText)
                 }
                 Spacer(Modifier.height(10.dp))
 
@@ -260,7 +273,7 @@ private fun CancelledScenarioView(
 
                 if (boyHasEx || girlHasEx) {
                     Text(
-                        text = "Classical exceptions apply that neutralize the dosha effect:",
+                        text = stringResource(R.string.mutual_neutralization_short),
                         fontSize = 13.sp, color = CreamDim, lineHeight = 20.sp,
                     )
                     Spacer(Modifier.height(10.dp))
@@ -273,7 +286,7 @@ private fun CancelledScenarioView(
                         ExceptionPersonBlock(name = girlName, exceptions = girlData!!.exceptions, isCancelled = true, impactSummary = girlData.exceptionImpactSummary, intensityFactors = girlData.activeIntensityFactors)
                     }
                 } else {
-                    Text(reason, fontSize = 13.sp, color = CreamText, lineHeight = 20.sp)
+                    Text(localizeExceptionKeysInText(reason), fontSize = 13.sp, color = CreamText, lineHeight = 20.sp)
                 }
             }
         }
@@ -301,13 +314,12 @@ private fun EffectiveScenarioView(
 ) {
     val warningOrange = Color(0xFFED8936)
     val rawDesc = mangalCompatibility?.get("cancellation_reason") as? String
+    val mangalFrictionDesc = stringResource(R.string.mangal_friction_desc)
     val attentionDesc = if (!rawDesc.isNullOrBlank()) {
-        rawDesc.replace("Girl", girlName).replace("Boy", boyName)
+        localizeExceptionKeysInText(rawDesc.replace("Girl", girlName).replace("Boy", boyName))
     } else {
-        "Mars placement creates friction in marital matters. Awareness and classical remedies can help."
+        mangalFrictionDesc
     }
-    val desc = mangalCompatibility?.get("description") as? String
-        ?: mangalCompatibility?.get("analysis") as? String
     val boyHasEx = boyData?.isCancelled ?: false
     val girlHasEx = girlData?.isCancelled ?: false
 
@@ -317,7 +329,7 @@ private fun EffectiveScenarioView(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // Hero
-        val heroTitle = "Attention Required"
+        val heroTitle = stringResource(R.string.attention_required)
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -327,10 +339,16 @@ private fun EffectiveScenarioView(
                 modifier = Modifier
                     .size(100.dp)
                     .clip(CircleShape)
-                    .background(warningOrange.copy(alpha = 0.15f)),
+                    .background(warningOrange.copy(alpha = 0.15f))
+                    .semantics { contentDescription = "effective_hero_icon" },
                 contentAlignment = Alignment.Center,
             ) {
-                Text("⚠️", fontSize = 40.sp)
+                Icon(
+                    imageVector = Icons.Filled.Warning,
+                    contentDescription = null,
+                    tint = warningOrange,
+                    modifier = Modifier.size(40.dp),
+                )
             }
             Text(heroTitle, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = warningOrange)
             Text(
@@ -340,46 +358,9 @@ private fun EffectiveScenarioView(
             )
         }
 
-        // Exception impact summary callout (iOS exceptionImpactSummary)
-        val impactSummary = listOfNotNull(boyData?.exceptionImpactSummary, girlData?.exceptionImpactSummary)
-            .firstOrNull()
-        if (!impactSummary.isNullOrBlank()) {
-            MarsGlassCard {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("💡", fontSize = 14.sp)
-                    Text(impactSummary, fontSize = 13.sp, color = CreamDim, lineHeight = 20.sp, modifier = Modifier.weight(1f))
-                }
-            }
-        }
+        // Issue 5: impactSummary is now rendered inside StatusPersonCard (iOS parity) — no top-level callout
 
-        // Intensity factors chips (iOS intensityDescriptions)
-        val allIntensityFactors = (boyData?.activeIntensityFactors ?: emptyList()) +
-            (girlData?.activeIntensityFactors ?: emptyList())
-        if (allIntensityFactors.isNotEmpty()) {
-            MarsGlassCard {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Text("Intensity Factors", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = CreamDim, letterSpacing = 0.5.sp, modifier = Modifier.weight(1f))
-                    Text(intensityFactorCountLabel(allIntensityFactors.distinct().size), fontSize = 11.sp, color = warningOrange)
-                }
-                Spacer(Modifier.height(8.dp))
-                androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    allIntensityFactors.distinct().forEach { factor ->
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(warningOrange.copy(alpha = 0.12f))
-                                .border(1.dp, warningOrange.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
-                                .padding(horizontal = 8.dp, vertical = 4.dp),
-                        ) {
-                            Text(factor, fontSize = 11.sp, color = warningOrange)
-                        }
-                    }
-                }
-            }
-        }
+        // Issue 6+8: Per-person intensity factors are rendered inside ExceptionPersonBlock (iOS parity) — no top-level FlowRow chip card
 
         // Side-by-side person cards
         Row(
@@ -398,11 +379,11 @@ private fun EffectiveScenarioView(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text("🛡️", fontSize = 16.sp)
-                    Text("Mitigating Exceptions", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = CreamText)
+                    Text(stringResource(R.string.mitigating_exceptions_title), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = CreamText)
                 }
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = "Classical Vedic exceptions reduce the Mars effect:",
+                    text = stringResource(R.string.vedic_exceptions_short),
                     fontSize = 12.sp, color = CreamDim,
                 )
                 Spacer(Modifier.height(10.dp))
@@ -417,17 +398,10 @@ private fun EffectiveScenarioView(
             }
         }
 
-        // Classical analysis
-        if (!desc.isNullOrBlank()) {
-            MarsGlassCard {
-                Text("✨ Classical Analysis", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Gold)
-                Spacer(Modifier.height(8.dp))
-                Text(desc, fontSize = 13.sp, color = CreamDim, lineHeight = 20.sp)
-            }
-        }
+        // Issue 4+12: Classical Analysis card removed — iOS does not render cancellation.description/.analysis at this level
 
         // Remedies
-        val allRemedies = ((boyData?.remedies ?: emptyList()) + (girlData?.remedies ?: emptyList())).distinct()
+        val allRemedies = (boyData?.remedies ?: emptyList()) + (girlData?.remedies ?: emptyList())
         if (allRemedies.isNotEmpty()) {
             MarsGlassCard {
                 Row(
@@ -435,7 +409,7 @@ private fun EffectiveScenarioView(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text("🔶", fontSize = 16.sp)
-                    Text("Remedies", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = CreamText)
+                    Text(stringResource(R.string.suggested_remedies_title), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = CreamText)
                 }
                 Spacer(Modifier.height(10.dp))
                 allRemedies.forEachIndexed { i, remedy ->
@@ -475,10 +449,13 @@ private fun MarsStatusPersonCard(name: String, data: MangalDoshaModel?, modifier
         else -> Color(0xFFFFA500)
     }
     val badgeText = when {
-        !hasDosha -> "Non Manglik"
-        isCancelledByExceptions -> "Cancelled"
-        severity?.isNotBlank() == true -> "${severity!!.replaceFirstChar { it.uppercase() }} Manglik"
-        else -> "Manglik"
+        !hasDosha -> stringResource(R.string.non_manglik)
+        isCancelledByExceptions -> stringResource(R.string.cancelled)
+        severity == "mild" -> stringResource(R.string.mild_manglik)
+        severity == "moderate" -> stringResource(R.string.moderate_manglik)
+        severity == "high" -> stringResource(R.string.high_manglik)
+        severity == "severe" -> stringResource(R.string.severe_manglik)
+        else -> stringResource(R.string.manglik)
     }
     val borderColor = when {
         !hasDosha -> Color.White
@@ -504,16 +481,23 @@ private fun MarsStatusPersonCard(name: String, data: MangalDoshaModel?, modifier
             }
             if (hasDosha) {
                 val positionText = data?.activeDoshaSourcesDisplay
-                    ?: data?.marsHouse?.let { "Mars in House $it" }
+                    ?: data?.marsHouse?.let { stringResource(R.string.mars_in_house, it.toString()) }
                 if (positionText != null) {
                     Text(positionText, fontSize = 10.sp, color = CreamDim, textAlign = TextAlign.Center)
                 }
             }
-            if (hasDosha && !data?.description.isNullOrBlank()) {
-                Text(
-                    text = data?.description ?: "",
-                    fontSize = 10.sp, color = CreamDim, textAlign = TextAlign.Center, lineHeight = 14.sp,
-                )
+            // Issue 7+10: Render exceptionImpactSummary (matches iOS StatusPersonCard) instead of data.description
+            if (hasDosha) {
+                val impact = data?.exceptionImpactSummary
+                if (!impact.isNullOrBlank()) {
+                    Text(
+                        text = impact,
+                        fontSize = 10.sp,
+                        color = if (isCancelledByExceptions) successColor.copy(alpha = 0.9f) else Color.Yellow.copy(alpha = 0.9f),
+                        textAlign = TextAlign.Center,
+                        lineHeight = 14.sp,
+                    )
+                }
             }
         }
     }
@@ -538,9 +522,9 @@ private fun ExceptionPersonBlock(
         ) {
             Text(if (isCancelled) "✓" else "↓", fontSize = 13.sp, color = accentColor)
             Text(
-                text = if (impactSummary != null) "$name: $impactSummary"
-                       else "$name — ${if (isCancelled) "dosha cancelled" else "exceptions apply"}",
-                fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = accentColor,
+                text = if (impactSummary != null) "$name: $impactSummary" else name,
+                fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                color = if (impactSummary != null) accentColor else CreamDim,
             )
         }
         exceptions.forEach { ex ->
@@ -549,7 +533,7 @@ private fun ExceptionPersonBlock(
                 modifier = Modifier.padding(start = 4.dp),
             ) {
                 Text("•", fontSize = 12.sp, color = Gold.copy(alpha = 0.7f))
-                Text(localizeExceptionKey(ex), fontSize = 12.sp, color = CreamText, lineHeight = 18.sp)
+                Text(DoshaDescriptions.exception(ex), fontSize = 12.sp, color = CreamText, lineHeight = 18.sp)
             }
         }
         if (intensityFactors.isNotEmpty()) {
@@ -643,6 +627,13 @@ internal fun localizeExceptionKeysInText(text: String): String {
     )
     var result = text
     knownKeys.forEach { key -> result = result.replace(key, localizeExceptionKey(key)) }
+    // Mirror iOS regex pass: replace any remaining mars_[a-z_]+ tokens via humanization
+    val marsRegex = Regex("""mars_[a-z_]+""")
+    result = marsRegex.replace(result) { match ->
+        val key = match.value
+        val localized = localizeExceptionKey(key)
+        if (localized == key) key else localized
+    }
     return result
 }
 

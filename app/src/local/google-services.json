@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "19534670357",
+    "project_id": "destiny-ai-astrology-4f52a",
+    "storage_bucket": "destiny-ai-astrology-4f52a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:19534670357:android:01d6ba6f3d4509c7073c1c",
+        "android_client_info": {
+          "package_name": "com.destinyai.astrology.local"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD4a8IqjETUGvHC1anuQ0JGUab5ydgZjgE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

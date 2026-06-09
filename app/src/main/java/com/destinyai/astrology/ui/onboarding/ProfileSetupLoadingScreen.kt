@@ -11,7 +11,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CheckCircle
@@ -22,11 +24,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -105,6 +110,8 @@ fun ProfileSetupLoadingScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
                 .padding(horizontal = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -188,21 +195,41 @@ fun ProfileSetupLoadingScreen(
 
             Spacer(Modifier.height(48.dp))
 
-            // Gold progress bar
-            Column(modifier = Modifier.fillMaxWidth()) {
-                LinearProgressIndicator(
-                    progress = { animatedProgress },
-                    modifier = Modifier.fillMaxWidth().height(3.dp),
-                    color = Gold,
-                    trackColor = Gold.copy(alpha = 0.15f),
-                    strokeCap = StrokeCap.Round,
-                )
+            // Gold progress bar — iOS parity (GoldProgressStyle in
+            // ProfileSetupLoadingView.swift:175-198): fixed 220pt × 8pt with a
+            // leading→trailing gradient from Gold to Gold@0.7. Android note:
+            // upstream guard skips prefetch when email/birth are missing —
+            // iOS treats those as required (BirthData/userEmail are non-optional
+            // in ProfileSetupLoadingView), so the divergence is compatible.
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(220.dp)
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color.White.copy(alpha = 0.2f))
+                        .semantics { contentDescription = "profile_setup_progress_bar" },
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(animatedProgress.coerceIn(0f, 1f))
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(Gold, Gold.copy(alpha = 0.7f)),
+                                ),
+                            ),
+                    )
+                }
                 Spacer(Modifier.height(12.dp))
                 Text(
                     text = "Step ${phaseIndex + 1} of ${phaseStrings.size}",
                     fontSize = 12.sp,
                     color = CreamDim,
-                    modifier = Modifier.align(Alignment.End),
                 )
             }
 

@@ -11,17 +11,20 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -34,14 +37,20 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.destinyai.astrology.R
 import com.destinyai.astrology.domain.model.CompatibilityHistoryItem
 import com.destinyai.astrology.domain.model.ComparisonGroup
+import com.destinyai.astrology.services.AppEvents
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
+import com.destinyai.astrology.ui.theme.TextTertiary
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun CompatibilityHistoryScreen(
     viewModel: CompatibilityViewModel,
@@ -54,8 +63,29 @@ fun CompatibilityHistoryScreen(
     val isHistoryEnabled by viewModel.isHistoryEnabled.collectAsStateWithLifecycle()
     var searchText by remember { mutableStateOf("") }
     var pendingDeleteId by remember { mutableStateOf<String?>(null) }
+    var pendingDeleteTitle by remember { mutableStateOf("") }
+    val haptics = LocalHapticFeedback.current
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) { viewModel.loadHistory() }
+
+    // iOS parity: NotificationCenter.default.publisher(for: .openProfileSettings)
+    // routes external "open settings" signals (deep-link, notification taps,
+    // cross-screen prompts) into this surface even when the caller did not wire
+    // a direct onOpenSettings callback. Mirrors the bridge in
+    // CompatibilityResultScreen so every compatibility surface honours the
+    // global SharedFlow bus identically.
+    val appEvents = remember(context) {
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            CompatHistoryAppEventsEntryPoint::class.java,
+        ).appEvents()
+    }
+    LaunchedEffect(appEvents, onOpenSettings) {
+        appEvents.openProfileSettings.collect {
+            onOpenSettings?.invoke()
+        }
+    }
 
     val filtered = remember(items, searchText) {
         if (searchText.isBlank()) items
@@ -64,22 +94,45 @@ fun CompatibilityHistoryScreen(
         }
     }
 
-    // Group items by comparisonGroupId (or boyName as fallback) — mirrors iOS ComparisonGroup logic
-    // Pinned groups float to top, then sorted by most recent timestamp
+    // Mirror iOS CompatibilityHistoryService.loadGroups():
+    // - Items WITH a comparisonGroupId are grouped together (multi-partner analysis)
+    // - Items WITHOUT a comparisonGroupId each become their own single-item group
+    // Using boyName as fallback key (old logic) incorrectly merged all of one user's
+    // single matches into one group.
     val groups = remember(filtered) {
-        filtered
-            .groupBy { it.comparisonGroupId ?: it.boyName }
-            .map { (_, groupItems) ->
-                ComparisonGroup(
-                    userName = groupItems.first().boyName,
-                    items = groupItems.sortedByDescending { it.totalScore },
-                    timestamp = groupItems.maxOf { it.timestampMs },
-                )
+        val grouped = mutableMapOf<String, MutableList<CompatibilityHistoryItem>>()
+        val ungrouped = mutableListOf<CompatibilityHistoryItem>()
+        for (item in filtered) {
+            val gid = item.comparisonGroupId
+            if (gid != null) {
+                grouped.getOrPut(gid) { mutableListOf() }.add(item)
+            } else {
+                ungrouped.add(item)
             }
-            .sortedWith(
-                compareByDescending<ComparisonGroup> { g -> g.items.any { it.isPinned } }
-                    .thenByDescending { it.timestamp }
-            )
+        }
+        val result = mutableListOf<ComparisonGroup>()
+        // Multi-partner groups — sort partners by partnerIndex within group
+        for ((gid, groupItems) in grouped) {
+            result.add(ComparisonGroup(
+                id = gid,
+                userName = groupItems.first().boyName,
+                items = groupItems.sortedBy { it.partnerIndex ?: 0 },
+                timestamp = groupItems.minOf { it.timestampMs },
+            ))
+        }
+        // Single matches — each becomes its own group (id = sessionId, mirrors iOS)
+        for (item in ungrouped) {
+            result.add(ComparisonGroup(
+                id = item.sessionId,
+                userName = item.boyName,
+                items = listOf(item),
+                timestamp = item.timestampMs,
+            ))
+        }
+        result.sortedWith(
+            compareByDescending<ComparisonGroup> { g -> g.items.any { it.isPinned } }
+                .thenByDescending { it.timestamp }
+        )
     }
 
     CosmicBackground {
@@ -93,10 +146,18 @@ fun CompatibilityHistoryScreen(
                 AlertDialog(
                     onDismissRequest = { pendingDeleteId = null },
                     title = { Text(stringResource(R.string.compat_history_delete_match_title)) },
-                    text = { Text(stringResource(R.string.compat_history_delete_match_message)) },
+                    text = {
+                        Text(
+                            stringResource(
+                                R.string.compat_history_delete_match_message_format,
+                                pendingDeleteTitle,
+                            ),
+                        )
+                    },
                     confirmButton = {
                         TextButton(
                             onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                 viewModel.deleteHistoryItem(pendingDeleteId!!)
                                 pendingDeleteId = null
                             },
@@ -115,6 +176,7 @@ fun CompatibilityHistoryScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .statusBarsPadding()
                     .padding(horizontal = 8.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -192,18 +254,30 @@ fun CompatibilityHistoryScreen(
                                 SwipeToDeleteGroupRow(
                                     group = group,
                                     onTap = { onGroupSelect?.invoke(group) },
-                                    onDeleteRequest = { item -> pendingDeleteId = item.sessionId },
-                                    onPin = { item -> viewModel.toggleHistoryPin(item.sessionId) },
+                                    onDeleteRequest = { item ->
+                                        pendingDeleteId = item.sessionId
+                                        pendingDeleteTitle = group.displayTitle
+                                    },
+                                    onPin = { item ->
+                                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        viewModel.toggleHistoryPin(item.sessionId)
+                                    },
+                                    modifier = Modifier.animateItemPlacement(),
                                 )
                             } else {
                                 val item = group.items.first()
-                                val maxGroupScore = group.items.maxOfOrNull { it.totalScore } ?: 0
                                 SwipeToDeleteHistoryItem(
                                     item = item,
                                     onTap = { onItemSelect?.invoke(item) },
-                                    onPin = { viewModel.toggleHistoryPin(item.sessionId) },
-                                    onDeleteRequest = { pendingDeleteId = item.sessionId },
-                                    isBestInGroup = item.totalScore >= maxGroupScore && maxGroupScore > 0,
+                                    onPin = {
+                                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        viewModel.toggleHistoryPin(item.sessionId)
+                                    },
+                                    onDeleteRequest = {
+                                        pendingDeleteId = item.sessionId
+                                        pendingDeleteTitle = item.displayTitle
+                                    },
+                                    modifier = Modifier.animateItemPlacement(),
                                 )
                             }
                         }
@@ -222,7 +296,7 @@ private fun SwipeToDeleteHistoryItem(
     onTap: () -> Unit = {},
     onPin: () -> Unit,
     onDeleteRequest: () -> Unit,
-    isBestInGroup: Boolean = false,
+    modifier: Modifier = Modifier,
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
@@ -237,6 +311,7 @@ private fun SwipeToDeleteHistoryItem(
 
     SwipeToDismissBox(
         state = dismissState,
+        modifier = modifier,
         // Both edges enabled — leading=Pin (gold), trailing=Delete (red)
         backgroundContent = {
             val isPinSwipe = dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd
@@ -263,7 +338,7 @@ private fun SwipeToDeleteHistoryItem(
             }
         },
     ) {
-        HistoryItemRow(item = item, onPin = onPin, onTap = onTap, isBestInGroup = isBestInGroup, onDeleteRequest = onDeleteRequest)
+        HistoryItemRow(item = item, onPin = onPin, onTap = onTap, onDeleteRequest = onDeleteRequest)
     }
 }
 
@@ -274,6 +349,7 @@ private fun SwipeToDeleteGroupRow(
     onTap: () -> Unit,
     onDeleteRequest: (CompatibilityHistoryItem) -> Unit,
     onPin: (CompatibilityHistoryItem) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val firstItem = group.items.firstOrNull()
     val pinTarget = group.items.firstOrNull { it.isPinned } ?: group.bestMatch ?: firstItem
@@ -290,6 +366,7 @@ private fun SwipeToDeleteGroupRow(
 
     SwipeToDismissBox(
         state = dismissState,
+        modifier = modifier,
         backgroundContent = {
             val isPinSwipe = dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd
             val bg = if (isPinSwipe) Gold.copy(alpha = 0.85f) else Color(0xFFFC8181).copy(alpha = 0.85f)
@@ -330,7 +407,6 @@ private fun HistoryItemRow(
     item: CompatibilityHistoryItem,
     onPin: () -> Unit,
     onTap: () -> Unit = {},
-    isBestInGroup: Boolean = false,
     onDeleteRequest: () -> Unit = {},
 ) {
     val scoreColor = when {
@@ -350,7 +426,8 @@ private fun HistoryItemRow(
                 onClick = onTap,
                 onLongClick = { showContextMenu = true },
             )
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp)
+            .semantics { contentDescription = "history_item_row" },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // Score badge
@@ -386,11 +463,6 @@ private fun HistoryItemRow(
                     Icon(Icons.Filled.PushPin, contentDescription = null, tint = Gold, modifier = Modifier.size(11.dp))
                     Spacer(Modifier.width(4.dp))
                 }
-                // R2-CM15: Best-score star indicator
-                if (isBestInGroup) {
-                    Icon(Icons.Filled.Star, contentDescription = stringResource(R.string.compat_history_best_match_cd), tint = Gold, modifier = Modifier.size(13.dp))
-                    Spacer(Modifier.width(4.dp))
-                }
                 Text(
                     text = item.displayTitle,
                     style = MaterialTheme.typography.labelLarge,
@@ -407,16 +479,6 @@ private fun HistoryItemRow(
         }
 
         Spacer(Modifier.width(8.dp))
-
-        // Pin toggle
-        IconButton(onClick = onPin, modifier = Modifier.size(36.dp)) {
-            Icon(
-                imageVector = Icons.Filled.PushPin,
-                contentDescription = if (item.isPinned) stringResource(R.string.cd_unpin) else stringResource(R.string.cd_pin),
-                tint = if (item.isPinned) Gold else CreamDim.copy(alpha = 0.4f),
-                modifier = Modifier.size(18.dp),
-            )
-        }
 
         // R2-CM17: Chat message count bubble (follow-up questions)
         val msgCount = userMessageCount(item.chatMessages)
@@ -435,6 +497,14 @@ private fun HistoryItemRow(
             }
             Spacer(Modifier.width(4.dp))
         }
+
+        // Trailing chevron — iOS parity (CompatibilityHistorySheet.swift line 445)
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = stringResource(R.string.cd_chevron_right),
+            tint = TextTertiary,
+            modifier = Modifier.size(16.dp),
+        )
 
         // R2-CM16: Long-press context menu (pin/unpin)
         DropdownMenu(
@@ -573,56 +643,47 @@ private fun GroupHistoryRow(
                 modifier = Modifier.semantics { contentDescription = "history_group_delete_action" },
             )
         }
-        // R2-CM14: Group icon with partner count overlay
+        // iOS parity: 3-person icon with stacked count inside the circle (no badge overlay).
         Box(
             modifier = Modifier
                 .size(50.dp)
                 .clip(CircleShape)
-                .background(Gold.copy(alpha = 0.1f)),
+                .background(Gold.copy(alpha = 0.15f)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
-                Icons.Filled.Group,
-                contentDescription = null,
-                tint = Gold,
-                modifier = Modifier.size(26.dp),
-            )
-            // Count badge overlay
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .size(18.dp)
-                    .clip(CircleShape)
-                    .background(Gold),
-                contentAlignment = Alignment.Center,
-            ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    Icons.Filled.Group,
+                    contentDescription = null,
+                    tint = Gold,
+                    modifier = Modifier.size(20.dp),
+                )
                 Text(
                     text = "${group.partnerCount}",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF0D0D1A),
-                    fontSize = 9.sp,
+                    color = Gold,
+                    fontSize = 10.sp,
+                    lineHeight = 12.sp,
                 )
             }
         }
         Spacer(Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
+            // iOS parity: full partner list joined by commas — "User + Partner1, Partner2".
+            val partnerNames = group.items.joinToString(", ") { it.girlName }
             Text(
-                text = group.displayTitle,
+                text = stringResource(
+                    R.string.compat_history_group_title_format,
+                    group.userName,
+                    partnerNames,
+                ),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = CreamText,
+                maxLines = 1,
             )
             Spacer(Modifier.height(3.dp))
-            Text(
-                text = stringResource(
-                    R.string.compat_history_partners_best_format,
-                    group.partnerCount,
-                    best?.girlName ?: stringResource(R.string.compat_history_partners_best_dash),
-                ),
-                style = MaterialTheme.typography.labelSmall,
-                color = CreamDim,
-            )
             Text(
                 text = group.displayDate,
                 style = MaterialTheme.typography.labelSmall,
@@ -645,7 +706,15 @@ private fun GroupHistoryRow(
                     color = scoreColor,
                 )
             }
+            Spacer(Modifier.width(8.dp))
         }
+        // Trailing chevron — iOS parity (CompatibilityHistorySheet.swift line 373).
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = stringResource(R.string.cd_chevron_right),
+            tint = TextTertiary,
+            modifier = Modifier.size(16.dp),
+        )
     }
 }
 
@@ -688,3 +757,16 @@ internal fun userMessageCount(messages: List<com.destinyai.astrology.domain.mode
 
 internal fun emptyHistoryMessage(searchText: String): String =
     if (searchText.isBlank()) "No compatibility history yet" else "No results found"
+
+/**
+ * Hilt entry point that exposes the singleton [AppEvents] bus to this
+ * non-Hilt history composable. Mirrors [CompatResultAppEventsEntryPoint] in
+ * CompatibilityResultScreen and lets the screen subscribe to
+ * [AppEvents.openProfileSettings] without adding the bus to
+ * [CompatibilityViewModel]'s constructor.
+ */
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface CompatHistoryAppEventsEntryPoint {
+    fun appEvents(): AppEvents
+}

@@ -1,5 +1,8 @@
 package com.destinyai.astrology.ui.compatibility
 
+import com.destinyai.astrology.BuildConfig
+import com.destinyai.astrology.R
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -8,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -25,6 +29,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -37,10 +42,15 @@ import android.content.Intent
 import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
 import androidx.compose.animation.core.*
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import com.destinyai.astrology.domain.model.ComparisonResult
+import com.destinyai.astrology.ui.chat.MarkdownText
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
@@ -52,12 +62,30 @@ import java.io.FileOutputStream
 
 private val SuccessColor = Color(0xFF48BB78)
 private val ErrorColor = Color(0xFFFC8181)
+private val WarningColor = Color(0xFFED8936)
 
 private data class KutaCellOverlay(
     val partnerName: String,
     val kutaName: String,
     val reason: String,
+    val title: String,
+    val subtitle: String,
 )
+
+// iOS parity (ComparisonOverviewView.swift:379-388): friendly area names
+// shown in place of raw kuta keys (Health/Love/Temperament/etc.).
+@Composable
+private fun friendlyKutaLabel(key: String): String = when (key.lowercase()) {
+    "nadi" -> stringResource(R.string.area_health)
+    "bhakoot" -> stringResource(R.string.area_love)
+    "gana" -> stringResource(R.string.area_temperament)
+    "maitri" -> stringResource(R.string.area_friendship)
+    "yoni" -> stringResource(R.string.area_intimacy)
+    "vashya" -> stringResource(R.string.area_dominance)
+    "tara" -> stringResource(R.string.area_destiny)
+    "varna" -> stringResource(R.string.area_work)
+    else -> kootaDisplayNames[key.lowercase()] ?: key.replaceFirstChar { it.uppercase() }
+}
 
 @Composable
 fun ComparisonOverviewView(
@@ -79,14 +107,26 @@ fun ComparisonOverviewView(
     var showCancellationAlert by remember { mutableStateOf(false) }
     // iOS parity (ComparisonOverviewView.swift:484-494, 526-535): per-cell cancellation/warning popup.
     var selectedCellOverlay by remember { mutableStateOf<KutaCellOverlay?>(null) }
+    // iOS parity (ComparisonOverviewView.swift:17, 173, 751-768): gate Save button while
+    // PDF renders so rapid taps cannot enqueue duplicate save intents.
+    var isGeneratingPDF by remember { mutableStateOf(false) }
 
     // Collect all cancelled kutas across all results for the overlay
+    val cancellationTitle = stringResource(R.string.dosha_cancellation_title)
+    val cancellationSubtitle = stringResource(R.string.astrological_exceptions_subtitle)
+    val lowScoreTitle = stringResource(R.string.low_score_warning_title)
+    val lowScoreSubtitle = stringResource(R.string.attention_required_subtitle)
+
     val cancelledKutas = remember(sortedResults) {
         sortedResults.flatMap { result ->
             result.kutaDetails.entries
                 .filter { (_, kuta) -> kuta.doshaPresent && kuta.doshaCancelled && !kuta.cancellationReason.isNullOrBlank() }
                 .map { (key, kuta) ->
-                    Triple(result.partner.name, kootaDisplayNames[key] ?: key, kuta.cancellationReason.orEmpty())
+                    Triple(
+                        result.partner.name,
+                        kootaDisplayNames[key] ?: key,
+                        formatRejectionReason(kuta.cancellationReason.orEmpty(), userName, result.partner.name),
+                    )
                 }
         }
     }
@@ -94,6 +134,8 @@ fun ComparisonOverviewView(
     if (showCancellationAlert && cancelledKutas.isNotEmpty()) {
         CancellationOverlay(
             kutas = cancelledKutas,
+            title = cancellationTitle,
+            subtitle = cancellationSubtitle,
             onDismiss = { showCancellationAlert = false },
         )
     }
@@ -101,11 +143,14 @@ fun ComparisonOverviewView(
     selectedCellOverlay?.let { overlay ->
         CancellationOverlay(
             kutas = listOf(Triple(overlay.partnerName, overlay.kutaName, overlay.reason)),
+            title = overlay.title,
+            subtitle = overlay.subtitle,
             onDismiss = { selectedCellOverlay = null },
         )
     }
 
     val context = LocalContext.current
+    val haptics = LocalHapticFeedback.current
     val shareText = remember(sortedResults, userName) {
         buildComparisonExportText(userName, sortedResults)
     }
@@ -131,25 +176,38 @@ fun ComparisonOverviewView(
         }
         context.startActivity(Intent.createChooser(intent, "Share Results"))
     }
-    val saveToFiles: () -> Unit = {
-        val uri = pdfBuilder()
-        if (uri != null) {
-            val intent = Intent(Intent.ACTION_SEND).apply {
-                type = "application/pdf"
-                putExtra(Intent.EXTRA_STREAM, uri)
-                putExtra(Intent.EXTRA_SUBJECT, "$userName — Compatibility Report")
-                clipData = ClipData.newRawUri("Compatibility PDF", uri)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    val saveToFiles: () -> Unit
+    // iOS parity (ComparisonOverviewView.swift:751-768): Save uses the SAF
+    // CREATE_DOCUMENT picker so the user can pick a destination folder, just
+    // like UIDocumentPickerViewController on iOS — not a share sheet.
+    val createDocLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/pdf"),
+    ) { destUri ->
+        if (destUri == null) {
+            isGeneratingPDF = false
+            return@rememberLauncherForActivityResult
+        }
+        val srcUri = pdfBuilder()
+        if (srcUri != null) {
+            runCatching {
+                context.contentResolver.openInputStream(srcUri)?.use { input ->
+                    context.contentResolver.openOutputStream(destUri)?.use { output ->
+                        input.copyTo(output)
+                    }
+                }
             }
-            context.startActivity(Intent.createChooser(intent, "Save Report"))
-        } else {
-            // Fallback: text share if PDF generation fails
-            val fallback = Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_TEXT, shareText)
-                putExtra(Intent.EXTRA_SUBJECT, "$userName — Compatibility Report")
-            }
-            context.startActivity(Intent.createChooser(fallback, "Save Report"))
+        }
+        isGeneratingPDF = false
+    }
+    saveToFiles = {
+        if (!isGeneratingPDF) {
+            isGeneratingPDF = true
+            val safeUser = userName.split(" ").first().filter { it.isLetterOrDigit() }.ifBlank { "compat" }
+            val partnerSlug = sortedResults.joinToString("_") { it.partner.name.split(" ").first() }
+                .filter { it.isLetterOrDigit() || it == '_' }
+                .take(40)
+                .ifBlank { "comparison" }
+            createDocLauncher.launch("${safeUser}_vs_${partnerSlug}_comparison.pdf")
         }
     }
 
@@ -180,7 +238,18 @@ fun ComparisonOverviewView(
                         CompactPartnerCard(
                             result = result,
                             isBest = bestMatch?.id == result.id,
-                            onTap = { onSelectPartner(index) },
+                            onTap = {
+                                // iOS parity (ComparisonOverviewView.swift:331-336): light haptic
+                                // and resolve the ORIGINAL results index by id so navigation
+                                // doesn't open the wrong partner after viability sorting.
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                val originalIndex = results.indexOfFirst { it.id == result.id }
+                                if (originalIndex >= 0) {
+                                    onSelectPartner(originalIndex)
+                                } else {
+                                    onSelectPartner(index)
+                                }
+                            },
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -188,7 +257,7 @@ fun ComparisonOverviewView(
 
                 if (hasDosha) {
                     Text(
-                        "* after dosha cancellation — tap to learn why",
+                        stringResource(R.string.after_dosha_cancellation),
                         fontSize = 11.sp,
                         color = Gold,
                         fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
@@ -212,9 +281,28 @@ fun ComparisonOverviewView(
                 if (sortedResults.size >= 2) {
                     KootaBreakdownTable(
                         results = sortedResults,
+                        userName = userName,
                         modifier = Modifier.padding(horizontal = 12.dp),
-                        onCellClick = { partnerName, kutaName, reason ->
-                            selectedCellOverlay = KutaCellOverlay(partnerName, kutaName, reason)
+                        onCancellationCellClick = { partnerName, kutaName, reason ->
+                            selectedCellOverlay = KutaCellOverlay(
+                                partnerName = partnerName,
+                                kutaName = kutaName,
+                                reason = reason,
+                                title = cancellationTitle,
+                                subtitle = cancellationSubtitle,
+                            )
+                        },
+                        onWarningCellClick = { partnerName, kutaName, reason ->
+                            // iOS parity (ComparisonOverviewView.swift:526-535):
+                            // zero-non-critical cells use a distinct
+                            // "Low Score Warning" overlay header.
+                            selectedCellOverlay = KutaCellOverlay(
+                                partnerName = partnerName,
+                                kutaName = kutaName,
+                                reason = reason,
+                                title = lowScoreTitle,
+                                subtitle = lowScoreSubtitle,
+                            )
                         },
                     )
                 }
@@ -223,6 +311,7 @@ fun ComparisonOverviewView(
                 sortedResults.forEach { result ->
                     PartnerAnalysisSection(
                         result = result,
+                        userName = userName,
                         modifier = Modifier.padding(horizontal = if (sortedResults.size > 2) 6.dp else 16.dp),
                     )
                 }
@@ -235,22 +324,31 @@ fun ComparisonOverviewView(
                         .clip(RoundedCornerShape(12.dp))
                         .background(NavySurface)
                         .border(1.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
-                        .clickable(onClick = saveToFiles)
+                        .clickable(enabled = !isGeneratingPDF, onClick = saveToFiles)
                         .padding(horizontal = 16.dp, vertical = 14.dp)
                         .semantics { contentDescription = "comparison_save_pdf_button" },
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Icon(Icons.Default.Download, contentDescription = null, tint = Gold, modifier = Modifier.size(20.dp))
+                    Icon(
+                        Icons.Default.Download,
+                        contentDescription = null,
+                        tint = if (isGeneratingPDF) Gold.copy(alpha = 0.4f) else Gold,
+                        modifier = Modifier.size(20.dp),
+                    )
                     Text(
-                        "Save to Files (PDF)",
+                        stringResource(R.string.save_to_files),
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Medium,
-                        color = CreamText,
+                        color = if (isGeneratingPDF) CreamText.copy(alpha = 0.4f) else CreamText,
                         modifier = Modifier.weight(1f),
                     )
-                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = CreamDim.copy(alpha = 0.4f),
-                        modifier = Modifier.size(16.dp))
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = CreamDim.copy(alpha = 0.4f),
+                        modifier = Modifier.size(16.dp),
+                    )
                 }
 
                 // Section 5: New match button
@@ -267,7 +365,7 @@ fun ComparisonOverviewView(
                 ) {
                     Icon(Icons.Default.AddCircle, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("New Match", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                    Text(stringResource(R.string.new_match), fontSize = 16.sp, fontWeight = FontWeight.Medium)
                 }
             }
         }
@@ -288,14 +386,28 @@ private fun ComparisonHeader(userName: String, onBack: () -> Unit, onShare: () -
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Gold)
             }
-            Text(
-                "Comparison Results",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                color = Gold,
+            // iOS parity (ComparisonOverviewView.swift:227-234): match_icon image alongside title.
+            Row(
                 modifier = Modifier.weight(1f),
-                textAlign = TextAlign.Center,
-            )
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.match_icon),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(32.dp)
+                        .semantics { contentDescription = "comparison_header_icon" },
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    stringResource(R.string.comparison_results),
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Gold,
+                    textAlign = TextAlign.Center,
+                )
+            }
             IconButton(onClick = onShare) {
                 Icon(Icons.Default.IosShare, contentDescription = "Share", tint = Gold)
             }
@@ -321,15 +433,12 @@ private fun CompactPartnerCard(
 ) {
     val statusColor = if (result.isRecommended) SuccessColor else ErrorColor
     val badgeText = when {
-        isBest -> "⭐ Best"
-        result.isRecommended -> "✅ Yes"
-        else -> "❌ No"
+        isBest -> "⭐ " + stringResource(R.string.best_match)
+        result.isRecommended -> "✅ " + stringResource(R.string.recommended)
+        else -> "❌ " + stringResource(R.string.not_rec)
     }
-    val scoreText = compactPartnerCardScoreText(
-        adjustedScore = result.adjustedScore,
-        overallScore = result.overallScore,
-        maxScore = result.maxScore,
-    )
+    val noAdjustmentLabel = stringResource(R.string.no_adjustment)
+    val viewDetailsLabel = stringResource(R.string.view_details)
 
     Column(
         modifier = modifier
@@ -362,6 +471,43 @@ private fun CompactPartnerCard(
                 .background(statusColor),
         )
 
+        // iOS parity (ComparisonOverviewView.swift:283-305): two-line score block.
+        // adjusted ≠ overall → adjusted/36* (gold) + actual/36 caption.
+        // adjusted == overall → overall/36 actual (gold) + "no_adjustment" caption.
+        if (result.adjustedScore != result.overallScore) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    "${result.adjustedScore}/36*",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Gold,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    "${result.overallScore}/36 actual",
+                    fontSize = 10.sp,
+                    color = CreamDim.copy(alpha = 0.6f),
+                    textAlign = TextAlign.Center,
+                )
+            }
+        } else {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    "${result.overallScore}/36 actual",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Gold,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    noAdjustmentLabel,
+                    fontSize = 10.sp,
+                    color = CreamDim.copy(alpha = 0.6f),
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+
         Text(
             badgeText,
             fontSize = 10.sp,
@@ -370,18 +516,18 @@ private fun CompactPartnerCard(
             textAlign = TextAlign.Center,
         )
 
-        Text(
-            scoreText,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = CreamText,
-        )
-
-        Text(
-            "→ Detail",
-            fontSize = 11.sp,
-            color = Gold.copy(alpha = 0.7f),
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                viewDetailsLabel,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Gold,
+            )
+            Text("→", fontSize = 11.sp, color = Gold)
+        }
     }
 }
 
@@ -394,54 +540,97 @@ private fun RecommendationFooter(
     allRejected: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val (borderColor, bgColor, icon, title, subtitle) = if (bestMatch != null) {
-        listOf(
-            SuccessColor.copy(alpha = 0.4f),
-            SuccessColor.copy(alpha = 0.08f),
-            "🏆",
-            "Best Match: ${bestMatch.partner.name}",
-            "Score: ${bestMatch.adjustedScore}/${bestMatch.maxScore} · Recommended",
-        )
-    } else {
-        listOf(
-            ErrorColor.copy(alpha = 0.3f),
-            ErrorColor.copy(alpha = 0.05f),
-            "⚠️",
-            "No Recommended Match",
-            "All partners have active doshas",
-        )
+    // iOS parity (ComparisonOverviewView.swift:650-700): three render branches.
+    //   1) allRejected → ⚠️ + no_profiles_meet_threshold + review_individual hint
+    //   2) bestMatch present → 🏆 + final_recommendation_label +
+    //      comparisonReasonText + (best.oneLiner ?: all_doshas_safe_fallback)
+    //   3) bestMatch null but not all rejected → graceful fallback
+    val borderColor = when {
+        allRejected -> WarningColor.copy(alpha = 0.4f)
+        bestMatch != null -> Gold.copy(alpha = 0.5f)
+        else -> ErrorColor.copy(alpha = 0.3f)
     }
-
-    @Suppress("UNCHECKED_CAST")
-    val colors = listOf(borderColor, bgColor, icon, title, subtitle) as List<Any>
+    val bgColor = when {
+        allRejected -> WarningColor.copy(alpha = 0.06f)
+        bestMatch != null -> SuccessColor.copy(alpha = 0.08f)
+        else -> ErrorColor.copy(alpha = 0.05f)
+    }
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(colors[1] as Color)
-            .border(1.dp, colors[0] as Color, RoundedCornerShape(14.dp))
+            .background(bgColor)
+            .border(1.dp, borderColor, RoundedCornerShape(14.dp))
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(colors[2] as String, fontSize = 18.sp)
-            Text(
-                colors[3] as String,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = CreamText,
-                modifier = Modifier.weight(1f),
-            )
-        }
-        Text(colors[4] as String, fontSize = 13.sp, color = CreamDim)
-
-        // comparisonReasonText — iOS equivalent: explains why best match was selected
-        if (bestMatch != null) {
-            val reasonText = comparisonReasonText(bestMatch, allResults = allResults)
-            if (reasonText.isNotBlank()) {
-                Spacer(Modifier.height(4.dp))
-                Text(reasonText, fontSize = 12.sp, color = CreamDim.copy(alpha = 0.8f), lineHeight = 18.sp)
+        when {
+            allRejected -> {
+                Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("⚠️", fontSize = 18.sp)
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            stringResource(R.string.no_profiles_meet_threshold),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = WarningColor,
+                        )
+                        Text(
+                            stringResource(R.string.review_individual_analyses_hint),
+                            fontSize = 11.sp,
+                            color = CreamDim.copy(alpha = 0.7f),
+                            lineHeight = 16.sp,
+                        )
+                    }
+                }
+            }
+            bestMatch != null -> {
+                Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("🏆", fontSize = 18.sp)
+                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(
+                            stringResource(
+                                R.string.final_recommendation_label,
+                                bestMatch.partner.name,
+                                bestMatch.adjustedScore.toString(),
+                            ),
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Gold,
+                        )
+                        val reasonText = comparisonReasonText(bestMatch, allResults = allResults)
+                        if (reasonText.isNotBlank()) {
+                            Text(
+                                reasonText,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = CreamText,
+                                lineHeight = 17.sp,
+                            )
+                        }
+                        // iOS parity (line 684): best.oneLiner ?? all_doshas_safe_fallback.
+                        val subtitle = bestMatch.oneLiner?.takeIf { it.isNotBlank() }
+                            ?: stringResource(R.string.all_doshas_safe_fallback)
+                        Text(
+                            subtitle,
+                            fontSize = 12.sp,
+                            color = CreamDim,
+                            lineHeight = 17.sp,
+                        )
+                    }
+                }
+            }
+            else -> {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("⚠️", fontSize = 18.sp)
+                    Text(
+                        stringResource(R.string.no_profiles_meet_threshold),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = ErrorColor,
+                    )
+                }
             }
         }
     }
@@ -459,9 +648,15 @@ private val kootaDisplayNames = mapOf(
 @Composable
 private fun KootaBreakdownTable(
     results: List<ComparisonResult>,
+    userName: String,
     modifier: Modifier = Modifier,
-    onCellClick: (partnerName: String, kutaName: String, reason: String) -> Unit = { _, _, _ -> },
+    onCancellationCellClick: (partnerName: String, kutaName: String, reason: String) -> Unit = { _, _, _ -> },
+    onWarningCellClick: (partnerName: String, kutaName: String, reason: String) -> Unit = { _, _, _ -> },
 ) {
+    val areaLabel = stringResource(R.string.area_label)
+    val actualLabel = stringResource(R.string.actual_label)
+    val adjustedLabel = stringResource(R.string.adjusted_label)
+    val detailedBreakdownTitle = stringResource(R.string.detailed_breakdown_title)
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -472,7 +667,7 @@ private fun KootaBreakdownTable(
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Text(
-            "Kuta Breakdown",
+            detailedBreakdownTitle,
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
             color = Gold.copy(alpha = 0.7f),
@@ -482,7 +677,7 @@ private fun KootaBreakdownTable(
 
         // Header row
         Row(modifier = Modifier.fillMaxWidth()) {
-            Text("Kuta", fontSize = 11.sp, color = CreamDim.copy(alpha = 0.5f), modifier = Modifier.weight(1f))
+            Text(areaLabel, fontSize = 11.sp, color = CreamDim.copy(alpha = 0.5f), modifier = Modifier.weight(1f))
             results.forEach { r ->
                 Text(
                     firstNameFrom(r.partner.name),
@@ -498,6 +693,8 @@ private fun KootaBreakdownTable(
         HorizontalDivider(color = Color.White.copy(alpha = 0.06f), modifier = Modifier.padding(vertical = 4.dp))
 
         kootaKeys.forEach { key ->
+            // iOS parity (line 379-388): map raw kuta key → friendly area name.
+            val friendly = friendlyKutaLabel(key)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -505,7 +702,7 @@ private fun KootaBreakdownTable(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    kootaDisplayNames[key] ?: key,
+                    friendly,
                     fontSize = 12.sp,
                     color = CreamDim,
                     modifier = Modifier.weight(1f),
@@ -535,27 +732,25 @@ private fun KootaBreakdownTable(
                         kuta.score == 0.0 -> Color(0xFFED8936)
                         else -> CreamDim.copy(alpha = 0.6f)
                     }
-                    // iOS parity (ComparisonOverviewView.swift:484-494, 526-535): per-cell
-                    // info popup. Cancelled cells reveal the cancellation reason; zero
-                    // non-critical cells reveal a low-score warning.
                     val cellClickable: (() -> Unit)? = when {
                         kuta != null && kuta.doshaCancelled && !kuta.cancellationReason.isNullOrBlank() -> {
                             {
-                                onCellClick(
+                                onCancellationCellClick(
                                     r.partner.name,
-                                    kootaDisplayNames[key] ?: key,
-                                    kuta.cancellationReason,
+                                    friendly,
+                                    formatRejectionReason(kuta.cancellationReason, userName, r.partner.name),
                                 )
                             }
                         }
                         kuta != null && kuta.score == 0.0 && !(kuta.doshaPresent && !kuta.doshaCancelled) -> {
                             {
-                                onCellClick(
+                                val raw = kuta.description.ifBlank {
+                                    "$friendly compatibility score is 0. This area requires mutual understanding and effort."
+                                }
+                                onWarningCellClick(
                                     r.partner.name,
-                                    kootaDisplayNames[key] ?: key,
-                                    kuta.description.ifBlank {
-                                        "This kuta scored zero — review the kuta description for guidance."
-                                    },
+                                    friendly,
+                                    formatRejectionReason(raw, userName, r.partner.name),
                                 )
                             }
                         }
@@ -584,6 +779,16 @@ private fun KootaBreakdownTable(
             }
         }
 
+        // iOS parity (ComparisonOverviewView.swift:393-394, 549-610): Manglik row
+        // surfacing structured mangalCompatibility data. Renders Active 🚫 when
+        // rejected by Mangal, "Cancelled" ✅ when cancellation.occurs, the
+        // capitalized compatibility_category when present, "None" ✅ when no
+        // data at all, else "View" hint.
+        MangalRow(
+            results = results,
+            modifier = Modifier.padding(vertical = 3.dp),
+        )
+
         HorizontalDivider(color = Color.White.copy(alpha = 0.06f), modifier = Modifier.padding(vertical = 4.dp))
 
         // Actual Total row (iOS "Actual Total")
@@ -591,7 +796,7 @@ private fun KootaBreakdownTable(
             modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Actual Total", fontSize = 12.sp, color = CreamDim, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Text(actualLabel, fontSize = 12.sp, color = CreamDim, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
             results.forEach { r ->
                 Text(
                     "${r.totalScore}/${r.maxScore}",
@@ -610,16 +815,87 @@ private fun KootaBreakdownTable(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Adjusted*", fontSize = 12.sp, color = Gold, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, modifier = Modifier.weight(1f))
+                Text(adjustedLabel, fontSize = 12.sp, color = Gold, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 results.forEach { r ->
                     Text(
                         "${r.adjustedScore}/${r.maxScore}",
                         fontSize = 12.sp,
                         color = Gold,
-                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                        fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f),
                         textAlign = TextAlign.Center,
                     )
+                }
+            }
+        }
+    }
+}
+
+/** iOS parity (ComparisonOverviewView.swift:549-610): Manglik row with structured cancellation/category data. */
+@Composable
+private fun MangalRow(
+    results: List<ComparisonResult>,
+    modifier: Modifier = Modifier,
+) {
+    val manglikLabel = stringResource(R.string.manglik_label)
+    val activeLabel = stringResource(R.string.active_label)
+    val cancelledLabel = stringResource(R.string.dosha_cancelled_title)
+    val noneLabel = stringResource(R.string.none_label)
+    val viewLabel = stringResource(R.string.view_label)
+
+    Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            manglikLabel,
+            fontSize = 12.sp,
+            color = CreamDim,
+            modifier = Modifier.weight(1f),
+        )
+        results.forEach { r ->
+            val hasMangalRejection = r.rejectionReasons.any { it.contains("Mangal", ignoreCase = true) }
+            val mangalCompat = r.mangalCompatibility
+            // iOS parity: cancellation.occurs nested under "cancellation".
+            val cancellation = mangalCompat?.get("cancellation") as? Map<*, *>
+            val cancellationOccurs = cancellation?.get("occurs") as? Boolean
+                // Some payloads flatten the field on the parent object.
+                ?: (mangalCompat?.get("cancellation_occurs") as? Boolean)
+            val compatCategory = mangalCompat?.get("compatibility_category") as? String
+
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                when {
+                    hasMangalRejection -> {
+                        Text(activeLabel, fontSize = 11.sp, color = ErrorColor)
+                        Spacer(Modifier.width(2.dp))
+                        Text("🚫", fontSize = 8.sp)
+                    }
+                    cancellationOccurs == true -> {
+                        Text(cancelledLabel, fontSize = 11.sp, color = SuccessColor)
+                        Spacer(Modifier.width(2.dp))
+                        Text("✅", fontSize = 8.sp)
+                    }
+                    compatCategory != null -> {
+                        val display = compatCategory.replaceFirstChar { it.uppercase() }
+                        val cat = compatCategory.lowercase()
+                        val color = when (cat) {
+                            "excellent", "good" -> SuccessColor
+                            "moderate" -> WarningColor
+                            else -> Color(0xFFE6C200)
+                        }
+                        Text(display, fontSize = 11.sp, color = color)
+                        Spacer(Modifier.width(2.dp))
+                        Text(if (cat == "excellent" || cat == "good") "✅" else "⚠️", fontSize = 8.sp)
+                    }
+                    mangalCompat == null -> {
+                        Text(noneLabel, fontSize = 11.sp, color = SuccessColor)
+                        Spacer(Modifier.width(2.dp))
+                        Text("✅", fontSize = 8.sp)
+                    }
+                    else -> {
+                        Text(viewLabel, fontSize = 11.sp, color = CreamDim.copy(alpha = 0.6f))
+                    }
                 }
             }
         }
@@ -631,32 +907,81 @@ private fun KootaBreakdownTable(
 @Composable
 private fun PartnerAnalysisSection(
     result: ComparisonResult,
+    userName: String,
     modifier: Modifier = Modifier,
 ) {
     if (result.summary.isEmpty()) return
+    // iOS parity (ComparisonOverviewView.swift:613-647): divider header,
+    // MarkdownTextView for the body (FINAL RECOMMENDATION slice), and a
+    // status circle + label at the bottom.
+    val analysisTitle = stringResource(R.string.analysis_with_partner, result.partner.name.uppercase())
+    val statusLabel = if (result.isRecommended) {
+        stringResource(R.string.recommended)
+    } else {
+        stringResource(R.string.not_recommended)
+    }
+    val statusColor = if (result.isRecommended) SuccessColor else ErrorColor
+    val sliced = remember(result.summary) { extractFinalRecommendation(result.summary) }
 
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(NavyVariant)
-            .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(14.dp))
-            .padding(16.dp),
+        modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Section divider header
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Box(
                 modifier = Modifier
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .background(if (result.isRecommended) SuccessColor.copy(alpha = 0.2f) else ErrorColor.copy(alpha = 0.2f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(partnerInitial(result.partner.name), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (result.isRecommended) SuccessColor else ErrorColor)
-            }
-            Text(result.partner.name, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = CreamText)
+                    .width(16.dp)
+                    .height(1.dp)
+                    .background(Gold.copy(alpha = 0.4f)),
+            )
+            Text(
+                analysisTitle,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 1.2.sp,
+                color = Gold.copy(alpha = 0.8f),
+            )
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(1.dp)
+                    .background(Gold.copy(alpha = 0.4f)),
+            )
         }
-        Text(result.summary, fontSize = 13.sp, color = CreamDim, lineHeight = 20.sp)
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(NavyVariant)
+                .border(1.dp, Gold.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            // Markdown-rendered FINAL RECOMMENDATION slice (parity with iOS
+            // MarkdownTextView). Falls back to plain text when no marker found.
+            MarkdownText(
+                content = sliced,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            // Status circle + label
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(statusColor),
+                )
+                Text(
+                    statusLabel,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = statusColor,
+                )
+            }
+        }
     }
 }
 
@@ -665,6 +990,8 @@ private fun PartnerAnalysisSection(
 @Composable
 private fun CancellationOverlay(
     kutas: List<Triple<String, String, String>>,
+    title: String,
+    subtitle: String,
     onDismiss: () -> Unit,
 ) {
     val animScale by animateFloatAsState(
@@ -723,13 +1050,13 @@ private fun CancellationOverlay(
                     }
                     Column {
                         Text(
-                            "Dosha Cancellation",
+                            title,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = CreamText,
                         )
                         Text(
-                            "Astrological exceptions apply",
+                            subtitle,
                             fontSize = 11.sp,
                             color = CreamDim,
                         )
@@ -960,7 +1287,7 @@ internal fun buildComparisonPdf(
     return runCatching {
         FileOutputStream(file).use { doc.writeTo(it) }
         doc.close()
-        FileProvider.getUriForFile(context, "com.destinyai.astrology.fileprovider", file)
+        FileProvider.getUriForFile(context, "${BuildConfig.APPLICATION_ID}.fileprovider", file)
     }.getOrElse {
         doc.close()
         null

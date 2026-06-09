@@ -15,6 +15,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -31,6 +34,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -46,6 +50,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -57,6 +62,7 @@ import com.destinyai.astrology.ui.charts.PlanetaryPositionsSheet
 import com.destinyai.astrology.ui.theme.*
 import com.destinyai.astrology.ui.subscription.SubscriptionScreen
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 // Default starter question string-resource IDs (English fallbacks live in res/values/strings.xml).
 // Consumed inside @Composable scope so stringResource(...) can resolve them.
@@ -397,6 +403,8 @@ fun ChatScreen(
     if (state.showQuotaExhaustedAccountSheet) {
         QuotaExhaustedAccountSheet(
             customMessage = state.quotaDetails,
+            reason = state.quotaReason,
+            supportEmail = state.quotaSupportEmail,
             onUpgrade = { viewModel.requestUpgradeFromQuotaSheet() },
             onDismiss = { viewModel.dismissQuotaExhaustedAccountSheet() },
         )
@@ -474,41 +482,70 @@ private fun ChatHeader(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // iOS parity (AppHeader.swift:140-188): show back chevron + history clock
+            // BOTH together when entering chat from a tab (the chat tab hides the
+            // bottom bar, so the back chevron is the only return affordance).
             if (onBack != null) {
                 IconButton(
                     onClick = onBack,
                     modifier = Modifier.semantics { contentDescription = "chat_back_button" },
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = CreamDim)
-                }
-            } else {
-                IconButton(
-                    onClick = onHistoryTap,
-                    modifier = Modifier.semantics { contentDescription = "chat_history_button" },
-                ) {
-                    Icon(Icons.Default.History, contentDescription = null, tint = CreamDim)
+                    Icon(
+                        Icons.Default.ChevronLeft,
+                        contentDescription = null,
+                        tint = Gold,
+                        modifier = Modifier.size(28.dp),
+                    )
                 }
             }
-            Text(
-                text = stringResource(R.string.ask_destiny),
-                modifier = Modifier.weight(1f),
-                fontFamily = CanelaFontFamily,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 18.sp,
-                color = Gold,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            IconButton(
+                onClick = onHistoryTap,
+                modifier = Modifier.semantics { contentDescription = "chat_history_button" },
+            ) {
+                // iOS uses clock.arrow.circlepath — Material's Restore is the
+                // closest visual equivalent (clock + counter-clockwise arrow).
+                Icon(
+                    Icons.Default.Restore,
+                    contentDescription = null,
+                    tint = Gold,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+            // Gap 104 — centered destiny_home logo replaces the "Ask Destiny" title text,
+            // matching iOS ChatHeader brand-logo treatment (parity with HomeScreen header).
+            androidx.compose.foundation.Image(
+                painter = androidx.compose.ui.res.painterResource(id = R.drawable.destiny_home),
+                contentDescription = stringResource(R.string.ask_destiny),
+                contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(28.dp),
             )
             IconButton(
                 onClick = onChartTap,
                 modifier = Modifier.semantics { contentDescription = "chat_chart_button" },
             ) {
-                Icon(Icons.Outlined.PieChart, contentDescription = null, tint = CreamDim)
+                // iOS uses globe.asia.australia — Material Public is the closest
+                // globe-with-meridians glyph (vs PieChart which doesn't match).
+                Icon(
+                    Icons.Default.Public,
+                    contentDescription = null,
+                    tint = Gold,
+                    modifier = Modifier.size(22.dp),
+                )
             }
             IconButton(
                 onClick = onNewChatTap,
                 modifier = Modifier.semantics { contentDescription = "new_chat_button" },
             ) {
-                Icon(Icons.Default.Add, contentDescription = null, tint = Gold)
+                // iOS uses square.and.pencil — Material's Edit (compose pencil)
+                // is the closest equivalent. Replaces the previous Add (+) glyph.
+                Icon(
+                    Icons.Default.Edit,
+                    contentDescription = null,
+                    tint = Gold,
+                    modifier = Modifier.size(22.dp),
+                )
             }
         }
     }
@@ -582,15 +619,25 @@ fun MessageBubbleView(
 ) {
     val isUser = message.role == ChatMessage.Role.USER
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     var showCopied by remember(copiedMessageId, message.id) {
         mutableStateOf(copiedMessageId == message.id)
     }
+    // Issue 43 — local 1.5s auto-revert mirroring iOS behavior.
+    LaunchedEffect(showCopied) {
+        if (showCopied) {
+            delay(1500)
+            showCopied = false
+        }
+    }
 
     if (isUser) {
+        // Issue 42 — spoken "You said: <message>" prefix matching iOS accessibilityLabel.
+        val youSaid = stringResource(R.string.a11y_you_said, message.content)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .semantics { contentDescription = "user_message" },
+                .semantics { contentDescription = youSaid },
             horizontalArrangement = Arrangement.End,
         ) {
             Spacer(Modifier.width(60.dp))
@@ -615,10 +662,13 @@ fun MessageBubbleView(
     } else {
         // AI message — reading layout (parity with iOS MessageBubble + ReadingMessageView).
         val isWelcome = message.id == "welcome"
+        // Issue 62 — spoken "Destiny said: <content>" prefix matching iOS accessibilityLabel.
+        val destinySaid = stringResource(R.string.a11y_destiny_said, message.content)
+        val aiContentDesc = if (isWelcome) "ai_message" else destinySaid
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .semantics { contentDescription = if (isWelcome) "ai_message" else assistantContentDescription(message) },
+                .semantics { contentDescription = aiContentDesc },
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (message.isStreaming && message.content.isEmpty()) {
@@ -626,12 +676,16 @@ fun MessageBubbleView(
             } else if (message.content.isNotEmpty()) {
                 // Markdown-aware text renderer (Gap 5) — replaces raw Text() so **bold**,
                 // *italic*, `code`, and "- " list items render with proper styling.
-                MarkdownText(
-                    content = message.content,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .semantics { contentDescription = "reading_body_text" },
-                )
+                // Issues 31/33 — wrap in SelectionContainer so long-press selection/copy works
+                // on rendered markdown blocks, matching iOS UITextView selection.
+                SelectionContainer {
+                    MarkdownText(
+                        content = message.content,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics { contentDescription = "reading_body_text" },
+                    )
+                }
 
                 // Tool-calls chips (Gap 3) — wand-and-stars icon + names.
                 if (message.toolCalls.isNotEmpty()) {
@@ -643,9 +697,12 @@ fun MessageBubbleView(
                     SourcesChips(sources = message.sources)
                 }
 
-                // DepthLayersView (Gap 4) — "Why this prediction" expandable row.
-                if (!message.advice.isNullOrBlank()) {
-                    DepthLayersView(whyContent = message.advice)
+                // DepthLayersView (Gap 4) — "Why this prediction" + optional "Timing window".
+                if (!message.advice.isNullOrBlank() || !message.timing.isNullOrBlank()) {
+                    DepthLayersView(
+                        whyContent = message.advice,
+                        timingContent = message.timing,
+                    )
                 }
 
                 if (!message.isStreaming) {
@@ -657,6 +714,8 @@ fun MessageBubbleView(
                         if (message.content.length > 50) {
                             TextButton(
                                 onClick = {
+                                    // Issue 41/63 — haptic feedback on copy tap matches iOS .light impact.
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     val clip = ClipData.newPlainText("response", message.content)
                                     (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
                                         .setPrimaryClip(clip)
@@ -711,7 +770,9 @@ fun MessageBubbleView(
  */
 @Composable
 fun MarkdownText(content: String, modifier: Modifier = Modifier) {
-    val annotated = buildMarkdownAnnotated(content)
+    // Issue 34 — cache the parsed AnnotatedString so streaming chunks with identical text
+    // skip the full re-parse cost.
+    val annotated = remember(content) { buildMarkdownAnnotated(content) }
     Text(
         text = annotated,
         modifier = modifier,
@@ -743,9 +804,12 @@ internal fun buildMarkdownAnnotated(raw: String): androidx.compose.ui.text.Annot
 
 private fun appendInlineMarkdown(
     builder: androidx.compose.ui.text.AnnotatedString.Builder,
-    text: String,
+    rawText: String,
     headingBold: Boolean = false,
 ) {
+    // Issue 32 — sanitize unclosed bold/italic markers and replace pipe chars with middle-dots
+    // so the lightweight inline parser doesn't render dangling formatting symbols.
+    val text = sanitizeForInlineParsing(rawText)
     var i = 0
     while (i < text.length) {
         // **bold**
@@ -803,6 +867,22 @@ private fun appendInlineMarkdown(
 
 // ── Tool-calls / sources chips ────────────────────────────────────────────────
 
+/**
+ * Issue 32 — close dangling bold/italic markers and replace pipe characters with a
+ * middle-dot so the inline parser cannot leak partial formatting tokens. Mirrors
+ * iOS sanitizeForInlineParsing (Markdown rendering helper).
+ */
+internal fun sanitizeForInlineParsing(input: String): String {
+    var result = input.replace('|', '·')
+    val boldCount = Regex("\\*\\*").findAll(result).count()
+    if (boldCount % 2 != 0) result += "**"
+    // Count single asterisks that are NOT part of "**" — close any odd italic.
+    val singleAsterisks = result.length - result.replace("*", "").length -
+        (Regex("\\*\\*").findAll(result).count() * 2)
+    if (singleAsterisks % 2 != 0) result += "*"
+    return result
+}
+
 @Composable
 private fun ToolCallsChips(tools: List<String>) {
     Row(
@@ -856,8 +936,9 @@ private fun SourcesChips(sources: List<String>) {
 // ── DepthLayersView (Why this prediction) ─────────────────────────────────────
 
 @Composable
-private fun DepthLayersView(whyContent: String) {
-    var expanded by remember { mutableStateOf(false) }
+private fun DepthLayersView(whyContent: String?, timingContent: String? = null) {
+    var whyExpanded by remember { mutableStateOf(false) }
+    var timingExpanded by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -869,38 +950,25 @@ private fun DepthLayersView(whyContent: String) {
                 .height(1.dp)
                 .background(Color.White.copy(alpha = 0.06f)),
         )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { expanded = !expanded }
-                .semantics { contentDescription = "depth_why_row" }
-                .padding(vertical = 11.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = stringResource(R.string.depth_why_this_prediction),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                color = if (expanded) Gold.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.45f),
-                modifier = Modifier.weight(1f),
-            )
-            Icon(
-                if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                contentDescription = null,
-                tint = Color.White.copy(alpha = 0.25f),
-                modifier = Modifier.size(14.dp),
+        if (!whyContent.isNullOrBlank()) {
+            DepthLayerRow(
+                title = stringResource(R.string.depth_why_this_prediction),
+                body = whyContent,
+                expanded = whyExpanded,
+                onToggle = { whyExpanded = !whyExpanded },
+                rowTag = "depth_why_row",
+                bodyTag = "depth_why_expanded_content",
             )
         }
-        if (expanded) {
-            Text(
-                text = whyContent,
-                fontSize = 14.sp,
-                color = Color.White.copy(alpha = 0.65f),
-                lineHeight = 20.sp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 12.dp)
-                    .semantics { contentDescription = "depth_expanded_content" },
+        if (!timingContent.isNullOrBlank()) {
+            // Issue 59 — Timing window row, mirrors iOS DepthLayersView second row.
+            DepthLayerRow(
+                title = stringResource(R.string.depth_timing_window),
+                body = timingContent,
+                expanded = timingExpanded,
+                onToggle = { timingExpanded = !timingExpanded },
+                rowTag = "depth_timing_row",
+                bodyTag = "depth_timing_expanded_content",
             )
         }
         Box(
@@ -912,50 +980,153 @@ private fun DepthLayersView(whyContent: String) {
     }
 }
 
+@Composable
+private fun DepthLayerRow(
+    title: String,
+    body: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    rowTag: String,
+    bodyTag: String,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onToggle() }
+            .semantics { contentDescription = rowTag }
+            .padding(vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = title,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = if (expanded) Gold.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.45f),
+            modifier = Modifier.weight(1f),
+        )
+        Icon(
+            if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+            contentDescription = null,
+            tint = Color.White.copy(alpha = 0.25f),
+            modifier = Modifier.size(14.dp),
+        )
+    }
+    AnimatedVisibility(
+        visible = expanded,
+        enter = fadeIn(animationSpec = tween(200, easing = FastOutSlowInEasing)) +
+            slideInVertically(
+                initialOffsetY = { -it / 4 },
+                animationSpec = tween(200, easing = FastOutSlowInEasing),
+            ),
+        exit = fadeOut(animationSpec = tween(200, easing = FastOutSlowInEasing)),
+    ) {
+        Text(
+            text = body,
+            fontSize = 14.sp,
+            color = Color.White.copy(alpha = 0.65f),
+            lineHeight = 20.sp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp)
+                .semantics { contentDescription = bodyTag },
+        )
+    }
+}
+
 // ── Inline message rating (5-star tap + thank-you state) ──────────────────────
 
 @Composable
 private fun MessageRatingRow(rating: Int, onRate: (Int) -> Unit) {
-    Row(
+    val haptic = LocalHapticFeedback.current
+    // Issues 46/47/57 — local optimistic state so stars fill immediately on tap, before
+    // the VM persists the rating. isSubmitting drives the spinner + disabled visuals.
+    var selectedRating by remember(rating) { mutableStateOf(rating) }
+    var isSubmitting by remember { mutableStateOf(false) }
+    val hasSubmitted = rating > 0
+
+    // Issue 55/58 — fire confirm haptic when persisted rating becomes non-zero.
+    LaunchedEffect(rating) {
+        if (rating > 0 && isSubmitting) {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        }
+        if (rating > 0) isSubmitting = false
+    }
+
+    // Issue 50/59 — animate between rated and not-rated states with a spring fade.
+    AnimatedContent(
+        targetState = hasSubmitted,
+        transitionSpec = { fadeIn(tween(250)) togetherWith fadeOut(tween(250)) },
+        label = "rating_state",
         modifier = Modifier.semantics { contentDescription = "message_rating_row" },
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (rating > 0) {
-            Icon(
-                Icons.Default.CheckCircle,
-                contentDescription = null,
-                tint = Color(0xFF48BB78),
-                modifier = Modifier.size(11.dp),
-            )
-            Spacer(Modifier.width(2.dp))
-            (1..5).forEach { star ->
+    ) { submitted ->
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (submitted) {
                 Icon(
-                    if (star <= rating) Icons.Default.Star else Icons.Default.StarBorder,
+                    Icons.Default.CheckCircle,
                     contentDescription = null,
-                    tint = if (star <= rating) Gold else Color.White.copy(alpha = 0.3f),
+                    tint = Color(0xFF48BB78),
                     modifier = Modifier.size(11.dp),
                 )
-            }
-        } else {
-            Text(
-                text = stringResource(R.string.rate_action),
-                fontSize = 10.sp,
-                color = CreamDim,
-            )
-            Spacer(Modifier.width(2.dp))
-            (1..5).forEach { star ->
-                IconButton(
-                    onClick = { onRate(star) },
-                    modifier = Modifier
-                        .size(18.dp)
-                        .semantics { contentDescription = "rate_star_$star" },
-                ) {
+                Spacer(Modifier.width(4.dp))
+                // Issue 49/61 — render localized "Rated" / "Thanks for your feedback" text.
+                Text(
+                    text = stringResource(R.string.rated_status),
+                    fontSize = 10.sp,
+                    color = CreamDim,
+                )
+                Spacer(Modifier.width(4.dp))
+                (1..5).forEach { star ->
                     Icon(
-                        Icons.Default.StarBorder,
+                        if (star <= rating) Icons.Default.Star else Icons.Default.StarBorder,
                         contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.6f),
-                        modifier = Modifier.size(13.dp),
+                        tint = if (star <= rating) Gold else Color.White.copy(alpha = 0.3f),
+                        modifier = Modifier.size(11.dp),
+                    )
+                }
+            } else {
+                Text(
+                    text = stringResource(R.string.rate_action),
+                    fontSize = 10.sp,
+                    color = CreamDim,
+                )
+                Spacer(Modifier.width(2.dp))
+                (1..5).forEach { star ->
+                    // Issue 52 — localized accessibility label for each star.
+                    val starA11y = stringResource(R.string.a11y_star_rating, star)
+                    IconButton(
+                        onClick = {
+                            // Issue 54 — light haptic on tap.
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            // Issue 46/57 — optimistic fill before VM round-trip.
+                            selectedRating = star
+                            isSubmitting = true
+                            onRate(star)
+                        },
+                        // Issue 48 — disable stars while submitting to avoid duplicate taps.
+                        enabled = !isSubmitting,
+                        modifier = Modifier
+                            .size(18.dp)
+                            .alpha(if (isSubmitting) 0.5f else 1f)
+                            .semantics { contentDescription = starA11y },
+                    ) {
+                        Icon(
+                            if (star <= selectedRating) Icons.Default.Star else Icons.Default.StarBorder,
+                            contentDescription = null,
+                            tint = if (star <= selectedRating) Gold else Color.White.copy(alpha = 0.6f),
+                            modifier = Modifier.size(13.dp),
+                        )
+                    }
+                }
+                if (isSubmitting) {
+                    // Issue 47 — small inline spinner while persistence is in flight.
+                    Spacer(Modifier.width(4.dp))
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(10.dp),
+                        color = Gold,
+                        strokeWidth = 1.dp,
                     )
                 }
             }
@@ -1011,18 +1182,34 @@ internal fun formatExecutionTime(ms: Double): String {
 
 @Composable
 fun ThinkingPill(cosmicStep: String? = null) {
+    val label = cosmicStep ?: stringResource(R.string.thinking)
+    val a11yLabel = if (cosmicStep != null) {
+        stringResource(R.string.cosmic_progress_a11y, label)
+    } else {
+        stringResource(R.string.a11y_destiny_thinking)
+    }
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
             .background(NavySurface)
             .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
             .padding(horizontal = 16.dp, vertical = 12.dp)
-            .semantics { contentDescription = "streaming_indicator" },
+            .semantics { contentDescription = a11yLabel },
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         AnimatedDots()
-        Text(cosmicStep ?: stringResource(R.string.thinking), fontSize = 14.sp, color = CreamDim)
+        // Issue 10 — crossfade label transitions (400ms) for parity with iOS easeInOut.
+        AnimatedContent(
+            targetState = label,
+            transitionSpec = {
+                (fadeIn(animationSpec = tween(400)))
+                    .togetherWith(fadeOut(animationSpec = tween(400)))
+            },
+            label = "cosmic_label",
+        ) { value ->
+            Text(value, fontSize = 14.sp, color = CreamDim)
+        }
     }
 }
 
@@ -1050,10 +1237,12 @@ private fun cosmicProgressLabel(index: Int?): String? {
 @Composable
 fun AnimatedDots() {
     val infiniteTransition = rememberInfiniteTransition(label = "dots")
-    val offsets = (0..2).map { i ->
+    // Issue 94/95/96: scale-based bounce (1.0 → 1.5), 8dp size, NavyPrimary@40% color
+    // matches iOS TypingIndicator.swift more closely.
+    val scales = (0..2).map { i ->
         infiniteTransition.animateFloat(
-            initialValue = 0f,
-            targetValue = -4f,
+            initialValue = 1.0f,
+            targetValue = 1.5f,
             animationSpec = infiniteRepeatable(
                 animation = tween(400, easing = FastOutSlowInEasing),
                 repeatMode = RepeatMode.Reverse,
@@ -1063,13 +1252,20 @@ fun AnimatedDots() {
         )
     }
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        offsets.forEach { offset ->
+        // Gap 7 — vertical gold gradient brush on dots, matches iOS TypingIndicator gradient.
+        val goldBrush = Brush.verticalGradient(
+            listOf(Gold, Gold.copy(alpha = 0.65f)),
+        )
+        scales.forEach { scale ->
             Box(
                 modifier = Modifier
-                    .size(6.dp)
-                    .offset(y = offset.value.dp)
+                    .size(8.dp)
+                    .graphicsLayer {
+                        scaleX = scale.value
+                        scaleY = scale.value
+                    }
                     .clip(CircleShape)
-                    .background(Gold),
+                    .background(goldBrush),
             )
         }
     }
@@ -1176,6 +1372,19 @@ private fun ChatInputBar(
             .padding(bottom = 4.dp),
         verticalAlignment = Alignment.Bottom,
     ) {
+        // Issue 4 — track focus so the gold glow + thicker border render when the input
+        // is active, mirroring iOS focused-shadow treatment.
+        var isFocused by remember { mutableStateOf(false) }
+        val focusBorderWidth by animateFloatAsState(
+            targetValue = if (isFocused) 1.5f else 1f,
+            animationSpec = tween(200),
+            label = "focus_border",
+        )
+        val focusBorderAlpha by animateFloatAsState(
+            targetValue = if (isFocused) 0.55f else 0.25f,
+            animationSpec = tween(200),
+            label = "focus_border_alpha",
+        )
         // Full pill wrapping slider + text + send
         Row(
             modifier = Modifier
@@ -1183,8 +1392,8 @@ private fun ChatInputBar(
                 .clip(RoundedCornerShape(24.dp))
                 .background(NavyInput)
                 .border(
-                    width = if (false) 1.5.dp else 1.dp,
-                    color = Gold.copy(alpha = 0.25f),
+                    width = focusBorderWidth.dp,
+                    color = Gold.copy(alpha = focusBorderAlpha),
                     shape = RoundedCornerShape(24.dp),
                 ),
             verticalAlignment = Alignment.Bottom,
@@ -1212,12 +1421,20 @@ private fun ChatInputBar(
                     textStyle = TextStyle(color = CreamText, fontSize = 16.sp),
                     cursorBrush = SolidColor(Gold),
                     maxLines = 5,
+                    // Issue 2 — pop the IME's Send action and submit on Enter when canSend.
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                    keyboardActions = KeyboardActions(
+                        onSend = { if (canSend) dismissAndSend() },
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         // Mirrors iOS ChatView.swift:407-409 .onChange(of: isInputFocused) —
                         // expose focus state so ChatScreen can auto-scroll to the latest
                         // message when the user taps into the input bar.
-                        .onFocusChanged { onInputFocusChanged(it.isFocused) }
+                        .onFocusChanged {
+                            isFocused = it.isFocused
+                            onInputFocusChanged(it.isFocused)
+                        }
                         .semantics { contentDescription = "chat_input" },
                     decorationBox = { inner ->
                         if (text.isEmpty()) {
@@ -1243,12 +1460,24 @@ private fun ChatInputBar(
                     )
                 } else {
                     IconButton(onClick = dismissAndSend, enabled = canSend) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.Send,
-                            contentDescription = null,
-                            tint = if (canSend) Gold else Gold.copy(alpha = 0.25f),
-                            modifier = Modifier.size(20.dp),
-                        )
+                        // Issue 3 — spring-animate icon tint between canSend transitions
+                        // so the gold/dim swap mirrors iOS .symbolEffect.
+                        AnimatedContent(
+                            targetState = canSend,
+                            transitionSpec = {
+                                (fadeIn(spring(stiffness = Spring.StiffnessMedium)) +
+                                    scaleIn(initialScale = 0.85f, animationSpec = spring()))
+                                    .togetherWith(fadeOut(animationSpec = tween(150)))
+                            },
+                            label = "send_icon",
+                        ) { enabled ->
+                            Icon(
+                                Icons.AutoMirrored.Filled.Send,
+                                contentDescription = null,
+                                tint = if (enabled) Gold else Gold.copy(alpha = 0.25f),
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
                     }
                 }
             }
@@ -1274,19 +1503,31 @@ internal fun assistantContentDescription(message: ChatMessage): String = when {
  * True only when streaming has started but no assistant message has accumulated content yet.
  * Once the first chunk arrives the list-level ThinkingPill should disappear — the
  * MessageBubbleView shows the ThinkingPill inline instead until content populates.
+ *
+ * iOS parity (ChatView.swift:361 cosmicProgressSteps): iOS attaches the cosmic progress
+ * indicator to the *streaming message bubble itself*, so it's only visible while a streaming
+ * message is in flight. Android creates the streaming assistant message lazily — only on the
+ * first SSE chunk — so this list-level pill fills the gap between user-send and first chunk.
+ *
+ * The predicate must ignore the welcome assistant message (always present, never streaming)
+ * which is why we check `messages.none { it.isStreaming }` instead of looking at content —
+ * the welcome message has non-empty content and would suppress the pill on every chat after
+ * the first turn.
  */
 internal fun showThinkingPillInList(isStreaming: Boolean, messages: List<ChatMessage>): Boolean =
-    isStreaming && messages.none { it.role == ChatMessage.Role.ASSISTANT && it.content.isNotEmpty() }
+    isStreaming && messages.none { it.isStreaming }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+private val MESSAGE_TIME_FORMATTER: java.time.format.DateTimeFormatter =
+    java.time.format.DateTimeFormatter.ofPattern("h:mm a", java.util.Locale.getDefault())
+
 private fun formatMessageTime(ms: Long): String {
     if (ms == 0L) return ""
-    val h = java.util.Calendar.getInstance().apply { timeInMillis = ms }.get(java.util.Calendar.HOUR_OF_DAY)
-    val m = java.util.Calendar.getInstance().apply { timeInMillis = ms }.get(java.util.Calendar.MINUTE)
-    val amPm = if (h < 12) "AM" else "PM"
-    val h12 = if (h == 0 || h == 12) 12 else h % 12
-    return "%d:%02d %s".format(h12, m, amPm)
+    // Issue 40 — reuse a static DateTimeFormatter instead of allocating a Calendar
+    // per call (saves an instance for every message render).
+    val zoned = java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneId.systemDefault())
+    return zoned.format(MESSAGE_TIME_FORMATTER)
 }
 
 // ── Response length sheet (mirrors iOS ResponseLengthSheet) ──────────────────
@@ -1298,6 +1539,17 @@ private fun ResponseLengthSheet(
     onSelect: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val haptic = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
+    // Issue 71/72 — wrap onSelect so the radio-fill animation has 150ms before the sheet
+    // dismisses, plus medium-impact haptic on tap to match iOS.
+    val handleSelect: (String) -> Unit = { value ->
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        scope.launch {
+            delay(150)
+            onSelect(value)
+        }
+    }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = NavySurface,
@@ -1306,29 +1558,44 @@ private fun ResponseLengthSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 12.dp)
+                // Issue 73 — pin to ~280dp like iOS presentationDetents.
+                .heightIn(min = 280.dp)
                 .semantics { contentDescription = "response_length_sheet" },
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(
-                stringResource(R.string.response_style_setting_title),
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
-                fontFamily = CanelaFontFamily,
-                color = Gold,
-            )
+            // Issue 65/69/111 — explicit close (X) IconButton in the header for parity with iOS.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    stringResource(R.string.response_style_setting_title),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = CanelaFontFamily,
+                    color = Gold,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.semantics { contentDescription = "response_length_close" },
+                ) {
+                    Icon(Icons.Default.Close, contentDescription = null, tint = CreamDim)
+                }
+            }
             ResponseLengthOption(
                 title = stringResource(R.string.response_length_concise),
                 desc = stringResource(R.string.response_length_concise_desc),
                 value = "short",
                 isSelected = current == "short",
-                onSelect = onSelect,
+                onSelect = handleSelect,
             )
             ResponseLengthOption(
                 title = stringResource(R.string.response_length_expanded),
                 desc = stringResource(R.string.response_length_expanded_desc),
                 value = "detailed",
                 isSelected = current == "detailed" || current == "standard",
-                onSelect = onSelect,
+                onSelect = handleSelect,
             )
             Spacer(Modifier.height(16.dp))
         }
@@ -1415,6 +1682,13 @@ private fun QuotaExhaustedGuestSheet(
                     fontWeight = FontWeight.Bold,
                 )
             }
+            // Issue 58 — guest benefit hint, mirrors iOS QuotaExhaustedView guest path.
+            Text(
+                stringResource(R.string.guest_user_benefit),
+                fontSize = 11.sp,
+                color = CreamDim.copy(alpha = 0.7f),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
             TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.cancel), color = CreamDim)
             }
@@ -1429,9 +1703,16 @@ private fun QuotaExhaustedGuestSheet(
 @Composable
 private fun QuotaExhaustedAccountSheet(
     customMessage: String,
+    reason: String? = null,
+    supportEmail: String? = null,
     onUpgrade: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val context = LocalContext.current
+    // Issue 11 — branch on server-supplied reason. fair_use_violation surfaces a
+    // "Usage Restricted / Contact Support" sheet instead of the upgrade interstitial,
+    // matching iOS QuotaExhaustedView.fairUseBranch.
+    val isFairUse = reason == "fair_use_violation"
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = NavySurface,
@@ -1445,13 +1726,13 @@ private fun QuotaExhaustedAccountSheet(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Icon(
-                Icons.Default.Lock,
+                if (isFairUse) Icons.Default.Warning else Icons.Default.Lock,
                 contentDescription = null,
                 tint = Gold,
                 modifier = Modifier.size(40.dp),
             )
             Text(
-                stringResource(R.string.quota_exhausted_title),
+                stringResource(if (isFairUse) R.string.usage_restricted_title else R.string.quota_exhausted_title),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
                 fontFamily = CanelaFontFamily,
@@ -1459,22 +1740,61 @@ private fun QuotaExhaustedAccountSheet(
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
             Text(
-                customMessage.ifBlank { stringResource(R.string.upgrade_to_keep_going) },
+                customMessage.ifBlank {
+                    stringResource(
+                        if (isFairUse) R.string.fair_use_violation_message else R.string.upgrade_to_keep_going,
+                    )
+                },
                 fontSize = 14.sp,
                 color = CreamDim,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
-            Button(
-                onClick = onUpgrade,
-                colors = ButtonDefaults.buttonColors(containerColor = Gold),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .semantics { contentDescription = "quota_exhausted_upgrade_button" },
-            ) {
+            if (isFairUse) {
+                val email = supportEmail?.takeIf { it.isNotBlank() }
+                    ?: stringResource(R.string.fair_use_support_email)
+                val subject = stringResource(R.string.fair_use_email_subject)
+                Button(
+                    onClick = {
+                        runCatching {
+                            val intent = android.content.Intent(android.content.Intent.ACTION_SENDTO).apply {
+                                data = android.net.Uri.parse(
+                                    "mailto:$email?subject=" +
+                                        android.net.Uri.encode(subject),
+                                )
+                            }
+                            context.startActivity(intent)
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Gold),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = "fair_use_contact_support_button" },
+                ) {
+                    Text(
+                        stringResource(R.string.fair_use_contact_support),
+                        color = Color(0xFF0D0D1A),
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            } else {
+                Button(
+                    onClick = onUpgrade,
+                    colors = ButtonDefaults.buttonColors(containerColor = Gold),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = "quota_exhausted_upgrade_button" },
+                ) {
+                    Text(
+                        stringResource(R.string.upgrade_action),
+                        color = Color(0xFF0D0D1A),
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
                 Text(
-                    stringResource(R.string.upgrade_action),
-                    color = Color(0xFF0D0D1A),
-                    fontWeight = FontWeight.Bold,
+                    stringResource(R.string.paid_user_benefit),
+                    fontSize = 11.sp,
+                    color = CreamDim.copy(alpha = 0.7f),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 )
             }
             TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {

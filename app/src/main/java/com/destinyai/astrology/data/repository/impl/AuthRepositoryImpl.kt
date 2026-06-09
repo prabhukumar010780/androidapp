@@ -242,6 +242,32 @@ class AuthRepositoryImpl @Inject constructor(
         prefs.clearAll()
     }
 
+    override suspend fun signOutPreserveBirthData() {
+        // iOS parity (ChatView.swift signOutAndReauth + Components/QuotaExhaustedView.swift onSignIn):
+        // a softer sign-out used when a guest hits the quota wall and taps Sign In.
+        // Clears just enough state for AuthScreen to route to login UI (not bounce
+        // back to Main) without nuking the guest's birth profile. The new
+        // registered account flow reads the preserved birth data and carries it forward.
+        secure.clearAll()
+        // Reset auth flag + guest flag so AuthScreen's loadSession() returns null user.
+        prefs.setAuthenticated(false)
+        prefs.setGuestUser(false)
+        prefs.setUserEmail("")
+        prefs.setUserName("")
+        // Subscription / quota — match iOS resetForSignOut so account-A's plan
+        // cannot leak into account-B's first sync.
+        prefs.setSubscription(isPremium = false, planId = "free")
+        prefs.setAccessState("granted")
+        prefs.setLastAccessState("unknown")
+        prefs.setFcmTokenRegistered(false)
+        prefs.clearSubscriptionMeta()
+        prefs.clearProviderIds()
+        runCatching { quotaManager.get().resetForSignOut() }
+        // NOTE: do NOT call prefs.clearAll() — that wipes BIRTH_DOB/lat/lng/etc.
+        // The whole point of this method is to preserve birth data so the user
+        // doesn't have to re-enter it after re-auth.
+    }
+
     /**
      * Fetch the server-side profile for [email]. Returns null on 404 or any
      * network/HTTP error so callers can fall through to the local-pref birth

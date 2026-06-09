@@ -1,6 +1,11 @@
 package com.destinyai.astrology.ui.onboarding
 
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,13 +27,19 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -37,6 +48,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -48,6 +60,7 @@ import kotlin.math.absoluteValue
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.Gold
+import com.destinyai.astrology.ui.theme.GoldGradient
 import com.destinyai.astrology.ui.theme.GoldLight
 import com.destinyai.astrology.ui.theme.NavyVariant
 import com.destinyai.astrology.ui.theme.NavySurface
@@ -72,6 +85,8 @@ fun OnboardingScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
                 .testTag("onboarding_screen")
                 .semantics { contentDescription = "onboarding_screen" },
         ) {
@@ -88,7 +103,7 @@ fun OnboardingScreen(
                     },
                     modifier = Modifier
                         .align(Alignment.TopStart)
-                        .padding(top = 56.dp, start = 16.dp)
+                        .padding(top = 8.dp, start = 16.dp)
                         .testTag("onboarding_skip")
                         .semantics { contentDescription = "onboarding_skip" },
                 ) {
@@ -107,25 +122,37 @@ fun OnboardingScreen(
             ) {
                 Spacer(Modifier.height(120.dp))
 
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier.weight(1f),
-                ) { page ->
-                    val pageOffset =
-                        ((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction)
-                            .absoluteValue
-                    OnboardingPage(
-                        slide = slides[page],
-                        modifier = Modifier.graphicsLayer {
-                            // iOS parity (OnboardingView.swift:75-80): scrollTransition fades,
-                            // scales (0.92), and blurs (radius 2) off-screen pages.
-                            val identity = (1f - pageOffset).coerceIn(0f, 1f)
-                            alpha = 0.5f + 0.5f * identity
-                            val scale = 0.92f + 0.08f * identity
-                            scaleX = scale
-                            scaleY = scale
-                        },
-                    )
+                // RTL polish: explicitly force LTR pager direction for parity with iOS,
+                // which does not invert horizontal carousel scroll for RTL locales.
+                // Tracked as polish — iOS uses default ScrollView direction; mirror here
+                // by pinning LocalLayoutDirection.Ltr around the pager.
+                CompositionLocalProvider(
+                    LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr,
+                ) {
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.weight(1f),
+                    ) { page ->
+                        val pageOffset =
+                            ((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction)
+                                .absoluteValue
+                        OnboardingPage(
+                            slide = slides[page],
+                            modifier = Modifier
+                                .graphicsLayer {
+                                    // iOS parity (OnboardingView.swift:75-80): scrollTransition fades,
+                                    // scales (0.92), and blurs (radius 2) off-screen pages.
+                                    val identity = (1f - pageOffset).coerceIn(0f, 1f)
+                                    alpha = 0.5f + 0.5f * identity
+                                    val scale = 0.92f + 0.08f * identity
+                                    scaleX = scale
+                                    scaleY = scale
+                                }
+                                // iOS parity (OnboardingView.swift:79): blur(radius: 2) on
+                                // off-screen pages — interpolated by pageOffset.
+                                .blur(radius = (2.dp * pageOffset.coerceIn(0f, 1f))),
+                        )
+                    }
                 }
 
                 // Capsule page indicators
@@ -196,37 +223,13 @@ private fun OnboardingPage(slide: OnboardingSlide, modifier: Modifier = Modifier
             .padding(horizontal = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        if (slide.imageRes != null) {
-            // iOS parity (OnboardingSlideView.swift:16-19, 79-82): hero image is
-            // wrapped in FloatingIcon (radial glow + bobbing motion) — we approximate
-            // by layering a radial glow behind the image and animating the offset.
-            Box(
-                modifier = Modifier.size(180.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                // Glow halo behind hero image (matches iOS FloatingIcon pulsing glow).
-                Box(
-                    modifier = Modifier
-                        .size(180.dp)
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(Gold.copy(alpha = 0.35f), Color.Transparent),
-                            ),
-                        ),
-                )
-                Image(
-                    painter = painterResource(slide.imageRes),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(140.dp)
-                        .clip(RoundedCornerShape(20.dp)),
-                    contentScale = ContentScale.Fit,
-                )
-            }
-        } else {
-            // Fallback when no hero image — use a sparkles FloatingIcon to keep parity.
-            FloatingIcon(icon = Icons.Filled.AutoAwesome, iconSize = 80.dp)
-        }
+        // iOS parity (OnboardingSlideView.swift:120-153): icon routing helper —
+        // drawable hero image with personalizationIconScale, or Material ImageVector
+        // fallback tinted with the premium gold gradient.
+        SlideIcon(
+            slide = slide,
+            modifier = Modifier.semantics { contentDescription = "onboarding_slide_icon" },
+        )
 
         Spacer(Modifier.height(32.dp))
 
@@ -260,11 +263,14 @@ private fun OnboardingPage(slide: OnboardingSlide, modifier: Modifier = Modifier
             StatsCard()
         }
 
-        // Description for middle slides
-        if (slide.descriptionRes != null) {
+        // Description for middle slides — iOS parity (OnboardingSlideView.swift:103):
+        // `if !slide.description.isEmpty` — Android equivalent uses isNullOrBlank()
+        // on the resolved string so blank/whitespace-only descriptions are skipped.
+        val descriptionText = slide.descriptionRes?.let { stringResource(it) }
+        if (!descriptionText.isNullOrBlank()) {
             Spacer(Modifier.height(12.dp))
             Text(
-                text = stringResource(slide.descriptionRes),
+                text = descriptionText,
                 fontSize = 15.sp,
                 color = CreamDim,
                 textAlign = TextAlign.Center,
@@ -485,5 +491,110 @@ private fun FeaturesListView() {
                 }
             }
         }
+    }
+}
+
+// iOS parity (OnboardingSlideView.swift:120-153 + AppTheme.Onboarding.personalizationIconScale = 1.3):
+// scale factor applied to the constellation drawable; everywhere else uses 1.0x.
+private const val PERSONALIZATION_ICON_SCALE: Float = 1.3f
+
+/**
+ * Slide icon router — iOS parity (OnboardingSlideView.swift:120-153).
+ *
+ *  - drawable hero: chat_gpt_logo / onboarding_clarity / onboarding_personalization /
+ *    onboarding_features → render via painterResource. The personalization
+ *    constellation icon up-scales by [PERSONALIZATION_ICON_SCALE] (iOS 1.3x).
+ *  - SF-Symbol fallback: when no drawable is present, render Icons.Filled.AutoAwesome
+ *    tinted with the [GoldGradient] brush to mirror iOS `.foregroundStyle(premiumGradient)`.
+ *
+ * The hero is wrapped in the FloatingIcon-style radial glow + bobbing motion that
+ * was previously inlined in OnboardingPage.
+ */
+@Composable
+private fun SlideIcon(
+    slide: OnboardingSlide,
+    modifier: Modifier = Modifier,
+) {
+    // FloatingIcon-style bob (PremiumComponents.kt:136-145) — -6dp..+6dp, 2200ms reverse.
+    val infinite = rememberInfiniteTransition(label = "slideIconFloat")
+    val bobY by infinite.animateFloat(
+        initialValue = -6f,
+        targetValue = 6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2200),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "slideIconBobY",
+    )
+
+    val containerSize = 180.dp
+    val isPersonalization = slide.imageRes == R.drawable.onboarding_personalization
+    val baseSize = 140.dp
+    val iconSize = if (isPersonalization) baseSize * PERSONALIZATION_ICON_SCALE else baseSize
+
+    Box(
+        modifier = modifier.size(containerSize),
+        contentAlignment = Alignment.Center,
+    ) {
+        // Glow halo behind icon — radial gold gradient (matches iOS FloatingIcon glow).
+        Box(
+            modifier = Modifier
+                .size(containerSize)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(Gold.copy(alpha = 0.35f), Color.Transparent),
+                    ),
+                ),
+        )
+
+        if (slide.imageRes != null) {
+            Image(
+                painter = painterResource(slide.imageRes),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(iconSize)
+                    .offset(y = bobY.dp)
+                    .clip(RoundedCornerShape(20.dp)),
+                contentScale = ContentScale.Fit,
+            )
+        } else {
+            // SF-Symbol fallback — Material ImageVector tinted with gold (closest
+            // single-color approximation of iOS `.foregroundStyle(premiumGradient)`).
+            // Behind the icon, a faint GoldGradient halo provides the multi-stop
+            // gold sheen that the SwiftUI gradient gives natively.
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .offset(y = bobY.dp)
+                    .background(GoldGradient, shape = CircleShape)
+                    .padding(8.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.AutoAwesome,
+                    contentDescription = null,
+                    tint = NavyVariant,
+                    modifier = Modifier.size(56.dp),
+                )
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF0B0F19)
+@Composable
+private fun OnboardingSlidePreview() {
+    // iOS parity (OnboardingSlideView.swift:329-334): preview is wrapped in
+    // CosmicBackgroundView so the chrome matches the running app.
+    CosmicBackground {
+        OnboardingPage(slide = OnboardingSlide.slides[0])
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF0B0F19)
+@Composable
+private fun OnboardingSlideFeaturesPreview() {
+    CosmicBackground {
+        OnboardingPage(slide = OnboardingSlide.slides[3])
     }
 }

@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -45,6 +46,7 @@ fun DashaView(dashaResponse: DashaResponse?) {
         modifier = Modifier
             .fillMaxWidth()
             .semantics { contentDescription = "chart_tab_dasha" }
+            .shadow(elevation = 10.dp, shape = RoundedCornerShape(16.dp))
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White)
             .padding(20.dp),
@@ -64,6 +66,7 @@ fun DashaView(dashaResponse: DashaResponse?) {
         if (dashaResponse?.periods != null) {
             Column(
                 modifier = Modifier
+                    .shadow(elevation = 5.dp, shape = RoundedCornerShape(12.dp))
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color.White),
             ) {

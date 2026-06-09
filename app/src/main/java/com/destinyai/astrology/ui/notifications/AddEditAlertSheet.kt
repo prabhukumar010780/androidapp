@@ -4,11 +4,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -87,19 +89,81 @@ fun AddEditAlertSheet(
         focusRequester.requestFocus()
     }
 
+    // iOS parity (NotificationPreferencesSheet.swift:679 — `.presentationDetents([.large])`):
+    // single full-height detent. Material3's default ModalBottomSheet stops at a partial
+    // (~half-screen) anchor first, which clips Frequency / Suggestions / Save below the
+    // fold. skipPartiallyExpanded=true forces the sheet to open at the fully-expanded
+    // anchor, mirroring iOS exactly.
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                // iOS sheet at .large detent fills (almost) the full height regardless
+                // of content. fillMaxHeight() reproduces that so the sheet doesn't
+                // shrink-wrap to its content on tall phones, and verticalScroll +
+                // imePadding mirror the iOS ScrollView + keyboard-avoidance behaviour
+                // (NotificationPreferencesSheet.swift:504).
+                .fillMaxHeight()
+                .verticalScroll(rememberScrollState())
+                .imePadding()
                 .navigationBarsPadding()
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 24.dp)
                 .testTag("add_edit_alert_sheet"),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            // iOS parity (NotificationPreferencesSheet.swift:638-662 .toolbar):
+            // top-leading Cancel + top-trailing Add/Save buttons. Mirrors
+            // PartnerFormSheet (PartnersScreen.kt:963-983), the closest form
+            // analogue. Save is disabled until the description is non-blank,
+            // matching the iOS .disabled(text.trim().isEmpty) at line 658.
+            // Bottom Cancel/Save row is retained for keyboard-up reachability —
+            // PartnerFormSheet uses the same dual-affordance approach.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(
+                    onClick = {
+                        haptic.light()
+                        onDismiss()
+                    },
+                    modifier = Modifier.testTag("alert_sheet_cancel_top"),
+                ) {
+                    Text(
+                        text = stringResource(R.string.cancel_action),
+                        color = CreamDim,
+                        fontSize = 14.sp,
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+                TextButton(
+                    onClick = {
+                        if (text.isNotBlank()) {
+                            haptic.light()
+                            onSave(text.trim(), frequency, frequencyDay)
+                            onDismiss()
+                        }
+                    },
+                    enabled = text.isNotBlank(),
+                    modifier = Modifier.testTag("alert_sheet_save_top"),
+                ) {
+                    Text(
+                        text = stringResource(
+                            if (existing == null) R.string.add_action else R.string.save_action,
+                        ),
+                        color = if (text.isNotBlank()) Gold else CreamDim,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                    )
+                }
+            }
+
             Text(
                 text = if (existing == null) stringResource(R.string.notif_add_alert_title)
                        else stringResource(R.string.notif_edit_alert_dialog_title),
@@ -273,45 +337,12 @@ fun AddEditAlertSheet(
                 }
             }
 
-            // Action buttons
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                OutlinedButton(
-                    onClick = {
-                        haptic.light()
-                        onDismiss()
-                    },
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("alert_sheet_cancel"),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = CreamDim),
-                ) {
-                    Text(stringResource(R.string.cancel))
-                }
-                Button(
-                    onClick = {
-                        if (text.isNotBlank()) {
-                            haptic.light()
-                            onSave(text.trim(), frequency, frequencyDay)
-                            onDismiss()
-                        }
-                    },
-                    enabled = text.isNotBlank(),
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("alert_sheet_save"),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Gold,
-                        contentColor = Color(0xFF0D0D1A),
-                        disabledContainerColor = Gold.copy(alpha = 0.3f),
-                        disabledContentColor = Color(0xFF0D0D1A).copy(alpha = 0.4f),
-                    ),
-                ) {
-                    Text(stringResource(R.string.save), fontWeight = FontWeight.SemiBold)
-                }
-            }
+            // iOS parity (NotificationPreferencesSheet.swift:483-680): the
+            // AddEditAlertSheet body is a NavigationStack + ScrollView only.
+            // There is NO bottom Cancel/Save row on iOS — the .toolbar with
+            // Cancel (top-leading) + Add/Save (top-trailing) is the sole
+            // affordance. We removed the bottom row to match iOS exactly and
+            // avoid duplicate Cancel buttons (one at top, one at bottom).
         }
     }
 }

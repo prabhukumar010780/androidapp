@@ -46,16 +46,11 @@ class ChatAccessibilityLogicTest {
     }
 
     @Test
-    fun `showThinkingPill is true when streaming and no message has content yet`() {
-        val msgs = listOf(
-            ChatMessage(id = "1", role = ChatMessage.Role.ASSISTANT, content = "", isStreaming = true),
-        )
-        assertTrue(showThinkingPillInList(isStreaming = true, messages = msgs))
-    }
-
-    @Test
-    fun `showThinkingPill is false when streaming but assistant message already has content`() {
-        // Once content is being accumulated the ThinkingPill should disappear
+    fun `showThinkingPill is false once a streaming bubble exists`() {
+        // Android creates the streaming assistant message lazily on first SSE chunk.
+        // Once that streaming bubble appears, the per-bubble pill takes over and the
+        // list-level pill must disappear. iOS parity (ChatView.swift:361 — cosmic
+        // progress is bound to the streaming bubble, not the list).
         val msgs = listOf(
             ChatMessage(id = "1", role = ChatMessage.Role.ASSISTANT, content = "Jupiter is…", isStreaming = true),
         )
@@ -66,6 +61,19 @@ class ChatAccessibilityLogicTest {
     fun `showThinkingPill is true when streaming and only user message present`() {
         val msgs = listOf(
             ChatMessage(id = "1", role = ChatMessage.Role.USER, content = "Tell me my fortune"),
+        )
+        assertTrue(showThinkingPillInList(isStreaming = true, messages = msgs))
+    }
+
+    @Test
+    fun `showThinkingPill is true when welcome assistant message exists but no streaming bubble yet`() {
+        // Regression: the previous predicate suppressed the pill whenever ANY assistant
+        // message had content, which made the welcome message ("Hello Prabhu!…") hide
+        // the pill on every subsequent send. Pill must remain visible until the
+        // streaming bubble appears.
+        val msgs = listOf(
+            ChatMessage(id = "welcome", role = ChatMessage.Role.ASSISTANT, content = "Hello Prabhu!"),
+            ChatMessage(id = "u1", role = ChatMessage.Role.USER, content = "Tell me my fortune"),
         )
         assertTrue(showThinkingPillInList(isStreaming = true, messages = msgs))
     }

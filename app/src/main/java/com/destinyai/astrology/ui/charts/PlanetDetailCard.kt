@@ -3,9 +3,6 @@ package com.destinyai.astrology.ui.charts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -18,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -30,18 +28,27 @@ import com.destinyai.astrology.ui.theme.Gold
 // ── PlanetDetailCard ──────────────────────────────────────────────────────────
 
 @Composable
-fun PlanetDetailCard(planet: PlanetDisplayInfo, signAbbrev: String?) {
+fun PlanetDetailCard(planet: PlanetDisplayInfo, signAbbrev: String?, modifier: Modifier = Modifier) {
     val symbol = ChartConstants.planetSymbol(planet.id)
     val color = ChartConstants.planetColor(planet.id)
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
+            .shadow(
+                elevation = 4.dp,
+                shape = RoundedCornerShape(12.dp),
+                ambientColor = Color.Black.copy(alpha = 0.3f),
+                spotColor = Color.Black.copy(alpha = 0.3f),
+            )
             .clip(RoundedCornerShape(12.dp))
             .background(
                 Brush.linearGradient(
-                    listOf(color.copy(alpha = 0.12f), Color(0xF20D0D1E))
-                )
+                    listOf(
+                        Color(red = 0.10f, green = 0.12f, blue = 0.22f, alpha = 0.9f),
+                        Color(red = 0.05f, green = 0.06f, blue = 0.12f, alpha = 0.95f),
+                    ),
+                ),
             )
             .border(
                 0.8.dp,
@@ -110,18 +117,29 @@ private fun StatusDot(text: String, color: Color) {
 
 private val PLANET_ORDER = listOf("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu")
 
+// Non-lazy fixed 3-column grid — safe inside Column(verticalScroll).
+// LazyVerticalGrid cannot be nested in verticalScroll (infinite height crash).
 @Composable
 fun PlanetCardsGrid(chartData: ChartData, chartType: ChartType = ChartType.D1) {
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth(),
-        userScrollEnabled = false,
-    ) {
-        items(PLANET_ORDER) { name ->
-            val info = planetDisplayInfo(name, chartData, chartType) ?: return@items
-            PlanetDetailCard(planet = info.first, signAbbrev = info.second)
+    val items = PLANET_ORDER.mapNotNull { name -> planetDisplayInfo(name, chartData, chartType) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        items.chunked(3).forEach { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                row.forEach { (planet, signAbbrev) ->
+                    PlanetDetailCard(
+                        planet = planet,
+                        signAbbrev = signAbbrev,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                // Fill trailing empty cells so last row aligns left
+                repeat(3 - row.size) {
+                    Spacer(Modifier.weight(1f))
+                }
+            }
         }
     }
 }

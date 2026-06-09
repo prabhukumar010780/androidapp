@@ -35,7 +35,7 @@ internal fun kutaRichDescription(kuta: KutaDetail, boyName: String, girlName: St
 
     when (kuta.key.lowercase()) {
         "varna" -> {
-            parts += "$boyName's ${kuta.label} compatibility is measured by Varna Koota, which looks at each partner's spiritual and social orientation: Brahmin (wisdom), Kshatriya (leadership), Vaishya (commerce), or Shudra (service/craft)."
+            parts += "${kuta.label} compatibility is measured by Varna Koota, which looks at each partner's spiritual and social orientation: Brahmin (wisdom), Kshatriya (leadership), Vaishya (commerce), or Shudra (service/craft)."
             if (hasValues) parts += "$boyName belongs to the $bv Varna and $girlName to the $gv Varna."
             val body = kuta.plainEnglishSummary ?: if (effectiveScore == maxScore)
                 "Compatible Varnas indicate natural alignment in how you approach your duties, ambitions, and life purpose."
@@ -48,7 +48,7 @@ internal fun kutaRichDescription(kuta: KutaDetail, boyName: String, girlName: St
             }
         }
         "vashya" -> {
-            parts += "$boyName's ${kuta.label} compatibility is measured by Vashya Koota, which looks at the natural power dynamic and magnetism between partners, based on each moon sign's symbolic animal group."
+            parts += "${kuta.label} compatibility is measured by Vashya Koota, which looks at the natural power dynamic and magnetism between partners, based on each moon sign's symbolic animal group."
             if (hasValues) parts += "$boyName is $bv and $girlName is $gv."
             val body = kuta.plainEnglishSummary?.takeIf { it.isNotEmpty() }
                 ?: when {
@@ -59,7 +59,7 @@ internal fun kutaRichDescription(kuta: KutaDetail, boyName: String, girlName: St
             parts += "Their score is $effectiveDisplay. $body"
         }
         "tara" -> {
-            parts += "$boyName's ${kuta.label} compatibility is measured by Tara Koota, which counts the distance between each partner's birth Nakshatra. Even-numbered counts are auspicious; odd are inauspicious."
+            parts += "${kuta.label} compatibility is measured by Tara Koota, which counts the distance between each partner's birth Nakshatra. Even-numbered counts are auspicious; odd are inauspicious."
             if (kuta.taraBoyToGirl != null && kuta.taraGirlToBoy != null)
                 parts += "$boyName's birth star counts ${kuta.taraBoyToGirl} positions to $girlName's, and the reverse counts ${kuta.taraGirlToBoy}."
             val body = kuta.plainEnglishSummary?.takeIf { it.isNotEmpty() }
@@ -71,7 +71,7 @@ internal fun kutaRichDescription(kuta: KutaDetail, boyName: String, girlName: St
             parts += "Their score is $effectiveDisplay. $body"
         }
         "yoni" -> {
-            parts += "$boyName's ${kuta.label} compatibility is measured by Yoni Koota, which assigns each Nakshatra a symbolic animal. Matching or friendly animals score highly; hostile pairs score low."
+            parts += "${kuta.label} compatibility is measured by Yoni Koota, which assigns each Nakshatra a symbolic animal. Matching or friendly animals score highly; hostile pairs score low."
             if (hasValues) parts += "$boyName is $bv and $girlName is $gv."
             val body = (if (!kuta.doshaCancelled) kuta.plainEnglishSummary?.takeIf { it.isNotEmpty() } else null)
                 ?: when {
@@ -86,7 +86,7 @@ internal fun kutaRichDescription(kuta: KutaDetail, boyName: String, girlName: St
             }
         }
         "maitri" -> {
-            parts += "$boyName's ${kuta.label} compatibility is measured by Maitri Koota, which compares the ruling planets of each partner's moon sign. Friendly lords score 5; neutral 3; enemies 0."
+            parts += "${kuta.label} compatibility is measured by Maitri Koota, which compares the ruling planets of each partner's moon sign. Friendly lords score 5; neutral 3; enemies 0."
             if (hasValues) parts += "$boyName's moon sign lord is $bv and $girlName's is $gv."
             val body = kuta.plainEnglishSummary?.takeIf { it.isNotEmpty() }
                 ?: when {
@@ -97,7 +97,7 @@ internal fun kutaRichDescription(kuta: KutaDetail, boyName: String, girlName: St
             parts += "Their score is $effectiveDisplay. $body"
         }
         "gana" -> {
-            parts += "$boyName's ${kuta.label} compatibility is measured by Gana Koota, which classifies each partner's fundamental nature as divine (Deva), human (Manushya), or intense (Rakshasa)."
+            parts += "${kuta.label} compatibility is measured by Gana Koota, which classifies each partner's fundamental nature as divine (Deva), human (Manushya), or intense (Rakshasa)."
             if (hasValues) parts += "$boyName is $bv and $girlName is $gv."
             val body = kuta.plainEnglishSummary?.takeIf { it.isNotEmpty() }
                 ?: when {
@@ -112,11 +112,11 @@ internal fun kutaRichDescription(kuta: KutaDetail, boyName: String, girlName: St
                     val gvLabel = if (gv.isNotEmpty()) gv else girlName
                     parts += "Active Gana Dosha. When $bvLabel and $gvLabel natures pair up, the dominant nature tends to overpower the gentler one. No cancellation was found in your charts."
                 }
-                kuta.doshaPresent && kuta.doshaCancelled -> parts += "The Gana Dosha is cancelled. $cancellation qualifies for an exemption. $restoredNote"
+                kuta.doshaPresent && kuta.doshaCancelled -> parts += "The Gana Dosha is cancelled. $cancellation qualifies for an exemption. $restoredNote This softens the temperament clash significantly."
             }
         }
         "bhakoot" -> {
-            parts += "$boyName's ${kuta.label} compatibility is measured by Bhakoot Koota, the most emotionally significant of all 8 Kootas at 7 points. It governs romantic love, emotional bonding, financial prosperity, and prospects for children."
+            parts += "${kuta.label} compatibility is measured by Bhakoot Koota, the most emotionally significant of all 8 Kootas at 7 points. It governs romantic love, emotional bonding, financial prosperity, and prospects for children."
             if (hasValues) parts += "$boyName's moon is in $bv and $girlName's in $gv."
             val body = kuta.plainEnglishSummary?.takeIf { it.isNotEmpty() }
                 ?: when {
@@ -130,11 +130,11 @@ internal fun kutaRichDescription(kuta: KutaDetail, boyName: String, girlName: St
                     val typeNote = kuta.doshaType?.let { " ($it)" } ?: ""
                     parts += "Active Bhakoot Dosha$typeNote. Classical texts link this pairing with emotional distance and financial hardship. No cancellation was found. This is a significant flag."
                 }
-                kuta.doshaPresent && kuta.doshaCancelled -> parts += "The Bhakoot Dosha is cancelled. $cancellation qualifies for an exemption. Score restored to $maxScore/$maxScore."
+                kuta.doshaPresent && kuta.doshaCancelled -> parts += "The Bhakoot Dosha is cancelled. $cancellation qualifies for an exemption. Score restored to $maxScore/$maxScore. The underlying dosha does not count against your compatibility."
             }
         }
         "nadi" -> {
-            parts += "$boyName's ${kuta.label} compatibility is measured by Nadi Koota, the most heavily weighted Koota at 8 points and classically considered the most critical. It looks at the Ayurvedic body-type (Nadi): Aadi (Vata), Madhya (Pitta), or Antya (Kapha)."
+            parts += "${kuta.label} compatibility is measured by Nadi Koota, the most heavily weighted Koota at 8 points and classically considered the most critical. It looks at the Ayurvedic body-type (Nadi): Aadi (Vata), Madhya (Pitta), or Antya (Kapha)."
             if (hasValues) parts += "$boyName is $bv Nadi and $girlName is $gv Nadi."
             val body = (if (!kuta.doshaCancelled) kuta.plainEnglishSummary?.takeIf { it.isNotEmpty() } else null)
                 ?: when {

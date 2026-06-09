@@ -10,8 +10,19 @@ interface HomeRepository {
     suspend fun getDailyQuota(): Int
     suspend fun getDailyUsed(): Int
     suspend fun getSuggestedQuestions(): List<String>
-    suspend fun getDailyInsight(): String
-    suspend fun getRichHomeData(email: String, birthProfile: BirthProfileDto): HomeRichData?
+    /**
+     * @param birth The birth profile to query the prediction API with.
+     * @param profileCacheId Stable identifier for cache keying. Use the active
+     *   profile id (partner UUID, or owner email when self is active). Mirrors
+     *   iOS profileScopedKey at ProfileContextManager.swift:147-149 — without
+     *   this scope, switching profiles would hit a stale self-cached row.
+     */
+    suspend fun getDailyInsight(birth: BirthProfileDto, profileCacheId: String): String
+    suspend fun getRichHomeData(
+        email: String,
+        birthProfile: BirthProfileDto,
+        profileCacheId: String,
+    ): HomeRichData?
 
     /**
      * Fetches the dedicated Vimshottari dasha periods for the given year via

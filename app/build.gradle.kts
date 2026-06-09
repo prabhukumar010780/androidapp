@@ -145,10 +145,12 @@ android {
         }
         // Staging — mirrors iOS Test.xcconfig. (Kept "staging" name to match existing CI
         // references to DESTINY_API_KEY_STAGING and the assembleStagingDebug task.)
-        // No applicationIdSuffix so Play Console accepts the AAB (same package as production).
-        // The versionNameSuffix and ENV BuildConfig field distinguish staging at runtime.
+        // applicationIdSuffix=".staging" — staging is a SEPARATE Play Console app
+        // (com.destinyai.astrology.staging) so it never collides with production rollouts
+        // on the same internal track.
         create("staging") {
             dimension = "env"
+            applicationIdSuffix = ".staging"
             versionNameSuffix = "-staging"
             buildConfigField("String", "API_BASE_URL", "\"https://astroapi-test-dsqvza5jza-ul.a.run.app\"")
             buildConfigField("String", "API_KEY", "\"$apiKeyStaging\"")

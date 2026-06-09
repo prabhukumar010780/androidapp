@@ -15,7 +15,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
@@ -144,13 +143,6 @@ fun AstrologySettingsScreen(
                     footer = stringResource(R.string.chart_style_footer),
                     rowTagPrefix = "chart_style",
                 )
-
-                if (state.isSaved) {
-                    Text(text = stringResource(R.string.settings_saved), color = Gold, fontSize = 13.sp)
-                }
-                if (state.error != null) {
-                    Text(text = state.error ?: "", color = Color(0xFFFF8A80), fontSize = 13.sp)
-                }
 
                 // iOS parity (AstrologySettingsSheet.swift:8-10): @AppStorage auto-persists on every
                 // tap — no Save button. Android setters already write to DataStore inside

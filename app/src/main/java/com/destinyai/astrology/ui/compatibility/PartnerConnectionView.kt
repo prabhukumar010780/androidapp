@@ -11,11 +11,16 @@ import androidx.compose.material.icons.filled.Link
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.destinyai.astrology.ui.theme.CreamDim
@@ -32,12 +37,13 @@ fun PartnerConnectionView(
     girlName: String,
     modifier: Modifier = Modifier,
 ) {
+    val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     Row(
         modifier = modifier.padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        PartnerAvatarPill(name = boyName, alignRight = true, modifier = Modifier.weight(1f))
+        PartnerAvatarPill(name = boyName, alignRight = !isRtl, modifier = Modifier.weight(1f))
 
         // Connection symbol
         Box(contentAlignment = Alignment.Center) {
@@ -48,9 +54,12 @@ fun PartnerConnectionView(
                     .background(Gold.copy(alpha = 0.1f))
                     .blur(4.dp),
             )
+            // iOS parity: stroked gold ring with scaleEffect(1.2) + opacity(0.5) glow
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(32.dp)
+                    .scale(1.2f)
+                    .alpha(0.5f)
                     .clip(CircleShape)
                     .border(1.dp, Gold.copy(alpha = 0.3f), CircleShape),
             )
@@ -58,11 +67,13 @@ fun PartnerConnectionView(
                 imageVector = Icons.Default.Link,
                 contentDescription = null,
                 tint = Gold,
-                modifier = Modifier.size(14.dp),
+                modifier = Modifier
+                    .size(14.dp)
+                    .rotate(45f),
             )
         }
 
-        PartnerAvatarPill(name = girlName, alignRight = false, modifier = Modifier.weight(1f))
+        PartnerAvatarPill(name = girlName, alignRight = isRtl, modifier = Modifier.weight(1f))
     }
 }
 

@@ -7,6 +7,7 @@ import com.destinyai.astrology.data.local.db.CompatibilityHistoryDao
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.services.ExternalPlanChange
 import com.destinyai.astrology.services.QuotaManager
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -57,6 +58,7 @@ class MainScreenViewModelTest {
         every { billingManager.subscriptionConflict } returns subscriptionConflictFlow
 
         historyDao = mockk(relaxed = true)
+        coEvery { historyDao.getById(any()) } returns null
 
         vm = MainScreenViewModel(prefs, quotaManager, billingManager, historyDao)
     }

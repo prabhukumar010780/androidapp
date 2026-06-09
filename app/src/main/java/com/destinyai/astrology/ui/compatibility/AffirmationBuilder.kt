@@ -4,6 +4,7 @@ import com.destinyai.astrology.domain.model.KutaDetail
 
 internal object AffirmationBuilder {
 
+    // Ordered weight list (descending) — includes all 8 kootas (parity with iOS spec).
     val weightOrder = listOf("nadi", "bhakoot", "gana", "maitri", "yoni", "tara", "vashya", "varna")
 
     private val displayNames = mapOf(
@@ -20,7 +21,7 @@ internal object AffirmationBuilder {
         "yoni" to "physical intimacy",
         "tara" to "destiny & fortune",
         "vashya" to "attraction & influence",
-        "varna" to "spiritual alignment",
+        "varna" to "spiritual compatibility",
     )
 
     data class PerfectKoota(val displayName: String, val theme: String)

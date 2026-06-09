@@ -41,6 +41,14 @@ data class AuthUiState(
      * BirthDataScreen; false => route directly to MainScreen.
      */
     val needsBirthData: Boolean = false,
+    /**
+     * iOS parity (AuthView.swift loadingOverlay during post-sign-in sync window):
+     * true between sign-in success and the moment LoginSyncCoordinator.syncAll
+     * finishes pulling chat history, subscription state, and server profile.
+     * AuthScreen renders the same spinner while this is true so the user
+     * never sees Home before the migrated data is ready.
+     */
+    val isSyncingData: Boolean = false,
 )
 
 class ConflictException(val code: String) : Exception(code)
@@ -53,6 +61,10 @@ class AuthViewModel @Inject constructor(
     private val prefs: UserPreferences,
     private val appStartup: AppStartupService,
     private val soundManager: SoundManager,
+    // iOS parity (AuthViewModel.swift:316 LoginSyncCoordinator.shared.syncAll):
+    // post-sign-in coordinated sync so chat threads, quota, profile and partner
+    // rows are fresh BEFORE the user lands on Home.
+    private val loginSync: com.destinyai.astrology.services.LoginSyncCoordinator,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -150,6 +162,28 @@ class AuthViewModel @Inject constructor(
     }
 
     /**
+     * iOS parity (AuthViewModel.swift:176-179 performSignIn): flip isLoading
+     * the moment the auth button is tapped — BEFORE the native Google credential
+     * picker opens — so the loading overlay (AuthScreen.kt) is visible during
+     * the picker's startup and the subsequent backend round-trip. Without this,
+     * the overlay only appears once viewModel.signInWithGoogle(...) runs, which
+     * is after the picker has already returned.
+     */
+    fun beginGoogleSignIn() {
+        _uiState.update { it.copy(isLoading = true, error = null) }
+    }
+
+    /**
+     * iOS parity (AuthViewModel.swift performSignIn final isLoading=false on
+     * cancel/throw): clear the loading state when the user dismisses the Google
+     * picker without picking an account. Mirrors the silent user-cancel path —
+     * no error message, just stop showing the overlay.
+     */
+    fun cancelGoogleSignIn() {
+        _uiState.update { it.copy(isLoading = false) }
+    }
+
+    /**
      * Surfaces a Google Sign-In error from the launcher result back to the UI.
      * Used when the OAuth flow returns no ID token (e.g. GOOGLE_SERVER_CLIENT_ID
      * unconfigured) or when GoogleSignIn throws an ApiException, so the user
@@ -201,11 +235,28 @@ class AuthViewModel @Inject constructor(
                             isGuest = false,
                             wasGuestUpgrade = wasGuest && guestBirth != null,
                         )
+                        // iOS parity (AuthViewModel.swift:316 + AuthView loadingOverlay):
+                        // run the post-sign-in coordinated sync (chat history, quota,
+                        // profile) BEFORE flipping isAuthenticated, so the user sees a
+                        // spinner instead of stale data when they land on Home.
                         _uiState.update {
                             it.copy(
                                 currentUser = user,
+                                isLoading = true,
+                                isSyncingData = true,
+                            )
+                        }
+                        runCatching {
+                            loginSync.syncAll(
+                                userEmail = user.email,
+                                previousGuestEmail = if (wasGuest) guestEmail else null,
+                            )
+                        }
+                        _uiState.update {
+                            it.copy(
                                 isAuthenticated = true,
                                 isLoading = false,
+                                isSyncingData = false,
                                 needsBirthData = needsBirth,
                             )
                         }
@@ -253,11 +304,16 @@ class AuthViewModel @Inject constructor(
                             isGuest = false,
                             wasGuestUpgrade = false,
                         )
+                        // iOS parity: post-sign-in coordinated sync (chat, quota, profile).
+                        _uiState.update {
+                            it.copy(currentUser = user, isLoading = true, isSyncingData = true)
+                        }
+                        runCatching { loginSync.syncAll(userEmail = user.email) }
                         _uiState.update {
                             it.copy(
-                                currentUser = user,
                                 isAuthenticated = true,
                                 isLoading = false,
+                                isSyncingData = false,
                                 needsBirthData = needsBirth,
                             )
                         }
@@ -310,11 +366,19 @@ class AuthViewModel @Inject constructor(
                         isGuest = false,
                         wasGuestUpgrade = true,
                     )
+                    // iOS parity: run post-upgrade sync so the migrated chat threads,
+                    // quota state, and server profile land before the user sees Home.
+                    _uiState.update {
+                        it.copy(currentUser = user, isLoading = true, isSyncingData = true)
+                    }
+                    runCatching {
+                        loginSync.syncAll(userEmail = user.email, previousGuestEmail = guestEmail)
+                    }
                     _uiState.update {
                         it.copy(
-                            currentUser = user,
                             isAuthenticated = true,
                             isLoading = false,
+                            isSyncingData = false,
                             needsBirthData = needsBirth,
                         )
                     }

@@ -146,8 +146,23 @@ fun NotificationsScreen(
     val listState = rememberLazyListState()
     val context = LocalContext.current
     val haptic = remember { HapticManager(context) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    // iOS parity gap fix — surface mark/markAll failures via Snackbar instead of swallowing.
+    val markFailedMsg = stringResource(R.string.notification_mark_failed)
+    val markAllFailedMsg = stringResource(R.string.notification_mark_all_failed)
+    val dismissLabel = stringResource(R.string.dismiss)
 
     LaunchedEffect(Unit) { viewModel.loadNotifications() }
+
+    LaunchedEffect(state.markErrorKind) {
+        val kind = state.markErrorKind ?: return@LaunchedEffect
+        val msg = when (kind) {
+            MarkErrorKind.MARK_READ -> markFailedMsg
+            MarkErrorKind.MARK_ALL_READ -> markAllFailedMsg
+        }
+        snackbarHostState.showSnackbar(message = msg, actionLabel = dismissLabel)
+        viewModel.clearMarkError()
+    }
 
     // Mirrors iOS NotificationInboxView.swift:174-179 — trigger loadMore on last item appearance.
     LaunchedEffect(listState, state.notifications.size, state.hasMore) {
@@ -408,6 +423,28 @@ fun NotificationsScreen(
                         haptic.light()
                         selected = null
                     },
+                )
+            }
+        }
+
+        // iOS parity gap fix — Snackbar host surfaces mark/markAll errors stored in uiState.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .navigationBarsPadding()
+                .semantics { testTagsAsResourceId = true }
+                .testTag("notifications_snackbar_host"),
+            contentAlignment = Alignment.BottomCenter,
+        ) {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.padding(16.dp),
+            ) { data ->
+                Snackbar(
+                    snackbarData = data,
+                    containerColor = NavySurface,
+                    contentColor = CreamText,
+                    actionColor = Gold,
                 )
             }
         }

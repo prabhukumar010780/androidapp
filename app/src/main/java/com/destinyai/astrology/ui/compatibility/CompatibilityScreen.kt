@@ -44,11 +44,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.offset
@@ -66,6 +71,8 @@ import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
+import com.destinyai.astrology.ui.theme.SuccessGreen
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
@@ -76,6 +83,10 @@ fun CompatibilityScreen(
     onNavigateToPartners: () -> Unit,
     onNavigateToHistory: (() -> Unit)? = null,
     onNavigateToSettings: (() -> Unit)? = null,
+    // iOS parity (CompatibilityView.swift signOutAndReauth + QuotaExhaustedView.onSignIn):
+    // when a guest hits the quota wall on Compatibility, the Sign In CTA must route to
+    // AuthScreen — not just dismiss the dialog (which strands them on the Match tab).
+    onNavigateToAuth: () -> Unit = {},
     onShowResultChange: ((Boolean) -> Unit)? = null,
     initialMatchItem: com.destinyai.astrology.domain.model.CompatibilityHistoryItem? = null,
     initialMatchGroup: com.destinyai.astrology.domain.model.ComparisonGroup? = null,
@@ -87,11 +98,23 @@ fun CompatibilityScreen(
     val hasFailedPartners by viewModel.hasFailedPartners.collectAsStateWithLifecycle()
     val comparisonResults by viewModel.comparisonResults.collectAsStateWithLifecycle()
     val currentStep by viewModel.currentStep.collectAsStateWithLifecycle()
+    val historyLoadedToast by viewModel.historyLoadedToast.collectAsStateWithLifecycle()
     // Mirrors iOS CompatibilityView resultView swap: when a CompatibilityResult lands on the
     // VM, we replace the form entirely with CompatibilityResultScreen.
     val resultObj by viewModel.compatibilityResult.collectAsStateWithLifecycle(initialValue = null)
     val context = LocalContext.current
 
+    // Auto-dismiss the "Loaded from history" toast after 2s. Mirrors iOS animation
+    // behavior driven by viewModel.historyLoadedToast (CompatibilityView.swift:190).
+    LaunchedEffect(historyLoadedToast) {
+        if (historyLoadedToast) {
+            delay(2000)
+            viewModel.dismissHistoryLoadedToast()
+        }
+    }
+
+    // History sheet — mirrors iOS CompatibilityView .sheet(isPresented: $showHistorySheet)
+    var showHistorySheet by remember { mutableStateOf(false) }
     // Chart comparison sheet — mirrors iOS .sheet(isPresented: $showChartsSheet)
     var showChartsSheet by remember { mutableStateOf(false) }
 
@@ -157,19 +180,27 @@ fun CompatibilityScreen(
     LaunchedEffect(state.showTimePicker) { if (state.showTimePicker) timePickerDialog.show() }
 
     // Partner-field edit watcher — mirrors iOS .onChange(of: viewModel.girl*) blocks.
-    // Whenever the user edits any partner detail after picking a saved partner, drop the
-    // "from saved" flag so the Save Partner checkbox re-enables for the modified copy.
-    LaunchedEffect(
-        state.partnerName,
-        state.partnerDob,
-        state.partnerTime,
-        state.partnerCity,
-        state.partnerGender,
-        state.partnerTimeUnknown,
-    ) {
-        if (state.partnerFromSaved) {
-            viewModel.markPartnerEdited()
-        }
+    // Each field gets its own guarded onChange so a programmatic multi-field write
+    // from selectSavedPartner() / loadFromHistory() does not race-fire the edit
+    // hook before the VM has flipped partnerFromSaved=true. Guard: skip while the
+    // VM is in the middle of loading from a saved entry.
+    LaunchedEffect(state.partnerName) {
+        if (!state.isLoadingFromSaved && state.partnerFromSaved) viewModel.markPartnerEdited()
+    }
+    LaunchedEffect(state.partnerDob) {
+        if (!state.isLoadingFromSaved && state.partnerFromSaved) viewModel.markPartnerEdited()
+    }
+    LaunchedEffect(state.partnerTime) {
+        if (!state.isLoadingFromSaved && state.partnerFromSaved) viewModel.markPartnerEdited()
+    }
+    LaunchedEffect(state.partnerCity) {
+        if (!state.isLoadingFromSaved && state.partnerFromSaved) viewModel.markPartnerEdited()
+    }
+    LaunchedEffect(state.partnerGender) {
+        if (!state.isLoadingFromSaved && state.partnerFromSaved) viewModel.markPartnerEdited()
+    }
+    LaunchedEffect(state.partnerTimeUnknown) {
+        if (!state.isLoadingFromSaved && state.partnerFromSaved) viewModel.markPartnerEdited()
     }
 
     // Gender bottom sheet
@@ -199,9 +230,10 @@ fun CompatibilityScreen(
 
     // Comparison overview after multi-partner analysis
     if (state.showComparisonOverview) {
+        val youLabel = stringResource(R.string.compat_you_label)
         ComparisonOverviewView(
             results = comparisonResults,
-            userName = state.personAName.ifEmpty { "You" },
+            userName = state.personAName.ifEmpty { youLabel },
             onSelectPartner = { idx ->
                 viewModel.selectComparisonResult(idx)
                 viewModel.setShowComparisonOverview(false)
@@ -247,14 +279,16 @@ fun CompatibilityScreen(
     }
 
     CosmicBackground(modifier = modifier) {
-        Column(modifier = Modifier
-            .fillMaxSize()
-            .semantics(mergeDescendants = true) { contentDescription = "compat_screen" }) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .semantics(mergeDescendants = true) { contentDescription = "compat_screen" }) {
             CompatibilityHeader(
                 onNavigateToPartners = onNavigateToPartners,
                 onHistory = {
                     viewModel.loadHistory()
-                    onNavigateToHistory?.invoke()
+                    showHistorySheet = true
                 },
                 onReset = { viewModel.resetPartnerForm() },
             )
@@ -306,7 +340,7 @@ fun CompatibilityScreen(
                         ) {
                             Text("⚠️", fontSize = 18.sp)
                             Text(
-                                text = bannerAgeMessage!!,
+                                text = stringResource(R.string.compat_age_block_warning),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Color(0xFFED8936),
                                 lineHeight = 18.sp,
@@ -338,7 +372,7 @@ fun CompatibilityScreen(
                         )
                     }
 
-                    SectionHeader(title = stringResource(com.destinyai.astrology.R.string.compat_partner_details))
+                    SectionHeader(title = stringResource(R.string.compat_partner_details_lc))
 
                     // Name + Gender row (with saved partner picker icon)
                     Row(
@@ -388,8 +422,8 @@ fun CompatibilityScreen(
                         PickerField(
                             icon = Icons.Filled.Schedule,
                             label = when {
-                                state.partnerTimeUnknown -> "Unknown"
-                                state.partnerTime.isEmpty() -> stringResource(com.destinyai.astrology.R.string.compat_time_of_birth)
+                                state.partnerTimeUnknown -> stringResource(R.string.compat_unknown_label)
+                                state.partnerTime.isEmpty() -> stringResource(R.string.compat_time_of_birth)
                                 else -> state.partnerTime
                             },
                             isPlaceholder = state.partnerTime.isEmpty() && !state.partnerTimeUnknown,
@@ -476,23 +510,37 @@ fun CompatibilityScreen(
                 }
 
                 // R2-CM5: Save partner to birth charts checkbox
-                // Hidden if user is Free plan OR partner was loaded from saved charts
-                if (state.isPlus && !state.partnerFromSaved) {
+                // iOS parity (CompatibilityView.swift:919-938): show the checkbox in a
+                // disabled (greyed-out) state when partner originated from a saved
+                // entry, instead of hiding it entirely. Hidden only for free-plan users.
+                if (state.isPlus) {
+                    val savePartnerEnabled = !state.partnerFromSaved
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.clickable {
-                            viewModel.setSavePartnerToBirthCharts(!state.savePartnerToBirthCharts)
-                        },
+                        modifier = Modifier
+                            .semantics { contentDescription = "compat_save_partner_checkbox" }
+                            .let { m ->
+                                if (savePartnerEnabled) {
+                                    m.clickable {
+                                        viewModel.setSavePartnerToBirthCharts(!state.savePartnerToBirthCharts)
+                                    }
+                                } else {
+                                    m
+                                }
+                            },
                     ) {
                         Checkbox(
                             checked = state.savePartnerToBirthCharts,
-                            onCheckedChange = { viewModel.setSavePartnerToBirthCharts(it) },
+                            onCheckedChange = if (savePartnerEnabled) {
+                                { viewModel.setSavePartnerToBirthCharts(it) }
+                            } else null,
+                            enabled = savePartnerEnabled,
                             colors = CheckboxDefaults.colors(checkedColor = Gold),
                         )
                         Text(
                             text = stringResource(com.destinyai.astrology.R.string.compat_save_partner_to_birth_charts),
                             style = MaterialTheme.typography.labelSmall,
-                            color = CreamDim,
+                            color = if (savePartnerEnabled) CreamDim else CreamDim.copy(alpha = 0.5f),
                         )
                     }
                 }
@@ -548,7 +596,7 @@ fun CompatibilityScreen(
                             modifier = Modifier.size(14.dp),
                         )
                         Text(
-                            text = ageWarning,
+                            text = stringResource(R.string.compat_age_block_warning),
                             style = MaterialTheme.typography.labelSmall,
                             color = CreamDim,
                         )
@@ -569,7 +617,7 @@ fun CompatibilityScreen(
                     }
                 } else {
                     ShimmerButton(
-                        text = analyzeButtonTitle(completedCount, isAnalyzing = false),
+                        text = analyzeButtonTitleComposable(completedCount, isAnalyzing = false),
                         onClick = {
                             if (state.canAnalyze && ageWarning == null) {
                                 val dupId = viewModel.checkForDuplicate()
@@ -590,6 +638,44 @@ fun CompatibilityScreen(
                 }
 
                 Spacer(Modifier.height(32.dp))
+            }
+        }
+
+            // iOS parity (CompatibilityView.swift:190): animated "Loaded from history" toast
+            // shown when a saved match is hydrated without an API call. Auto-dismisses after 2s.
+            AnimatedVisibility(
+                visible = historyLoadedToast,
+                enter = fadeIn(animationSpec = tween(300)) +
+                    slideInVertically(animationSpec = tween(300)) { -it },
+                exit = fadeOut(animationSpec = tween(300)) +
+                    slideOutVertically(animationSpec = tween(300)) { -it },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 72.dp)
+                    .semantics { contentDescription = "compat_history_loaded_toast" },
+            ) {
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(NavySurface)
+                        .border(1.dp, SuccessGreen.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(
+                        Icons.Filled.Check,
+                        contentDescription = null,
+                        tint = SuccessGreen,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Text(
+                        text = stringResource(com.destinyai.astrology.R.string.loaded_from_history),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = CreamText,
+                    )
+                }
             }
         }
     }
@@ -640,13 +726,49 @@ fun CompatibilityScreen(
         QuotaExhaustedDialog(
             isGuest = quotaMarker == "FREE_LIMIT_GUEST",
             customMessage = null,
-            onSignIn = { viewModel.dismissError() },
+            onSignIn = {
+                // iOS parity (CompatibilityView.swift signOutAndReauth + QuotaExhaustedView.onSignIn):
+                // dismiss the dialog and route to AuthScreen via the host. Without onNavigateToAuth
+                // the user was previously stranded on the Compat tab with the dialog dismissed.
+                viewModel.dismissError()
+                viewModel.requestSignInFromQuota()
+            },
             onUpgrade = {
                 viewModel.dismissError()
                 viewModel.showPaywallSheet()
             },
             onDismiss = { viewModel.dismissError() },
         )
+    }
+
+    // iOS parity (ChatScreen.kt:412-418 / ChatView.swift onSignIn): when the VM signals
+    // navigateToAuth, invoke the host callback exactly once so the user lands on AuthScreen.
+    androidx.compose.runtime.LaunchedEffect(state.navigateToAuth) {
+        if (state.navigateToAuth) {
+            onNavigateToAuth()
+            viewModel.consumeNavigateToAuth()
+        }
+    }
+
+    // iOS parity (CompatibilityView.swift:191-199): .sheet(isPresented: $showHistorySheet)
+    // presents CompatibilityHistorySheet. Box(fillMaxSize) ensures the overlay sits on top
+    // of CosmicBackground and blocks all touch events from the underlying input form.
+    if (showHistorySheet) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            CompatibilityHistoryScreen(
+                viewModel = viewModel,
+                onBack = { showHistorySheet = false },
+                onItemSelect = { item ->
+                    viewModel.loadFromHistory(item)
+                    showHistorySheet = false
+                },
+                onGroupSelect = { group ->
+                    viewModel.loadFromGroup(group)
+                    showHistorySheet = false
+                },
+                onOpenSettings = onNavigateToSettings,
+            )
+        }
     }
 
     if (state.showPaywall) {
@@ -662,38 +784,54 @@ private fun CompatibilityHeader(
     onHistory: () -> Unit,
     onReset: () -> Unit,
 ) {
+    // iOS parity (Components/AppHeader.swift MatchInputHeader): circle-bordered history
+    // button left, centered Destiny logo, circle-bordered reset button right.
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // History icon — left
-        IconButton(
-            onClick = onHistory,
-            modifier = Modifier.semantics { contentDescription = "compat_history_button" },
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .border(1.dp, Gold.copy(alpha = 0.3f), CircleShape)
+                .clickable(onClick = onHistory)
+                .semantics { contentDescription = "compat_history_button" },
+            contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Filled.History, contentDescription = null, tint = Gold.copy(alpha = 0.8f))
+            Icon(
+                Icons.Filled.History,
+                contentDescription = null,
+                tint = Gold,
+                modifier = Modifier.size(20.dp),
+            )
         }
-        // Title — centre
-        Text(
-            text = "❤️  Compatibility",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = CreamText,
-            modifier = Modifier.weight(1f),
-            textAlign = TextAlign.Center,
+        Image(
+            painter = painterResource(id = R.drawable.destiny_home),
+            contentDescription = null,
+            contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+            modifier = Modifier
+                .weight(1f)
+                .height(32.dp)
+                .padding(horizontal = 12.dp),
         )
-        // Partners icon
-        IconButton(onClick = onNavigateToPartners) {
-            Icon(Icons.Filled.People, contentDescription = "Partners", tint = Gold.copy(alpha = 0.8f))
-        }
-        // Reset icon — right
-        IconButton(
-            onClick = onReset,
-            modifier = Modifier.semantics { contentDescription = "compat_reset_button" },
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .border(1.dp, Gold.copy(alpha = 0.3f), CircleShape)
+                .clickable(onClick = onReset)
+                .semantics { contentDescription = "compat_reset_button" },
+            contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Filled.Refresh, contentDescription = "Reset form", tint = Gold.copy(alpha = 0.8f))
+            Icon(
+                Icons.Filled.Refresh,
+                contentDescription = stringResource(R.string.compat_reset_form_a11y),
+                tint = Gold,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }
@@ -709,7 +847,7 @@ private fun BirthDataWarningCard() {
             .padding(16.dp),
     ) {
         Text(
-            text = "✦  Save your birth details first to run compatibility analysis.",
+            text = stringResource(R.string.compat_birth_data_warning),
             style = MaterialTheme.typography.bodyMedium,
             color = CreamDim,
         )
@@ -731,12 +869,13 @@ private fun YouCard(name: String, summary: String) {
             Spacer(Modifier.width(12.dp))
             Column {
                 Text(
-                    text = "You",
+                    text = stringResource(R.string.compat_you_label),
                     style = MaterialTheme.typography.labelMedium,
                     color = Color(0xFF718096),
                 )
+                val meFallback = stringResource(R.string.compat_me_fallback)
                 Text(
-                    text = name.ifEmpty { "Me" },
+                    text = name.ifEmpty { meFallback },
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = CreamText,
@@ -827,12 +966,23 @@ private fun PickerField(
 
 internal fun analyzeButtonContentDescription(): String = "compat_analyze_button"
 
+@Composable
+internal fun partnerTabLabelComposable(index: Int): String =
+    stringResource(R.string.partner_index_label, index + 1)
+
 internal fun partnerTabLabel(index: Int): String = "Partner ${index + 1}"
+
+@Composable
+internal fun analyzeButtonTitleComposable(completedCount: Int, isAnalyzing: Boolean): String = when {
+    isAnalyzing -> stringResource(R.string.compat_analyzing)
+    completedCount > 1 -> stringResource(R.string.compat_compare_all_format, completedCount)
+    else -> stringResource(R.string.compat_check_compatibility)
+}
 
 internal fun analyzeButtonTitle(completedCount: Int, isAnalyzing: Boolean): String = when {
     isAnalyzing -> "Analyzing…"
     completedCount > 1 -> "Compare All ($completedCount)"
-    else -> "Analyze Compatibility"
+    else -> "Check Compatibility"
 }
 
 internal fun formattedUserSummary(
@@ -872,6 +1022,8 @@ internal fun ageBlockMessage(userDob: String, partnerDob: String, today: String)
     }
     return if (isMinor(userDob) || isMinor(partnerDob))
         "Destiny matching requires both individuals to be 18 or older"
+        // ^ Hard-coded only as a sentinel for tests / non-Composable callers; UI sites read
+        // the localized string from R.string.compat_age_block_warning instead (see usage).
     else null
 }
 
@@ -901,7 +1053,7 @@ private fun PartnerTabStrip(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         Text(
-                            text = partnerTabLabel(index),
+                            text = partnerTabLabelComposable(index),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
                         )
@@ -1225,8 +1377,11 @@ private fun HeroPulsingMatchIcon() {
 }
 
 /**
- * Quota-exhausted dialog — mirrors iOS QuotaExhaustedView. Shown for guests/free users
- * when canAccessFeature returns false, with two CTAs: Sign In and Upgrade.
+ * Quota-exhausted dialog — mirrors iOS QuotaExhaustedView (Components/QuotaExhaustedView.swift).
+ * Branches on isGuest:
+ *   - GUEST  → "Sign up to continue!" + Sign-in CTA (no upgrade button — backend doesn't allow paid plans for guests)
+ *   - PAID/FREE_REGISTERED → "You've reached your limit" + Upgrade CTA (Sign In hidden — they're already signed in)
+ * Both branches get a "Maybe later" tertiary action.
  */
 @Composable
 fun QuotaExhaustedDialog(
@@ -1236,37 +1391,57 @@ fun QuotaExhaustedDialog(
     onUpgrade: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val titleRes = if (isGuest) {
+        com.destinyai.astrology.R.string.sign_up_to_continue
+    } else {
+        com.destinyai.astrology.R.string.quota_exhausted_title
+    }
+    val bodyRes = if (isGuest) {
+        com.destinyai.astrology.R.string.create_account_to_continue
+    } else {
+        com.destinyai.astrology.R.string.upgrade_to_keep_going
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = NavySurface,
         title = {
             Text(
-                text = stringResource(com.destinyai.astrology.R.string.sign_in_required),
+                text = stringResource(titleRes),
                 style = MaterialTheme.typography.titleMedium,
-                color = CreamText,
+                color = Gold,
+                fontWeight = FontWeight.SemiBold,
             )
         },
         text = {
             Text(
-                text = customMessage ?: stringResource(com.destinyai.astrology.R.string.sign_in_to_check_compatibility),
+                text = customMessage?.takeIf { it.isNotBlank() }
+                    ?: stringResource(bodyRes),
                 style = MaterialTheme.typography.bodyMedium,
                 color = CreamDim,
             )
         },
         confirmButton = {
-            TextButton(onClick = onUpgrade) {
+            // Primary CTA: guest → Sign In, account → Upgrade
+            TextButton(onClick = if (isGuest) onSignIn else onUpgrade) {
                 Text(
-                    text = stringResource(com.destinyai.astrology.R.string.upgrade_action),
+                    text = stringResource(
+                        if (isGuest) {
+                            com.destinyai.astrology.R.string.sign_in_button
+                        } else {
+                            com.destinyai.astrology.R.string.upgrade_action
+                        },
+                    ),
                     color = Gold,
                     fontWeight = FontWeight.SemiBold,
                 )
             }
         },
         dismissButton = {
-            TextButton(onClick = onSignIn) {
+            // Tertiary: "Maybe later" — mirrors iOS not_now CTA.
+            TextButton(onClick = onDismiss) {
                 Text(
-                    text = stringResource(com.destinyai.astrology.R.string.sign_in_button),
-                    color = if (isGuest) Gold else CreamDim,
+                    text = stringResource(com.destinyai.astrology.R.string.not_now),
+                    color = CreamDim,
                 )
             }
         },

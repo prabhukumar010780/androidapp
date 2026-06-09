@@ -4,9 +4,11 @@ import android.content.Context
 import app.cash.turbine.test
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AstroApiService
+import com.destinyai.astrology.data.repository.AuthRepository
 import com.destinyai.astrology.data.repository.ChatRepository
 import com.destinyai.astrology.domain.model.ChatThread
 import com.destinyai.astrology.services.ProfileChangeBus
+import com.destinyai.astrology.services.ProfileContextManager
 import com.destinyai.astrology.services.QuotaManager
 import io.mockk.coEvery
 import io.mockk.every
@@ -53,7 +55,16 @@ class ChatViewModelExtendedTest {
         every { prefs.responseLengthFlow } returns flowOf("standard")
         every { profileChangeBus.events } returns MutableSharedFlow()
         coEvery { prefs.getUserEmail() } returns null
-        viewModel = ChatViewModel(repository, api, prefs, quotaManager, profileChangeBus, appContext)
+        viewModel = ChatViewModel(
+            repository = repository,
+            authRepository = mockk(relaxed = true),
+            api = api,
+            prefs = prefs,
+            quotaManager = quotaManager,
+            profileChangeBus = profileChangeBus,
+            profileContextManager = mockk(relaxed = true),
+            appContext = appContext,
+        )
     }
 
     // ── suggestedQuestions ────────────────────────────────────────────────────

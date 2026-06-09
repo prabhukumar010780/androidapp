@@ -1,5 +1,6 @@
 package com.destinyai.astrology.ui.charts
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.destinyai.astrology.BuildConfig
@@ -48,6 +49,13 @@ class ChartsViewModel @Inject constructor(
                 _uiState.update { it.copy(hasData = false, isLoading = false) }
                 return@launch
             }
+            // Parity with ChatRepositoryImpl — pass user-selected ayanamsa / house_system so
+            // backend calculations reflect the active profile's preferences instead of
+            // silently defaulting to lahiri / whole_sign.
+            val ayanamsa = runCatching { prefs.getAyanamsa() }.getOrDefault("lahiri")
+            val houseSystem = runCatching { prefs.getHouseSystem() }.getOrDefault("whole_sign")
+            // iOS parity (PlanetaryPositionsSheet.swift:326): log chart load for active profile.
+            Log.d("PlanetaryPositionsSheet", "Loading chart for: ${profile.cityOfBirth}")
             _uiState.update {
                 it.copy(
                     hasData = true,
@@ -70,6 +78,8 @@ class ChartsViewModel @Inject constructor(
                             time = profile.timeOfBirth,
                             latitude = profile.latitude,
                             longitude = profile.longitude,
+                            ayanamsa = ayanamsa,
+                            houseSystem = houseSystem,
                             cityOfBirth = profile.cityOfBirth,
                             birthTimeUnknown = profile.birthTimeUnknown,
                         ),
@@ -86,7 +96,7 @@ class ChartsViewModel @Inject constructor(
                     )
                 }
                 // Mirrors iOS UserChartService.fetchDashaPeriods / fetchTransits — fire after main chart loads
-                loadDashaAndTransits(profile)
+                loadDashaAndTransits(profile, ayanamsa, houseSystem)
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(isLoading = false, errorMessage = e.message ?: "Failed to load chart")
@@ -95,7 +105,11 @@ class ChartsViewModel @Inject constructor(
         }
     }
 
-    private fun loadDashaAndTransits(profile: BirthProfileDto) {
+    private fun loadDashaAndTransits(
+        profile: BirthProfileDto,
+        ayanamsa: String,
+        houseSystem: String,
+    ) {
         viewModelScope.launch {
             val year = LocalDate.now().year
             val authHeader = "Bearer ${BuildConfig.API_KEY}"
@@ -105,6 +119,8 @@ class ChartsViewModel @Inject constructor(
                     time = profile.timeOfBirth,
                     latitude = profile.latitude,
                     longitude = profile.longitude,
+                    ayanamsa = ayanamsa,
+                    houseSystem = houseSystem,
                     cityOfBirth = profile.cityOfBirth,
                     birthTimeUnknown = profile.birthTimeUnknown,
                 ),

@@ -75,7 +75,7 @@ class AuthViewModelNeedsBirthDataTest {
     }
 
     private fun newViewModel(): AuthViewModel =
-        AuthViewModel(repository, haptic, prefs, appStartup, soundManager, context)
+        AuthViewModel(repository, haptic, prefs, appStartup, soundManager, mockk(relaxed = true), context)
 
     private fun sampleBirthProfile(): BirthProfileDto = BirthProfileDto(
         dateOfBirth = "1990-05-15",

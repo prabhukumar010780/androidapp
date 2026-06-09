@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
@@ -34,6 +35,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -44,6 +47,7 @@ import com.destinyai.astrology.R
 import com.destinyai.astrology.services.HapticManager
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.Gold
+import com.destinyai.astrology.ui.theme.GoldDim
 import com.destinyai.astrology.ui.theme.GoldLight
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.CreamDim
@@ -76,6 +80,8 @@ fun LanguageSelectionScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
                     .padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
@@ -208,21 +214,65 @@ fun LanguageSelectionScreen(
                     enabled = selectedCode != null,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(54.dp),
+                        .height(54.dp)
+                        .then(
+                            if (selectedCode != null) {
+                                Modifier.shadow(
+                                    elevation = 12.dp,
+                                    shape = RoundedCornerShape(14.dp),
+                                    ambientColor = Gold,
+                                    spotColor = Gold,
+                                )
+                            } else Modifier,
+                        )
+                        .semantics { contentDescription = "language_continue_button" },
                     shape = RoundedCornerShape(14.dp),
+                    contentPadding = PaddingValues(0.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Gold,
-                        disabledContainerColor = NavyVariant,
+                        containerColor = Color.Transparent,
+                        disabledContainerColor = Color.Transparent,
                         contentColor = Color(0xFF0D0D1A),
                         disabledContentColor = CreamDim,
                     ),
                 ) {
-                    Text(
-                        text = buttonText,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 15.sp,
-                        maxLines = 1,
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(
+                                if (selectedCode != null) {
+                                    Brush.linearGradient(
+                                        colors = listOf(GoldLight, Gold, GoldDim),
+                                    )
+                                } else {
+                                    Brush.linearGradient(
+                                        colors = listOf(NavyVariant, NavyVariant),
+                                    )
+                                },
+                            ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Text(
+                                text = buttonText,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 15.sp,
+                                color = if (selectedCode != null) Color(0xFF0D0D1A) else CreamDim,
+                                maxLines = 1,
+                            )
+                            if (selectedCode != null) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = null,
+                                    tint = Color(0xFF0D0D1A),
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            }
+                        }
+                    }
                 }
 
                 Spacer(Modifier.height(32.dp))

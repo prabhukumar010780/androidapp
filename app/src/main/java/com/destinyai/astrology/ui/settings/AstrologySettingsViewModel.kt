@@ -15,9 +15,6 @@ data class AstrologySettingsUiState(
     val ayanamsa: String = "lahiri",
     val houseSystem: String = "whole_sign",
     val chartStyle: String = "north",
-    val isLoading: Boolean = false,
-    val isSaved: Boolean = false,
-    val error: String? = null,
 )
 
 @HiltViewModel
@@ -44,32 +41,17 @@ class AstrologySettingsViewModel @Inject constructor(
     // Android mirrors this by writing to DataStore inside each setter so users never lose
     // changes when they back out without pressing Save.
     fun setAyanamsa(value: String) {
-        _uiState.update { it.copy(ayanamsa = value, isSaved = false) }
+        _uiState.update { it.copy(ayanamsa = value) }
         viewModelScope.launch { prefs.saveAyanamsa(value) }
     }
 
     fun setHouseSystem(value: String) {
-        _uiState.update { it.copy(houseSystem = value, isSaved = false) }
+        _uiState.update { it.copy(houseSystem = value) }
         viewModelScope.launch { prefs.saveHouseSystem(value) }
     }
 
     fun setChartStyle(value: String) {
-        _uiState.update { it.copy(chartStyle = value, isSaved = false) }
+        _uiState.update { it.copy(chartStyle = value) }
         viewModelScope.launch { prefs.setChartStyle(value) }
-    }
-
-    fun save() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            try {
-                val s = _uiState.value
-                prefs.saveAyanamsa(s.ayanamsa)
-                prefs.saveHouseSystem(s.houseSystem)
-                prefs.setChartStyle(s.chartStyle)
-                _uiState.update { it.copy(isLoading = false, isSaved = true) }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message ?: "Save failed") }
-            }
-        }
     }
 }

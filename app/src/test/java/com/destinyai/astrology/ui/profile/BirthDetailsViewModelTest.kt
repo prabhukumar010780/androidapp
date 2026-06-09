@@ -2,10 +2,7 @@ package com.destinyai.astrology.ui.profile
 
 import app.cash.turbine.test
 import com.destinyai.astrology.data.local.prefs.UserPreferences
-import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.remote.BirthProfileDto
-import com.destinyai.astrology.data.remote.ProfileResponse
-import com.destinyai.astrology.data.remote.RegisterResponse
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -27,7 +24,6 @@ import org.junit.jupiter.api.TestInstance
 class BirthDetailsViewModelTest {
 
     private val testDispatcher = UnconfinedTestDispatcher()
-    private lateinit var api: AstroApiService
     private lateinit var prefs: UserPreferences
     private lateinit var vm: BirthDetailsViewModel
 
@@ -43,12 +39,12 @@ class BirthDetailsViewModelTest {
 
     @BeforeEach
     fun setUp() {
-        api = mockk(relaxed = true)
         prefs = mockk(relaxed = true)
         coEvery { prefs.getUserEmail() } returns "u@x.com"
         coEvery { prefs.getUserName() } returns "Prabhu"
         coEvery { prefs.isGuestUser() } returns false
-        vm = BirthDetailsViewModel(api, prefs)
+        coEvery { prefs.getUserGender(email = any()) } returns null
+        vm = BirthDetailsViewModel(prefs)
     }
 
     // ── Initial state ──────────────────────────────────────────────────────────
@@ -129,28 +125,48 @@ class BirthDetailsViewModelTest {
     }
 
     // ── saveName (name + gender) ───────────────────────────────────────────────
+    // iOS parity (BirthDetailsView.swift:325-334): saveChanges is local-only —
+    // no POST /profile network call. These tests verify local persistence.
 
     @Test
-    fun `saveName calls api saveProfile`() = runTest {
+    fun `saveName persists name to prefs`() = runTest {
         coEvery { prefs.getBirthProfile() } returns fakeBirthProfile()
-        coEvery { api.saveProfile(any()) } returns fakeProfileResponse()
 
         vm.loadBirthData()
         vm.setName("Ravi")
-        vm.setGender("male")
+        vm.saveName()
+
+        coVerify { prefs.setUserName("Ravi") }
+    }
+
+    @Test
+    fun `saveName persists gender to prefs (global + scoped)`() = runTest {
+        coEvery { prefs.getBirthProfile() } returns fakeBirthProfile()
+
+        vm.loadBirthData()
+        vm.setGender("female")
+        vm.saveName()
+
+        coVerify { prefs.setUserGender("female") }
+        coVerify { prefs.setUserGender(gender = "female", email = null) }
+    }
+
+    @Test
+    fun `saveName updates BirthProfile gender locally`() = runTest {
+        coEvery { prefs.getBirthProfile() } returns fakeBirthProfile()
+
+        vm.loadBirthData()
+        vm.setGender("female")
         vm.saveName()
 
         coVerify {
-            api.saveProfile(match { req ->
-                req.email == "u@x.com" && req.userName == "Ravi"
-            })
+            prefs.setBirthProfile(match { it.gender == "female" })
         }
     }
 
     @Test
     fun `saveName sets isSaving true during call and false after`() = runTest {
         coEvery { prefs.getBirthProfile() } returns fakeBirthProfile()
-        coEvery { api.saveProfile(any()) } returns fakeProfileResponse()
 
         vm.loadBirthData()
         vm.saveName()
@@ -165,7 +181,6 @@ class BirthDetailsViewModelTest {
     @Test
     fun `saveName sets saveSuccess true on success`() = runTest {
         coEvery { prefs.getBirthProfile() } returns fakeBirthProfile()
-        coEvery { api.saveProfile(any()) } returns fakeProfileResponse()
 
         vm.loadBirthData()
         vm.saveName()
@@ -177,9 +192,9 @@ class BirthDetailsViewModelTest {
     }
 
     @Test
-    fun `saveName sets error on api failure`() = runTest {
+    fun `saveName sets error on local persistence failure`() = runTest {
         coEvery { prefs.getBirthProfile() } returns fakeBirthProfile()
-        coEvery { api.saveProfile(any()) } throws RuntimeException("network error")
+        coEvery { prefs.setUserName(any()) } throws RuntimeException("disk full")
 
         vm.loadBirthData()
         vm.saveName()
@@ -194,24 +209,19 @@ class BirthDetailsViewModelTest {
     }
 
     @Test
-    fun `saveName sets error when no email in prefs`() = runTest {
-        coEvery { prefs.getUserEmail() } returns null
-        coEvery { prefs.getBirthProfile() } returns fakeBirthProfile()
-
-        vm.loadBirthData()
-        vm.saveName()
-
-        coVerify(exactly = 0) { api.saveProfile(any()) }
-    }
-
-    @Test
-    fun `saveName sets error when no birth profile loaded`() = runTest {
+    fun `saveName succeeds even when no birth profile loaded`() = runTest {
+        // iOS parity: saveChanges writes UserDefaults regardless of profile presence.
         coEvery { prefs.getBirthProfile() } returns null
 
         vm.loadBirthData()
+        vm.setName("Ravi")
         vm.saveName()
 
-        coVerify(exactly = 0) { api.saveProfile(any()) }
+        vm.uiState.test {
+            assertTrue(awaitItem().saveSuccess)
+            cancelAndIgnoreRemainingEvents()
+        }
+        coVerify { prefs.setUserName("Ravi") }
     }
 
     // ── hasChanges ─────────────────────────────────────────────────────────────
@@ -255,20 +265,5 @@ class BirthDetailsViewModelTest {
         longitude = 81.3943,
         gender = "male",
         birthTimeUnknown = false,
-    )
-
-    private fun fakeRegisterResponse() = RegisterResponse(
-        userEmail = "u@x.com",
-        planId = "free_registered",
-        isGeneratedEmail = false,
-        isPremium = false,
-        accessState = "granted",
-    )
-
-    private fun fakeProfileResponse() = ProfileResponse(
-        userEmail = "u@x.com",
-        planId = "free_registered",
-        isGeneratedEmail = false,
-        isPremium = false,
     )
 }

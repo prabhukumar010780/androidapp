@@ -6,13 +6,17 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -30,7 +34,9 @@ fun DoshaStatusRow(
     statusColor: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    iconVector: ImageVector? = null,
 ) {
+    val haptic = LocalHapticFeedback.current
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -38,7 +44,10 @@ fun DoshaStatusRow(
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White.copy(alpha = 0.03f))
             .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
+            .clickable(onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onClick()
+            })
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -49,7 +58,16 @@ fun DoshaStatusRow(
                 .background(Gold.copy(alpha = 0.1f)),
             contentAlignment = Alignment.Center,
         ) {
-            Text(iconLabel, fontSize = 18.sp)
+            if (iconVector != null) {
+                Icon(
+                    imageVector = iconVector,
+                    contentDescription = null,
+                    tint = Gold,
+                    modifier = Modifier.size(20.dp),
+                )
+            } else {
+                Text(iconLabel, fontSize = 18.sp)
+            }
         }
 
         Spacer(Modifier.width(12.dp))

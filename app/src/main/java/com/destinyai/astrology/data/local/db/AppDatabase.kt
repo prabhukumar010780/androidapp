@@ -114,6 +114,31 @@ interface ChatMessageDao {
 
     @Query("DELETE FROM chat_messages WHERE thread_id = :threadId")
     suspend fun deleteForThread(threadId: String)
+
+    /**
+     * iOS parity (DataManager.deleteAllThreads called from
+     * HistorySettingsManager.clearAllHistory): wipe every chat_messages row for
+     * threads owned by the given account so Clear History flushes both halves
+     * of the local store. Without this, the row count / preview helpers above
+     * would still be served by stale rows after a clear.
+     */
+    @Query(
+        "DELETE FROM chat_messages WHERE thread_id IN " +
+            "(SELECT id FROM chat_threads WHERE owner_email = :ownerEmail)",
+    )
+    suspend fun deleteAllForUser(ownerEmail: String)
+
+    /**
+     * iOS parity (LocalChatThread.messageCount + .preview): the History sheet shows
+     * a per-thread message count badge and a one-line subtitle preview drawn from
+     * the most recent message. Single-row queries keep the cost negligible per
+     * thread (paginated to 20 at a time).
+     */
+    @Query("SELECT COUNT(*) FROM chat_messages WHERE thread_id = :threadId")
+    suspend fun countMessagesForThread(threadId: String): Int
+
+    @Query("SELECT content FROM chat_messages WHERE thread_id = :threadId ORDER BY created_at DESC LIMIT 1")
+    suspend fun latestMessageContent(threadId: String): String?
 }
 
 @Dao
@@ -129,6 +154,15 @@ interface PartnerDao {
 
     @Query("DELETE FROM partner_profiles WHERE id = :id")
     suspend fun delete(id: String)
+
+    /**
+     * iOS parity (DataManager.shared.deleteAllPartners(for: guestEmail) called by
+     * AuthViewModel during guest→registered upgrade): purge a former owner's
+     * partner-profile rows so the server-migrated rows can be re-pulled without
+     * shadowing duplicates. Used by [com.destinyai.astrology.services.LoginSyncCoordinator].
+     */
+    @Query("DELETE FROM partner_profiles WHERE owner_email = :ownerEmail")
+    suspend fun deleteForOwner(ownerEmail: String)
 }
 
 @Dao
@@ -160,6 +194,14 @@ interface CompatibilityHistoryDao {
 
     @Query("DELETE FROM compatibility_history WHERE session_id = :sessionId")
     suspend fun delete(sessionId: String)
+
+    /**
+     * iOS parity (HistorySettingsManager.clearAllHistory step 3,
+     * `HistorySettingsManager.swift:122`): wipe every saved match for the
+     * owner so Clear History also flushes the local Match list.
+     */
+    @Query("DELETE FROM compatibility_history WHERE owner_email = :ownerEmail")
+    suspend fun deleteAllForUser(ownerEmail: String)
 }
 
 /**

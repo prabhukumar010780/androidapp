@@ -38,6 +38,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -53,6 +55,9 @@ import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
+import com.destinyai.astrology.ui.theme.WarningOrange
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -72,12 +77,49 @@ fun HistoryScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val haptic = remember { HapticManager(context) }
+    // Mirrors iOS HistoryView.swift:209-236 `handleSelection` — hydrate the full
+    // CompatibilityHistoryItem / ComparisonGroup before invoking the navigation
+    // callback so callers never receive a stripped lite payload.
+    val coroutineScope = rememberCoroutineScope()
 
     // Mirrors iOS HistoryView.swift:53-58 — destructive actions require explicit
     // confirmation via an alert with title + message + Cancel/Delete buttons.
     var pendingDelete by remember { mutableStateOf<DeleteRequest?>(null) }
 
+    // Snackbar host for surfacing load/mutation errors — mirrors iOS pattern of
+    // showing transient error feedback for failed history operations (gap #5).
+    val snackbarHostState = remember { SnackbarHostState() }
+    val errorFallback = stringResource(R.string.history_load_error)
+    val dismissLabel = stringResource(R.string.dismiss)
+    LaunchedEffect(state.error) {
+        val message = state.error
+        if (!message.isNullOrBlank()) {
+            val result = snackbarHostState.showSnackbar(
+                message = errorFallback,
+                actionLabel = dismissLabel,
+                duration = SnackbarDuration.Short,
+            )
+            // Clear after either auto-timeout or user dismiss so the Snackbar can
+            // re-fire if the next mutation also fails.
+            if (result == SnackbarResult.Dismissed || result == SnackbarResult.ActionPerformed) {
+                viewModel.clearError()
+            } else {
+                viewModel.clearError()
+            }
+        }
+    }
+
     LaunchedEffect(Unit) { viewModel.loadHistory() }
+
+    // Mirrors iOS HistoryView.swift:211-235 — invoke the navigation callback
+    // after a 300ms sheet-dismiss delay so the disappearance animation completes
+    // before the next screen pushes in.
+    fun navigateAfterDismiss(action: () -> Unit) {
+        coroutineScope.launch {
+            delay(300L)
+            action()
+        }
+    }
 
     CosmicBackground {
         Column(modifier = Modifier.fillMaxSize().testTag("history_screen")) {
@@ -107,6 +149,23 @@ fun HistoryScreen(
                     color = Gold,
                     modifier = Modifier.weight(1f),
                 )
+                // Trailing Done text button — mirrors iOS HistoryView.swift:38-48
+                // (.toolbar { ToolbarItem(.topBarTrailing) { Button("done_action") } }).
+                TextButton(
+                    onClick = {
+                        haptic.light()
+                        onBack()
+                    },
+                    modifier = Modifier
+                        .testTag("history_done_button")
+                        .semantics { contentDescription = "history_done_button" },
+                ) {
+                    Text(
+                        text = stringResource(R.string.done_action),
+                        color = Gold,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
             }
 
             // Mirrors iOS HistoryView.swift:21-22 — when history saving is off,
@@ -126,9 +185,43 @@ fun HistoryScreen(
                 state = state,
                 viewModel = viewModel,
                 haptic = haptic,
-                onChatSelected = onChatSelected,
-                onMatchSelected = onMatchSelected,
-                onMatchGroupSelected = onMatchGroupSelected,
+                onChatSelected = if (onChatSelected != null) {
+                    { id ->
+                        navigateAfterDismiss { onChatSelected(id) }
+                    }
+                } else null,
+                // Mirrors iOS HistoryView.swift:218-221 — hydrate the full match
+                // item via CompatibilityHistoryService before invoking the
+                // navigation callback. We re-fetch here even though the caller
+                // also rehydrates, to guarantee the lookup happens on the screen
+                // boundary (parity with iOS) and so any future caller that
+                // forgets to rehydrate still gets a valid sessionId backed by a
+                // confirmed entity.
+                onMatchSelected = if (onMatchSelected != null) {
+                    { sessionId ->
+                        coroutineScope.launch {
+                            val hydrated = viewModel.getCompatibilityItem(sessionId)
+                            if (hydrated != null) {
+                                delay(300L)
+                                onMatchSelected(hydrated.sessionId)
+                            }
+                        }
+                    }
+                } else null,
+                // Mirrors iOS HistoryView.swift:222-233 — hydrate the full group
+                // (loading every member item) before invoking the navigation
+                // callback so downstream screens never see a lite payload.
+                onMatchGroupSelected = if (onMatchGroupSelected != null) {
+                    { groupId ->
+                        coroutineScope.launch {
+                            val hydrated = viewModel.getCompatibilityGroup(groupId)
+                            if (hydrated != null) {
+                                delay(300L)
+                                onMatchGroupSelected(hydrated.id)
+                            }
+                        }
+                    }
+                } else null,
                 onRequestDeleteChat = { id, title ->
                     pendingDelete = DeleteRequest(DeleteKind.CHAT, id, title)
                 },
@@ -171,6 +264,18 @@ fun HistoryScreen(
                         Text(stringResource(R.string.cancel_action))
                     }
                 },
+            )
+        }
+
+        // Error Snackbar host — surfaces load/mutation failures bound to
+        // state.error (gap #5). Anchored to the bottom of the screen above
+        // system bars so it doesn't collide with gesture insets.
+        Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.BottomCenter) {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier
+                    .testTag("history_error_snackbar")
+                    .semantics { contentDescription = "history_error_snackbar" },
             )
         }
     }
@@ -494,36 +599,59 @@ private fun ChatThreadRow(
     }
     var showContextMenu by remember { mutableStateOf(false) }
 
-    // Swipe-to-delete — mirrors iOS HistoryView.swift:307-320 trailing
-    // destructive .swipeActions. Pin remains accessible via the inline
-    // IconButton + the long-press DropdownMenu (parity with iOS .contextMenu).
+    // Swipe gestures — mirrors iOS HistoryView.swift:307-320 trailing
+    // .swipeActions which expose BOTH a destructive Delete (trailing) AND a
+    // Pin/Unpin toggle. On Compose we map:
+    //   EndToStart (trailing swipe) → Delete (red bg + trash icon)
+    //   StartToEnd (leading swipe)  → Pin/Unpin toggle (gold bg + pin icon)
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.EndToStart) {
-                onDelete()
+            when (value) {
+                SwipeToDismissBoxValue.EndToStart -> onDelete()
+                SwipeToDismissBoxValue.StartToEnd -> onPin()
+                SwipeToDismissBoxValue.Settled -> Unit
             }
-            // Keep the row visible — the AlertDialog is the source of truth for
-            // actual deletion (matches iOS allowsFullSwipe = false).
+            // Keep the row visible — pin toggles state-only and delete defers
+            // to the AlertDialog (matches iOS allowsFullSwipe = false).
             false
         },
     )
 
     SwipeToDismissBox(
         state = dismissState,
-        enableDismissFromStartToEnd = false,
         modifier = Modifier.testTag("history_chat_row"),
         backgroundContent = {
+            val target = dismissState.targetValue
+            val isPinSwipe = target == SwipeToDismissBoxValue.StartToEnd
+            val bgColor = if (isPinSwipe)
+                Gold.copy(alpha = 0.85f)
+            else
+                Color(0xFFFC8181).copy(alpha = 0.85f)
+            val alignment = if (isPinSwipe) Alignment.CenterStart else Alignment.CenterEnd
+            val padStart = if (isPinSwipe) 20.dp else 0.dp
+            val padEnd = if (isPinSwipe) 0.dp else 20.dp
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFFFC8181).copy(alpha = 0.85f))
-                    .padding(end = 20.dp),
-                contentAlignment = Alignment.CenterEnd,
+                    .background(bgColor)
+                    .padding(start = padStart, end = padEnd),
+                contentAlignment = alignment,
             ) {
                 Icon(
-                    Icons.Filled.Delete,
-                    contentDescription = stringResource(R.string.cd_delete),
+                    if (isPinSwipe) {
+                        if (thread.isPinned) Icons.Outlined.PushPin else Icons.Filled.PushPin
+                    } else {
+                        Icons.Filled.Delete
+                    },
+                    contentDescription = if (isPinSwipe) {
+                        if (thread.isPinned)
+                            stringResource(R.string.cd_unpin)
+                        else
+                            stringResource(R.string.cd_pin)
+                    } else {
+                        stringResource(R.string.cd_delete)
+                    },
                     tint = Color.White,
                 )
             }
@@ -615,23 +743,9 @@ private fun ChatThreadRow(
                     )
                 }
             }
-            IconButton(onClick = onPin, modifier = Modifier.testTag("history_chat_pin")) {
-                Icon(
-                    if (thread.isPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
-                    contentDescription = if (thread.isPinned)
-                        stringResource(R.string.cd_unpin)
-                    else
-                        stringResource(R.string.cd_pin),
-                    tint = if (thread.isPinned) Gold else CreamDim.copy(alpha = 0.5f),
-                )
-            }
-            IconButton(onClick = onDelete, modifier = Modifier.testTag("history_chat_delete")) {
-                Icon(
-                    Icons.Filled.Delete,
-                    contentDescription = stringResource(R.string.cd_delete),
-                    tint = Color(0xFFFF5252),
-                )
-            }
+            // Inline pin/delete IconButtons removed for parity with iOS
+            // HistoryView.swift:307-320 — pin/delete are reachable only via the
+            // trailing/leading swipe actions (and the long-press context menu).
 
             // Long-press context menu — mirrors iOS .contextMenu (321-332).
             DropdownMenu(
@@ -704,17 +818,22 @@ private fun CompatibilityHistoryItemRow(
     onDelete: () -> Unit,
 ) {
     val scorePercent = if (item.maxScore > 0) (item.totalScore * 100 / item.maxScore) else 0
+    // Mirrors iOS HistoryView.swift:462-466 `matchScoreColor` — green ≥70,
+    // yellow ≥50, orange otherwise. Earlier Android revision used red (FC8181)
+    // for the lowest bucket which made low-but-recoverable scores look fatal.
     val scoreColor = when {
         scorePercent >= 70 -> Color(0xFF48BB78)
-        scorePercent >= 50 -> Color(0xFFED8936)
-        else -> Color(0xFFFC8181)
+        scorePercent >= 50 -> Color(0xFFECC94B)
+        else -> WarningOrange
     }
     var showContextMenu by remember { mutableStateOf(false) }
 
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.EndToStart) {
-                onDelete()
+            when (value) {
+                SwipeToDismissBoxValue.EndToStart -> onDelete()
+                SwipeToDismissBoxValue.StartToEnd -> onPin()
+                SwipeToDismissBoxValue.Settled -> Unit
             }
             false
         },
@@ -722,20 +841,39 @@ private fun CompatibilityHistoryItemRow(
 
     SwipeToDismissBox(
         state = dismissState,
-        enableDismissFromStartToEnd = false,
         modifier = Modifier.testTag("history_compat_row"),
         backgroundContent = {
+            val target = dismissState.targetValue
+            val isPinSwipe = target == SwipeToDismissBoxValue.StartToEnd
+            val bgColor = if (isPinSwipe)
+                Gold.copy(alpha = 0.85f)
+            else
+                Color(0xFFFC8181).copy(alpha = 0.85f)
+            val alignment = if (isPinSwipe) Alignment.CenterStart else Alignment.CenterEnd
+            val padStart = if (isPinSwipe) 20.dp else 0.dp
+            val padEnd = if (isPinSwipe) 0.dp else 20.dp
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFFFC8181).copy(alpha = 0.85f))
-                    .padding(end = 20.dp),
-                contentAlignment = Alignment.CenterEnd,
+                    .background(bgColor)
+                    .padding(start = padStart, end = padEnd),
+                contentAlignment = alignment,
             ) {
                 Icon(
-                    Icons.Filled.Delete,
-                    contentDescription = stringResource(R.string.cd_delete),
+                    if (isPinSwipe) {
+                        if (item.isPinned) Icons.Outlined.PushPin else Icons.Filled.PushPin
+                    } else {
+                        Icons.Filled.Delete
+                    },
+                    contentDescription = if (isPinSwipe) {
+                        if (item.isPinned)
+                            stringResource(R.string.cd_unpin)
+                        else
+                            stringResource(R.string.cd_pin)
+                    } else {
+                        stringResource(R.string.cd_delete)
+                    },
                     tint = Color.White,
                 )
             }
@@ -839,24 +977,9 @@ private fun CompatibilityHistoryItemRow(
                 }
             }
 
-            IconButton(onClick = onPin, modifier = Modifier.testTag("history_compat_pin")) {
-                Icon(
-                    if (item.isPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
-                    contentDescription = if (item.isPinned)
-                        stringResource(R.string.cd_unpin)
-                    else
-                        stringResource(R.string.cd_pin),
-                    tint = if (item.isPinned) Gold else CreamDim.copy(alpha = 0.5f),
-                )
-            }
-
-            IconButton(onClick = onDelete, modifier = Modifier.testTag("history_compat_delete")) {
-                Icon(
-                    Icons.Filled.Delete,
-                    contentDescription = stringResource(R.string.cd_delete),
-                    tint = Color(0xFFFF5252),
-                )
-            }
+            // Inline pin/delete IconButtons removed for parity with iOS
+            // HistoryView.swift:307-320 — pin/delete are reachable only via the
+            // trailing/leading swipe actions (and the long-press context menu).
 
             DropdownMenu(
                 expanded = showContextMenu,
@@ -909,8 +1032,10 @@ private fun CompatibilityGroupRow(
 
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.EndToStart) {
-                onDelete()
+            when (value) {
+                SwipeToDismissBoxValue.EndToStart -> onDelete()
+                SwipeToDismissBoxValue.StartToEnd -> onPin()
+                SwipeToDismissBoxValue.Settled -> Unit
             }
             false
         },
@@ -918,20 +1043,39 @@ private fun CompatibilityGroupRow(
 
     SwipeToDismissBox(
         state = dismissState,
-        enableDismissFromStartToEnd = false,
         modifier = Modifier.testTag("history_group_row"),
         backgroundContent = {
+            val target = dismissState.targetValue
+            val isPinSwipe = target == SwipeToDismissBoxValue.StartToEnd
+            val bgColor = if (isPinSwipe)
+                Gold.copy(alpha = 0.85f)
+            else
+                Color(0xFFFC8181).copy(alpha = 0.85f)
+            val alignment = if (isPinSwipe) Alignment.CenterStart else Alignment.CenterEnd
+            val padStart = if (isPinSwipe) 20.dp else 0.dp
+            val padEnd = if (isPinSwipe) 0.dp else 20.dp
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFFFC8181).copy(alpha = 0.85f))
-                    .padding(end = 20.dp),
-                contentAlignment = Alignment.CenterEnd,
+                    .background(bgColor)
+                    .padding(start = padStart, end = padEnd),
+                contentAlignment = alignment,
             ) {
                 Icon(
-                    Icons.Filled.Delete,
-                    contentDescription = stringResource(R.string.cd_delete),
+                    if (isPinSwipe) {
+                        if (group.isPinned) Icons.Outlined.PushPin else Icons.Filled.PushPin
+                    } else {
+                        Icons.Filled.Delete
+                    },
+                    contentDescription = if (isPinSwipe) {
+                        if (group.isPinned)
+                            stringResource(R.string.cd_unpin)
+                        else
+                            stringResource(R.string.cd_pin)
+                    } else {
+                        stringResource(R.string.cd_delete)
+                    },
                     tint = Color.White,
                 )
             }
@@ -1020,29 +1164,10 @@ private fun CompatibilityGroupRow(
                 )
             }
 
-            // Pin button — wires viewModel.pinCompatibilityGroup() so groups
-            // gain the same pin affordance as singleton rows (parity with iOS
-            // .matchGroup case in HistoryView.swift:307-320).
-            IconButton(onClick = onPin, modifier = Modifier.testTag("history_group_pin")) {
-                Icon(
-                    if (group.isPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
-                    contentDescription = if (group.isPinned)
-                        stringResource(R.string.cd_unpin)
-                    else
-                        stringResource(R.string.cd_pin),
-                    tint = if (group.isPinned) Gold else CreamDim.copy(alpha = 0.5f),
-                )
-            }
-
-            // Delete button — removes every session in the group, matching
-            // iOS swipe-delete on a `.matchGroup` row.
-            IconButton(onClick = onDelete, modifier = Modifier.testTag("history_group_delete")) {
-                Icon(
-                    Icons.Filled.Delete,
-                    contentDescription = stringResource(R.string.cd_delete),
-                    tint = Color(0xFFFF5252),
-                )
-            }
+            // Pin button + delete button removed — pin/delete are reachable
+            // only via the trailing/leading swipe actions and the long-press
+            // context menu, mirroring iOS .swipeActions on .matchGroup rows
+            // (HistoryView.swift:307-320).
 
             DropdownMenu(
                 expanded = showContextMenu,

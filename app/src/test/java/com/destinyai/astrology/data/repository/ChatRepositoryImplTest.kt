@@ -37,7 +37,7 @@ class ChatRepositoryImplTest {
         threadDao = mockk(relaxed = true)
         messageDao = mockk(relaxed = true)
         prefs = mockk(relaxed = true)
-        repo = ChatRepositoryImpl(api, streamingApi, threadDao, messageDao, prefs)
+        repo = ChatRepositoryImpl(api, streamingApi, threadDao, messageDao, prefs, mockk(relaxed = true))
     }
 
     // ── loadHistory ───────────────────────────────────────────────────────────
