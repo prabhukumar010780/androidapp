@@ -119,7 +119,7 @@ class HomeViewModelTest {
     // --- Display name ---
 
     @Test
-    fun `displayName returns Guest for guest user`() = runTest {
+    fun `displayName returns there for guest user`() = runTest {
         coEvery { repository.getCurrentUser() } returns User(
             email = "guest.abc@destinyai.app",
             isGuestEmail = true,
@@ -129,7 +129,8 @@ class HomeViewModelTest {
         val vm = HomeViewModel(repository, prefs, api, profileChangeBus, profileContextManager, quotaManager, lm2, networkMonitor)
 
         vm.uiState.test {
-            assertEquals("Guest", awaitItem().displayName)
+            // iOS parity HomeViewModel.swift:553-558 — guest greeting fallback is "there".
+            assertEquals("there", awaitItem().displayName)
         }
     }
 

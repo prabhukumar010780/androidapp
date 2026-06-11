@@ -41,6 +41,12 @@ data class HomeUiState(
     val suggestedQuestions: List<String> = emptyList(),
     val dailyInsight: String? = null,
     val renewalDateString: String? = null,
+    // iOS HomeViewModel.swift:18-20 parity — surface guest / premium state on the
+    // observable UI surface so Compose can bind directly without separately
+    // collecting QuotaManager.isPremium / SubscriptionManager flags.
+    val isGuest: Boolean = false,
+    val isPremium: Boolean = false,
+    val planDisplayName: String = "",
     // Rich astrology data
     val transits: List<HomeTransit> = emptyList(),
     val dashaInfo: HomeDashaInfo? = null,
@@ -220,16 +226,29 @@ class HomeViewModel @Inject constructor(
         // captured at signup) ahead of any backend-truncated `name`. Prefer the prefs value when
         // available so the greeting + avatar initials show the user's full name (e.g. "Prabhu
         // Kushwaha" → "PK"), falling back to backend `user.name`, then the email prefix.
+        // Guest fallback "there" mirrors iOS HomeViewModel.swift:553-558.
         val name = when {
-            user == null || user.isGuestEmail -> "Guest"
+            user == null || user.isGuestEmail -> "there"
             !storedName.isNullOrBlank() -> storedName
             user.name != null -> user.name.split(" ").firstOrNull()?.takeIf { it.isNotBlank() } ?: user.name
             else -> user.email.substringBefore("@")
         }
+        // iOS parity HomeViewModel.swift:13,144-148 — compute the next renewal date
+        // (1st of next month) so the UI can display "Renews <Mon d>" without a
+        // separate fetch. Free / unlimited plans show null.
+        val renewalIso = if (unlimited || quota == 0) null else nextRenewalIsoDate()
+        val renewalString = renewalIso?.let { runCatching { formatRenewalDate(it) }.getOrNull() }
+        // Premium / plan display — iOS HomeViewModel.swift:19-20,506-512.
+        val premium = user?.isPremium == true
+        val planName = user?.planId?.takeIf { it.isNotBlank() } ?: ""
         _uiState.update {
             it.copy(
                 currentUser = user,
                 displayName = name,
+                isGuest = user == null || user.isGuestEmail,
+                isPremium = premium,
+                planDisplayName = planName,
+                renewalDateString = renewalString,
                 dailyQuota = quota,
                 dailyUsed = used,
                 remaining = remaining,
@@ -238,6 +257,13 @@ class HomeViewModel @Inject constructor(
                 isLoading = false,
             )
         }
+    }
+
+    /** First of next month in ISO yyyy-MM-dd. iOS HomeViewModel.swift:144-148 parity. */
+    private fun nextRenewalIsoDate(): String {
+        val today = LocalDate.now()
+        val nextMonthFirst = today.withDayOfMonth(1).plusMonths(1)
+        return nextMonthFirst.toString()
     }
 
     fun loadHomeData() {
@@ -250,21 +276,24 @@ class HomeViewModel @Inject constructor(
             val lastLoadedLang = prefs.getLastLoadedLanguage()
             val languageChanged = lastLoadedLang != null && currentLang != lastLoadedLang
 
-            // iOS parity (HomeViewModel.swift:52-59): per-email cold-start gate.
-            // Skip the full reload when the stored startOfDay matches today's
-            // startOfDay (same calendar day → reuse cached chart/dasha/transits).
+            // iOS parity (HomeViewModel.swift:52-59): per-email 24-hour rolling
+            // refresh gate. Skip the full reload when the stored last-load epoch
+            // is within FRESH_WINDOW_MS of now, regardless of calendar boundaries.
+            // Previously this used isSameLocalDay which could refresh at midnight
+            // even after a 23h-59m successful load, or skip refresh after 0h-1m
+            // if the user crossed midnight.
             val email = prefs.getUserEmail()
             val nowMs = System.currentTimeMillis()
             val storedMs = prefs.getLastFullLoadDate(email)
-            val sameDay = storedMs != null && isSameLocalDay(storedMs, nowMs)
+            val withinWindow = storedMs != null && (nowMs - storedMs) < FRESH_WINDOW_MS
             val haveDataInMemory = _uiState.value.dailyInsight != null &&
                 _uiState.value.transits.isNotEmpty()
-            val canSkipFullReload = !languageChanged && sameDay && haveDataInMemory
+            val canSkipFullReload = !languageChanged && withinWindow && haveDataInMemory
 
             if (canSkipFullReload) {
                 android.util.Log.i(
                     "HomeViewModel",
-                    "Same-day cache hit (lastFullLoadDate gate) — skipping full reload",
+                    "24h cache hit (lastFullLoadDate gate) — skipping full reload",
                 )
                 lastLoadDate = LocalDate.now().toString()
                 fetchUnreadCount()
@@ -306,12 +335,25 @@ class HomeViewModel @Inject constructor(
                 android.util.Log.w("HomeViewModel", "getDailyInsight failed: ${e.message}", e)
                 "" to friendlyError(e)
             }
+            // iOS parity (HomeViewModel.swift:328-332): suppress errorMessage when
+            // cached content is already on screen. A silent refresh failure should
+            // not flash a banner over a working Home; only show errors when there
+            // is truly nothing to display.
+            val hasOnScreenContent = _uiState.value.dailyInsight != null ||
+                _uiState.value.dashaInfo != null ||
+                _uiState.value.transits.isNotEmpty() ||
+                _uiState.value.yogas.isNotEmpty()
             _uiState.update {
                 it.copy(
                     isLoading = false,
                     suggestedQuestions = questions,
-                    dailyInsight = insight.ifBlank { null },
-                    errorMessage = if (insight.isBlank() && loadError != null) loadError else it.errorMessage,
+                    dailyInsight = insight.ifBlank { it.dailyInsight },
+                    errorMessage = when {
+                        loadError == null -> it.errorMessage
+                        hasOnScreenContent -> it.errorMessage  // silent refresh failure
+                        insight.isBlank() -> loadError
+                        else -> it.errorMessage
+                    },
                 )
             }
             // Record the load date for day-rollover detection in onAppForeground()
@@ -331,6 +373,7 @@ class HomeViewModel @Inject constructor(
     /**
      * iOS parity (HomeViewModel.swift:52-59): two epoch-millis instants land on
      * the same local calendar day iff their startOfDay values are identical.
+     * Retained for any callers that still want calendar-boundary semantics.
      */
     private fun isSameLocalDay(storedMs: Long, nowMs: Long): Boolean {
         val zone = java.time.ZoneId.systemDefault()
@@ -576,6 +619,12 @@ class HomeViewModel @Inject constructor(
     }
 
     companion object {
+        // 24-hour rolling refresh window — parity with iOS HomeViewModel.swift:52-59.
+        // After a successful Home load, skip the next full reload until 24h have
+        // elapsed. Beats calendar-day comparison which can cause spurious midnight
+        // reloads or skip a stale-but-fresh-yesterday cache.
+        private const val FRESH_WINDOW_MS = 24L * 60L * 60L * 1000L
+
         // Parity with iOS HomeView.timeBasedGreeting: 0..<12 morning, 12..<18 afternoon,
         // default evening. NOTE: HomeScreen.timeBasedGreeting() is the on-screen source of
         // truth (uses string resources). This helper is preserved for unit tests and

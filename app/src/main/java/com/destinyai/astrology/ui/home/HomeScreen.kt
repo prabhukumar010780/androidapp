@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.WifiOff
@@ -46,6 +47,9 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.filled.TheaterComedy
 import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.IntOffset
@@ -285,11 +289,9 @@ fun HomeScreen(
                 },
             )
 
-            // OfflineBanner — parity with iOS OfflineBanner() above content.
-            // Renders only when network is unreachable; ties into NetworkMonitor.isOnline.
-            if (!isOnline) {
-                OfflineBanner()
-            }
+            // OfflineBanner moved INTO the LazyColumn below as item index 0
+            // (parity with iOS HomeView.swift:96-97 — banner scrolls with content
+            // instead of being pinned above the scroll area).
 
             // Pull-to-refresh wrapper (parity with iOS .refreshable on ScrollView).
             // Scroll-to-top: a hoisted LazyListState lets the host trigger a smooth
@@ -300,25 +302,89 @@ fun HomeScreen(
                     listState.animateScrollToItem(0)
                 }
             }
-            // iOS parity: HomeView uses a plain ScrollView with auto-refresh driven by
-            // app-resume + day-rollover (HomeViewModel.refresh()). Material3's
-            // PullToRefreshBox over-aggressively interprets every top-of-list downward
-            // drag as a refresh pull, which causes a rubber-band stretching feel on
-            // every scroll. Replacing it with a plain LazyColumn matches iOS exactly —
-            // refresh continues to fire from scenePhase / day-rollover paths. We also
-            // disable the system overscroll glow + stretch animation (Android 12+
-            // default) so the bounce-back at edges feels iOS-tight instead of
-            // rubber-band stretchy.
-            @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-            CompositionLocalProvider(LocalOverscrollConfiguration provides null) {
+
+            // Entrance fade-in on first composition (parity with iOS HomeView.swift:235,
+            // 405-410 — 0.8s easeOut fade of contentOpacity 0→1).
+            var hasAppeared by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) { hasAppeared = true }
+            val contentOpacity by animateFloatAsState(
+                targetValue = if (hasAppeared) 1f else 0f,
+                animationSpec = androidx.compose.animation.core.tween(
+                    durationMillis = 800,
+                    easing = androidx.compose.animation.core.FastOutSlowInEasing,
+                ),
+                label = "home_content_fade",
+            )
+
+            // Hero loading state — parity with iOS HomeView.swift:150-172. Gates ALL
+            // content on isLoading and shows centered sparkles + "syncing_cosmic_data"
+            // + "almost_there" + ProgressView so the user sees a clear bootstrap state
+            // instead of a half-empty page with a tiny tail spinner.
+            val showHeroLoader = state.isLoading && state.dashaInfo == null &&
+                state.transits.isEmpty() && state.yogas.isEmpty()
+            if (showHeroLoader) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .alpha(contentOpacity),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.AutoAwesome,
+                            contentDescription = null,
+                            tint = Gold,
+                            modifier = Modifier.size(48.dp),
+                        )
+                        Text(
+                            text = stringResource(R.string.syncing_cosmic_data),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            fontFamily = CanelaFontFamily,
+                            color = Gold,
+                        )
+                        Text(
+                            text = stringResource(R.string.almost_there),
+                            fontSize = 13.sp,
+                            color = CreamDim,
+                        )
+                        CircularProgressIndicator(color = Gold, modifier = Modifier.size(24.dp))
+                    }
+                }
+                return@Column
+            }
+
+            // Pull-to-refresh: native swipe-down gesture fires loadHomeData() (parity with
+            // iOS ScrollView.refreshable). The previous implementation removed the
+            // PullToRefreshBox to avoid a rubber-band feel during normal scrolling; we
+            // restore it because the refresh affordance is the user-visible parity gap
+            // and the rubber-band is acceptable in exchange.
+            val pullState = rememberPullToRefreshState()
+            PullToRefreshBox(
+                state = pullState,
+                isRefreshing = state.isLoading || state.isRichDataLoading,
+                onRefresh = { viewModel.loadHomeData() },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .alpha(contentOpacity),
+            ) {
                 LazyColumn(
                     state = listState,
                     modifier = Modifier
                         .fillMaxSize()
                         .testTag("home_scroll_view"),
-                    contentPadding = PaddingValues(bottom = 120.dp),
+                    contentPadding = PaddingValues(bottom = 90.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
+                // Offline banner — first list item so it scrolls with content
+                // (iOS HomeView.swift:96-97 parity).
+                if (!isOnline) {
+                    item { OfflineBanner() }
+                }
+
                 // Error banner with retry (parity with iOS errorMessage banner)
                 state.errorMessage?.let { msg ->
                     item {
@@ -423,11 +489,6 @@ fun HomeScreen(
                 // defines insightHeroSection but does NOT include it in the body VStack
                 // (the section is present-but-disconnected). Hiding here so Android matches
                 // the live iOS surface.
-                // if (state.dailyInsight != null) {
-                //     item {
-                //         InsightCard(insight = state.dailyInsight.orEmpty())
-                //     }
-                // }
 
                 // Dasha insight card
                 if (state.dashaInfo != null) {
@@ -475,41 +536,31 @@ fun HomeScreen(
                     }
                 }
 
-                // Yoga highlights
-                if (state.yogas.isNotEmpty()) {
-                    item {
-                        Spacer(Modifier.height(20.dp))
-                        YogaHighlightRow(
-                            yogas = state.yogas,
-                            selectedFilter = state.yogaFilter,
-                            onFilterSelected = { filter ->
-                                haptic.light()
-                                viewModel.setYogaFilter(filter)
-                            },
-                            onYogaClick = { yoga ->
-                                haptic.light()
-                                viewModel.selectYoga(yoga)
-                            },
-                        )
-                    }
+                // Yoga highlights — render unconditionally (parity with iOS
+                // YogaHighlightCard.swift:131-136 which handles empty internally).
+                // Previously gated on yogas.isNotEmpty() which hid the entire
+                // section + filter chips during loading.
+                item {
+                    Spacer(Modifier.height(20.dp))
+                    YogaHighlightRow(
+                        yogas = state.yogas,
+                        selectedFilter = state.yogaFilter,
+                        onFilterSelected = { filter ->
+                            haptic.light()
+                            viewModel.setYogaFilter(filter)
+                        },
+                        onYogaClick = { yoga ->
+                            haptic.light()
+                            viewModel.selectYoga(yoga)
+                        },
+                    )
                 }
 
                 // Dosha status chips — DISABLED for iOS parity. iOS HomeView.swift:218
                 // explicitly comments out `doshaStatusSection // Removed per user request`.
-                // Hiding here so Android matches the live iOS surface.
-                // if (state.doshas.hasMangalDosha || state.doshas.hasKalasarpa) {
-                //     item {
-                //         DoshaStatusRow(doshas = state.doshas)
-                //     }
-                // }
 
-                if (state.isLoading || state.isRichDataLoading) {
-                    item {
-                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = Gold, modifier = Modifier.size(24.dp))
-                        }
-                    }
-                }
+                // Tail spinner removed — hero loader above gates loading state instead
+                // (parity with iOS HomeView.swift:150-172).
                 }
             }
         }
@@ -571,38 +622,12 @@ private fun HomeHeader(
 
             Spacer(Modifier.weight(1f))
 
-            // Bell + profile (right)
+            // Bell + profile (right). iOS HomeView.swift:451-523 order is [Bell][Sound][Profile];
+            // we keep Sound between Bell and Profile so the avatar stays the rightmost element.
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Sound toggle button — parity with iOS HomeView showSoundToggle.
-                // iOS gates on AppTheme.Features.showSoundToggle (currently false), so
-                // Android renders nothing when the flag is off.
-                if (Features.showSoundToggle) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .border(1.dp, Gold.copy(alpha = 0.3f), CircleShape)
-                            .clickable(onClick = onSoundToggle)
-                            .testTag("home_sound_toggle"),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = if (isSoundEnabled) {
-                                Icons.AutoMirrored.Filled.VolumeUp
-                            } else {
-                                Icons.AutoMirrored.Filled.VolumeOff
-                            },
-                            contentDescription = stringResource(
-                                if (isSoundEnabled) R.string.home_sound_on_cd else R.string.home_sound_off_cd,
-                            ),
-                            tint = Gold,
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
-                }
                 Box(contentAlignment = Alignment.TopEnd) {
                     Box(
                         modifier = Modifier
@@ -612,8 +637,14 @@ private fun HomeHeader(
                             .clickable(onClick = onNotificationsTap),
                         contentAlignment = Alignment.Center,
                     ) {
+                        // Parity with iOS HomeView.swift:461 — swap bell glyph when there
+                        // are unread notifications (bell.badge.fill ↔ bell.fill).
                         Icon(
-                            Icons.Filled.Notifications,
+                            imageVector = if (unreadCount > 0) {
+                                Icons.Filled.NotificationsActive
+                            } else {
+                                Icons.Filled.Notifications
+                            },
                             contentDescription = stringResource(R.string.home_notifications_cd),
                             tint = Gold,
                             modifier = Modifier.size(18.dp),
@@ -639,6 +670,34 @@ private fun HomeHeader(
                                 color = Color.White,
                             )
                         }
+                    }
+                }
+
+                // Sound toggle button — parity with iOS HomeView showSoundToggle.
+                // iOS gates on AppTheme.Features.showSoundToggle (currently false), so
+                // Android renders nothing when the flag is off.
+                if (Features.showSoundToggle) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .border(1.dp, Gold.copy(alpha = 0.3f), CircleShape)
+                            .clickable(onClick = onSoundToggle)
+                            .testTag("home_sound_toggle"),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = if (isSoundEnabled) {
+                                Icons.AutoMirrored.Filled.VolumeUp
+                            } else {
+                                Icons.AutoMirrored.Filled.VolumeOff
+                            },
+                            contentDescription = stringResource(
+                                if (isSoundEnabled) R.string.home_sound_on_cd else R.string.home_sound_off_cd,
+                            ),
+                            tint = Gold,
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
 
@@ -1400,15 +1459,32 @@ private fun YogaHighlightRow(
                 modifier = Modifier.padding(vertical = 12.dp),
             )
         } else {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                items(filteredYogas.size) { index ->
-                    val yoga = filteredYogas[index]
-                    PremiumYogaCard(
-                        yoga = yoga,
-                        index = index,
-                        onClick = { onYogaClick(yoga) },
-                    )
+            // Trailing edge fade gradient — parity with iOS YogaHighlightCard.swift:100-126
+            // ZStack(alignment: .trailing) with LinearGradient(.clear → mainBackground).
+            // Hints that the row is horizontally scrollable. Pointer-events ignored so
+            // the overlay never eats taps on the rightmost yoga card.
+            Box {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(filteredYogas.size) { index ->
+                        val yoga = filteredYogas[index]
+                        PremiumYogaCard(
+                            yoga = yoga,
+                            index = index,
+                            onClick = { onYogaClick(yoga) },
+                        )
+                    }
                 }
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .width(40.dp)
+                        .height(170.dp)
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(Color.Transparent, NavySurface),
+                            ),
+                        ),
+                )
             }
         }
     }
