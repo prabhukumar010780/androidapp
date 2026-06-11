@@ -1,39 +1,23 @@
 import java.util.Properties
 
 // Read local.properties (gitignored) for developer-local fallback values.
-// Mirrors how Android Studio's standard `localProperties` flow exposes sdk.dir.
 val localProps: Properties = Properties().apply {
     val f = rootProject.file("local.properties")
     if (f.exists()) f.inputStream().use { load(it) }
 }
 
-// Per-flavor API key resolution — mirrors iOS Local.xcconfig / Test.xcconfig / Production.xcconfig
-// which carry distinct API_KEY values baked at build time.
-//
-// Resolution chain for each flavor:
-//   1. -PAPI_KEY_<FLAVOR> (CI gradle property)
-//   2. <FLAVOR>_API_KEY env var (e.g. LOCAL_API_KEY) — preferred for local dev
-//   3. DESTINY_API_KEY_<FLAVOR> env var (CI legacy naming)
-//   4. API_KEY_<FLAVOR> in local.properties
-//   5. (local only) the iOS local key as a hardcoded fallback — interchangeable with
-//      the local dev backend's recognized seed key.
-//   6. Legacy fallback: -PAPI_KEY / DESTINY_API_KEY / API_KEY (single key) — backward compat.
-fun resolveApiKey(flavor: String): String {
-    val upper = flavor.uppercase()
+// Per-build-type API key — mirrors iOS Local.xcconfig / Test.xcconfig /
+// Production.xcconfig. Resolved in order:
+//   1. -PAPI_KEY_<TYPE>   (CI gradle property)
+//   2. API_KEY_<TYPE>     env var
+//   3. API_KEY_<TYPE>     in local.properties
+//   (debug uses a hardcoded local-dev key so emulator builds never block)
+fun resolveApiKey(buildType: String): String {
+    val upper = buildType.uppercase()
     val resolved = (project.findProperty("API_KEY_$upper") as? String)
-        ?: System.getenv("${upper}_API_KEY")
-        ?: System.getenv("DESTINY_API_KEY_$upper")
+        ?: System.getenv("API_KEY_$upper")
         ?: localProps.getProperty("API_KEY_$upper")
-        // Legacy single-key fallback (used by older local setups + the LOCAL_API_KEY entry
-        // in local.properties is also picked up via API_KEY in local.properties).
-        ?: (project.findProperty("API_KEY") as? String)
-        ?: System.getenv("DESTINY_API_KEY")
-        ?: localProps.getProperty("API_KEY")
         ?: ""
-
-    // Local flavor has a baked-in fallback so emulator dev never hits an empty key.
-    // This matches the iOS Local.xcconfig API_KEY value and the seeded test key the
-    // local backend recognizes.
     if (resolved.isBlank() && upper == "LOCAL") {
         return "astro_ios_G5iY3-1Z7ymE46hYwKTbK1bSz2x5Vn4BeymPOvyy3ic"
     }
@@ -44,57 +28,32 @@ val apiKeyLocal: String = resolveApiKey("LOCAL")
 val apiKeyStaging: String = resolveApiKey("STAGING")
 val apiKeyProduction: String = resolveApiKey("PRODUCTION")
 
-// Fail the build for any non-debug task when the relevant flavor's API_KEY is
-// empty so we never produce an unauthenticated APK/AAB again. Debug builds
-// are allowed to proceed (developers may build without a key for unit-test
-// compilation), but the runtime interceptor will Log.e and skip the malformed
-// header.
+// Fail the build when a signed-release task has no API key. Debug uses a
+// hardcoded local-dev key so emulator dev never blocks.
 val runningTaskNames: List<String> = gradle.startParameter.taskNames
-val isDebugTask: Boolean = runningTaskNames.any { name ->
-    val lower = name.lowercase()
-    lower.contains("debug") && !lower.contains("release")
-}
 val needsStagingKey: Boolean = runningTaskNames.any { it.contains("Staging", ignoreCase = true) }
-val needsProductionKey: Boolean = runningTaskNames.any { it.contains("Production", ignoreCase = true) }
-if (!isDebugTask && runningTaskNames.isNotEmpty()) {
+val needsProductionKey: Boolean = runningTaskNames.any { name ->
+    val lower = name.lowercase()
+    lower.contains("release") && !lower.contains("staging") && !lower.contains("debug")
+}
+if (runningTaskNames.isNotEmpty()) {
     if (needsStagingKey && apiKeyStaging.isBlank()) {
-        error(
-            "API_KEY_STAGING missing — pass -PAPI_KEY_STAGING=... or set DESTINY_API_KEY_STAGING env var. " +
-                "Required for staging release builds (tasks: $runningTaskNames)."
-        )
+        error("API_KEY_STAGING missing — pass -PAPI_KEY_STAGING=... (tasks: $runningTaskNames).")
     }
     if (needsProductionKey && apiKeyProduction.isBlank()) {
-        error(
-            "API_KEY_PRODUCTION missing — pass -PAPI_KEY_PRODUCTION=... or set DESTINY_API_KEY_PRODUCTION env var. " +
-                "Required for production release builds (tasks: $runningTaskNames)."
-        )
+        error("API_KEY_PRODUCTION missing — pass -PAPI_KEY_PRODUCTION=... (tasks: $runningTaskNames).")
     }
 }
 
-// Google OAuth Web (server) client ID — used by Android Google Sign-In to request
-// an ID token that the backend can verify. Mirrors iOS GIDClientID in Info.plist.
-// Source order: gradle property → env var → local.properties → empty (Sign-In stays disabled at runtime).
+// Google OAuth Web (server) client ID — used by Android Google Sign-In to
+// request an ID token the backend can verify. Mirrors iOS GIDClientID.
 val googleServerClientId: String = (project.findProperty("GOOGLE_SERVER_CLIENT_ID") as? String)
     ?: System.getenv("GOOGLE_SERVER_CLIENT_ID")
-    ?: System.getenv("DESTINY_GOOGLE_SERVER_CLIENT_ID")
     ?: localProps.getProperty("GOOGLE_SERVER_CLIENT_ID")
     ?: ""
 
-// Fail the build for any non-debug release/staging task when GOOGLE_SERVER_CLIENT_ID
-// is empty. Without it, Google Sign-In silently fails at runtime in production builds.
-// Mirrors the apiKey* check above.
-if (!isDebugTask && runningTaskNames.isNotEmpty()) {
-    val needsGoogleClientId: Boolean = runningTaskNames.any { name ->
-        val lower = name.lowercase()
-        (lower.contains("staging") || lower.contains("production")) && lower.contains("release")
-    }
-    if (needsGoogleClientId && googleServerClientId.isBlank()) {
-        error(
-            "GOOGLE_SERVER_CLIENT_ID missing — pass -PGOOGLE_SERVER_CLIENT_ID=... or set " +
-                "GOOGLE_SERVER_CLIENT_ID env var. Required for release builds so Google " +
-                "Sign-In does not silently fail at runtime (tasks: $runningTaskNames)."
-        )
-    }
+if (runningTaskNames.isNotEmpty() && (needsStagingKey || needsProductionKey) && googleServerClientId.isBlank()) {
+    error("GOOGLE_SERVER_CLIENT_ID missing — pass -PGOOGLE_SERVER_CLIENT_ID=... (tasks: $runningTaskNames).")
 }
 
 plugins {
@@ -111,6 +70,9 @@ android {
     compileSdk = 36
 
     defaultConfig {
+        // Single applicationId across all build types — parity with iOS which uses
+        // one bundle id (com.destinyai.astrology) for Local/Test/Production via
+        // xcconfig-driven configurations rather than separate apps.
         applicationId = "com.destinyai.astrology"
         minSdk = 24
         targetSdk = 36
@@ -131,47 +93,40 @@ android {
         }
     }
 
-    flavorDimensions += "env"
-    productFlavors {
-        // Local — mirrors iOS Local.xcconfig. Emulator host loopback (10.0.2.2 → host's localhost).
-        create("local") {
-            dimension = "env"
-            applicationIdSuffix = ".local"
+    // Build types carry the env-specific values — mirrors iOS xcconfig per
+    // Build Configuration. Single applicationId across all three (parity with
+    // iOS which only has one bundle id, com.destinyai.astrology). The
+    // versionNameSuffix + ENV BuildConfig field tells testers which
+    // environment a given install is on.
+    buildTypes {
+        debug {
+            // Emulator-host loopback — Local.xcconfig parity. No applicationIdSuffix:
+            // installing debug clobbers any staging/release install on the same device,
+            // exactly like iOS where only one bundle id exists at a time.
             versionNameSuffix = "-local"
             buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8000\"")
             buildConfigField("String", "API_KEY", "\"$apiKeyLocal\"")
             buildConfigField("String", "ENV", "\"local\"")
             buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"$googleServerClientId\"")
         }
-        // Staging — mirrors iOS Test.xcconfig. (Kept "staging" name to match existing CI
-        // references to DESTINY_API_KEY_STAGING and the assembleStagingDebug task.)
-        // applicationIdSuffix=".staging" — staging is a SEPARATE Play Console app
-        // (com.destinyai.astrology.staging) so it never collides with production rollouts
-        // on the same internal track.
+        // Staging — mirrors iOS Test.xcconfig. Release-style (minified + shrunk +
+        // release-signed) so we catch ProGuard regressions before production.
+        // Same applicationId as release: only one Play Console app.
         create("staging") {
-            dimension = "env"
-            applicationIdSuffix = ".staging"
+            initWith(getByName("release"))
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            signingConfig = signingConfigs.getByName("release")
+            matchingFallbacks += listOf("release")
             versionNameSuffix = "-staging"
             buildConfigField("String", "API_BASE_URL", "\"https://astroapi-test-dsqvza5jza-ul.a.run.app\"")
             buildConfigField("String", "API_KEY", "\"$apiKeyStaging\"")
             buildConfigField("String", "ENV", "\"staging\"")
             buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"$googleServerClientId\"")
-        }
-        // Production — mirrors iOS Production.xcconfig. No applicationId suffix.
-        create("production") {
-            dimension = "env"
-            buildConfigField("String", "API_BASE_URL", "\"https://astroapi-prod-dsqvza5jza-ul.a.run.app\"")
-            buildConfigField("String", "API_KEY", "\"$apiKeyProduction\"")
-            buildConfigField("String", "ENV", "\"production\"")
-            buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"$googleServerClientId\"")
-        }
-    }
-
-    buildTypes {
-        debug {
-            // Intentionally does NOT override API_BASE_URL — the productFlavor decides.
-            // Previous debug-level override forced every debug build (incl. staging/production
-            // debug variants) to point at 10.0.2.2 which masked real connectivity.
         }
         release {
             isMinifyEnabled = true
@@ -181,6 +136,10 @@ android {
                 "proguard-rules.pro"
             )
             signingConfig = signingConfigs.getByName("release")
+            buildConfigField("String", "API_BASE_URL", "\"https://astroapi-prod-dsqvza5jza-ul.a.run.app\"")
+            buildConfigField("String", "API_KEY", "\"$apiKeyProduction\"")
+            buildConfigField("String", "ENV", "\"production\"")
+            buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"$googleServerClientId\"")
         }
     }
 

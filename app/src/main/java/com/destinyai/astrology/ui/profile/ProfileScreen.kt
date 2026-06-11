@@ -911,10 +911,13 @@ fun ProfileScreen(
 
                             // App info footer — parity with iOS appInfoSection (ProfileView.swift:775-790):
                             // brand name, version+build, copyright. Renders three Text rows.
+                            // Env label mirrors iOS ProfileView.swift:1005-1007 — appends "[STAGING]"
+                            // or "[LOCAL]" only when ENV != production. ENV is set per-build-type
+                            // in build.gradle.kts (debug=local, staging=staging, release=production).
                             val appVersionText = remember {
                                 val base = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
-                                val type = BuildConfig.BUILD_TYPE.lowercase()
-                                if (type == "release") base else "$base [${BuildConfig.BUILD_TYPE.uppercase()}]"
+                                val env = BuildConfig.ENV
+                                if (env == "production") base else "$base [${env.uppercase()}]"
                             }
                             Spacer(Modifier.height(8.dp))
                             Text(

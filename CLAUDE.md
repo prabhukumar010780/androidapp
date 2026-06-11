@@ -43,23 +43,40 @@ app/src/main/java/com/destinyai/astrology/
 - 20 tests, all passing
 
 ## Commands
-- Build: `./gradlew assembleStagingDebug`
-- Unit tests: `./gradlew :app:testProductionReleaseUnitTest`
-- Install: `./gradlew installStagingDebug`
-- Lint: `./gradlew lintProductionRelease`
+- Build: `./gradlew assembleDebug` (local emulator, hits 10.0.2.2:8000)
+- Build staging: `./gradlew assembleStaging -PAPI_KEY_STAGING=<key> -PGOOGLE_SERVER_CLIENT_ID=<id>`
+- Build release: `./gradlew assembleRelease -PAPI_KEY_PRODUCTION=<key> -PGOOGLE_SERVER_CLIENT_ID=<id>`
+- Unit tests: `./gradlew :app:testStagingUnitTest`
+- Install: `./gradlew installDebug` (or `installStaging` / `installRelease`)
+- Lint: `./gradlew lintRelease`
 - Connected tests: `./gradlew connectedAndroidTest` (needs emulator)
 
+## Build types (single applicationId, iOS parity)
+| Build type | applicationId | API base URL | versionNameSuffix |
+|---|---|---|---|
+| `debug` | `com.destinyai.astrology` | http://10.0.2.2:8000 (emulator host) | `-local` |
+| `staging` | `com.destinyai.astrology` | https://astroapi-test-...run.app | `-staging` |
+| `release` | `com.destinyai.astrology` | https://astroapi-prod-...run.app | (none) |
+
+Single Play Console app for both staging and release. Branch routing:
+- `test` branch → CI runs `bundleStaging` → uploads to internal track (auto-completed)
+- `main` branch → CI runs `bundleRelease` → uploads to internal track (draft, manual promote)
+
+The `[STAGING]` / `[LOCAL]` label in the Settings screen footer (driven by
+`BuildConfig.ENV`) tells testers which environment a given install is on.
+
 ## Key Config
-- API URLs in BuildConfig (production/staging flavors, debug override for emulator)
-- FCM: requires `app/google-services.json` (gitignored — decode from `GOOGLE_SERVICES_JSON` GitHub secret)
+- Single `applicationId = com.destinyai.astrology` across all build types (parity with iOS bundle id)
+- API URLs / API keys / ENV in BuildConfig (per-build-type — see `app/build.gradle.kts`)
+- FCM: `app/google-services.json` carries the production package only (gitignored — decode from `GOOGLE_SERVICES_JSON` GitHub secret)
 - Keystore: decoded from `ANDROID_KEYSTORE_BASE64` secret at build time
 
 ## google-services.json
 - NOT committed to git (gitignored)
 - Firebase project: `destiny-ai-astrology-4f52a` (NOT circular-genius-481518-v0 — that's the GCP/Cloud Run project)
-- Local dev: download from Firebase Console → project `destiny-ai-astrology-4f52a` → Project Settings → Your apps → Android
+- Single client entry: `com.destinyai.astrology` (no `.staging` / `.local` clients — single applicationId)
+- Local dev: download from Firebase Console → project `destiny-ai-astrology-4f52a` → Project Settings → Your apps → Android (com.destinyai.astrology)
 - CI: decoded from `GOOGLE_SERVICES_JSON` secret in `prabhukumar010780/androidapp`
-- Placeholder exists at `app/google-services.json` — REPLACE with real file before FCM testing
 
 ## FCM Debug
 - Check `FIREBASE_CREDENTIALS_PATH` on server side
