@@ -280,7 +280,7 @@ This document captures the **second-pass** gaps found by reading every iOS view 
 # Verify baseline still passes 605 tests
 cd /Users/i074917/Documents/destiny_ai_astrology/android_app
 JAVA_HOME=/Users/i074917/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home \
-  ./gradlew :app:testProductionReleaseUnitTest
+  ./gradlew :app:testReleaseUnitTest
 ```
 
 ---

@@ -258,7 +258,7 @@ These all come from `UserChartService` in iOS which calls `/vedic/api/astrodata/
 ## Current Test State
 
 ```
-Test run: ./gradlew :app:testProductionReleaseUnitTest
+Test run: ./gradlew :app:testReleaseUnitTest
 Result: 526/526 passing, 0 failures
 ```
 
@@ -299,9 +299,9 @@ All existing tests pass. New phases must follow TDD: write failing test first, t
 To resume any phase:
 1. Check `ANDROID_REPLICA_PLAN.md` for phase status
 2. Read the relevant files listed under that phase
-3. Follow TDD: write failing test in `app/src/test/`, run `./gradlew :app:testProductionReleaseUnitTest`, confirm RED
+3. Follow TDD: write failing test in `app/src/test/`, run `./gradlew :app:testReleaseUnitTest`, confirm RED
 4. Implement, confirm GREEN
-5. Run full suite to confirm no regressions: `JAVA_HOME=/Users/i074917/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home ./gradlew :app:testProductionReleaseUnitTest`
+5. Run full suite to confirm no regressions: `JAVA_HOME=/Users/i074917/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home ./gradlew :app:testReleaseUnitTest`
 
 ---
 
@@ -319,6 +319,6 @@ To resume any phase:
 | Subscription ViewModel | `ui/subscription/SubscriptionViewModel.kt` |
 | Subscription Screen | `ui/subscription/SubscriptionScreen.kt` |
 | Build config (product IDs) | `app/build.gradle.kts` |
-| Test runner command | `JAVA_HOME=.../temurin-21.jdk/Contents/Home ./gradlew :app:testProductionReleaseUnitTest` |
+| Test runner command | `JAVA_HOME=.../temurin-21.jdk/Contents/Home ./gradlew :app:testReleaseUnitTest` |
 | iOS SubscriptionManager ref | `ios_app/ios_app/Services/SubscriptionManager.swift` |
 | iOS QuotaManager ref | `ios_app/ios_app/Services/QuotaManager.swift` |

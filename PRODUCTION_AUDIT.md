@@ -769,12 +769,12 @@ Before submitting to Google Play:
 - [x] P-H3 Fixed: Enable resource shrinking — 2026-05-30
 - [x] P-H4 Fixed: Create release network security config — 2026-05-30
 - [x] P-H5 Fixed: API DTO mismatches resolved — 2026-05-30
-- [ ] Run: `./gradlew testProductionReleaseUnitTest` (all pass)
-- [ ] Run: `./gradlew lintProductionRelease` (no errors)
-- [ ] Build: `./gradlew bundleProductionRelease` (succeeds)
+- [ ] Run: `./gradlew testReleaseUnitTest` (all pass)
+- [ ] Run: `./gradlew lintRelease` (no errors)
+- [ ] Build: `./gradlew bundleRelease` (succeeds)
 - [ ] Manual test on emulator/device (chat, compatibility, subscription flows)
 - [ ] API contract tests pass: `pytest astrology_api/tests/contract/ -v`
-- [ ] Confirm minification works: `./gradlew minifyProductionReleaseWithR8`
+- [ ] Confirm minification works: `./gradlew minifyReleaseWithR8`
 
 ---
 

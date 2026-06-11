@@ -433,8 +433,8 @@ state.dailyInsight?.let { InsightCard(insight = it) }
 | **All iOS Services have Android equivalents** | 🟡 | 21 iOS Services → 4 core + partial Repos; caching, sync incomplete (CG-4, CG-5, CG-7) | Implement ProfileService, CompatibilityHistoryService, caching (10 hours) |
 | **Backend API contracts match** | ✅ | 20/20 endpoints verified; request/response DTOs aligned | None |
 | **Build & signing configured** | ✅ | app/build.gradle.kts has release signingConfig + flavor support | None |
-| **Release build compiles** | ✅ | Gradle syntax valid; proguard rules present | Run `./gradlew assembleProductionRelease` to verify |
-| **Tests passing** | 🟡 | 37 unit tests defined; 33 failing (expected TDD red phase) | Run `./gradlew testProductionReleaseUnitTest` |
+| **Release build compiles** | ✅ | Gradle syntax valid; proguard rules present | Run `./gradlew assembleRelease` to verify |
+| **Tests passing** | 🟡 | 37 unit tests defined; 33 failing (expected TDD red phase) | Run `./gradlew testReleaseUnitTest` |
 | **Crashlytics integrated** | ❌ | **NOT in build.gradle.kts**; DestinyApp.kt empty (CG-10) | Add Crashlytics dependency + init (1 hour) |
 | **Analytics opt-out works** | ✅ | Not required for Play Store (crash reporting is sufficient) | None |
 | **Notification deep links work** | ❌ | MainActivity ignores notification_type extra (CG-9) | Add onNewIntent() override (2 hours) |
@@ -501,7 +501,7 @@ state.dailyInsight?.let { InsightCard(insight = it) }
 ## Pre-Release Verification Checklist
 
 - [ ] All 11 confirmed gaps fixed and tested
-- [ ] `./gradlew testProductionReleaseUnitTest` passes (all 37 unit tests green)
+- [ ] `./gradlew testReleaseUnitTest` passes (all 37 unit tests green)
 - [ ] E2E tests on emulator pass: `pytest android_app/e2e/ -v`
 - [ ] Crashlytics events confirmed in Firebase Console (test crash → verify appears)
 - [ ] Notification deep linking verified (tap notification → correct screen)
@@ -512,7 +512,7 @@ state.dailyInsight?.let { InsightCard(insight = it) }
 - [ ] Chart caching verified (open charts twice → only 1 API call)
 - [ ] Compatibility history persists across devices (match on Device A → visible on Device B)
 - [ ] All `!!` bangs removed and replaced with safe access patterns
-- [ ] ProGuard minification tested (`./gradlew assembleProductionRelease`)
+- [ ] ProGuard minification tested (`./gradlew assembleRelease`)
 - [ ] APK signature verified with keystore
 - [ ] Build signing configs validated for Play Store submission
 - [ ] App tested on Android 8.0 (minSdk=24) and Android 14 (targetSdk=36)

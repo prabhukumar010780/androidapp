@@ -28,7 +28,7 @@ app/src/main/java/com/destinyai/astrology/
 - Write test first, implementation second
 - Tests live in `app/src/test/java/com/destinyai/astrology/`
 - Unit tests: JUnit5 + MockK + Turbine (StateFlow testing)
-- Run: `./gradlew :app:testProductionReleaseUnitTest`
+- Run: `./gradlew :app:testReleaseUnitTest`
 - 44 tests currently compiled, 33 failing (expected — TDD red phase)
 
 ## E2E Tests

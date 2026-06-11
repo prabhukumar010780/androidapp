@@ -30,20 +30,20 @@ jobs:
         run: echo "$GOOGLE_SERVICES_JSON" > app/google-services.json
 
       - name: Lint
-        run: ./gradlew lintStagingRelease -PAPI_KEY_STAGING=ci_placeholder -PGOOGLE_SERVER_CLIENT_ID=ci_placeholder --no-daemon
+        run: ./gradlew lintStaging -PAPI_KEY_STAGING=ci_placeholder -PGOOGLE_SERVER_CLIENT_ID=ci_placeholder --no-daemon
 
       - name: Unit tests
-        run: ./gradlew testStagingReleaseUnitTest -PAPI_KEY_STAGING=ci_placeholder -PGOOGLE_SERVER_CLIENT_ID=ci_placeholder --no-daemon
+        run: ./gradlew testStagingUnitTest -PAPI_KEY_STAGING=ci_placeholder -PGOOGLE_SERVER_CLIENT_ID=ci_placeholder --no-daemon
 
       - name: Build staging debug (smoke build)
-        run: ./gradlew assembleStagingDebug --no-daemon
+        run: ./gradlew assembleStaging --no-daemon
 
       - name: Upload lint report on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: lint-report
-          path: app/build/reports/lint-results-stagingRelease.html
+          path: app/build/reports/lint-results-staging.html
 
       - name: Upload test results on failure
         if: failure()
@@ -88,7 +88,7 @@ jobs:
           arch: x86_64
           profile: pixel_5
           emulator-boot-timeout: 900
-          script: ./gradlew connectedStagingDebugAndroidTest --no-daemon
+          script: ./gradlew connectedDebugAndroidTest --no-daemon
 
       - name: Upload instrumentation test results on failure
         if: failure()
