@@ -2191,6 +2191,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="compat_you_label">Ты</string>
     <string name="compat_your_details">Ваши данные</string>
     <string name="delete_account_button">Удалить аккаунт</string>
+    <string name="delete_session_expired_message">Срок действия сеанса истёк. Пожалуйста, войдите снова, чтобы удалить аккаунт.</string>
     <string name="delete_account_cancel">Отмена</string>
     <string name="delete_dialog_title">Удалить</string>
     <string name="fair_use_contact_support">Обратиться в службу поддержки</string>

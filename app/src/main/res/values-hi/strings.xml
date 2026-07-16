@@ -2171,6 +2171,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="compat_you_label">आप</string>
     <string name="compat_your_details">आपका विवरण</string>
     <string name="delete_account_button">खाता हटाएं</string>
+    <string name="delete_session_expired_message">आपका सत्र समाप्त हो गया है। अपना खाता हटाने के लिए कृपया फिर से साइन इन करें।</string>
     <string name="delete_account_cancel">रद्द करें</string>
     <string name="delete_dialog_title">हटाएं</string>
     <string name="fair_use_contact_support">सहायता से संपर्क करें</string>

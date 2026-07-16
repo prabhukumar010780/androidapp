@@ -2191,6 +2191,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="compat_you_label">మీరు</string>
     <string name="compat_your_details">మీ వివరాలు</string>
     <string name="delete_account_button">ఖాతాను తొలగించండి</string>
+    <string name="delete_session_expired_message">మీ సెషన్ గడువు ముగిసింది. మీ ఖాతాను తొలగించడానికి దయచేసి మళ్లీ సైన్ ఇన్ చేయండి.</string>
     <string name="delete_account_cancel">రద్దు</string>
     <string name="delete_dialog_title">తొలగించు</string>
     <string name="fair_use_contact_support">మద్దతును సంప్రదించండి</string>

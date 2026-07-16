@@ -2191,6 +2191,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="compat_you_label">你</string>
     <string name="compat_your_details">您的详细信息</string>
     <string name="delete_account_button">删除账户</string>
+    <string name="delete_session_expired_message">您的会话已过期。请重新登录以删除您的账户。</string>
     <string name="delete_account_cancel">取消</string>
     <string name="delete_dialog_title">删除</string>
     <string name="fair_use_contact_support">联系支持人员</string>

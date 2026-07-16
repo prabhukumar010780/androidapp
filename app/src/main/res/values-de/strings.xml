@@ -2191,6 +2191,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="compat_you_label">Du</string>
     <string name="compat_your_details">Ihre Daten</string>
     <string name="delete_account_button">Konto löschen</string>
+    <string name="delete_session_expired_message">Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an, um Ihr Konto zu löschen.</string>
     <string name="delete_account_cancel">Abbrechen</string>
     <string name="delete_dialog_title">Löschen</string>
     <string name="fair_use_contact_support">Kontaktieren Sie den Support</string>

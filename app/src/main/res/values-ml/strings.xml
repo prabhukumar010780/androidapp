@@ -2191,6 +2191,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="compat_you_label">നിങ്ങൾ</string>
     <string name="compat_your_details">നിങ്ങളുടെ വിശദാംശങ്ങൾ</string>
     <string name="delete_account_button">അക്കൗണ്ട് ഇല്ലാതാക്കുക</string>
+    <string name="delete_session_expired_message">നിങ്ങളുടെ സെഷൻ കാലഹരണപ്പെട്ടു. നിങ്ങളുടെ അക്കൗണ്ട് ഇല്ലാതാക്കാൻ വീണ്ടും സൈൻ ഇൻ ചെയ്യുക.</string>
     <string name="delete_account_cancel">റദ്ദാക്കുക</string>
     <string name="delete_dialog_title">ഇല്ലാതാക്കുക</string>
     <string name="fair_use_contact_support">പിന്തുണയുമായി ബന്ധപ്പെടുക</string>

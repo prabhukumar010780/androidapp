@@ -2191,6 +2191,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="compat_you_label">ನಿಮ್ಮ</string>
     <string name="compat_your_details">ನಿಮ್ಮ ವಿವರಗಳು</string>
     <string name="delete_account_button">ಖಾತೆಯನ್ನು ಅಳಿಸಿ</string>
+    <string name="delete_session_expired_message">ನಿಮ್ಮ ಸೆಷನ್ ಮುಗಿದಿದೆ. ನಿಮ್ಮ ಖಾತೆಯನ್ನು ಅಳಿಸಲು ದಯವಿಟ್ಟು ಮತ್ತೆ ಸೈನ್ ಇನ್ ಮಾಡಿ.</string>
     <string name="delete_account_cancel">ರದ್ದು</string>
     <string name="delete_dialog_title">ಅಳಿಸು</string>
     <string name="fair_use_contact_support">ಬೆಂಬಲವನ್ನು ಸಂಪರ್ಕಿಸಿ</string>

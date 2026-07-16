@@ -2191,6 +2191,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="compat_you_label">あなた</string>
     <string name="compat_your_details">あなたの詳細</string>
     <string name="delete_account_button">アカウントの削除</string>
+    <string name="delete_session_expired_message">セッションの有効期限が切れました。アカウントを削除するには、もう一度サインインしてください。</string>
     <string name="delete_account_cancel">キャンセル</string>
     <string name="delete_dialog_title">削除</string>
     <string name="fair_use_contact_support">サポートに連絡する</string>
