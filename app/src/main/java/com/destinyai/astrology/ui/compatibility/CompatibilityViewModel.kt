@@ -158,6 +158,16 @@ class CompatibilityViewModel @Inject constructor(
         viewModelScope.launch { runCatching { prefs.setResponseLength(value) } }
     }
 
+    // iOS parity (ChartComparisonSheet @AppStorage("chartStyle")): the compat chart-
+    // comparison sheet shares the globally persisted north/south preference and writes
+    // toggles back so the choice survives dismissal and matches the Charts screen.
+    val chartStyle: StateFlow<String> = prefs.chartStyleFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "north")
+
+    fun setChartStyle(style: String) {
+        viewModelScope.launch { runCatching { prefs.setChartStyle(style) } }
+    }
+
     /**
      * iOS parity (CompatibilityResultSheets.swift:1827-1890): submit a 1..5-star
      * inline rating for a compatibility-chat response. Best-effort — UI latches

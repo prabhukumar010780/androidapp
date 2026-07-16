@@ -253,15 +253,27 @@ class CompatibilityModelsParityTest {
     }
 
     @Test
-    fun `MangalDoshaModel isReduced true when severity Mild`() {
-        val model = MangalDoshaModel(
+    fun `MangalDoshaModel isReduced true only when active exceptions reduce it`() {
+        // iOS parity (DoshaModels.swift:122-125): reduced = present && !cancelled &&
+        // has active exceptions — NOT a string-severity check.
+        val reduced = MangalDoshaModel(
+            hasMangalDosha = true,
+            severity = "Mild",
+            marsHouse = 4,
+            exceptions = listOf("Mars in own sign"),
+            description = null,
+        )
+        assertTrue(reduced.isReduced)
+
+        // Mild severity but NO exceptions → not "reduced" (iOS would not flag it).
+        val mildNoExceptions = MangalDoshaModel(
             hasMangalDosha = true,
             severity = "Mild",
             marsHouse = 4,
             exceptions = emptyList(),
             description = null,
         )
-        assertTrue(model.isReduced)
+        assertFalse(mildNoExceptions.isReduced)
     }
 
     @Test

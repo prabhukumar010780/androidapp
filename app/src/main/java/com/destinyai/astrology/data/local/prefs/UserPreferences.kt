@@ -447,6 +447,11 @@ class UserPreferences @Inject constructor(
     suspend fun getChartStyle(): String =
         store.data.map { it[Keys.CHART_STYLE] ?: "north" }.first()
 
+    /** Reactive chart-style stream so the compat chart-comparison sheet shares the
+     *  same persisted north/south preference as the Charts screen (iOS @AppStorage). */
+    val chartStyleFlow: kotlinx.coroutines.flow.Flow<String>
+        get() = store.data.map { it[Keys.CHART_STYLE] ?: "north" }
+
     suspend fun setChartStyle(style: String) {
         store.edit { it[Keys.CHART_STYLE] = style }
     }

@@ -81,8 +81,11 @@ data class ProfileUiState(
  * US users default to opt-OUT (false), non-US users default to opt-IN (true) for GDPR compliance.
  */
 private fun defaultAnalyticsConsent(): Boolean {
+    // iOS parity (ProfileView.swift:1059): when the server value is nil, US region
+    // defaults to TRUE (opt-out model), non-US defaults to FALSE (GDPR opt-in). The
+    // prior `region != "US"` was the exact inverse of iOS for both regions.
     val region = Locale.getDefault().country.uppercase(Locale.ROOT)
-    return region != "US"
+    return region == "US"
 }
 
 @HiltViewModel

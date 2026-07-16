@@ -129,6 +129,7 @@ class PartnersViewModel @Inject constructor(
     private val locationSearchService: LocationSearchService,
     private val partnerDao: PartnerDao,
     private val profileContextManager: ProfileContextManager,
+    @dagger.hilt.android.qualifiers.ApplicationContext private val appContext: android.content.Context,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PartnersUiState())
@@ -299,11 +300,12 @@ class PartnersViewModel @Inject constructor(
                     )
                 }
             } catch (e: retrofit2.HttpException) {
-                // iOS parity (PartnerProfileService.swift:91-93): map 409 to duplicate-profile error.
-                val message = if (e.code() == 409) {
-                    "A birth chart with the same birth data already exists."
-                } else {
-                    e.message ?: "Failed to save"
+                // iOS parity (PartnerProfileService.swift:91-93 + 161-163): 409 = duplicate
+                // profile; 403 = protected profile (map PROTECTED_* to a friendly message).
+                val message = when (e.code()) {
+                    409 -> "A birth chart with the same birth data already exists."
+                    403 -> protectionMessageOr(e, "Failed to save")
+                    else -> e.message ?: "Failed to save"
                 }
                 _uiState.update { it.copy(isSaving = false, error = message) }
             } catch (e: Exception) {
@@ -332,9 +334,38 @@ class PartnersViewModel @Inject constructor(
                         successEvent = target?.let { PartnerSuccessEvent.Deleted(it.name) },
                     )
                 }
+            } catch (e: retrofit2.HttpException) {
+                // iOS parity (PartnerProfileService.swift:197-199 + localizedMessageForAPIError):
+                // a 403 means the backend flagged the profile as protected (e.g. firstSwitchedAt
+                // lost via the lossy cache). Map PROTECTED_* codes to the friendly strings.
+                _uiState.update { it.copy(error = protectionMessageOr(e, "Failed to delete")) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = e.message ?: "Failed to delete") }
             }
+        }
+    }
+
+    /**
+     * iOS parity (PartnerProfileViewModel.localizedMessageForAPIError): map a 403
+     * PROTECTED_* detail code to a friendly explanation; fall back to [fallback].
+     */
+    private fun protectionMessageOr(e: retrofit2.HttpException, fallback: String): String {
+        if (e.code() != 403) return e.message ?: fallback
+        val code = runCatching {
+            val raw = e.response()?.errorBody()?.string().orEmpty()
+            val detail = com.google.gson.JsonParser.parseString(raw).asJsonObject.get("detail")
+            when {
+                detail?.isJsonObject == true -> detail.asJsonObject.get("code")?.asString
+                detail?.isJsonPrimitive == true -> detail.asString
+                else -> null
+            }
+        }.getOrNull()
+        return when (code) {
+            "PROTECTED_MAIN_USER" ->
+                appContext.getString(com.destinyai.astrology.R.string.profile_edit_blocked_main_user)
+            "PROTECTED_ACTIVE_CHART" ->
+                appContext.getString(com.destinyai.astrology.R.string.profile_edit_blocked_active)
+            else -> "This birth chart is in use and can't be modified."
         }
     }
 

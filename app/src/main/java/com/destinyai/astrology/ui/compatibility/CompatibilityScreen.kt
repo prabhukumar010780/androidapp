@@ -96,6 +96,7 @@ fun CompatibilityScreen(
     val partners by viewModel.partners.collectAsStateWithLifecycle()
     val activePartnerIndex by viewModel.activePartnerIndex.collectAsStateWithLifecycle()
     val hasFailedPartners by viewModel.hasFailedPartners.collectAsStateWithLifecycle()
+    val chartStyle by viewModel.chartStyle.collectAsStateWithLifecycle()
     val comparisonResults by viewModel.comparisonResults.collectAsStateWithLifecycle()
     val currentStep by viewModel.currentStep.collectAsStateWithLifecycle()
     val historyLoadedToast by viewModel.historyLoadedToast.collectAsStateWithLifecycle()
@@ -272,6 +273,8 @@ fun CompatibilityScreen(
                 girlChartData = currentResult.girlChartData,
                 boyAscendant = currentResult.boyAscendant,
                 girlAscendant = currentResult.girlAscendant,
+                initialChartStyle = chartStyle,
+                onChartStyleChanged = { viewModel.setChartStyle(it) },
                 onDismiss = { showChartsSheet = false },
             )
         }

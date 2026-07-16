@@ -169,7 +169,9 @@ data class MangalDoshaModel(
     val doshaFrom: Map<String, Any>? = null,
 ) {
     val isCancelled: Boolean get() = isCancelledByExceptions || (exceptions.isNotEmpty() && !hasMangalDosha)
-    val isReduced: Boolean get() = severity?.lowercase() == "mild"
+    // iOS parity (DoshaModels.swift:122-125): reduced = dosha present, not cancelled,
+    // and one or more ACTIVE exceptions partially reduced it — not a string-severity check.
+    val isReduced: Boolean get() = hasMangalDosha && !isCancelled && activeExceptions.isNotEmpty()
     val activeExceptions: List<String> get() = exceptions
     val activeIntensityFactors: List<String> get() =
         intensityFactors?.entries?.filter { it.value }?.map { it.key } ?: emptyList()

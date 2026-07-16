@@ -54,7 +54,7 @@ class PartnersViewModelTest {
         partnerDao = mockk(relaxed = true)
         val profileContextManager: com.destinyai.astrology.services.ProfileContextManager = mockk(relaxed = true)
         coEvery { prefs.getUserEmail() } returns "u@x.com"
-        vm = PartnersViewModel(api, prefs, quotaManager, locationSearchService, partnerDao, profileContextManager)
+        vm = PartnersViewModel(api, prefs, quotaManager, locationSearchService, partnerDao, profileContextManager, mockk(relaxed = true))
     }
 
     @Test

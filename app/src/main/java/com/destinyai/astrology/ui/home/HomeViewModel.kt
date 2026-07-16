@@ -124,6 +124,10 @@ class HomeViewModel @Inject constructor(
     // ISO date (yyyy-MM-dd) of the last successful prediction load — used by onAppForeground()
     // to detect day rollovers and force-refresh (parity with iOS scenePhase + targetDate check).
     @Volatile private var lastLoadDate: String? = null
+    // iOS parity (HomeViewModel.swift isLoading re-entrancy guard): a second
+    // loadHomeData() while one is in flight (e.g. fast tab re-selects) must not
+    // fire duplicate network fetches.
+    @Volatile private var loadInFlight: Boolean = false
 
     init {
         viewModelScope.launch {
@@ -267,7 +271,10 @@ class HomeViewModel @Inject constructor(
     }
 
     fun loadHomeData() {
+        if (loadInFlight) return
+        loadInFlight = true
         viewModelScope.launch {
+            try {
             // iOS parity (HomeViewModel.swift:159-177): detect a language change
             // since the last successful Home payload — if Settings flipped the
             // app language, force a full re-fetch so localized strings refresh
@@ -367,6 +374,9 @@ class HomeViewModel @Inject constructor(
             // R2-H3: fetch unread notification count
             fetchUnreadCount()
             loadRichHomeData(activeBirth, activeId)
+            } finally {
+                loadInFlight = false
+            }
         }
     }
 

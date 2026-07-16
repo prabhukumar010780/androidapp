@@ -45,7 +45,7 @@ class ChartsViewModelExtendedTest {
         api = mockk(relaxed = true)
         coEvery { prefs.getChartStyle() } returns "north_indian"
         coEvery { prefs.getBirthProfile() } returns null
-        vm = ChartsViewModel(prefs, api)
+        vm = ChartsViewModel(prefs, api, mockk(relaxed = true))
     }
 
     // ── Initial state ─────────────────────────────────────────────────────────

@@ -4,14 +4,18 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.destinyai.astrology.BuildConfig
+import com.destinyai.astrology.data.local.db.AstroDataCacheDao
+import com.destinyai.astrology.data.local.db.AstroDataCacheEntity
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.remote.BirthProfileDto
+import com.google.gson.Gson
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.security.MessageDigest
 import java.time.LocalDate
 import javax.inject.Inject
 
@@ -36,10 +40,29 @@ data class ChartsUiState(
 class ChartsViewModel @Inject constructor(
     private val prefs: UserPreferences,
     private val api: AstroApiService,
+    // iOS parity (UserChartService reads AstroDataCache before the network): the cache
+    // infra + kinds (chart/dasha/transits) exist and are already used by Home; the
+    // Charts flow bypassed them, forcing 1-3 live round trips on every open.
+    private val astroDataCacheDao: AstroDataCacheDao,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChartsUiState())
     val uiState: StateFlow<ChartsUiState> = _uiState
+
+    private val gson = Gson()
+
+    /** iOS parity (HomeRepositoryImpl.computeBirthHash / AstroDataCache key). */
+    private fun computeBirthHash(p: BirthProfileDto): String {
+        val raw = "${p.dateOfBirth}|${p.timeOfBirth}|${p.latitude}|" +
+            "${p.longitude}|${p.cityOfBirth}|${p.birthTimeUnknown}"
+        return MessageDigest.getInstance("SHA-1").digest(raw.toByteArray())
+            .joinToString("") { "%02x".format(it) }
+    }
+
+    /** iOS parity (UserAstroDataModels.swift roundCoordinate): round lat/lon to 6 dp
+     *  so wire payloads + cache keys are byte-identical to iOS and satisfy backend
+     *  decimal-place validation. */
+    private fun round6(v: Double): Double = Math.round(v * 1_000_000.0) / 1_000_000.0
 
     fun loadChartData() {
         viewModelScope.launch {
@@ -64,20 +87,28 @@ class ChartsViewModel @Inject constructor(
                     dateOfBirth = profile.dateOfBirth,
                     timeOfBirth = profile.timeOfBirth,
                     cityOfBirth = profile.cityOfBirth,
-                    latitude = profile.latitude,
-                    longitude = profile.longitude,
+                    latitude = round6(profile.latitude),
+                    longitude = round6(profile.longitude),
                     timeUnknown = profile.birthTimeUnknown,
                     chartStyle = chartStyle,
                 )
             }
             try {
-                val response = api.getChartData(
+                val activeProfileId = prefs.getActiveProfileId() ?: ""
+                val birthHash = computeBirthHash(profile)
+                // iOS parity (UserChartService.fetchFullChartData): read the forever-cached
+                // chart (year=0,month=0) first; render instantly + skip the network on hit.
+                val cached = runCatching {
+                    astroDataCacheDao.get("chart", activeProfileId, birthHash, 0, 0)
+                        ?.let { gson.fromJson(it.payloadJson, ChartApiResponse::class.java) }
+                }.getOrNull()
+                val response = cached ?: api.getChartData(
                     ChartDataRequest(
                         birthData = BirthData(
                             dob = profile.dateOfBirth,
                             time = profile.timeOfBirth,
-                            latitude = profile.latitude,
-                            longitude = profile.longitude,
+                            latitude = round6(profile.latitude),
+                            longitude = round6(profile.longitude),
                             ayanamsa = ayanamsa,
                             houseSystem = houseSystem,
                             cityOfBirth = profile.cityOfBirth,
@@ -85,6 +116,23 @@ class ChartsViewModel @Inject constructor(
                         ),
                     )
                 )
+                if (cached == null) {
+                    // Persist forever (per iOS setFullChart) so future opens are instant.
+                    runCatching {
+                        astroDataCacheDao.upsert(
+                            AstroDataCacheEntity(
+                                kind = "chart",
+                                profileId = activeProfileId,
+                                birthHash = birthHash,
+                                year = 0,
+                                month = 0,
+                                ownerEmail = prefs.getUserEmail().orEmpty(),
+                                payloadJson = gson.toJson(response),
+                                savedAtMs = System.currentTimeMillis(),
+                            ),
+                        )
+                    }
+                }
                 val signNum = response.houses["1"]?.signNum ?: 1
                 val ascIndex = (signNum - 1).coerceIn(0, 11)
                 val ascSign = ChartConstants.orderedSigns[ascIndex]
@@ -112,13 +160,16 @@ class ChartsViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             val year = LocalDate.now().year
+            val month = LocalDate.now().monthValue
+            val activeProfileId = prefs.getActiveProfileId() ?: ""
+            val birthHash = computeBirthHash(profile)
             val authHeader = "Bearer ${BuildConfig.API_KEY}"
             val request = DashaTransitRequest(
                 birthData = BirthData(
                     dob = profile.dateOfBirth,
                     time = profile.timeOfBirth,
-                    latitude = profile.latitude,
-                    longitude = profile.longitude,
+                    latitude = round6(profile.latitude),
+                    longitude = round6(profile.longitude),
                     ayanamsa = ayanamsa,
                     houseSystem = houseSystem,
                     cityOfBirth = profile.cityOfBirth,
@@ -127,13 +178,43 @@ class ChartsViewModel @Inject constructor(
                 year = year,
             )
             try {
-                val dasha = api.getDashaPeriods(authHeader, request)
+                // iOS parity (UserChartService.fetchDashaPeriods): per-year cache (month=0).
+                val cachedDasha = runCatching {
+                    astroDataCacheDao.get("dasha", activeProfileId, birthHash, year, 0)
+                        ?.let { gson.fromJson(it.payloadJson, DashaResponse::class.java) }
+                }.getOrNull()
+                val dasha = cachedDasha ?: api.getDashaPeriods(authHeader, request)
+                if (cachedDasha == null) {
+                    runCatching {
+                        astroDataCacheDao.upsert(
+                            AstroDataCacheEntity(
+                                "dasha", activeProfileId, birthHash, year, 0,
+                                prefs.getUserEmail().orEmpty(), gson.toJson(dasha), System.currentTimeMillis(),
+                            ),
+                        )
+                    }
+                }
                 _uiState.update { it.copy(dashaResponse = dasha) }
             } catch (_: Exception) {
                 // Non-fatal — chart still renders without dasha
             }
             try {
-                val transits = api.getTransits(authHeader, request)
+                // iOS parity (UserChartService.fetchTransits): per-year+month cache.
+                val cachedTransits = runCatching {
+                    astroDataCacheDao.get("transits", activeProfileId, birthHash, year, month)
+                        ?.let { gson.fromJson(it.payloadJson, TransitResponse::class.java) }
+                }.getOrNull()
+                val transits = cachedTransits ?: api.getTransits(authHeader, request)
+                if (cachedTransits == null) {
+                    runCatching {
+                        astroDataCacheDao.upsert(
+                            AstroDataCacheEntity(
+                                "transits", activeProfileId, birthHash, year, month,
+                                prefs.getUserEmail().orEmpty(), gson.toJson(transits), System.currentTimeMillis(),
+                            ),
+                        )
+                    }
+                }
                 _uiState.update { it.copy(transitResponse = transits) }
             } catch (_: Exception) {
                 // Non-fatal — chart still renders without transits
