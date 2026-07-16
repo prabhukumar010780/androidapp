@@ -69,7 +69,7 @@ class HistoryViewModelTest {
 
     @Test
     fun `loadHistory populates threads`() = runTest {
-        coEvery { repository.loadHistory() } returns listOf(
+        coEvery { repository.loadHistoryPaginated(any(), any()) } returns listOf(
             ChatThread("t1", "Thread 1"),
             ChatThread("t2", "Thread 2"),
         )
@@ -86,7 +86,7 @@ class HistoryViewModelTest {
 
     @Test
     fun `loadHistory sets error on failure`() = runTest {
-        coEvery { repository.loadHistory() } throws RuntimeException("network error")
+        coEvery { repository.loadHistoryPaginated(any(), any()) } throws RuntimeException("network error")
 
         vm.loadHistory()
 
@@ -98,7 +98,7 @@ class HistoryViewModelTest {
 
     @Test
     fun `deleteThread removes thread from state`() = runTest {
-        coEvery { repository.loadHistory() } returns listOf(
+        coEvery { repository.loadHistoryPaginated(any(), any()) } returns listOf(
             ChatThread("t1", "Thread 1"),
             ChatThread("t2", "Thread 2"),
         )
@@ -138,7 +138,7 @@ class HistoryViewModelTest {
 
     @Test
     fun `filteredThreads returns all threads when searchText is blank`() = runTest {
-        coEvery { repository.loadHistory() } returns listOf(
+        coEvery { repository.loadHistoryPaginated(any(), any()) } returns listOf(
             ChatThread("t1", "Today reading"),
             ChatThread("t2", "Mars transit"),
         )
@@ -152,7 +152,7 @@ class HistoryViewModelTest {
 
     @Test
     fun `filteredThreads filters by title case insensitive`() = runTest {
-        coEvery { repository.loadHistory() } returns listOf(
+        coEvery { repository.loadHistoryPaginated(any(), any()) } returns listOf(
             ChatThread("t1", "Today reading"),
             ChatThread("t2", "Mars transit"),
             ChatThread("t3", "mars retrograde"),

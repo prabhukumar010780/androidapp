@@ -72,7 +72,15 @@ class HomeViewModelTest {
         coEvery { prefs.getBirthProfile() } returns null
         localeManager = mockk(relaxed = true)
         every { localeManager.languageChanges } returns kotlinx.coroutines.flow.MutableSharedFlow()
-        viewModel = HomeViewModel(repository, prefs, api, profileChangeBus, profileContextManager, quotaManager, localeManager, networkMonitor)
+        // appContext.getString(id, ...args) — return the joined args so prompt-content
+        // assertions (contains "Career" / "Strong week ahead") pass without real resources.
+        val appCtx = mockk<android.content.Context>(relaxed = true)
+        every { appCtx.getString(any()) } returns "prompt"
+        every { appCtx.getString(any(), *anyVararg()) } answers {
+            val varargs = invocation.args.drop(1).firstOrNull() as? Array<*>
+            varargs?.joinToString(" ") { it.toString() } ?: "prompt"
+        }
+        viewModel = HomeViewModel(repository, prefs, api, profileChangeBus, profileContextManager, quotaManager, localeManager, appCtx, networkMonitor)
     }
 
     // --- Defaults ---
@@ -82,7 +90,7 @@ class HomeViewModelTest {
         coEvery { repository.getDailyQuota() } returns 10
 
         val lm1 = mockk<com.destinyai.astrology.services.LocaleManager>(relaxed = true).also { every { it.languageChanges } returns kotlinx.coroutines.flow.MutableSharedFlow() }
-        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, profileContextManager, quotaManager, lm1, networkMonitor)
+        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, profileContextManager, quotaManager, lm1, mockk(relaxed = true), networkMonitor)
 
         vm.uiState.test {
             assertEquals(10, awaitItem().dailyQuota)
@@ -126,7 +134,7 @@ class HomeViewModelTest {
         )
 
         val lm2 = mockk<com.destinyai.astrology.services.LocaleManager>(relaxed = true).also { every { it.languageChanges } returns kotlinx.coroutines.flow.MutableSharedFlow() }
-        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, profileContextManager, quotaManager, lm2, networkMonitor)
+        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, profileContextManager, quotaManager, lm2, mockk(relaxed = true), networkMonitor)
 
         vm.uiState.test {
             // iOS parity HomeViewModel.swift:553-558 — guest greeting fallback is "there".
@@ -143,7 +151,7 @@ class HomeViewModelTest {
         )
 
         val lm3 = mockk<com.destinyai.astrology.services.LocaleManager>(relaxed = true).also { every { it.languageChanges } returns kotlinx.coroutines.flow.MutableSharedFlow() }
-        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, profileContextManager, quotaManager, lm3, networkMonitor)
+        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, profileContextManager, quotaManager, lm3, mockk(relaxed = true), networkMonitor)
 
         vm.uiState.test {
             assertEquals("Prabhu", awaitItem().displayName)
@@ -158,7 +166,7 @@ class HomeViewModelTest {
         coEvery { repository.getDailyUsed() } returns 5
 
         val lm4 = mockk<com.destinyai.astrology.services.LocaleManager>(relaxed = true).also { every { it.languageChanges } returns kotlinx.coroutines.flow.MutableSharedFlow() }
-        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, profileContextManager, quotaManager, lm4, networkMonitor)
+        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, profileContextManager, quotaManager, lm4, mockk(relaxed = true), networkMonitor)
 
         vm.uiState.test {
             assertEquals(0.5f, awaitItem().quotaProgress, 0.001f)
@@ -199,7 +207,7 @@ class HomeViewModelTest {
         coEvery { repository.getDailyQuota() } returns -1
 
         val lm5 = mockk<com.destinyai.astrology.services.LocaleManager>(relaxed = true).also { every { it.languageChanges } returns kotlinx.coroutines.flow.MutableSharedFlow() }
-        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, profileContextManager, quotaManager, lm5, networkMonitor)
+        val vm = HomeViewModel(repository, prefs, api, profileChangeBus, profileContextManager, quotaManager, lm5, mockk(relaxed = true), networkMonitor)
 
         vm.uiState.test {
             assertTrue(awaitItem().isUnlimited)

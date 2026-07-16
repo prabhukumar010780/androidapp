@@ -65,6 +65,7 @@ class NotificationsViewModel @Inject constructor(
                 val pageSize = _uiState.value.pageSize
                 val response = api.listNotifications(email, page = 1, pageSize = pageSize)
                 val unread = api.getUnreadCount(email)
+                syncBadge(unread.count)
                 _uiState.update {
                     it.copy(
                         notifications = response.notifications,
@@ -112,12 +113,31 @@ class NotificationsViewModel @Inject constructor(
 
     fun refresh() = loadNotifications()
 
+    /**
+     * iOS parity (NotificationInboxService.syncBadge → UNUserNotificationCenter.setBadgeCount):
+     * reflect the server-side unread count on the launcher icon after fetch / markRead /
+     * markAllRead.
+     *
+     * PLATFORM LIMITATION: Android has no universal launcher-badge API equivalent to iOS's
+     * setBadgeCount. Launchers only badge from active OS notifications (or via OEM-specific
+     * libraries like ShortcutBadger, which this app deliberately avoids per the zero-3rd-party
+     * rule). A silent summary notification carrying setNumber() would render a badge on some
+     * launchers but would also show an intrusive notification for a purely-read state change,
+     * so we do NOT do that. The unread count is surfaced in the in-app header instead. This
+     * hook is retained as the single documented sync point should a launcher-badge strategy
+     * be adopted later.
+     */
+    private fun syncBadge(unreadCount: Int) {
+        // Intentionally a no-op — see the platform-limitation note above.
+    }
+
     fun markAllRead() {
         viewModelScope.launch {
             val email = prefs.getUserEmail() ?: return@launch
             try {
                 api.markAllRead(email)
                 val now = nowIso8601()
+                syncBadge(0)
                 _uiState.update { state ->
                     state.copy(
                         unreadCount = 0,
@@ -147,6 +167,7 @@ class NotificationsViewModel @Inject constructor(
                         } else it
                     }
                     val unread = updated.count { !it.isRead }
+                    syncBadge(unread)
                     state.copy(notifications = updated, unreadCount = unread)
                 }
             } catch (_: Exception) {

@@ -96,6 +96,7 @@ class HomeViewModel @Inject constructor(
     private val profileContextManager: ProfileContextManager,
     private val quotaManager: QuotaManager,
     private val localeManager: LocaleManager,
+    @dagger.hilt.android.qualifiers.ApplicationContext private val appContext: android.content.Context,
     networkMonitor: NetworkMonitor,
 ) : ViewModel() {
 
@@ -473,9 +474,11 @@ class HomeViewModel @Inject constructor(
         val brief = _uiState.value.briefLifeArea ?: return
         _uiState.update { it.copy(briefLifeArea = null) }
         val text = brief.briefDescription.ifBlank { brief.name }
+        // iOS parity (HomeView.swift:244-247 context_life_area_question).
         askDestiny(
-            "Today's forecast mentions: '$text' for my ${brief.name}. " +
-                "Can you elaborate on what this means for me?"
+            appContext.getString(
+                com.destinyai.astrology.R.string.context_life_area_question_android, text, brief.name,
+            )
         )
     }
 
@@ -510,23 +513,16 @@ class HomeViewModel @Inject constructor(
     }
 
     fun onTransitTapped(transit: HomeTransit) {
-        val prompt = buildString {
-            append(transit.planet)
-            append(" is currently transiting through ")
-            append(transit.sign)
-            if (transit.house > 0) {
-                append(" in my ")
-                append(transit.house)
-                append("th house")
-            }
-            append(".")
-            if (transit.description.isNotBlank()) {
-                append(" The key indication is: '")
-                append(transit.description)
-                append("'.")
-            }
-            append("\n\nPlease share deeper insights on how this transit influences my life and any practical guidance for this period.")
-        }
+        // iOS parity (HomeView.swift:210-212 context_transit_question): compose the
+        // card→chat prompt from the localized format string so a non-English user's
+        // tapped-card question is worded in their language.
+        val prompt = appContext.getString(
+            com.destinyai.astrology.R.string.context_transit_question_android,
+            transit.planet,
+            transit.sign,
+            transit.house.coerceAtLeast(0),
+            transit.description,
+        )
         askDestiny(prompt)
     }
 
@@ -535,34 +531,25 @@ class HomeViewModel @Inject constructor(
         val theme = dasha.theme.orEmpty()
         val quality = dasha.quality.orEmpty()
         val meaning = dasha.meaning.orEmpty()
-        // Parity with iOS HomeView.swift:187-199 context_dasha_question — composes
-        // {period, theme, quality, meaning} into a rich contextual prompt so the chat
-        // agent has full dasha context, not just a generic "tell me about my dasha".
-        val prompt = buildString {
-            append("I am currently in my ")
+        // iOS parity (HomeView.swift:187-199 context_dasha_question): compose {period,
+        // theme, quality, meaning} into the localized format string so the tapped-card
+        // question is worded in the user's language.
+        val period = buildString {
             append(dasha.mahadasha)
             if (dasha.antardasha.isNotBlank()) {
                 append("-")
                 append(dasha.antardasha)
             }
-            append(" Dasha period")
-            if (theme.isNotBlank()) {
-                append(", which carries a theme of '")
-                append(theme)
-                append("'")
-            }
-            if (quality.isNotBlank()) {
-                append(" with a '")
-                append(quality)
-                append("' overall quality")
-            }
-            append(".")
-            if (meaning.isNotBlank()) {
-                append(" This phase suggests: ")
-                append(meaning)
-            }
-            append("\n\nPlease provide a detailed analysis of how this Dasha period shapes my life, what opportunities or challenges to expect, and any recommended remedies.")
         }
+        val phaseSuggests = if (meaning.isNotBlank()) {
+            appContext.getString(
+                com.destinyai.astrology.R.string.context_dasha_phase_suggests_android, meaning,
+            )
+        } else ""
+        val prompt = appContext.getString(
+            com.destinyai.astrology.R.string.context_dasha_question_android,
+            period, theme, quality, phaseSuggests,
+        )
         askDestiny(prompt)
     }
 
@@ -585,37 +572,37 @@ class HomeViewModel @Inject constructor(
             else -> if (yoga.isActive) "Active" else "Inactive"
         }
         val parts = mutableListOf<String>()
-        parts += "I have ${yoga.name} in my birth chart."
+        fun s(id: Int, vararg args: Any) = appContext.getString(id, *args)
+        parts += s(com.destinyai.astrology.R.string.yoga_context_intro_android, yoga.name)
         parts += ""
-        parts += "Details:"
-        parts += "- Type: $typeText"
-        parts += "- Category: ${yoga.category}"
-        parts += "- Status: $statusText"
-        if (yoga.strength > 0) parts += "- Strength: ${yoga.strength}%"
-        if (yoga.planets.isNotBlank()) parts += "- Planets: ${yoga.planets}"
-        if (yoga.houses.isNotBlank()) parts += "- Houses: ${yoga.houses}"
-        if (yoga.formation.isNotBlank()) parts += "- Formation: ${yoga.formation}"
-        if (yoga.outcome.isNotBlank()) parts += "- What it means: ${yoga.outcome}"
+        parts += s(com.destinyai.astrology.R.string.yoga_context_details_header_android)
+        parts += s(com.destinyai.astrology.R.string.yoga_context_type_android, typeText)
+        parts += s(com.destinyai.astrology.R.string.yoga_context_category_android, yoga.category)
+        parts += s(com.destinyai.astrology.R.string.yoga_context_status_android, statusText)
+        if (yoga.strength > 0) parts += s(com.destinyai.astrology.R.string.yoga_context_strength_android, yoga.strength)
+        if (yoga.planets.isNotBlank()) parts += s(com.destinyai.astrology.R.string.yoga_context_planets_android, yoga.planets)
+        if (yoga.houses.isNotBlank()) parts += s(com.destinyai.astrology.R.string.yoga_context_houses_android, yoga.houses)
+        if (yoga.formation.isNotBlank()) parts += s(com.destinyai.astrology.R.string.yoga_context_formation_android, yoga.formation)
+        if (yoga.outcome.isNotBlank()) parts += s(com.destinyai.astrology.R.string.yoga_context_outcome_android, yoga.outcome)
         if (yoga.reductionReason.isNotBlank() && !statusText.equals("Active", ignoreCase = true)) {
-            val reasonLabel = if (statusText.equals("Reduced", ignoreCase = true)) {
-                "Reduction reason"
+            parts += if (statusText.equals("Reduced", ignoreCase = true)) {
+                s(com.destinyai.astrology.R.string.yoga_context_reduction_reason_android, yoga.reductionReason)
             } else {
-                "Cancellation reason"
+                s(com.destinyai.astrology.R.string.yoga_context_cancellation_reason_android, yoga.reductionReason)
             }
-            parts += "- $reasonLabel: ${yoga.reductionReason}"
         }
         parts += ""
-        parts += "Please explain:"
-        parts += "1. What does this ${typeText.lowercase()} mean for me practically?"
+        parts += s(com.destinyai.astrology.R.string.yoga_context_explain_header_android)
+        parts += s(com.destinyai.astrology.R.string.yoga_context_q_meaning_android, typeText.lowercase())
         if (statusText.equals("Active", ignoreCase = true)) {
-            if (yoga.isDosha) {
-                parts += "2. What challenges should I prepare for, and what remedies help?"
+            parts += if (yoga.isDosha) {
+                s(com.destinyai.astrology.R.string.yoga_context_q_dosha_active_android)
             } else {
-                parts += "2. How can I best leverage this auspicious combination in my life?"
+                s(com.destinyai.astrology.R.string.yoga_context_q_yoga_active_android)
             }
         } else {
-            parts += "2. Since this is ${statusText.lowercase()}, how does that change the impact?"
-            parts += "3. Are there still any subtle effects I should be aware of?"
+            parts += s(com.destinyai.astrology.R.string.yoga_context_q_inactive_android, statusText.lowercase())
+            parts += s(com.destinyai.astrology.R.string.yoga_context_q_subtle_android)
         }
         _uiState.update { it.copy(selectedYoga = null) }
         askDestiny(parts.joinToString("\n"))

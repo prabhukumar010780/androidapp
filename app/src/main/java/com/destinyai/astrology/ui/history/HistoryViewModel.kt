@@ -120,8 +120,12 @@ data class HistoryUiState(
     val threads: List<ChatThread> = emptyList(),
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
-    // Mirrors iOS HistoryView.swift:171-190 — paged display window over the full thread list.
-    val displayedThreadCount: Int = 20,
+    // iOS parity (HistoryView paginated fetch): threads are now paged from the data
+    // layer (loadHistoryPaginated), not loaded whole and windowed in memory.
+    // displayedThreadCount tracks how many rows are currently loaded.
+    val displayedThreadCount: Int = 0,
+    // True while the data layer may still have older pages on disk.
+    val hasMoreFromDataLayer: Boolean = false,
     val searchText: String = "",
     val error: String? = null,
     // Retained only for any caller still toggling a tab; the new UI is a single
@@ -134,10 +138,12 @@ data class HistoryUiState(
     val isHistoryEnabled: Boolean = true,
 ) {
     val filteredThreads: List<ChatThread>
-        get() = matchedThreads().take(displayedThreadCount)
+        get() = matchedThreads()
 
     val hasMoreThreads: Boolean
-        get() = displayedThreadCount < matchedThreads().size
+        // When not searching, more rows may still be on disk. While searching we match
+        // only the loaded pages (iOS parity — search does not force a full disk scan).
+        get() = searchText.isBlank() && hasMoreFromDataLayer
 
     // iOS parity (HistoryViewModel.filteredGroupedItems:218-220): match a chat when
     // its title OR its last-message preview contains the query.
@@ -295,8 +301,16 @@ class HistoryViewModel @Inject constructor(
                     currentOwnerEmail = email
                     bindCompatibilityFlow(email)
                 }
-                val threads = repository.loadHistory()
-                _uiState.update { it.copy(threads = threads, isLoading = false) }
+                val threads = repository.loadHistoryPaginated(offset = 0, limit = PAGE_SIZE)
+                _uiState.update {
+                    it.copy(
+                        threads = threads,
+                        isLoading = false,
+                        displayedThreadCount = threads.size,
+                        // hasMore heuristic: a full page likely means more rows on disk.
+                        hasMoreFromDataLayer = threads.size >= PAGE_SIZE,
+                    )
+                }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message ?: "Failed to load history") }
             }
@@ -420,19 +434,26 @@ class HistoryViewModel @Inject constructor(
     }
 
     fun setSearchText(text: String) =
-        _uiState.update { it.copy(searchText = text, displayedThreadCount = 20) }
+        _uiState.update { it.copy(searchText = text) }
 
     fun loadMoreIfNeeded(currentIndex: Int) {
         val state = _uiState.value
         if (state.isLoadingMore || !state.hasMoreThreads) return
         // Trigger when within 5 items of the end (mirrors iOS HistoryView.swift:171-175).
-        if (currentIndex >= state.displayedThreadCount - 5) {
+        if (currentIndex >= state.threads.size - 5) {
             viewModelScope.launch {
                 _uiState.update { it.copy(isLoadingMore = true) }
-                kotlinx.coroutines.delay(150) // brief async tick so spinner renders
+                // iOS parity (dataManager.fetchThreadsPaginated(offset:)): fetch the next
+                // page from the data layer and append, instead of windowing an all-loaded list.
+                val next = runCatching {
+                    repository.loadHistoryPaginated(offset = state.threads.size, limit = PAGE_SIZE)
+                }.getOrDefault(emptyList())
                 _uiState.update {
+                    val merged = (it.threads + next).distinctBy { t -> t.id }
                     it.copy(
-                        displayedThreadCount = it.displayedThreadCount + 20,
+                        threads = merged,
+                        displayedThreadCount = merged.size,
+                        hasMoreFromDataLayer = next.size >= PAGE_SIZE,
                         isLoadingMore = false,
                     )
                 }
@@ -520,5 +541,10 @@ class HistoryViewModel @Inject constructor(
     private fun formatTimestamp(ms: Long): String {
         val sdf = java.text.SimpleDateFormat("MMM d, yyyy", java.util.Locale.ENGLISH)
         return sdf.format(java.util.Date(ms))
+    }
+
+    private companion object {
+        // iOS parity (HistoryView 20-thread page). Matches loadHistoryPaginated's window.
+        const val PAGE_SIZE = 20
     }
 }
