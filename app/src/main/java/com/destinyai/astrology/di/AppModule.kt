@@ -217,11 +217,30 @@ object DatabaseModule {
         }
     }
 
+    /**
+     * v5→v6: partner-profile cache completeness (Batch 5). Adds gender, birth_time_unknown,
+     * for_compatibility, guardian_consent_given, is_self, is_active, first_switched_at,
+     * timezone to partner_profiles so the offline cache is lossless (protection badges,
+     * gender, compat flags survive cold start) — iOS SwiftData parity.
+     */
+    private val MIGRATION_5_6 = object : Migration(5, 6) {
+        override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE partner_profiles ADD COLUMN gender TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE partner_profiles ADD COLUMN birth_time_unknown INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE partner_profiles ADD COLUMN for_compatibility INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE partner_profiles ADD COLUMN guardian_consent_given INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE partner_profiles ADD COLUMN is_self INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE partner_profiles ADD COLUMN is_active INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE partner_profiles ADD COLUMN first_switched_at TEXT")
+            db.execSQL("ALTER TABLE partner_profiles ADD COLUMN timezone REAL")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideAppDatabase(@ApplicationContext ctx: Context): AppDatabase =
         Room.databaseBuilder(ctx, AppDatabase::class.java, "destiny_db")
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
             .build()
 

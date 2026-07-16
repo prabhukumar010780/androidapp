@@ -51,6 +51,16 @@ data class PartnerProfileEntity(
     @ColumnInfo(name = "city_of_birth") val cityOfBirth: String,
     @ColumnInfo(name = "latitude") val latitude: Double,
     @ColumnInfo(name = "longitude") val longitude: Double,
+    // iOS parity (PartnerProfile.swift @Model persists the FULL record): keep the cache
+    // lossless so the offline fallback shows protection badges, gender, and compat flags.
+    @ColumnInfo(name = "gender") val gender: String = "",
+    @ColumnInfo(name = "birth_time_unknown") val birthTimeUnknown: Boolean = false,
+    @ColumnInfo(name = "for_compatibility") val forCompatibility: Boolean = false,
+    @ColumnInfo(name = "guardian_consent_given") val guardianConsentGiven: Boolean = false,
+    @ColumnInfo(name = "is_self") val isSelf: Boolean = false,
+    @ColumnInfo(name = "is_active") val isActive: Boolean = false,
+    @ColumnInfo(name = "first_switched_at") val firstSwitchedAt: String? = null,
+    @ColumnInfo(name = "timezone") val timezone: Double? = null,
 )
 
 @Entity(tableName = "compatibility_history")
@@ -294,7 +304,7 @@ interface AstroDataCacheDao {
         CompatibilityHistoryEntity::class,
         AstroDataCacheEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {

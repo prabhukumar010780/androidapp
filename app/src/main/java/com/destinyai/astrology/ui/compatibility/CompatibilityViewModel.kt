@@ -89,6 +89,9 @@ class CompatibilityViewModel @Inject constructor(
     private val prefs: UserPreferences,
     private val compatibilityRepo: CompatibilityRepository,
     private val historyDao: CompatibilityHistoryDao,
+    // iOS parity (PartnerPickerSheet falls back to local SwiftData offline): read the
+    // partner Room cache when the network list fails so the picker isn't empty offline.
+    private val partnerDao: com.destinyai.astrology.data.local.db.PartnerDao,
     private val chatRepository: com.destinyai.astrology.data.repository.ChatRepository,
     // iOS parity (ChatView.swift signOutAndReauth): used by requestSignInFromQuota
     // to perform a partial sign-out so AuthScreen routes to login UI without
@@ -380,9 +383,39 @@ class CompatibilityViewModel @Inject constructor(
             val email = personAEmail ?: prefs.getUserEmail() ?: return@launch
             _isSavedPartnersLoading.value = true
             try {
-                _savedPartners.value = api.listPartners(email)
+                val list = api.listPartners(email)
+                _savedPartners.value = list
+                // Refresh the local cache so a later offline open still shows partners.
+                runCatching {
+                    list.forEach { p ->
+                        partnerDao.insertOrReplace(
+                            com.destinyai.astrology.data.local.db.PartnerProfileEntity(
+                                id = p.id, ownerEmail = email, name = p.name,
+                                dateOfBirth = p.dateOfBirth ?: "", timeOfBirth = p.timeOfBirth ?: "",
+                                cityOfBirth = p.cityOfBirth ?: "", latitude = p.latitude ?: 0.0,
+                                longitude = p.longitude ?: 0.0, gender = p.gender,
+                                birthTimeUnknown = p.birthTimeUnknown, forCompatibility = p.forCompatibility,
+                                guardianConsentGiven = p.guardianConsentGiven, isSelf = p.isSelf,
+                                isActive = p.isActive, firstSwitchedAt = p.firstSwitchedAt, timezone = p.timezone,
+                            ),
+                        )
+                    }
+                }
             } catch (_: Exception) {
-                // Silently fail — empty list shown
+                // iOS parity: offline fallback to the local partner cache instead of empty.
+                _savedPartners.value = runCatching {
+                    partnerDao.getPartnersForUser(email).map { e ->
+                        com.destinyai.astrology.data.remote.PartnerDto(
+                            id = e.id, name = e.name, gender = e.gender,
+                            dateOfBirth = e.dateOfBirth, timeOfBirth = e.timeOfBirth.takeIf { it.isNotBlank() },
+                            cityOfBirth = e.cityOfBirth.takeIf { it.isNotBlank() },
+                            latitude = e.latitude, longitude = e.longitude, timezone = e.timezone,
+                            birthTimeUnknown = e.birthTimeUnknown, forCompatibility = e.forCompatibility,
+                            guardianConsentGiven = e.guardianConsentGiven, isSelf = e.isSelf,
+                            isActive = e.isActive, firstSwitchedAt = e.firstSwitchedAt,
+                        )
+                    }
+                }.getOrDefault(emptyList())
             } finally {
                 _isSavedPartnersLoading.value = false
             }

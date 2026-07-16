@@ -141,14 +141,23 @@ class PartnersViewModel @Inject constructor(
     private suspend fun loadFromCache(email: String): List<PartnerDto> {
         return try {
             partnerDao.getPartnersForUser(email).map { e ->
+                // iOS parity: lossless cache so offline shows protection/gender/compat flags.
                 PartnerDto(
                     id = e.id,
                     name = e.name,
+                    gender = e.gender,
                     dateOfBirth = e.dateOfBirth,
                     timeOfBirth = e.timeOfBirth.takeIf { it.isNotBlank() },
                     cityOfBirth = e.cityOfBirth.takeIf { it.isNotBlank() },
                     latitude = e.latitude,
                     longitude = e.longitude,
+                    timezone = e.timezone,
+                    birthTimeUnknown = e.birthTimeUnknown,
+                    forCompatibility = e.forCompatibility,
+                    guardianConsentGiven = e.guardianConsentGiven,
+                    isSelf = e.isSelf,
+                    isActive = e.isActive,
+                    firstSwitchedAt = e.firstSwitchedAt,
                 )
             }
         } catch (e: Exception) {
@@ -169,6 +178,14 @@ class PartnersViewModel @Inject constructor(
                         cityOfBirth = p.cityOfBirth ?: "",
                         latitude = p.latitude ?: 0.0,
                         longitude = p.longitude ?: 0.0,
+                        gender = p.gender,
+                        birthTimeUnknown = p.birthTimeUnknown,
+                        forCompatibility = p.forCompatibility,
+                        guardianConsentGiven = p.guardianConsentGiven,
+                        isSelf = p.isSelf,
+                        isActive = p.isActive,
+                        firstSwitchedAt = p.firstSwitchedAt,
+                        timezone = p.timezone,
                     ),
                 )
             }
