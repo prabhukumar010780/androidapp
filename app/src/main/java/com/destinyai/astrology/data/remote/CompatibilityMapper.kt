@@ -457,10 +457,18 @@ fun mapCompatibilityResponse(
     val kalsarpaBoy = parseKalsarpa(analysisData.optObj("boy"))
     val kalsarpaGirl = parseKalsarpa(analysisData.optObj("girl"))
 
+    // iOS parity (SupportModels.swift:293-323 ComparisonIndicators): the crisp AI
+    // one-liner verdict used by the multi-partner comparison overview row.
+    val oneLiner = root.optObj("comparison_indicators")
+        ?.optObj("overall_verdict")
+        ?.optStr("one_liner")
+        ?.takeIf { it.isNotEmpty() }
+
     return CompatibilityResult(
         totalScore = totalScore,
         maxScore = 36,
         kutas = kutas,
+        oneLiner = oneLiner,
         summary = llmAnalysis,
         recommendation = if (isRecommended) {
             if (totalScore >= 28) "Excellent match for marriage" else "Favorable for marriage"

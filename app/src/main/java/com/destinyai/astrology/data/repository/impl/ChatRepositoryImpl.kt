@@ -400,7 +400,9 @@ class ChatRepositoryImpl @Inject constructor(
         // iOS parity (ChatViewModel.loadHistory filtered by activeProfileId): show only
         // the active profile's threads so Switch Profile isolates history.
         val activeProfile = prefs.getActiveProfileId()?.takeIf { it.isNotBlank() && it != email }
-        return threadDao.getThreadsForProfile(email, activeProfile).map { it.toDomainHydrated() }
+        return threadDao.getThreadsForProfile(email, activeProfile)
+            .filterNot { isCompatThread(it) }
+            .map { it.toDomainHydrated() }
     }
 
     override suspend fun loadHistoryPaginated(offset: Int, limit: Int): List<ChatThread> {
@@ -410,7 +412,20 @@ class ChatRepositoryImpl @Inject constructor(
         // Profile-scoped in-memory windowing over the active profile's threads.
         val activeProfile = prefs.getActiveProfileId()?.takeIf { it.isNotBlank() && it != email }
         return threadDao.getThreadsForProfile(email, activeProfile)
+            .filterNot { isCompatThread(it) }
             .drop(offset).take(limit).map { it.toDomainHydrated() }
+    }
+
+    /**
+     * iOS parity (HistoryViewModel.fetchChatItemsPage:158-179): exclude compatibility-
+     * session threads from the unified chat feed so a match appears only once (as a
+     * match row), not duplicated as a raw chat thread. Matches iOS's id-prefix +
+     * primaryArea==compatibility exclusion (title starting 'match:' is still a compat row).
+     */
+    private fun isCompatThread(t: LocalChatThreadEntity): Boolean {
+        val id = t.id.lowercase()
+        return id.startsWith("compat_sess_") || id.startsWith("compat_") || id.startsWith("conv_") ||
+            t.primaryArea?.equals("compatibility", ignoreCase = true) == true
     }
 
     override suspend fun loadThreadFollowUps(threadId: String): List<String> {

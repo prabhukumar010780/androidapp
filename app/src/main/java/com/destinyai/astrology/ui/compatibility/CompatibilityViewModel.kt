@@ -477,13 +477,23 @@ class CompatibilityViewModel @Inject constructor(
             // Also match on girlName to prevent cross-contamination when different partners
             // share the same DOB/time/city (e.g. testing with multiple people).
             val cached = _historyItems.value.firstOrNull { item ->
-                item.boyDob == profile.dateOfBirth &&
+                val forward = item.boyDob == profile.dateOfBirth &&
                     item.boyTime == profile.timeOfBirth &&
                     item.boyCity.equals(profile.cityOfBirth, ignoreCase = true) &&
                     item.girlDob == s.partnerDob &&
                     item.girlTime == s.partnerTime &&
                     item.girlCity.equals(s.partnerCity, ignoreCase = true) &&
                     item.girlName.equals(s.partnerName, ignoreCase = true)
+                // iOS parity (CompatibilityHistoryService.findMatchIndex:222-236): also match
+                // the swapped role ordering so an A-vs-B match is reused when re-entered as
+                // B-vs-A (e.g. after a profile switch) instead of re-charging a new analysis.
+                val reverse = item.girlDob == profile.dateOfBirth &&
+                    item.girlTime == profile.timeOfBirth &&
+                    item.girlCity.equals(profile.cityOfBirth, ignoreCase = true) &&
+                    item.boyDob == s.partnerDob &&
+                    item.boyTime == s.partnerTime &&
+                    item.boyCity.equals(s.partnerCity, ignoreCase = true)
+                forward || reverse
             }
             if (cached?.result != null) {
                 // Re-derive isCancelledByExceptions from mangalCompatibility so cached results
@@ -1182,6 +1192,33 @@ class CompatibilityViewModel @Inject constructor(
             val newResults = mutableListOf<ComparisonResult>()
 
             validPartners.forEachIndexed { index, partner ->
+                // iOS parity (CompatibilityViewModel.swift:701-723 findExistingMatch): reuse a
+                // cached result FREE (no LLM call) when this boy+girl pair was already analyzed.
+                val cachedItem = _historyItems.value.firstOrNull { item ->
+                    item.result != null &&
+                        item.boyDob == profile.dateOfBirth && item.boyTime == profile.timeOfBirth &&
+                        item.boyCity.equals(profile.cityOfBirth, ignoreCase = true) &&
+                        item.girlDob == partner.dob && item.girlCity.equals(partner.city, ignoreCase = true) &&
+                        item.girlName.equals(partner.name, ignoreCase = true)
+                }
+                val cachedResult = cachedItem?.result
+                if (cachedResult != null) {
+                    newResults.add(ComparisonResult(
+                        partner = partner,
+                        totalScore = cachedResult.totalScore,
+                        maxScore = cachedResult.maxScore,
+                        overallScore = cachedResult.adjustedScore ?: cachedResult.totalScore,
+                        isRecommended = cachedResult.isRecommended,
+                        adjustedScore = cachedResult.adjustedScore ?: cachedResult.totalScore,
+                        summary = cachedResult.summary,
+                        oneLiner = cachedResult.oneLiner,
+                        mangalCompatibility = cachedResult.mangalCompatibility,
+                        rejectionReasons = cachedResult.rejectionReasons,
+                    ))
+                    _comparisonResults.value = newResults.toList()
+                    runCatching { saveComparisonToHistory(cachedResult, email, profile, partner, groupId, index) }
+                    return@forEachIndexed
+                }
                 val appLanguage = prefs.getSelectedLanguage()
                 val activeProfileId = prefs.getActiveProfileId()
                 val rBoyLat = Math.round(profile.latitude * 1_000_000.0) / 1_000_000.0
@@ -1237,6 +1274,7 @@ class CompatibilityViewModel @Inject constructor(
                                     // rejection reasons so the overview footer and per-partner
                                     // Manglik row aren't empty. (one-liner verdict pending the
                                     // comparison_indicators mapper — gap 5.17.)
+                                    oneLiner = result.oneLiner,
                                     mangalCompatibility = result.mangalCompatibility,
                                     rejectionReasons = result.rejectionReasons,
                                 ))
@@ -1338,6 +1376,7 @@ class CompatibilityViewModel @Inject constructor(
                                     isRecommended = result.isRecommended,
                                     adjustedScore = result.adjustedScore ?: result.totalScore,
                                     summary = result.summary,
+                                    oneLiner = result.oneLiner,
                                     mangalCompatibility = result.mangalCompatibility,
                                     rejectionReasons = result.rejectionReasons,
                                 ))

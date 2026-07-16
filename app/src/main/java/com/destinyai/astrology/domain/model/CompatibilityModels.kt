@@ -59,6 +59,9 @@ data class CompatibilityResult(
     val totalScore: Int,
     val maxScore: Int,
     val kutas: List<KutaDetail>,
+    // iOS parity (SupportModels.swift ComparisonIndicators.overall_verdict.one_liner):
+    // crisp AI verdict for the multi-partner comparison overview row.
+    val oneLiner: String? = null,
     val summary: String,
     val recommendation: String,
     val isRecommended: Boolean,
