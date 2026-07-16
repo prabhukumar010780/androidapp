@@ -55,6 +55,8 @@ class ChatViewModelExtendedTest {
         every { prefs.responseLengthFlow } returns flowOf("standard")
         every { profileChangeBus.events } returns MutableSharedFlow()
         coEvery { prefs.getUserEmail() } returns null
+        val appStartup = mockk<com.destinyai.astrology.services.AppStartupService>(relaxed = true)
+        every { appStartup.shouldStreamFor(any()) } returns true
         viewModel = ChatViewModel(
             repository = repository,
             authRepository = mockk(relaxed = true),
@@ -63,6 +65,7 @@ class ChatViewModelExtendedTest {
             quotaManager = quotaManager,
             profileChangeBus = profileChangeBus,
             profileContextManager = mockk(relaxed = true),
+            appStartupService = appStartup,
             appContext = appContext,
         )
     }

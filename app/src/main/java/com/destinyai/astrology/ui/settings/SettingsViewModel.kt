@@ -16,7 +16,7 @@ import javax.inject.Inject
 
 data class SettingsUiState(
     val chartStyle: String = "north",
-    val responseStyle: String = "balanced",
+    val responseStyle: String = "guidance",
     val selectedLanguage: String = "en",
     val notifDailyInsight: Boolean = true,
     val notifTransits: Boolean = true,

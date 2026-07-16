@@ -745,6 +745,13 @@ data class UseFeatureResponse(
 data class AppConfigResponse(
     @SerializedName("gate_mode") val gateMode: String = "off",
     @SerializedName("allow_guest") val allowGuest: Boolean = false,
+    // iOS parity (AppConfig.swift:14-70): server-driven streaming controls. Ops can
+    // disable streaming (kill-switch), gradually roll it out by cohort %, and gate it
+    // to a minimum app version. Missing/absent → conservative defaults (streaming on,
+    // full cohort, no min version) so a stripped backend response doesn't break chat.
+    @SerializedName("streaming_enabled") val streamingEnabled: Boolean = true,
+    @SerializedName("streaming_cohort_percent") val streamingCohortPercent: Int = 100,
+    @SerializedName("streaming_min_app_version") val streamingMinAppVersion: String? = null,
 )
 
 // ── API Service Interface ─────────────────────────────────────────────────────

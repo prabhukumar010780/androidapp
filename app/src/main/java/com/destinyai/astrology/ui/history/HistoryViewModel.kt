@@ -134,17 +134,18 @@ data class HistoryUiState(
     val isHistoryEnabled: Boolean = true,
 ) {
     val filteredThreads: List<ChatThread>
-        get() {
-            val matched = if (searchText.isBlank()) threads
-            else threads.filter { it.title.contains(searchText, ignoreCase = true) }
-            return matched.take(displayedThreadCount)
-        }
+        get() = matchedThreads().take(displayedThreadCount)
 
     val hasMoreThreads: Boolean
-        get() {
-            val matched = if (searchText.isBlank()) threads
-            else threads.filter { it.title.contains(searchText, ignoreCase = true) }
-            return displayedThreadCount < matched.size
+        get() = displayedThreadCount < matchedThreads().size
+
+    // iOS parity (HistoryViewModel.filteredGroupedItems:218-220): match a chat when
+    // its title OR its last-message preview contains the query.
+    private fun matchedThreads(): List<ChatThread> =
+        if (searchText.isBlank()) threads
+        else threads.filter {
+            it.title.contains(searchText, ignoreCase = true) ||
+                it.preview.contains(searchText, ignoreCase = true)
         }
 
     /**

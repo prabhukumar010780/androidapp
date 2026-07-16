@@ -110,6 +110,7 @@ class ChatViewModel @Inject constructor(
     private val quotaManager: QuotaManager,
     private val profileChangeBus: ProfileChangeBus,
     private val profileContextManager: com.destinyai.astrology.services.ProfileContextManager,
+    private val appStartupService: com.destinyai.astrology.services.AppStartupService,
     @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
 
@@ -496,6 +497,39 @@ class ChatViewModel @Inject constructor(
 
             val assistantId = UUID.randomUUID().toString()
             var accumulated = ""
+
+            // iOS parity (AppConfig.shouldStreamFor + ChatViewModel routing): honor the
+            // server-driven streaming kill-switch / cohort / min-version gate. When
+            // streaming is disabled for this user, use the non-streaming /predict path.
+            val useStreaming = appStartupService.shouldStreamFor(prefs.getUserEmail())
+            if (!useStreaming) {
+                val result = repository.sendMessageSync(
+                    _uiState.value.sessionId ?: "", input, currentIdempotencyKey,
+                )
+                stopCosmicProgressTimer()
+                result.onSuccess { answer ->
+                    _uiState.update { s ->
+                        val msg = ChatMessage(
+                            id = assistantId,
+                            role = ChatMessage.Role.ASSISTANT,
+                            content = answer,
+                            isStreaming = false,
+                            createdAtMs = System.currentTimeMillis(),
+                        )
+                        s.copy(messages = s.messages.filterNot { it.id == assistantId } + msg, isStreaming = false)
+                    }
+                    email?.let { runCatching { quotaManager.recordFeatureUsage(QuotaManager.FeatureID.AI_QUESTIONS, it) } }
+                }.onFailure { e ->
+                    _uiState.update {
+                        it.copy(
+                            isStreaming = false,
+                            errorMessage = e.message ?: "Unable to reach the prediction service. Please try again.",
+                            interruptedQuestion = lastSentQuery,
+                        )
+                    }
+                }
+                return@launch
+            }
 
             repository.sendMessage(_uiState.value.sessionId ?: "", input, currentIdempotencyKey).collect { result ->
                 result

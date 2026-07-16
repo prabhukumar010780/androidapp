@@ -34,6 +34,7 @@ class ChatViewModelTest {
     private lateinit var quotaManager: QuotaManager
     private lateinit var profileChangeBus: ProfileChangeBus
     private lateinit var appContext: Context
+    private lateinit var appStartupService: com.destinyai.astrology.services.AppStartupService
     private lateinit var viewModel: ChatViewModel
 
     @BeforeAll
@@ -51,6 +52,9 @@ class ChatViewModelTest {
         quotaManager = mockk(relaxed = true)
         profileChangeBus = mockk(relaxed = true)
         appContext = mockk(relaxed = true)
+        appStartupService = mockk(relaxed = true)
+        // Default to the streaming path so existing streaming-path assertions hold.
+        every { appStartupService.shouldStreamFor(any()) } returns true
         // Stub the flows that ChatViewModel.init() collects; relaxed = true only returns
         // default primitives, not valid Flow instances — explicit stubs are required.
         every { repository.progressEvents } returns MutableSharedFlow()
@@ -64,7 +68,7 @@ class ChatViewModelTest {
         // append + repository.sendMessage call site can be exercised. Tests that
         // specifically exercise the quota path stub canAccessFeature directly.
         coEvery { prefs.getUserEmail() } returns null
-        viewModel = ChatViewModel(repository, authRepository, api, prefs, quotaManager, profileChangeBus, mockk(relaxed = true), appContext)
+        viewModel = ChatViewModel(repository, authRepository, api, prefs, quotaManager, profileChangeBus, mockk(relaxed = true), appStartupService, appContext)
     }
 
     // --- Init ---

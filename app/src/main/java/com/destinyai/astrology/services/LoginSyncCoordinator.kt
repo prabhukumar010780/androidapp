@@ -119,12 +119,22 @@ class LoginSyncCoordinator @Inject constructor(
             runCatching { homeRepository.getDailyInsight(birth, userEmail) }
                 .onFailure { Log.w(TAG, "prediction prefetch failed: ${it.message}", it) }
         }
+        // iOS parity (HistorySettingsManager.fetchSettingsFromServer): pull the
+        // server's history_enabled so a user who disabled history on another device /
+        // before reinstall stays disabled instead of silently re-enabling (defaults true).
+        val historySettingsSync = async {
+            runCatching {
+                val settings = api.getChatHistorySettings(userEmail)
+                prefs.setHistoryEnabled(settings.historyEnabled)
+            }.onFailure { Log.w(TAG, "history settings sync failed: ${it.message}", it) }
+        }
 
         chatSync.await()
         quotaSync.await()
         profileFetch.await()
         chartPrefetch.await()
         predictionPrefetch.await()
+        historySettingsSync.await()
         Log.d(TAG, "syncAll complete for $userEmail")
     }
 

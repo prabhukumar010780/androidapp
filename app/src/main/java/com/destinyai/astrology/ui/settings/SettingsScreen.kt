@@ -107,10 +107,14 @@ fun SettingsScreen(
 
                 CosmicSettingsSection(title = stringResource(R.string.settings_response_style_section)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // iOS parity (ResponseStyleManager ContentStyle): the ONLY valid
+                        // backend response_style tokens are "guidance" (Essentials) and
+                        // "astrology" (Complete Chart Details). Using brief/balanced/detailed
+                        // here wrote an invalid token that silently broke the backend style
+                        // resolver and clobbered the onboarding choice.
                         listOf(
-                            "brief" to stringResource(R.string.settings_response_style_brief),
-                            "balanced" to stringResource(R.string.settings_response_style_balanced),
-                            "detailed" to stringResource(R.string.settings_response_style_detailed),
+                            "guidance" to stringResource(R.string.content_style_essentials),
+                            "astrology" to stringResource(R.string.content_style_complete),
                         ).forEach { (style, label) ->
                             FilterChip(
                                 selected = state.responseStyle == style,

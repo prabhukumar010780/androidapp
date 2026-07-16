@@ -3,13 +3,24 @@ package com.destinyai.astrology
 import android.app.Application
 import android.util.Log
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
 import com.destinyai.astrology.data.billing.BillingManager
+import com.destinyai.astrology.services.AppStartupService
 import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltAndroidApp
 class DestinyApp : Application() {
     @Inject lateinit var billingManager: BillingManager
+    @Inject lateinit var appStartupService: AppStartupService
+
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()
@@ -23,5 +34,15 @@ class DestinyApp : Application() {
         // while app is in foreground. Surfaces backend webhook-driven
         // cancellations without requiring an app restart.
         runCatching { billingManager.observeAppLifecycle() }
+        // iOS parity (AppStartupService.swift:90-96, C-1 fix): refresh app config on
+        // every foreground so a gate-mode / streaming kill-switch flip propagates to an
+        // already-running app within one foreground cycle instead of on relaunch only.
+        runCatching {
+            ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
+                override fun onResume(owner: LifecycleOwner) {
+                    appScope.launch { runCatching { appStartupService.refreshConfig() } }
+                }
+            })
+        }
     }
 }
