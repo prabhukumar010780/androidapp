@@ -13,6 +13,11 @@ data class LocalChatThreadEntity(
     @ColumnInfo(name = "created_at") val createdAt: String,
     @ColumnInfo(name = "updated_at") val updatedAt: String,
     @ColumnInfo(name = "is_pinned", defaultValue = "0") val isPinned: Boolean = false,
+    // iOS parity (LocalChatThread.profileId): scope threads to the active profile so
+    // Switch Profile isolates history per profile. Null = legacy/self (owner) thread.
+    @ColumnInfo(name = "profile_id") val profileId: String? = null,
+    // iOS parity (LocalChatThread.primaryArea): drives the per-row life-area icon.
+    @ColumnInfo(name = "primary_area") val primaryArea: String? = null,
 )
 
 @Entity(tableName = "chat_messages")
@@ -22,6 +27,18 @@ data class LocalChatMessageEntity(
     @ColumnInfo(name = "role") val role: String,
     @ColumnInfo(name = "content") val content: String,
     @ColumnInfo(name = "created_at") val createdAt: String,
+    // iOS parity (LocalChatMessage) — assistant metadata persisted so a reopened
+    // thread keeps its depth layers, tool/source chips, exec pill, rating, and
+    // follow-up pills instead of degrading to plain text.
+    @ColumnInfo(name = "follow_ups") val followUps: String? = null, // JSON array of strings
+    @ColumnInfo(name = "advice") val advice: String? = null,
+    @ColumnInfo(name = "timing") val timing: String? = null,
+    @ColumnInfo(name = "tool_calls") val toolCalls: String? = null, // JSON array of strings
+    @ColumnInfo(name = "sources") val sources: String? = null, // JSON array of strings
+    @ColumnInfo(name = "execution_time_ms") val executionTimeMs: Double? = null,
+    @ColumnInfo(name = "trace_id") val traceId: String? = null,
+    @ColumnInfo(name = "area") val area: String? = null,
+    @ColumnInfo(name = "rating") val rating: Int? = null,
 )
 
 @Entity(tableName = "partner_profiles")
@@ -83,6 +100,16 @@ interface ChatThreadDao {
     @Query("SELECT * FROM chat_threads WHERE owner_email = :ownerEmail ORDER BY is_pinned DESC, updated_at DESC")
     suspend fun getThreadsForUser(ownerEmail: String): List<LocalChatThreadEntity>
 
+    // iOS parity (ChatViewModel.loadHistory filtered by activeProfileId): scope the
+    // feed to the active profile. profile_id IS NULL rows are legacy/self threads and
+    // surface only when the self profile (profileId == null or == owner) is active.
+    @Query(
+        "SELECT * FROM chat_threads WHERE owner_email = :ownerEmail AND " +
+            "(profile_id = :profileId OR (:profileId IS NULL AND profile_id IS NULL)) " +
+            "ORDER BY is_pinned DESC, updated_at DESC",
+    )
+    suspend fun getThreadsForProfile(ownerEmail: String, profileId: String?): List<LocalChatThreadEntity>
+
     // Paginated query mirroring iOS dataManager.fetchChatThreadsPaginated (ChatView.swift:512-644).
     // Use offset/limit for incremental load-more from the history sheet.
     @Query("SELECT * FROM chat_threads WHERE owner_email = :ownerEmail ORDER BY is_pinned DESC, updated_at DESC LIMIT :limit OFFSET :offset")
@@ -93,6 +120,11 @@ interface ChatThreadDao {
 
     @Query("UPDATE chat_threads SET is_pinned = :pinned WHERE id = :threadId")
     suspend fun setPin(threadId: String, pinned: Boolean)
+
+    // iOS parity (LocalChatThread.primaryArea): tag the thread's dominant life area
+    // so the History row shows the matching icon.
+    @Query("UPDATE chat_threads SET primary_area = :area WHERE id = :threadId")
+    suspend fun setPrimaryArea(threadId: String, area: String)
 
     @Query("DELETE FROM chat_threads WHERE id = :threadId")
     suspend fun delete(threadId: String)
@@ -139,6 +171,16 @@ interface ChatMessageDao {
 
     @Query("SELECT content FROM chat_messages WHERE thread_id = :threadId ORDER BY created_at DESC LIMIT 1")
     suspend fun latestMessageContent(threadId: String): String?
+
+    // iOS parity (ChatViewModel.loadThread rehydrates follow-up pills from the last
+    // assistant message): fetch its persisted follow_ups JSON.
+    @Query("SELECT follow_ups FROM chat_messages WHERE thread_id = :threadId AND role = 'assistant' ORDER BY created_at DESC LIMIT 1")
+    suspend fun latestAssistantFollowUps(threadId: String): String?
+
+    // iOS parity (ChatViewModel.submitRating persists rating locally): update the
+    // stored rating so filled stars survive a thread reopen.
+    @Query("UPDATE chat_messages SET rating = :rating WHERE id = :messageId")
+    suspend fun updateRating(messageId: String, rating: Int)
 }
 
 @Dao
@@ -252,7 +294,7 @@ interface AstroDataCacheDao {
         CompatibilityHistoryEntity::class,
         AstroDataCacheEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {

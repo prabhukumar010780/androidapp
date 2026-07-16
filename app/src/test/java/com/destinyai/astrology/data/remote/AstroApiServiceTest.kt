@@ -152,7 +152,7 @@ class AstroApiServiceTest {
             .setBody("""{"content":"Your Sun is in Cancer...","prediction_id":"pred_001"}""")
             .addHeader("Content-Type", "application/json"))
 
-        service.predict(PredictRequest(
+        service.predict(null, PredictRequest(
             query = "What is my sun sign?",
             userEmail = "u@x.com",
             birthData = PredictBirthDataDto(
@@ -177,7 +177,7 @@ class AstroApiServiceTest {
             .setBody("""{"content":"Saturn is in your 7th house...","prediction_id":"pred_002"}""")
             .addHeader("Content-Type", "application/json"))
 
-        val resp = service.predict(PredictRequest(
+        val resp = service.predict(null, PredictRequest(
             query = "Tell me about Saturn",
             userEmail = "u@x.com",
             birthData = PredictBirthDataDto(dob = "1980-07-01", time = "06:32", cityOfBirth = "Bhilai", latitude = 21.21, longitude = 81.39),

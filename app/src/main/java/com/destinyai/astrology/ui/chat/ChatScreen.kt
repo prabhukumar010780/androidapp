@@ -342,6 +342,7 @@ fun ChatScreen(
                 onSend = viewModel::sendMessage,
                 canSend = state.canSend,
                 isLoading = state.isLoading || state.isStreaming,
+                onStop = viewModel::stopGeneration,
                 onStyleTap = { showResponseLengthSheet = true },
                 // Mirrors iOS ChatView.swift:407-409 — when the input bar gains focus, scroll
                 // to the latest message after a 300ms delay so the keyboard animation completes
@@ -1352,6 +1353,7 @@ private fun ChatInputBar(
     onSend: () -> Unit,
     canSend: Boolean,
     isLoading: Boolean,
+    onStop: () -> Unit = {},
     onStyleTap: () -> Unit = {},
     onInputFocusChanged: (Boolean) -> Unit = {},
 ) {
@@ -1445,19 +1447,24 @@ private fun ChatInputBar(
                 )
             }
 
-            // Send / loading button (right inside pill)
+            // Send / stop button (right inside pill). While a generation is in flight
+            // we show a Stop button (iOS ChatInputBar.swift:47-56 chat_stop_button) so
+            // the user can cancel instead of waiting on a non-interactive spinner.
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .semantics { contentDescription = "send_button" },
+                    .semantics { contentDescription = if (isLoading) "chat_stop_button" else "send_button" },
                 contentAlignment = Alignment.Center,
             ) {
                 if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        color = Gold,
-                        strokeWidth = 2.dp,
-                    )
+                    IconButton(onClick = onStop) {
+                        Icon(
+                            Icons.Filled.Stop,
+                            contentDescription = null,
+                            tint = Gold,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
                 } else {
                     IconButton(onClick = dismissAndSend, enabled = canSend) {
                         // Issue 3 — spring-animate icon tint between canSend transitions

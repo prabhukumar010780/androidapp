@@ -912,6 +912,7 @@ class CompatibilityViewModel @Inject constructor(
         val startMs = System.currentTimeMillis()
         try {
             val predictResponse = api.predict(
+                java.util.UUID.randomUUID().toString(),
                 PredictRequest(
                     query = redirectQuery ?: "Give a brief individual astrology reading",
                     userEmail = email,

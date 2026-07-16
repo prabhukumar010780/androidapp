@@ -13,6 +13,7 @@ import com.destinyai.astrology.data.repository.ChatStreamEvent
 import com.destinyai.astrology.domain.model.ChatMessage
 import com.destinyai.astrology.domain.model.ChatThread
 import com.destinyai.astrology.ui.chat.DailyLimitException
+import com.destinyai.astrology.ui.chat.BackpressureException
 import com.destinyai.astrology.ui.chat.GuestLimitException
 import com.destinyai.astrology.ui.chat.UpgradeRequiredException
 import com.google.gson.JsonObject
@@ -41,7 +42,18 @@ class ChatRepositoryImpl @Inject constructor(
     private val _progressEvents = MutableSharedFlow<ChatStreamEvent>(extraBufferCapacity = 32)
     override val progressEvents: SharedFlow<ChatStreamEvent> = _progressEvents.asSharedFlow()
 
-    override suspend fun sendMessage(sessionId: String, text: String): Flow<Result<String>> = flow {
+    // iOS parity (ChatViewModel.capPersistedContent / ChatHistorySyncService): cap
+    // persisted message bodies at 64KB (UTF-8) to protect the markdown renderer from
+    // a runaway/oversized backend response.
+    private fun capPersistedContent(s: String): String {
+        val maxBytes = 64 * 1024
+        val bytes = s.toByteArray(Charsets.UTF_8)
+        if (bytes.size <= maxBytes) return s
+        // Truncate on a UTF-8 char boundary.
+        return String(bytes.copyOf(maxBytes), Charsets.UTF_8)
+    }
+
+    override suspend fun sendMessage(sessionId: String, text: String, idempotencyKey: String?): Flow<Result<String>> = flow {
         val email = prefs.getUserEmail() ?: run {
             emit(Result.failure(IllegalStateException("No user email")))
             return@flow
@@ -76,6 +88,9 @@ class ChatRepositoryImpl @Inject constructor(
                         createdAt = java.time.Instant.now().toString(),
                         updatedAt = java.time.Instant.now().toString(),
                         isPinned = false,
+                        // iOS parity (LocalChatThread.profileId): scope to the active
+                        // profile so Switch Profile isolates history. Null when self is active.
+                        profileId = prefs.getActiveProfileId()?.takeIf { it.isNotBlank() && it != email },
                     ),
                 )
                 messageDao.insert(
@@ -83,14 +98,19 @@ class ChatRepositoryImpl @Inject constructor(
                         id = java.util.UUID.randomUUID().toString(),
                         threadId = sessionId,
                         role = "user",
-                        content = text,
+                        content = capPersistedContent(text),
                         createdAt = java.time.Instant.now().toString(),
                     ),
                 )
             }
         }
         try {
+            // iOS parity (StreamingPredictionService.swift:52-71): per-send idempotency
+            // key so a post-completion retry replays the cached answer instead of
+            // re-charging quota. The VM passes the same key to the sync fallback.
+            val effectiveKey = idempotencyKey ?: java.util.UUID.randomUUID().toString()
             val body = streamingApi.streamPredict(
+                effectiveKey,
                 PredictRequest(
                     query = text,
                     userEmail = email,
@@ -114,6 +134,9 @@ class ChatRepositoryImpl @Inject constructor(
             body.byteStream().bufferedReader().use { reader ->
                 var line: String?
                 var currentEvent = ""
+                // iOS parity: when per-token frames streamed, the terminal `answer`
+                // event is metadata-only — don't re-emit the whole text as a chunk.
+                var sawToken = false
                 while (reader.readLine().also { line = it } != null) {
                     val raw = line ?: continue
                     when {
@@ -164,63 +187,101 @@ class ChatRepositoryImpl @Inject constructor(
                                         )
                                     )
                                 }
+                                "token" -> {
+                                    // iOS parity (StreamingPredictionService .token event): emit each
+                                    // token chunk incrementally so the answer grows token-by-token.
+                                    // The terminal `answer` event is used only for reconciliation +
+                                    // metadata (it must NOT re-emit the whole text as a chunk).
+                                    val chunk = json?.get("content")?.takeIf { !it.isJsonNull }?.asString
+                                        ?: json?.get("token")?.takeIf { !it.isJsonNull }?.asString
+                                        ?: ""
+                                    if (chunk.isNotEmpty()) {
+                                        sawToken = true
+                                        emit(Result.success(chunk))
+                                    }
+                                }
+                                "backpressure" -> {
+                                    // iOS parity (StreamingPredictionService.swift:292-297): server is
+                                    // shedding load. Signal the VM to transparently replay via the
+                                    // non-streaming /predict endpoint.
+                                    val retryAfter = json?.get("retry_after_seconds")?.takeIf { !it.isJsonNull }
+                                        ?.let { v -> runCatching { v.asInt }.getOrNull() } ?: 0
+                                    emit(Result.failure(BackpressureException(retryAfter)))
+                                    return@flow
+                                }
                                 "final_answer" -> json?.let {
                                     val content = it.get("content")?.takeIf { e -> !e.isJsonNull }?.asString ?: ""
                                     _progressEvents.emit(ChatStreamEvent.FinalAnswer(content))
                                 }
                                 "answer" -> {
                                     val answer = json?.get("answer")?.takeIf { !it.isJsonNull }?.asString ?: data
-                                    if (answer.isNotBlank()) emit(Result.success(answer))
+                                    // If per-token frames already streamed the text, don't re-emit
+                                    // the whole answer (it would duplicate/replace the reveal). Only
+                                    // emit here when no tokens arrived (single-blob backends).
+                                    if (answer.isNotBlank() && !sawToken) emit(Result.success(answer))
                                     // iOS treats terminal answer event as the structured PredictionResponse:
                                     // surface follow_up_suggestions so the FollowUpSuggestionsView can render them.
                                     val suggestionsArr = json?.get("follow_up_suggestions")?.takeIf { !it.isJsonNull }?.asJsonArray
-                                    if (suggestionsArr != null) {
-                                        val list = suggestionsArr.mapNotNull { e -> runCatching { e.asString }.getOrNull() }
-                                        if (list.isNotEmpty()) {
-                                            _progressEvents.emit(ChatStreamEvent.FollowUpSuggestions(list))
-                                        }
+                                    val followUps = suggestionsArr?.mapNotNull { e -> runCatching { e.asString }.getOrNull() } ?: emptyList()
+                                    if (followUps.isNotEmpty()) {
+                                        _progressEvents.emit(ChatStreamEvent.FollowUpSuggestions(followUps))
                                     }
-                                    // Mirrors iOS PredictionResponse → LocalChatMessage hydration (ChatViewModel.swift
-                                    // ~290): tool_calls / sources / advice / execution_time_ms / trace_id are surfaced
-                                    // via a Metadata event so the VM can patch the assistant ChatMessage.
-                                    if (json != null) {
-                                        val toolsArr = json.get("tool_calls")?.takeIf { !it.isJsonNull }?.asJsonArray
-                                        val tools = toolsArr?.mapNotNull { e -> runCatching { e.asString }.getOrNull() } ?: emptyList()
-                                        val sourcesArr = json.get("sources")?.takeIf { !it.isJsonNull }?.asJsonArray
-                                        val sources = sourcesArr?.mapNotNull { e -> runCatching { e.asString }.getOrNull() } ?: emptyList()
-                                        val advice = json.get("advice")?.takeIf { !it.isJsonNull }?.asString
-                                        val timing = json.get("timing")?.takeIf { !it.isJsonNull }?.asString
-                                        val execMs = json.get("execution_time_ms")?.takeIf { !it.isJsonNull }
-                                            ?.let { runCatching { it.asDouble }.getOrNull() } ?: 0.0
-                                        val traceId = json.get("trace_id")?.takeIf { !it.isJsonNull }?.asString
-                                            ?: json.get("prediction_id")?.takeIf { !it.isJsonNull }?.asString
-                                        if (tools.isNotEmpty() || sources.isNotEmpty() || !advice.isNullOrBlank() ||
-                                            !timing.isNullOrBlank() || execMs > 0.0 || !traceId.isNullOrBlank()) {
-                                            _progressEvents.emit(
-                                                ChatStreamEvent.Metadata(
-                                                    toolCalls = tools,
-                                                    sources = sources,
-                                                    advice = advice,
-                                                    timing = timing,
-                                                    executionTimeMs = execMs,
-                                                    traceId = traceId,
-                                                ),
-                                            )
-                                        }
+                                    // Mirrors iOS PredictionResponse → LocalChatMessage hydration: tool_calls /
+                                    // sources / advice / timing / execution_time_ms / trace_id / area surfaced via
+                                    // a Metadata event AND persisted on the assistant row so a reopened thread
+                                    // keeps its depth layers, chips, exec pill, and rating binding.
+                                    val toolsArr = json?.get("tool_calls")?.takeIf { !it.isJsonNull }?.asJsonArray
+                                    val tools = toolsArr?.mapNotNull { e -> runCatching { e.asString }.getOrNull() } ?: emptyList()
+                                    val sourcesArr = json?.get("sources")?.takeIf { !it.isJsonNull }?.asJsonArray
+                                    val sources = sourcesArr?.mapNotNull { e -> runCatching { e.asString }.getOrNull() } ?: emptyList()
+                                    val advice = json?.get("advice")?.takeIf { !it.isJsonNull }?.asString
+                                    val timing = json?.get("timing")?.takeIf { !it.isJsonNull }?.asString
+                                    val execMs = json?.get("execution_time_ms")?.takeIf { !it.isJsonNull }
+                                        ?.let { runCatching { it.asDouble }.getOrNull() } ?: 0.0
+                                    val traceId = json?.get("trace_id")?.takeIf { !it.isJsonNull }?.asString
+                                        ?: json?.get("prediction_id")?.takeIf { !it.isJsonNull }?.asString
+                                    val area = json?.get("life_area")?.takeIf { !it.isJsonNull }?.asString
+                                        ?: json?.get("area")?.takeIf { !it.isJsonNull }?.asString
+                                    if (tools.isNotEmpty() || sources.isNotEmpty() || !advice.isNullOrBlank() ||
+                                        !timing.isNullOrBlank() || execMs > 0.0 || !traceId.isNullOrBlank()) {
+                                        _progressEvents.emit(
+                                            ChatStreamEvent.Metadata(
+                                                toolCalls = tools,
+                                                sources = sources,
+                                                advice = advice,
+                                                timing = timing,
+                                                executionTimeMs = execMs,
+                                                traceId = traceId,
+                                            ),
+                                        )
                                     }
-                                    // Persist assistant message locally for history (iOS parity).
+                                    // Persist assistant message + metadata locally for history (iOS parity).
                                     // Gated on isHistoryEnabled (mirrors iOS ChatViewModel:311, 448).
                                     if (answer.isNotBlank() && historyEnabled) {
+                                        val gson = com.google.gson.Gson()
                                         runCatching {
                                             messageDao.insert(
                                                 LocalChatMessageEntity(
                                                     id = java.util.UUID.randomUUID().toString(),
                                                     threadId = sessionId,
                                                     role = "assistant",
-                                                    content = answer,
+                                                    content = capPersistedContent(answer),
                                                     createdAt = java.time.Instant.now().toString(),
+                                                    followUps = followUps.takeIf { it.isNotEmpty() }?.let { gson.toJson(it) },
+                                                    advice = advice,
+                                                    timing = timing,
+                                                    toolCalls = tools.takeIf { it.isNotEmpty() }?.let { gson.toJson(it) },
+                                                    sources = sources.takeIf { it.isNotEmpty() }?.let { gson.toJson(it) },
+                                                    executionTimeMs = execMs.takeIf { it > 0.0 },
+                                                    traceId = traceId,
+                                                    area = area,
                                                 ),
                                             )
+                                            // iOS parity (LocalChatThread.primaryArea): tag the thread's area
+                                            // for the History row icon.
+                                            if (!area.isNullOrBlank()) {
+                                                runCatching { threadDao.setPrimaryArea(sessionId, area) }
+                                            }
                                         }
                                     }
                                 }
@@ -277,18 +338,86 @@ class ChatRepositoryImpl @Inject constructor(
     // on Main and trips StrictMode's NetworkOnMainThreadException, killing the stream
     // before any chunk reaches the UI ("Unable to reach the prediction service").
 
+    override suspend fun sendMessageSync(
+        sessionId: String,
+        text: String,
+        idempotencyKey: String?,
+    ): Result<String> = runCatching {
+        val email = prefs.getUserEmail() ?: throw IllegalStateException("No user email")
+        val birthProfile = profileContextManager.activeBirthData()
+            ?: throw IllegalStateException("No birth profile")
+        val ayanamsa = runCatching { prefs.getAyanamsa() }.getOrDefault("lahiri")
+        val houseSystem = runCatching { prefs.getHouseSystem() }.getOrDefault("whole_sign")
+        val responseStyle = runCatching { prefs.getResponseStyle() }.getOrNull()
+        val responseLength = runCatching { prefs.getResponseLength() }.getOrNull()
+        val language = runCatching { prefs.getSelectedLanguage() }.getOrDefault("en")
+        val historyEnabled = runCatching { prefs.isHistoryEnabled() }.getOrDefault(true)
+        val resp = api.predict(
+            idempotencyKey,
+            PredictRequest(
+                query = text,
+                userEmail = email,
+                birthData = PredictBirthDataDto(
+                    dob = birthProfile.dateOfBirth,
+                    time = birthProfile.timeOfBirth,
+                    cityOfBirth = birthProfile.cityOfBirth,
+                    latitude = birthProfile.latitude,
+                    longitude = birthProfile.longitude,
+                    ayanamsa = ayanamsa,
+                    houseSystem = houseSystem,
+                ),
+                sessionId = sessionId,
+                conversationId = sessionId,
+                language = language,
+                responseStyle = responseStyle,
+                responseLength = responseLength,
+                profileId = prefs.getActiveProfileId()?.takeIf { it.isNotBlank() && it != email },
+            ),
+        )
+        val answer = resp.text
+        if (answer.isBlank()) throw IllegalStateException("Empty prediction")
+        if (historyEnabled) {
+            runCatching {
+                messageDao.insert(
+                    LocalChatMessageEntity(
+                        id = java.util.UUID.randomUUID().toString(),
+                        threadId = sessionId,
+                        role = "assistant",
+                        content = capPersistedContent(answer),
+                        createdAt = java.time.Instant.now().toString(),
+                        traceId = resp.predictionId,
+                    ),
+                )
+            }
+        }
+        answer
+    }
+
     override suspend fun loadHistory(): List<ChatThread> {
         val email = prefs.getUserEmail() ?: return emptyList()
         // Best-effort server pull so threads created on iOS / other devices show up.
         runCatching { syncThreadsFromApi() }
-        return threadDao.getThreadsForUser(email).map { it.toDomainHydrated() }
+        // iOS parity (ChatViewModel.loadHistory filtered by activeProfileId): show only
+        // the active profile's threads so Switch Profile isolates history.
+        val activeProfile = prefs.getActiveProfileId()?.takeIf { it.isNotBlank() && it != email }
+        return threadDao.getThreadsForProfile(email, activeProfile).map { it.toDomainHydrated() }
     }
 
     override suspend fun loadHistoryPaginated(offset: Int, limit: Int): List<ChatThread> {
         val email = prefs.getUserEmail() ?: return emptyList()
         // Only sync from API on the first page so we don't repeat full pulls per page.
         if (offset == 0) runCatching { syncThreadsFromApi() }
-        return threadDao.getThreadsForUserPaginated(email, limit, offset).map { it.toDomainHydrated() }
+        // Profile-scoped in-memory windowing over the active profile's threads.
+        val activeProfile = prefs.getActiveProfileId()?.takeIf { it.isNotBlank() && it != email }
+        return threadDao.getThreadsForProfile(email, activeProfile)
+            .drop(offset).take(limit).map { it.toDomainHydrated() }
+    }
+
+    override suspend fun loadThreadFollowUps(threadId: String): List<String> {
+        val raw = runCatching { messageDao.latestAssistantFollowUps(threadId) }.getOrNull() ?: return emptyList()
+        return runCatching {
+            com.google.gson.Gson().fromJson(raw, Array<String>::class.java).toList()
+        }.getOrDefault(emptyList())
     }
 
     /**
@@ -313,6 +442,7 @@ class ChatRepositoryImpl @Inject constructor(
             isPinned = isPinned,
             updatedAtMs = updatedMs,
             messageCount = count,
+            primaryArea = primaryArea,
         )
     }
 
@@ -362,17 +492,38 @@ class ChatRepositoryImpl @Inject constructor(
     }
 
     override suspend fun loadThread(threadId: String): List<ChatMessage> {
-        return messageDao.getMessagesForThread(threadId).map { entity ->
-            ChatMessage(
-                id = entity.id,
-                role = when (entity.role) {
-                    "user" -> ChatMessage.Role.USER
-                    "assistant" -> ChatMessage.Role.ASSISTANT
-                    else -> ChatMessage.Role.SYSTEM
-                },
-                content = entity.content,
-            )
-        }
+        // iOS parity (ChatHistorySyncService.syncFromServer): pull server messages
+        // first so a thread created on another device / after reinstall opens fully
+        // populated instead of empty. Best-effort — falls through to local rows.
+        runCatching { syncThreadMessagesFromApi(threadId) }
+        return messageDao.getMessagesForThread(threadId).map { it.toDomain() }
+    }
+
+    /** Map a persisted message row to the domain model, hydrating the assistant
+     *  metadata (follow-ups, advice, timing, tools, sources, exec, trace, rating)
+     *  so a reopened thread keeps its rich rendering (iOS LocalChatMessage parity). */
+    private fun LocalChatMessageEntity.toDomain(): ChatMessage {
+        val gson = com.google.gson.Gson()
+        fun parseList(s: String?): List<String> = s?.let {
+            runCatching { gson.fromJson(it, Array<String>::class.java).toList() }.getOrNull()
+        } ?: emptyList()
+        return ChatMessage(
+            id = id,
+            role = when (role) {
+                "user" -> ChatMessage.Role.USER
+                "assistant" -> ChatMessage.Role.ASSISTANT
+                else -> ChatMessage.Role.SYSTEM
+            },
+            content = content,
+            createdAtMs = runCatching { java.time.Instant.parse(createdAt).toEpochMilli() }.getOrElse { 0L },
+            toolCalls = parseList(toolCalls),
+            sources = parseList(sources),
+            advice = advice,
+            timing = timing,
+            executionTimeMs = executionTimeMs ?: 0.0,
+            traceId = traceId,
+            rating = rating ?: 0,
+        )
     }
 
     override suspend fun setThreadPinned(threadId: String, pinned: Boolean) {
@@ -411,6 +562,10 @@ class ChatRepositoryImpl @Inject constructor(
         }.getOrElse { false }
     }
 
+    override suspend fun persistRating(messageId: String, rating: Int) {
+        runCatching { messageDao.updateRating(messageId, rating) }
+    }
+
     override suspend fun loadOlderMessages(
         threadId: String,
         beforeMs: Long,
@@ -425,19 +580,7 @@ class ChatRepositoryImpl @Inject constructor(
                     .getOrElse { true }
             }
             .takeLast(limit)
-            .map { entity ->
-                ChatMessage(
-                    id = entity.id,
-                    role = when (entity.role) {
-                        "user" -> ChatMessage.Role.USER
-                        "assistant" -> ChatMessage.Role.ASSISTANT
-                        else -> ChatMessage.Role.SYSTEM
-                    },
-                    content = entity.content,
-                    createdAtMs = runCatching { java.time.Instant.parse(entity.createdAt).toEpochMilli() }
-                        .getOrElse { 0L },
-                )
-            }
+            .map { it.toDomain() }
     }
 
     override suspend fun syncThreadsFromApi() {

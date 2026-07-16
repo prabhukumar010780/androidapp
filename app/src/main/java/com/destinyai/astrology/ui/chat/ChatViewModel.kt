@@ -94,6 +94,10 @@ class UpgradeRequiredException : Exception("upgrade_required")
 class DailyLimitException(message: String? = null) : Exception(message ?: "daily_limit_reached")
 class GuestLimitException(message: String? = null) : Exception(message ?: "overall_limit_reached")
 
+// iOS parity (StreamingPredictionService backpressure event): server is shedding
+// load. The VM catches this and transparently replays via the non-streaming endpoint.
+class BackpressureException(val retryAfterSeconds: Int = 0) : Exception("backpressure")
+
 @HiltViewModel
 class ChatViewModel @Inject constructor(
     private val repository: ChatRepository,
@@ -117,6 +121,8 @@ class ChatViewModel @Inject constructor(
     private var streamJob: Job? = null
     private var cosmicProgressJob: Job? = null
     private var lastSentQuery: String? = null
+    // iOS parity: idempotency key for the in-flight send, reused by the sync fallback.
+    private var currentIdempotencyKey: String? = null
 
     // Mirrors iOS ChatViewModel.pendingDisplayLabel (ChatView.swift:11-12,118,146):
     // when a contextual home query is opened (e.g. "Today's outlook" expands to a long
@@ -346,6 +352,7 @@ class ChatViewModel @Inject constructor(
         val input = state.inputText.trim()
         if (input.isBlank()) return
         lastSentQuery = input
+        currentIdempotencyKey = UUID.randomUUID().toString()
 
         streamJob = viewModelScope.launch {
             // Pre-flight quota check before invoking streaming prediction (mirrors iOS canAsk).
@@ -455,7 +462,7 @@ class ChatViewModel @Inject constructor(
             val assistantId = UUID.randomUUID().toString()
             var accumulated = ""
 
-            repository.sendMessage(_uiState.value.sessionId ?: "", input).collect { result ->
+            repository.sendMessage(_uiState.value.sessionId ?: "", input, currentIdempotencyKey).collect { result ->
                 result
                     .onSuccess { chunk ->
                         accumulated += chunk
@@ -475,6 +482,38 @@ class ChatViewModel @Inject constructor(
                         // Mirrors iOS quota-error mapping (StreamingPredictionService).
                         stopCosmicProgressTimer()
                         when (e) {
+                            is BackpressureException -> {
+                                // iOS parity (ChatViewModel.swift:1011-1019): server shed load —
+                                // transparently replay via the non-streaming endpoint using the
+                                // SAME idempotency key so quota isn't double-charged.
+                                val recovered = runCatching {
+                                    repository.sendMessageSync(
+                                        _uiState.value.sessionId ?: "", input, currentIdempotencyKey,
+                                    )
+                                }.getOrNull()?.getOrNull()
+                                if (!recovered.isNullOrBlank()) {
+                                    accumulated = recovered
+                                    _uiState.update { s ->
+                                        val msg = ChatMessage(
+                                            id = assistantId,
+                                            role = ChatMessage.Role.ASSISTANT,
+                                            content = recovered,
+                                            isStreaming = false,
+                                            createdAtMs = System.currentTimeMillis(),
+                                        )
+                                        s.copy(messages = s.messages.filterNot { it.id == assistantId } + msg, isStreaming = false)
+                                    }
+                                } else {
+                                    _uiState.update {
+                                        it.copy(
+                                            isStreaming = false,
+                                            errorMessage = it.errorMessage ?: "Unable to reach the prediction service. Please try again.",
+                                            interruptedQuestion = lastSentQuery,
+                                            messages = it.messages.filterNot { m -> m.id == assistantId },
+                                        )
+                                    }
+                                }
+                            }
                             is UpgradeRequiredException, is GuestLimitException -> {
                                 if (_uiState.value.isGuestUser) {
                                     _uiState.update { it.copy(isStreaming = false, showPaywall = true) }
@@ -626,7 +665,18 @@ class ChatViewModel @Inject constructor(
             // assume there are older ones still on disk/server. UI flips false after a successful
             // loadOlderMessages() returns an empty page.
             val older = messages.size >= HISTORY_PAGE_SIZE
-            _uiState.update { it.copy(activeThreadId = threadId, messages = messages, hasOlderMessages = older) }
+            // iOS parity (ChatViewModel.loadThread:351-356): rehydrate follow-up pills
+            // from the last assistant message so reopened threads keep their guided
+            // next-question affordance.
+            val followUps = runCatching { repository.loadThreadFollowUps(threadId) }.getOrDefault(emptyList())
+            _uiState.update {
+                it.copy(
+                    activeThreadId = threadId,
+                    messages = messages,
+                    hasOlderMessages = older,
+                    suggestedQuestions = followUps,
+                )
+            }
         }
     }
 
@@ -675,6 +725,8 @@ class ChatViewModel @Inject constructor(
         }
         viewModelScope.launch {
             val email = prefs.getUserEmail()
+            // iOS parity: persist the rating locally so filled stars survive reopen.
+            runCatching { repository.persistRating(messageId, rating) }
             runCatching {
                 repository.submitRating(
                     traceId = msg.traceId,
@@ -800,6 +852,22 @@ class ChatViewModel @Inject constructor(
                     messages = s.messages.filterNot { it.isStreaming },
                 )
             }
+        }
+    }
+
+    // Mirrors iOS stopGeneration/tearDownGenerationState (ChatViewModel.swift:1360-1364):
+    // user tapped the Stop button. Cancel the in-flight stream, stop the cosmic timer,
+    // scrub the empty orphan streaming bubble, finalize any partial one, reset state.
+    // Unlike background expiry, do NOT set interruptedQuestion — the user chose to stop.
+    fun stopGeneration() {
+        stopCosmicProgressTimer()
+        streamJob?.cancel()
+        streamJob = null
+        _uiState.update { s ->
+            val kept = s.messages
+                .filterNot { it.isStreaming && it.content.isBlank() }
+                .map { if (it.isStreaming) it.copy(isStreaming = false) else it }
+            s.copy(isLoading = false, isStreaming = false, messages = kept)
         }
     }
 

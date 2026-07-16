@@ -43,7 +43,16 @@ sealed class ChatStreamEvent {
 }
 
 interface ChatRepository {
-    suspend fun sendMessage(sessionId: String, text: String): Flow<Result<String>>
+    suspend fun sendMessage(sessionId: String, text: String, idempotencyKey: String? = null): Flow<Result<String>>
+
+    /**
+     * iOS parity (ChatViewModel.sendMessageSync — PredictionService.predict): the
+     * non-streaming fallback used when the SSE stream fails, closes without an
+     * answer, or the server signals backpressure. Returns the full answer once.
+     * The idempotencyKey should be the SAME key used by the failed streaming send
+     * so the server can replay a cached answer instead of re-charging quota.
+     */
+    suspend fun sendMessageSync(sessionId: String, text: String, idempotencyKey: String?): Result<String>
     suspend fun loadHistory(): List<ChatThread>
     /**
      * Paginated history load — mirrors iOS dataManager.fetchChatThreadsPaginated (ChatView.swift:512-644).
@@ -52,6 +61,14 @@ interface ChatRepository {
     suspend fun loadHistoryPaginated(offset: Int, limit: Int): List<ChatThread>
     suspend fun loadThread(threadId: String): List<ChatMessage>
     suspend fun deleteThread(threadId: String)
+
+    /**
+     * iOS parity (ChatViewModel.loadThread:351-356): the follow-up suggestion pills
+     * are rehydrated from the last assistant message when a thread is reopened.
+     * Returns the persisted follow-ups for the most-recent assistant message, or
+     * empty if none were saved.
+     */
+    suspend fun loadThreadFollowUps(threadId: String): List<String>
 
     /** Sync threads from server into local DB (best-effort). */
     suspend fun syncThreadsFromApi()
@@ -72,6 +89,12 @@ interface ChatRepository {
         responseText: String,
         rating: Int,
     ): Boolean
+
+    /**
+     * iOS parity (ChatViewModel.submitRating persists rating on LocalChatMessage):
+     * persist the star rating locally so it survives a thread reopen.
+     */
+    suspend fun persistRating(messageId: String, rating: Int)
 
     /**
      * Mirrors iOS WindowManager.loadOlderMessages — fetches the next page of

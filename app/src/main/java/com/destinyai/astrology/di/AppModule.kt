@@ -195,11 +195,33 @@ object DatabaseModule {
         }
     }
 
+    /**
+     * v4→v5: chat streaming parity (Batch 2). Adds profile_id + primary_area to
+     * chat_threads (per-profile history scope + row icons) and assistant-metadata
+     * columns to chat_messages (follow-ups, advice, timing, tools, sources, exec
+     * time, trace id, area, rating) so reopened threads keep their rich content.
+     */
+    private val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE chat_threads ADD COLUMN profile_id TEXT")
+            db.execSQL("ALTER TABLE chat_threads ADD COLUMN primary_area TEXT")
+            db.execSQL("ALTER TABLE chat_messages ADD COLUMN follow_ups TEXT")
+            db.execSQL("ALTER TABLE chat_messages ADD COLUMN advice TEXT")
+            db.execSQL("ALTER TABLE chat_messages ADD COLUMN timing TEXT")
+            db.execSQL("ALTER TABLE chat_messages ADD COLUMN tool_calls TEXT")
+            db.execSQL("ALTER TABLE chat_messages ADD COLUMN sources TEXT")
+            db.execSQL("ALTER TABLE chat_messages ADD COLUMN execution_time_ms REAL")
+            db.execSQL("ALTER TABLE chat_messages ADD COLUMN trace_id TEXT")
+            db.execSQL("ALTER TABLE chat_messages ADD COLUMN area TEXT")
+            db.execSQL("ALTER TABLE chat_messages ADD COLUMN rating INTEGER")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideAppDatabase(@ApplicationContext ctx: Context): AppDatabase =
         Room.databaseBuilder(ctx, AppDatabase::class.java, "destiny_db")
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
             .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
             .build()
 

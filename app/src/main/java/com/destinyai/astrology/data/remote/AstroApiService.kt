@@ -792,11 +792,17 @@ interface AstroApiService {
 
     // Prediction
     @POST("vedic/api/predict/")
-    suspend fun predict(@Body request: PredictRequest): PredictResponse
+    suspend fun predict(
+        @Header("Idempotency-Key") idempotencyKey: String?,
+        @Body request: PredictRequest,
+    ): PredictResponse
 
     @POST("vedic/api/predict/stream")
     @Streaming
-    suspend fun streamPredict(@Body request: PredictRequest): okhttp3.ResponseBody
+    suspend fun streamPredict(
+        @Header("Idempotency-Key") idempotencyKey: String?,
+        @Body request: PredictRequest,
+    ): okhttp3.ResponseBody
 
     // Chat History
     @GET("chat-history/threads/{userId}")

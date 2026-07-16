@@ -45,7 +45,7 @@ class ChatRepositoryImplTest {
     @Test
     fun `loadHistory returns empty list when no threads in db`() = runTest {
         coEvery { prefs.getUserEmail() } returns "u@x.com"
-        coEvery { threadDao.getThreadsForUser("u@x.com") } returns emptyList()
+        coEvery { threadDao.getThreadsForProfile("u@x.com", null) } returns emptyList()
 
         val history = repo.loadHistory()
         assertTrue(history.isEmpty())
@@ -54,7 +54,7 @@ class ChatRepositoryImplTest {
     @Test
     fun `loadHistory maps db entities to domain ChatThread`() = runTest {
         coEvery { prefs.getUserEmail() } returns "u@x.com"
-        coEvery { threadDao.getThreadsForUser("u@x.com") } returns listOf(
+        coEvery { threadDao.getThreadsForProfile("u@x.com", null) } returns listOf(
             LocalChatThreadEntity("t1", "u@x.com", "Thread 1", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z"),
             LocalChatThreadEntity("t2", "u@x.com", "Thread 2", "2026-01-02T00:00:00Z", "2026-01-02T00:00:00Z"),
         )
@@ -100,7 +100,7 @@ class ChatRepositoryImplTest {
             latitude = 21.21,
             longitude = 81.39,
         )
-        coEvery { streamingApi.streamPredict(any()) } returns
+        coEvery { streamingApi.streamPredict(any(), any()) } returns
             "event: answer\ndata: {\"answer\":\"Hello World\"}\n\nevent: done\ndata: {}\n\n"
                 .toByteArray()
                 .toResponseBody("text/event-stream".toMediaType())
@@ -114,7 +114,7 @@ class ChatRepositoryImplTest {
     fun `sendMessage emits failure on network error`() = runTest {
         coEvery { prefs.getUserEmail() } returns "u@x.com"
         coEvery { prefs.getBirthProfile() } returns mockk(relaxed = true)
-        coEvery { streamingApi.streamPredict(any()) } throws RuntimeException("network error")
+        coEvery { streamingApi.streamPredict(any(), any()) } throws RuntimeException("network error")
 
         val results = repo.sendMessage("session-x", "test").toList()
         assertTrue(results.any { it.isFailure })
@@ -134,7 +134,7 @@ class ChatRepositoryImplTest {
             latitude = 21.21,
             longitude = 81.39,
         )
-        coEvery { streamingApi.streamPredict(any()) } returns
+        coEvery { streamingApi.streamPredict(any(), any()) } returns
             ("event: error\n" +
                 "data: {\"code\":\"quota_exceeded\",\"reason\":\"user_not_found\"," +
                 "\"message\":\"Account not found\"}\n\n")
@@ -149,6 +149,38 @@ class ChatRepositoryImplTest {
             ex is UpgradeRequiredException,
             "expected UpgradeRequiredException, got ${ex?.javaClass?.simpleName}: ${ex?.message}",
         )
+    }
+
+    // ── per-token SSE + backpressure (Batch 2) ────────────────────────────────
+
+    @Test
+    fun `sendMessage emits each token chunk incrementally and not the terminal answer`() = runTest {
+        coEvery { prefs.getUserEmail() } returns "u@x.com"
+        coEvery { prefs.isHistoryEnabled() } returns false
+        coEvery { streamingApi.streamPredict(any(), any()) } returns (
+            "event: token\ndata: {\"content\":\"Hel\"}\n\n" +
+                "event: token\ndata: {\"content\":\"lo\"}\n\n" +
+                "event: answer\ndata: {\"answer\":\"Hello\"}\n\n" +
+                "event: done\ndata: {}\n\n"
+            ).toByteArray().toResponseBody("text/event-stream".toMediaType())
+
+        val chunks = repo.sendMessage("s1", "hi").toList()
+            .filter { it.isSuccess }.map { it.getOrThrow() }
+        // Two token chunks emitted; terminal answer NOT re-emitted (sawToken guard).
+        assertEquals(listOf("Hel", "lo"), chunks)
+    }
+
+    @Test
+    fun `sendMessage surfaces BackpressureException on backpressure event`() = runTest {
+        coEvery { prefs.getUserEmail() } returns "u@x.com"
+        coEvery { prefs.isHistoryEnabled() } returns false
+        coEvery { streamingApi.streamPredict(any(), any()) } returns (
+            "event: backpressure\ndata: {\"retry_after_seconds\":3}\n\n"
+            ).toByteArray().toResponseBody("text/event-stream".toMediaType())
+
+        val results = repo.sendMessage("s1", "hi").toList()
+        val ex = results.firstOrNull { it.isFailure }?.exceptionOrNull()
+        assertTrue(ex is com.destinyai.astrology.ui.chat.BackpressureException)
     }
 
     // ── deleteThread ──────────────────────────────────────────────────────────
