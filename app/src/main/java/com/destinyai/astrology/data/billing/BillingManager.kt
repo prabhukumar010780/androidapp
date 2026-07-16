@@ -20,6 +20,7 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import com.destinyai.astrology.BuildConfig
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AstroApiService
+import com.destinyai.astrology.data.remote.ReconcileEmptyRequest
 import com.destinyai.astrology.data.remote.VerifyRequest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -354,7 +355,21 @@ class BillingManager @Inject constructor(
 
     // ── Launch billing flow ─────────────────────────────────────────────────────
 
-    fun launchBillingFlow(activity: Activity, productDetails: ProductDetails, offerToken: String?) {
+    /** Stable, non-PII obfuscated account id for Play billing — SHA-256 hex of the
+     *  lowercased email, truncated to Play's 64-char max. iOS parity: binds the
+     *  purchase to the backend user (appAccountToken). */
+    private fun obfuscatedAccountId(email: String): String = runCatching {
+        java.security.MessageDigest.getInstance("SHA-256")
+            .digest(email.lowercase().toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }.take(64)
+    }.getOrDefault(email.hashCode().toString())
+
+    fun launchBillingFlow(
+        activity: Activity,
+        productDetails: ProductDetails,
+        offerToken: String?,
+        userEmail: String? = null,
+    ) {
         _isLoading.value = true
         _errorMessage.value = null
         // Mark as direct purchase so externalPlanChangeAlert is suppressed when
@@ -380,6 +395,17 @@ class BillingManager @Inject constructor(
 
         val flowParams = BillingFlowParams.newBuilder()
             .setProductDetailsParamsList(productDetailsParamsList)
+            .apply {
+                // iOS parity (SubscriptionManager.swift:268-274 appAccountToken): bind
+                // the purchase to the signed-in Destiny account so a Play purchase is
+                // cryptographically tied to this user (cross-account replay defense).
+                // Use a stable non-PII hash of the email as the obfuscated account id
+                // (Play requires <=64 chars, no raw PII).
+                val email = userEmail
+                if (!email.isNullOrBlank()) {
+                    setObfuscatedAccountId(obfuscatedAccountId(email))
+                }
+            }
             .build()
 
         val result = billingClient.launchBillingFlow(activity, flowParams)
@@ -675,6 +701,21 @@ class BillingManager @Inject constructor(
             if (effectivePurchases.isEmpty()) {
                 _isLoading.value = false
                 _restoreResult.value = RestoreResult.NoPurchases
+                // iOS parity (SubscriptionManager.swift:837-895 sendEmptyReconcilePing):
+                // store shows zero entitlements but the DB may still say premium (a lost
+                // EXPIRED/cancellation webhook). Ping the backend to self-heal.
+                runCatching {
+                    val email = prefs.getUserEmail()
+                    if (!email.isNullOrBlank() && prefs.isPremium()) {
+                        val resp = api.reconcileEmpty(ReconcileEmptyRequest(userEmail = email))
+                        if (resp.updated) {
+                            // Backend downgraded — clear local premium so gating self-corrects.
+                            prefs.setSubscription(isPremium = false, planId = "free_registered")
+                        }
+                    }
+                }.onFailure {
+                    android.util.Log.w("BillingManager", "reconcile-empty ping failed: ${it.message}")
+                }
             } else if (_purchasedProductIds.value.isEmpty()) {
                 // Verify call(s) failed for every active purchase
                 _restoreResult.value = RestoreResult.Error(

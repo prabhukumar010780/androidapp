@@ -46,6 +46,9 @@ data class ProfileUiState(
     // Plan expiry display string (e.g. "Renews Mar 21, 2026"). Mirrors iOS
     // QuotaManager.subscriptionExpiryDisplayText. Empty when not yet loaded.
     val subscriptionExpiryDisplayText: String? = null,
+    // iOS parity (QuotaManager.subscriptionStatusDisplayText): per-status capsule label
+    // (Active / Expired / Grace Period / Payment Failed / Subscription Revoked / Refunded).
+    val subscriptionStatusText: String? = null,
     // History-cleared success alert: number of threads deleted. Null = alert hidden.
     // Mirrors iOS ProfileView.clearedThreadCount + showClearSuccessAlert (line 227-243).
     val clearedThreadCount: Int? = null,
@@ -187,13 +190,36 @@ class ProfileViewModel @Inject constructor(
                 // grace period bypass the cancel-first guard on Delete Account
                 // (DeleteAccountSheet.swift:15-17 iOS parity).
                 val activePurchase = billingManager.purchasedProductIds.value.isNotEmpty()
-                // Subscription expiry display string — mirrors iOS QuotaManager.subscriptionExpiryDisplayText.
-                val expiryDisplay = status.subscriptionExpiresAt?.takeIf { it.isNotBlank() }?.let { iso ->
-                    runCatching {
-                        val instant = java.time.Instant.parse(iso)
-                        val date = Date.from(instant)
-                        DateFormat.getDateInstance(DateFormat.MEDIUM).format(date)
-                    }.getOrNull()
+                // iOS parity (QuotaManager.swift:863-887 subscriptionExpiryDisplayText):
+                // prefix the formatted expiry by state — Renews/Ends/Expired/Expires.
+                val statusLower = status.subscriptionStatus?.lowercase()
+                val expiryMs = status.subscriptionExpiresAt?.takeIf { it.isNotBlank() }?.let { iso ->
+                    runCatching { java.time.Instant.parse(iso).toEpochMilli() }.getOrNull()
+                }
+                val isPast = expiryMs != null && expiryMs <= System.currentTimeMillis()
+                val formattedDate = expiryMs?.let {
+                    DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(it))
+                }
+                val expiryDisplay = formattedDate?.let { d ->
+                    when {
+                        statusLower == "expired" || isPast -> "Expired on $d"
+                        statusLower == "grace_period" -> "Ends on $d"
+                        statusLower == "active" && status.autoRenewStatus == true -> "Renews on $d"
+                        status.autoRenewStatus == false -> "Ends on $d"
+                        else -> "Expires on $d"
+                    }
+                }
+                // iOS parity (QuotaManager.swift:903-922 subscriptionStatusDisplayText):
+                // per-status capsule label instead of a static "Active".
+                val statusText = when (statusLower) {
+                    "active" -> "Active"
+                    "canceled", "cancelled" -> if (expiryMs != null && expiryMs > System.currentTimeMillis()) "Active" else "Expired"
+                    "expired" -> "Expired"
+                    "grace_period" -> "Grace Period"
+                    "billing_retry" -> "Payment Failed"
+                    "revoked" -> "Subscription Revoked"
+                    "refunded" -> "Refunded"
+                    else -> if (status.isPremium) "Active" else null
                 }
                 _uiState.update {
                     it.copy(
@@ -209,6 +235,7 @@ class ProfileViewModel @Inject constructor(
                         hasActiveSubscription = status.isPremium && activePurchase,
                         chartStyle = chartStyle,
                         subscriptionExpiryDisplayText = expiryDisplay,
+                        subscriptionStatusText = statusText,
                         languageCode = languageCode,
                         responseStyle = responseStyle,
                     )

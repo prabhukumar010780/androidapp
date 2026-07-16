@@ -67,6 +67,7 @@ class SubscriptionViewModel @Inject constructor(
     private val api: AstroApiService,
     private val prefs: UserPreferences,
     private val billingManager: BillingManager,
+    private val quotaManager: com.destinyai.astrology.services.QuotaManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SubscriptionUiState())
@@ -222,9 +223,17 @@ class SubscriptionViewModel @Inject constructor(
     /** True when a Plus free trial offer is available. */
     val isPlusTrialEligible: StateFlow<Boolean> = billingManager.isPlusTrialEligible
 
-    /** Mirrors iOS SubscriptionManager.shouldShowTrialButton (319-330) — only
-     *  show the Trial CTA when eligible AND no active sub AND no conflict. */
-    val shouldShowTrialButton: StateFlow<Boolean> = billingManager.shouldShowTrialButton
+    /** Mirrors iOS SubscriptionManager.shouldShowTrialButton (455-468) — only show
+     *  the Trial CTA when eligible AND no active sub AND no conflict AND the user has
+     *  NEVER subscribed (authoritative server gate that survives Play intro-offer
+     *  eligibility resets, closing the offer-code / sandbox-reset re-trial abuse). */
+    val shouldShowTrialButton: StateFlow<Boolean> =
+        combine(
+            billingManager.shouldShowTrialButton,
+            quotaManager.hasEverSubscribed,
+        ) { billingEligible, everSubscribed ->
+            billingEligible && !everSubscribed
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     /** Emits the new plan id when an external activation is detected
      *  (Play promo redemption / family-share / website purchase). One-shot. */
@@ -347,8 +356,11 @@ class SubscriptionViewModel @Inject constructor(
         }
         val productId = productDetails.productId
         _purchasingProductId.value = productId
-        billingManager.launchBillingFlow(activity, productDetails, offerToken)
         viewModelScope.launch {
+            // iOS parity (SubscriptionManager.swift:268-274): bind the purchase to the
+            // signed-in account via obfuscatedAccountId. Fetch the email (suspend) first.
+            val email = prefs.getUserEmail()
+            billingManager.launchBillingFlow(activity, productDetails, offerToken, email)
             // Wait until BillingManager finishes processing (isLoading flips
             // back to false). Then check whether the productId landed in
             // purchasedProductIds (success) or errorMessage was set (failure).
@@ -361,6 +373,17 @@ class SubscriptionViewModel @Inject constructor(
             val err = billingManager.errorMessage.value
             if (purchased) {
                 _purchaseSuccess.value = true
+                // iOS parity (SubscriptionManager.swift:1167-1200 syncStatusWithBackoff):
+                // force-refresh the shared QuotaManager so isPremium + feature gating
+                // flip BEFORE the paywall dismisses. Short backoff covers webhook lag.
+                val email = prefs.getUserEmail()
+                if (email != null) {
+                    for (delayMs in longArrayOf(0L, 500L, 1000L, 2000L)) {
+                        if (delayMs > 0) kotlinx.coroutines.delay(delayMs)
+                        runCatching { quotaManager.syncStatus(email, force = true) }
+                        if (quotaManager.isPremium.value) break
+                    }
+                }
             } else if (!err.isNullOrBlank()) {
                 _purchaseError.value = err
             }

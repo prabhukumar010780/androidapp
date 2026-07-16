@@ -364,11 +364,43 @@ class ChatViewModel @Inject constructor(
                     val access = quotaManager.canAccessFeature(QuotaManager.FeatureID.AI_QUESTIONS, email)
                     if (!access.canAccess) {
                         when (access.reason) {
-                            "daily_limit_reached" -> _uiState.update {
+                            "daily_limit_reached" -> {
+                                // iOS parity (QuotaExhaustedView.swift:206-208): dedicated daily-limit
+                                // sheet with a localized "resets" message, not a hardcoded error banner.
+                                val resetLabel = formatResetTime(access.resetAt)
+                                _uiState.update {
+                                    it.copy(
+                                        canAskQuestion = false,
+                                        canSend = false,
+                                        showQuotaExhaustedAccountSheet = true,
+                                        quotaReason = "daily_limit_reached",
+                                        quotaDetails = resetLabel,
+                                        quotaPlanId = access.planId,
+                                    )
+                                }
+                            }
+                            "fair_use_violation" -> _uiState.update {
+                                // iOS parity (QuotaExhaustedView.swift:29-39): Plus fair-use cap →
+                                // "Usage Restricted / Contact Support" sheet, not a generic banner.
                                 it.copy(
                                     canAskQuestion = false,
                                     canSend = false,
-                                    errorMessage = "Daily question limit reached. Resets at ${access.resetAt}",
+                                    showQuotaExhaustedAccountSheet = true,
+                                    quotaReason = "fair_use_violation",
+                                    quotaDetails = access.upgradeCta?.message ?: "",
+                                    quotaPlanId = access.planId,
+                                )
+                            }
+                            "subscription_expired" -> _uiState.update {
+                                // iOS parity (QuotaExhaustedView.swift:185-234): lapsed paid user →
+                                // "Your subscription has ended — Renew" flow, not a generic error.
+                                it.copy(
+                                    canAskQuestion = false,
+                                    canSend = false,
+                                    showQuotaExhaustedAccountSheet = true,
+                                    quotaReason = "subscription_expired",
+                                    quotaDetails = access.upgradeCta?.message ?: "",
+                                    quotaPlanId = access.planId,
                                 )
                             }
                             "overall_limit_reached" -> {
@@ -431,8 +463,11 @@ class ChatViewModel @Inject constructor(
                         return@launch
                     }
                 } catch (e: Exception) {
-                    _uiState.update { it.copy(errorMessage = e.message) }
-                    return@launch
+                    // iOS parity (QuotaManager.swift:460-473, iOS-6 fix): FAIL OPEN on a
+                    // pre-flight network error. The server-side check_and_reserve on the
+                    // predict endpoint is the source of truth, so a transient blip must not
+                    // block a user with remaining quota — proceed and let the stream enforce.
+                    android.util.Log.w("ChatViewModel", "pre-flight quota check failed — proceeding (fail-open): ${e.message}")
                 }
             }
 
@@ -738,6 +773,33 @@ class ChatViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    // iOS parity (QuotaExhaustedView reset copy): format an ISO reset timestamp to a
+    // short local time (e.g. "12:00 AM"); returns empty on parse failure so the sheet
+    // falls back to its generic "resets soon" body.
+    private fun formatResetTime(iso: String?): String {
+        if (iso.isNullOrBlank()) return ""
+        val patterns = listOf(
+            "yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'",
+            "yyyy-MM-dd'T'HH:mm:ss'Z'",
+            "yyyy-MM-dd'T'HH:mm:ssXXX",
+            "yyyy-MM-dd'T'HH:mm:ss",
+        )
+        val candidate = if (iso.endsWith("Z") || iso.contains("+")) iso else "${iso}Z"
+        for (p in patterns) {
+            val parsed = runCatching {
+                val fmt = java.text.SimpleDateFormat(p, java.util.Locale.US).apply {
+                    timeZone = java.util.TimeZone.getTimeZone("UTC")
+                }
+                fmt.parse(candidate)
+            }.getOrNull()
+            if (parsed != null) {
+                val out = java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault())
+                return out.format(parsed)
+            }
+        }
+        return ""
     }
 
     fun setSuggestedQuestions(questions: List<String>) {

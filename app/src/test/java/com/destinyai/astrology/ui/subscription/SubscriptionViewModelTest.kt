@@ -39,12 +39,14 @@ class SubscriptionViewModelTest {
     private lateinit var api: AstroApiService
     private lateinit var prefs: UserPreferences
     private lateinit var billingManager: BillingManager
+    private lateinit var quotaManager: com.destinyai.astrology.services.QuotaManager
     private lateinit var vm: SubscriptionViewModel
 
     // Backing StateFlows exposed by BillingManager mock
     private val productsFlow = MutableStateFlow<List<ProductDetails>>(emptyList())
     private val purchasedIdsFlow = MutableStateFlow<Set<String>>(emptySet())
     private val loadingFlow = MutableStateFlow(false)
+    private val hasEverSubscribedFlow = MutableStateFlow(false)
     private val errorFlow = MutableStateFlow<String?>(null)
     private val conflictFlow = MutableStateFlow<SubscriptionConflict?>(null)
     private val isPlusTrialEligibleFlow = MutableStateFlow(false)
@@ -72,6 +74,9 @@ class SubscriptionViewModelTest {
         every { billingManager.errorMessage } returns errorFlow
         every { billingManager.subscriptionConflict } returns conflictFlow
         every { billingManager.isPlusTrialEligible } returns isPlusTrialEligibleFlow
+        every { billingManager.shouldShowTrialButton } returns MutableStateFlow(false)
+        quotaManager = mockk(relaxed = true)
+        every { quotaManager.hasEverSubscribed } returns hasEverSubscribedFlow
 
         productsFlow.value = emptyList()
         purchasedIdsFlow.value = emptySet()
@@ -80,7 +85,7 @@ class SubscriptionViewModelTest {
         conflictFlow.value = null
         isPlusTrialEligibleFlow.value = false
 
-        vm = SubscriptionViewModel(api, prefs, billingManager)
+        vm = SubscriptionViewModel(api, prefs, billingManager, quotaManager)
     }
 
     // ── Existing tests preserved ───────────────────────────────────────────────
@@ -181,7 +186,7 @@ class SubscriptionViewModelTest {
 
         vm.purchase(productDetails, activity)
 
-        coVerify { billingManager.launchBillingFlow(activity, productDetails, null) }
+        coVerify { billingManager.launchBillingFlow(activity, productDetails, null, any()) }
     }
 
     @Test

@@ -137,12 +137,39 @@ class QuotaManagerTest {
     }
 
     @Test
-    fun `canAsk returns false when API throws`() = runTest {
+    fun `expired plus status is treated as free (terminal paid status)`() = runTest {
+        val expiredPlus = plusStatus.copy(subscriptionStatus = "expired")
+        coEvery { api.getStatus(any()) } returns expiredPlus
+        manager.syncStatus("u@x.com", force = true)
+
+        // iOS parity (QuotaManager.swift:785-815): plan_id still "plus" but status is
+        // terminal → isPlus=false, isFreePlan=true, canUpgrade=true.
+        assertFalse(manager.isPlus)
+        assertTrue(manager.isFreePlan)
+        assertTrue(manager.canUpgrade)
+        assertTrue(manager.isInTerminalPaidStatus)
+    }
+
+    @Test
+    fun `subscriptionStatusDisplayText maps per-status labels`() = runTest {
+        coEvery { api.getStatus(any()) } returns plusStatus.copy(subscriptionStatus = "billing_retry")
+        manager.syncStatus("u@x.com", force = true)
+        assertEquals("Payment Failed", manager.subscriptionStatusDisplayText())
+
+        coEvery { api.getStatus(any()) } returns plusStatus.copy(subscriptionStatus = "grace_period")
+        manager.syncStatus("u@x.com", force = true)
+        assertEquals("Grace Period", manager.subscriptionStatusDisplayText())
+    }
+
+    @Test
+    fun `canAsk fails open (returns true) when API throws`() = runTest {
+        // iOS parity (QuotaManager.swift:460-473, iOS-6 fix): a transient network error
+        // must NOT block a user with remaining quota — fail open; server enforces.
         coEvery { api.canAccessFeatureFull(any(), any(), any(), any()) } throws RuntimeException("network")
 
         val result = manager.canAsk("u@x.com")
 
-        assertFalse(result)
+        assertTrue(result)
     }
 
     @Test

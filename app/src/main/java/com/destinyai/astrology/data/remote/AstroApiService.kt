@@ -314,6 +314,17 @@ data class VerifyResponse(
     @SerializedName("pending_upgrade_effective_date") val pendingUpgradeEffectiveDate: String? = null,
 )
 
+// iOS parity (SubscriptionManager.swift:848-895): reconcile-empty self-heal ping.
+data class ReconcileEmptyRequest(
+    @SerializedName("user_email") val userEmail: String,
+    @SerializedName("platform") val platform: String = "google",
+)
+
+data class ReconcileEmptyResponse(
+    @SerializedName("updated") val updated: Boolean = false,
+    @SerializedName("message") val message: String? = null,
+)
+
 // ── Response DTOs ─────────────────────────────────────────────────────────────
 
 // Matches backend AlertItemRequest (notification_router.py)
@@ -440,6 +451,10 @@ data class StatusResponse(
     @SerializedName("subscription_expires_at") val subscriptionExpiresAt: String? = null,
     @SerializedName("auto_renew_status") val autoRenewStatus: Boolean? = null,
     @SerializedName("plan_display_name") val planDisplayName: String? = null,
+    // iOS parity (QuotaManager.swift:282,295 has_ever_subscribed): authoritative
+    // server gate so a previously-subscribed user (Play intro-offer eligibility
+    // may have reset) is not re-offered a free trial.
+    @SerializedName("has_ever_subscribed") val hasEverSubscribed: Boolean = false,
 )
 
 data class PredictResponse(
@@ -693,7 +708,18 @@ data class FeatureAccessResponse(
     @SerializedName("limits") val limits: Map<String, FeatureLimitInfo>? = null,
     @SerializedName("reset_at") val resetAt: String? = null,
     @SerializedName("upgrade_cta") val upgradeCta: UpgradeCtaDto? = null,
-)
+    // iOS parity (QuotaManager.swift:195-206): server-authoritative fair-use flag.
+    @SerializedName("is_fair_use_violation") val isFairUseViolationField: Boolean? = null,
+) {
+    /**
+     * iOS parity (QuotaManager.swift:195-206): fair-use violation with a heuristic
+     * fallback — a Plus user who hit overall_limit_reached with no upgrade target
+     * has hit the lifetime fair-use cap even if the server didn't set the flag.
+     */
+    val isFairUseViolation: Boolean
+        get() = isFairUseViolationField
+            ?: (planId == "plus" && reason == "overall_limit_reached" && upgradeCta?.suggestedPlan == null)
+}
 
 // POST /subscription/use — record feature usage
 data class UseFeatureRequest(
@@ -789,6 +815,12 @@ interface AstroApiService {
     // Purchase Verification (Google Play Billing)
     @POST("subscription/verify")
     suspend fun verifyPurchase(@Body req: VerifyRequest): VerifyResponse
+
+    // iOS parity (SubscriptionManager.swift:848-895 sendEmptyReconcilePing): notify the
+    // backend when the store shows zero entitlements but the DB still says premium, so
+    // it can self-heal a lost EXPIRED/cancellation webhook.
+    @POST("subscription/reconcile-empty")
+    suspend fun reconcileEmpty(@Body req: ReconcileEmptyRequest): ReconcileEmptyResponse
 
     // Prediction
     @POST("vedic/api/predict/")

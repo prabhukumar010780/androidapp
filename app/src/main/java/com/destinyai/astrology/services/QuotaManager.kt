@@ -114,6 +114,12 @@ class QuotaManager @Inject constructor(
     private val _totalQuestionsAsked = MutableStateFlow(prefs.getInt(KEY_TOTAL_QUESTIONS, 0))
     val totalQuestionsAsked: StateFlow<Int> = _totalQuestionsAsked.asStateFlow()
 
+    /** iOS parity (QuotaManager.swift:282,295 has_ever_subscribed): authoritative
+     *  server gate that survives Play intro-offer eligibility resets — used to
+     *  suppress the free-trial CTA for previously-subscribed users. */
+    private val _hasEverSubscribed = MutableStateFlow(prefs.getBoolean(KEY_HAS_EVER_SUBSCRIBED, false))
+    val hasEverSubscribed: StateFlow<Boolean> = _hasEverSubscribed.asStateFlow()
+
     /** Mirrors iOS QuotaManager.externalPlanChangeAlert — surfaces an alert when the
      *  backend reports the user's subscription was renewed/upgraded outside the app. */
     private val _externalPlanChangeAlert = MutableStateFlow<ExternalPlanChange?>(null)
@@ -158,8 +164,13 @@ class QuotaManager @Inject constructor(
         return try {
             canAccessFeature(feature, email).canAccess
         } catch (e: Exception) {
-            Log.e(TAG, "canAsk error: ${e.message}")
-            false
+            // iOS parity (QuotaManager.swift:460-473, iOS-6 fix): FAIL OPEN on network
+            // error. The server-side check_and_reserve on the predict endpoint is the
+            // source of truth, so a transient network blip must not lock out a user
+            // with remaining quota. Returning true lets the send proceed; the SSE/
+            // predict call enforces quota authoritatively.
+            Log.w(TAG, "canAsk network error — failing open: ${e.message}")
+            true
         }
     }
 
@@ -203,9 +214,85 @@ class QuotaManager @Inject constructor(
     val canAskCached: Boolean get() = hasFeature(FeatureID.AI_QUESTIONS)
 
     val isFreePlan: Boolean
-        get() = _currentPlanId.value.let { it == "free_guest" || it == "free_registered" || it == null }
+        get() {
+            // iOS parity (QuotaManager.swift:785-815): terminal paid statuses are
+            // treated as free — an expired/revoked/refunded plan whose plan_id still
+            // says "plus" must not gate Plus-only features client-side.
+            if (isInTerminalPaidStatus) return true
+            return _currentPlanId.value.let { it == "free_guest" || it == "free_registered" || it == null }
+        }
 
-    val isPlus: Boolean get() = _currentPlanId.value == "plus"
+    val isPlus: Boolean
+        get() = _currentPlanId.value == "plus" && !isInTerminalPaidStatus
+
+    /** iOS parity (QuotaManager.swift:795-800): expired/terminal paid users CAN upgrade. */
+    val canUpgrade: Boolean
+        get() = isFreePlan || isInTerminalPaidStatus
+
+    /**
+     * iOS parity (QuotaManager.swift:786-793 _isInTerminalPaidStatus): a paid plan in
+     * a state that no longer grants entitlement. Such users are treated as free.
+     */
+    val isInTerminalPaidStatus: Boolean
+        get() = _subscriptionStatus.value?.lowercase() in TERMINAL_PAID_STATUSES
+
+    /**
+     * iOS parity (QuotaManager.swift:903-922 subscriptionStatusDisplayText): map the
+     * server subscription_status to a user-facing capsule label. Null = show no capsule
+     * (not a paid plan).
+     */
+    fun subscriptionStatusDisplayText(): String? {
+        val status = _subscriptionStatus.value?.lowercase() ?: return if (_isPremium.value) "Active" else null
+        val expiryMs = parseExpiryMs()
+        val inFuture = expiryMs != null && expiryMs > System.currentTimeMillis()
+        return when (status) {
+            "active" -> "Active"
+            "canceled", "cancelled" -> if (inFuture) "Active" else "Expired"
+            "expired" -> "Expired"
+            "grace_period" -> "Grace Period"
+            "billing_retry" -> "Payment Failed"
+            "revoked" -> "Subscription Revoked"
+            "refunded" -> "Refunded"
+            else -> if (_isPremium.value) "Active" else null
+        }
+    }
+
+    /**
+     * iOS parity (QuotaManager.swift:863-887 subscriptionExpiryDisplayText): prefix the
+     * formatted expiry date by state — Renews / Ends / Expired / Expires.
+     */
+    fun subscriptionExpiryDisplayText(formattedDate: String): String {
+        val status = _subscriptionStatus.value?.lowercase()
+        val expiryMs = parseExpiryMs()
+        val isPast = expiryMs != null && expiryMs <= System.currentTimeMillis()
+        val autoRenew = _autoRenewStatus.value
+        return when {
+            status == "expired" || isPast -> "Expired on $formattedDate"
+            status == "grace_period" -> "Ends on $formattedDate"
+            status == "active" && autoRenew == true -> "Renews on $formattedDate"
+            autoRenew == false -> "Ends on $formattedDate"
+            else -> "Expires on $formattedDate"
+        }
+    }
+
+    private fun parseExpiryMs(): Long? {
+        val raw = _subscriptionExpiresAt.value ?: return null
+        val patterns = listOf(
+            "yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'",
+            "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+            "yyyy-MM-dd'T'HH:mm:ss'Z'",
+            "yyyy-MM-dd'T'HH:mm:ssXXX",
+            "yyyy-MM-dd'T'HH:mm:ss",
+        )
+        val candidate = if (raw.endsWith("Z") || raw.contains("+")) raw else "${raw}Z"
+        for (p in patterns) {
+            val fmt = java.text.SimpleDateFormat(p, java.util.Locale.US).apply {
+                timeZone = java.util.TimeZone.getTimeZone("UTC")
+            }
+            runCatching { return fmt.parse(candidate)?.time }.getOrNull()
+        }
+        return null
+    }
 
     // ── Record Usage ───────────────────────────────────────────────────────────
 
@@ -361,9 +448,11 @@ class QuotaManager @Inject constructor(
         _subscriptionExpiresAt.value = status.subscriptionExpiresAt
         _autoRenewStatus.value = status.autoRenewStatus
         _currentPlanDisplayName.value = status.planDisplayName
+        _hasEverSubscribed.value = status.hasEverSubscribed
         prefs.edit().apply {
             putBoolean(KEY_IS_PREMIUM, status.isPremium)
             putString(KEY_CURRENT_PLAN_ID, status.planId)
+            putBoolean(KEY_HAS_EVER_SUBSCRIBED, status.hasEverSubscribed)
             if (status.subscriptionStatus != null) {
                 putString(KEY_SUBSCRIPTION_STATUS, status.subscriptionStatus)
             } else {
@@ -401,6 +490,7 @@ class QuotaManager @Inject constructor(
         _currentPlanDisplayName.value = null
         _availableFeatures.value = emptyList()
         _totalQuestionsAsked.value = 0
+        _hasEverSubscribed.value = false
         // SUBSCRIPTION-GAP-4: clear the observed plan tracker so the new
         // user's first syncStatus does not falsely fire externalPlanChangeAlert
         // against the previous user's plan id.
@@ -434,6 +524,8 @@ class QuotaManager @Inject constructor(
 
     companion object {
         private const val TAG = "QuotaManager"
+        // iOS parity (QuotaManager.swift:786-793): paid statuses that no longer grant entitlement.
+        private val TERMINAL_PAID_STATUSES = setOf("expired", "billing_retry", "revoked", "refunded")
         private const val KEY_IS_PREMIUM = "isPremium"
         private const val KEY_CURRENT_PLAN_ID = "currentPlanId"
         private const val KEY_SUBSCRIPTION_STATUS = "subscriptionStatus"
@@ -441,6 +533,7 @@ class QuotaManager @Inject constructor(
         private const val KEY_AUTO_RENEW = "autoRenewStatus"
         private const val KEY_CURRENT_PLAN_DISPLAY_NAME = "currentPlanDisplayName"
         private const val KEY_TOTAL_QUESTIONS = "totalQuestionsAsked"
+        private const val KEY_HAS_EVER_SUBSCRIBED = "hasEverSubscribed"
         private const val KEY_CACHED_PLANS = "cachedAvailablePlans"
         private const val KEY_CACHED_FEATURES = "cachedAvailableFeatures"
     }

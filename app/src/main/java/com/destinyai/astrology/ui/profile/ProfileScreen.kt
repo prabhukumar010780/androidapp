@@ -554,6 +554,7 @@ fun ProfileScreen(
                                             stringResource(R.string.profile_pending_upgrade_with_date_format, id, d)
                                         } ?: stringResource(R.string.profile_pending_upgrade_format, id)
                                     },
+                                    statusText = state.subscriptionStatusText,
                                 )
                                 OutlinedButton(
                                     onClick = {
@@ -1223,6 +1224,7 @@ private fun PaidSubscriptionHeroCard(
     planDisplayName: String,
     expiryDisplayText: String?,
     pendingUpgradeText: String?,
+    statusText: String? = null,
 ) {
     // Mirrors iOS paidSubscriptionCard hero (ProfileView.swift:639-693): gradient
     // hero box with crown icon, plan name, expiry/pending text and Active capsule.
@@ -1282,7 +1284,7 @@ private fun PaidSubscriptionHeroCard(
                     .padding(horizontal = 10.dp, vertical = 4.dp),
             ) {
                 Text(
-                    text = stringResource(R.string.profile_paid_active),
+                    text = statusText ?: stringResource(R.string.profile_paid_active),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = Color(0xFF0D0D1A),
