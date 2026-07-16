@@ -129,6 +129,42 @@ private fun formatRelativeTime(createdAt: String?): String {
     }
 }
 
+/** iOS parity (NotificationModels.swift InboxBucket): bucket notifications by relative
+ *  date for section headers, preserving order and dropping empty buckets. */
+private fun groupNotificationsByBucket(
+    items: List<NotificationDto>,
+): List<Pair<String, List<NotificationDto>>> {
+    if (items.isEmpty()) return emptyList()
+    val now = System.currentTimeMillis()
+    val day = 24L * 60 * 60 * 1000
+    fun parseMs(iso: String?): Long {
+        val raw = iso?.takeIf { it.isNotEmpty() } ?: return 0L
+        val candidate = if (raw.endsWith("Z") || raw.contains("+")) raw else "${raw}Z"
+        val patterns = listOf(
+            "yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'", "yyyy-MM-dd'T'HH:mm:ss'Z'",
+            "yyyy-MM-dd'T'HH:mm:ssXXX", "yyyy-MM-dd'T'HH:mm:ss",
+        )
+        for (p in patterns) {
+            val fmt = SimpleDateFormat(p, Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
+            runCatching { return fmt.parse(candidate)?.time ?: 0L }.getOrNull()
+        }
+        return 0L
+    }
+    fun bucket(ms: Long): String {
+        val age = now - ms
+        return when {
+            age < day -> "Today"
+            age < 2 * day -> "Yesterday"
+            age < 7 * day -> "This Week"
+            age < 14 * day -> "Last Week"
+            else -> "Earlier"
+        }
+    }
+    val order = listOf("Today", "Yesterday", "This Week", "Last Week", "Earlier")
+    val grouped = items.groupBy { bucket(parseMs(it.createdAt)) }
+    return order.mapNotNull { label -> grouped[label]?.let { label to it } }
+}
+
 /** iOS parity (NotificationDetailSheet.canAskMore in NotificationInboxView.swift:463-467). */
 private fun canAskMore(type: String?): Boolean = type?.uppercase() in setOf(
     "DAILY_PREDICTION_READY",
@@ -388,15 +424,28 @@ fun NotificationsScreen(
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        items(state.notifications, key = { it.id }) { notif ->
-                            NotificationRowItem(
-                                notif = notif,
-                                onClick = {
-                                    haptic.light()
-                                    if (!notif.isRead) viewModel.markRead(notif.id)
-                                    selected = notif
-                                },
-                            )
+                        // iOS parity (NotificationInboxView groupedNotifications): section the
+                        // inbox by relative date bucket (Today / Yesterday / This Week / Earlier).
+                        val buckets = groupNotificationsByBucket(state.notifications)
+                        buckets.forEach { (label, items) ->
+                            item(key = "__hdr_$label") {
+                                Text(
+                                    text = label,
+                                    color = Gold,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    modifier = Modifier.padding(top = 4.dp, bottom = 2.dp),
+                                )
+                            }
+                            items(items, key = { it.id }) { notif ->
+                                NotificationRowItem(
+                                    notif = notif,
+                                    onClick = {
+                                        haptic.light()
+                                        if (!notif.isRead) viewModel.markRead(notif.id)
+                                        selected = notif
+                                    },
+                                )
+                            }
                         }
                         if (state.isLoadingMore) {
                             item(key = "__loading_more__") {
