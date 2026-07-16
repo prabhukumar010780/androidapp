@@ -103,6 +103,7 @@ class CompatibilityViewModel @Inject constructor(
     // without relying on a screen-side LaunchedEffect(Unit) that fires once.
     private val profileChangeBus: com.destinyai.astrology.services.ProfileChangeBus,
     private val profileContextManager: com.destinyai.astrology.services.ProfileContextManager,
+    @dagger.hilt.android.qualifiers.ApplicationContext private val appContext: android.content.Context,
 ) : ViewModel() {
 
     init {
@@ -111,6 +112,14 @@ class CompatibilityViewModel @Inject constructor(
         viewModelScope.launch {
             profileChangeBus.events.collect { loadUserData() }
         }
+        // iOS parity (CompatibilityHistoryService.updateChatMessages): back the follow-up
+        // history with durable storage so Ask-Destiny transcripts survive VM clear /
+        // process death and restore when a saved match is re-opened.
+        val store = appContext.getSharedPreferences("compat_followup_history", android.content.Context.MODE_PRIVATE)
+        setFollowUpHistoryPersistence(
+            reader = { key -> store.getString(key, null) },
+            writer = { key, value -> store.edit().putString(key, value).apply() },
+        )
     }
 
     private val gson = Gson()

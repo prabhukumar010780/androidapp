@@ -212,12 +212,25 @@ class HomeRepositoryImpl @Inject constructor(
             // Parity with ChatRepositoryImpl — pass user-selected ayanamsa / house_system.
             val ayanamsa = runCatching { prefs.getAyanamsa() }.getOrDefault("lahiri")
             val houseSystem = runCatching { prefs.getHouseSystem() }.getOrDefault("whole_sign")
+            // iOS parity (AstroDataCache + HomeViewModel:208-232): read the forever-cached
+            // chart + per-year dasha from disk FIRST so yogas/doshas/ascendant + current
+            // dasha render instantly on cold start and offline, no repeat network round trip.
+            val gson = Gson()
+            val birthHash = computeBirthHash(birthProfile)
+            val year = LocalDate.now().year
+            val cachedChart = runCatching {
+                astroDataCacheDao.get("chart", profileCacheId, birthHash, 0, 0)
+                    ?.let { gson.fromJson(it.payloadJson, com.destinyai.astrology.ui.charts.ChartApiResponse::class.java) }
+            }.getOrNull()
+            val cachedDasha = runCatching {
+                astroDataCacheDao.get("dasha", profileCacheId, birthHash, year, 0)
+                    ?.let { gson.fromJson(it.payloadJson, DashaResponse::class.java) }
+            }.getOrNull()
             // Parity with iOS HomeViewModel.loadHomeData TaskGroup — fan out chart-data and
-            // dasha-periods fetches in parallel instead of running them sequentially. Mirrors
-            // the iOS 3-parallel pattern (todays-prediction is fired separately by getDailyInsight).
+            // dasha-periods fetches in parallel instead of running them sequentially.
             val (chartResponse, dashaResponse) = coroutineScope {
                 val chartDeferred = async {
-                    api.getChartData(
+                    cachedChart ?: api.getChartData(
                         ChartDataRequest(
                             birthData = BirthData(
                                 dob = birthProfile.dateOfBirth,
@@ -230,9 +243,29 @@ class HomeRepositoryImpl @Inject constructor(
                                 birthTimeUnknown = birthProfile.birthTimeUnknown,
                             ),
                         )
-                    )
+                    ).also { fresh ->
+                        runCatching {
+                            astroDataCacheDao.upsert(
+                                AstroDataCacheEntity(
+                                    "chart", profileCacheId, birthHash, 0, 0,
+                                    email, gson.toJson(fresh), System.currentTimeMillis(),
+                                ),
+                            )
+                        }
+                    }
                 }
-                val dashaDeferred = async { getDashaPeriods(birthProfile) }
+                val dashaDeferred = async {
+                    cachedDasha ?: getDashaPeriods(birthProfile).also { fresh ->
+                        if (fresh != null) runCatching {
+                            astroDataCacheDao.upsert(
+                                AstroDataCacheEntity(
+                                    "dasha", profileCacheId, birthHash, year, 0,
+                                    email, gson.toJson(fresh), System.currentTimeMillis(),
+                                ),
+                            )
+                        }
+                    }
+                }
                 chartDeferred.await() to dashaDeferred.await()
             }
 
