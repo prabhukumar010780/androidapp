@@ -85,37 +85,40 @@ fun LanguageSelectionScreen(
                     .padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                // iOS parity (LanguageSelectionView.swift:51-71): top-right speaker toggle
-                // that flips the persisted sound flag via SoundManager.toggleSound().
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    Box(
+                // iOS parity (LanguageSelectionView.swift:51 gated on
+                // AppTheme.Features.showSoundToggle=false): the speaker toggle is
+                // suppressed on iOS, so gate it behind the same flag for parity.
+                if (com.destinyai.astrology.ui.theme.Features.showSoundToggle) {
+                    Row(
                         modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.10f))
-                            .clickable {
-                                haptic.light()
-                                viewModel.toggleSound()
-                            },
-                        contentAlignment = Alignment.Center,
+                            .fillMaxWidth()
+                            .padding(top = 16.dp),
+                        horizontalArrangement = Arrangement.End,
                     ) {
-                        Icon(
-                            imageVector = if (soundEnabled) {
-                                Icons.Filled.VolumeUp
-                            } else {
-                                Icons.Filled.VolumeOff
-                            },
-                            contentDescription = stringResource(
-                                if (soundEnabled) R.string.sound_on_a11y else R.string.sound_off_a11y,
-                            ),
-                            tint = CreamDim,
-                            modifier = Modifier.size(18.dp),
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.10f))
+                                .clickable {
+                                    haptic.light()
+                                    viewModel.toggleSound()
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = if (soundEnabled) {
+                                    Icons.Filled.VolumeUp
+                                } else {
+                                    Icons.Filled.VolumeOff
+                                },
+                                contentDescription = stringResource(
+                                    if (soundEnabled) R.string.sound_on_a11y else R.string.sound_off_a11y,
+                                ),
+                                tint = CreamDim,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
                     }
                 }
 

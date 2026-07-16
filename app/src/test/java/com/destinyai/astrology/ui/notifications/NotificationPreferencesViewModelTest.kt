@@ -67,8 +67,19 @@ class NotificationPreferencesViewModelTest {
 
     @Test
     fun `loadPrefs populates state from api`() = runTest {
+        // iOS parity: channels + toggles live in the server `preferences` envelope.
         coEvery { api.getNotificationPrefs("u@x.com") } returns
-            NotificationPrefsDto(dailyInsight = true, transits = false, compatibility = true)
+            com.destinyai.astrology.data.remote.NotificationPreferencesResponse(
+                success = true,
+                preferences = mapOf(
+                    "daily_insight" to true,
+                    "transits" to false,
+                    "compatibility" to true,
+                    "push_enabled" to true,
+                    "email_enabled" to false,
+                    "in_app_enabled" to true,
+                ),
+            )
 
         vm.loadPrefs()
 
@@ -77,6 +88,7 @@ class NotificationPreferencesViewModelTest {
             assertTrue(s.dailyInsight)
             assertFalse(s.transits)
             assertTrue(s.compatibility)
+            assertFalse(s.emailEnabled)
             assertFalse(s.isLoading)
             cancelAndIgnoreRemainingEvents()
         }

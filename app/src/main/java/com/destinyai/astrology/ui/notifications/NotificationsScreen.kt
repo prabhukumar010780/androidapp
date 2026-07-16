@@ -103,6 +103,32 @@ private fun formatTimeAgo(createdAt: String?): String {
     return out.format(date)
 }
 
+/**
+ * iOS parity (NotificationModels.swift:50-65 relativeTime): friendly relative time
+ * ("Just now", "2h ago", "Yesterday") for items <7 days old, absolute date beyond.
+ */
+private fun formatRelativeTime(createdAt: String?): String {
+    val raw = createdAt?.takeIf { it.isNotEmpty() } ?: return ""
+    val parsers = listOf(
+        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") },
+        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") },
+        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US),
+        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") },
+    )
+    val date: Date = parsers.firstNotNullOfOrNull { fmt -> runCatching { fmt.parse(raw) }.getOrNull() }
+        ?: return ""
+    val nowMs = System.currentTimeMillis()
+    val ageMs = nowMs - date.time
+    val sevenDaysMs = 7L * 24 * 60 * 60 * 1000
+    return if (ageMs in 0 until sevenDaysMs) {
+        android.text.format.DateUtils.getRelativeTimeSpanString(
+            date.time, nowMs, android.text.format.DateUtils.MINUTE_IN_MILLIS,
+        ).toString()
+    } else {
+        SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(date)
+    }
+}
+
 /** iOS parity (NotificationDetailSheet.canAskMore in NotificationInboxView.swift:463-467). */
 private fun canAskMore(type: String?): Boolean = type?.uppercase() in setOf(
     "DAILY_PREDICTION_READY",
@@ -461,7 +487,9 @@ private fun NotificationRowItem(
     val title = displayTitleOf(notif)
     // iOS parity (NotificationModels.swift:80-82) — fallback "Tap to view details" for empty rows.
     val body = displayBodyOf(notif, stringResource(R.string.tap_to_view_details))
-    val timeAgo = formatTimeAgo(notif.createdAt)
+    // iOS parity (NotificationInboxView.swift:326 uses relativeTime for rows): show
+    // friendly relative time in the list; the detail sheet keeps the absolute date.
+    val timeAgo = formatRelativeTime(notif.createdAt)
     val chip = topicChipText(notif.topic)
 
     Row(

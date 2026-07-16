@@ -28,6 +28,8 @@ data class NotificationPreferencesUiState(
     val isPermissionGranted: Boolean = false,
     // R2-S13c: custom alerts
     val alertItems: List<AlertItem> = emptyList(),
+    // iOS parity (preferredTimeUTC default "00:30"): round-tripped delivery time.
+    val preferredTimeUtc: String = "00:30",
     val isLoading: Boolean = false,
     val isSaved: Boolean = false,
     val error: String? = null,
@@ -50,21 +52,37 @@ class NotificationPreferencesViewModel @Inject constructor(
             val email = prefs.getUserEmail() ?: return@launch
             _uiState.update { it.copy(isLoading = true) }
             try {
-                val dto = api.getNotificationPrefs(email)
-                val alerts = prefs.getAlertItems()
+                // iOS parity (applyFromAPI): the server `preferences` dict is the source of
+                // truth for channels + alert items — hydrate from it, not local DataStore.
+                val resp = api.getNotificationPrefs(email)
+                val p = resp.preferences
+                fun bool(key: String, default: Boolean) = when (val v = p[key]) {
+                    is Boolean -> v
+                    is Number -> v.toInt() != 0
+                    else -> default
+                }
+                fun str(key: String): String? = p[key] as? String
+                val serverAlerts = parseAlertItems(p["alert_items"])
                 _uiState.update {
                     it.copy(
-                        dailyInsight = dto.dailyInsight,
-                        transits = dto.transits,
-                        compatibility = dto.compatibility,
-                        pushEnabled = prefs.getNotifPushEnabled(),
-                        emailEnabled = prefs.getNotifEmailEnabled(),
-                        inAppEnabled = prefs.getNotifInAppEnabled(),
-                        alertItems = alerts,
+                        dailyInsight = bool("daily_insight", true),
+                        transits = bool("transits", true),
+                        compatibility = bool("compatibility", true),
+                        pushEnabled = bool("push_enabled", true),
+                        emailEnabled = bool("email_enabled", true),
+                        inAppEnabled = bool("in_app_enabled", true),
+                        alertItems = serverAlerts,
+                        preferredTimeUtc = str("preferred_time_utc") ?: "00:30",
                         isLoading = false,
                     )
                 }
+                // Mirror the server truth into local prefs so offline reloads match.
+                prefs.setNotifPushEnabled(bool("push_enabled", true))
+                prefs.setNotifEmailEnabled(bool("email_enabled", true))
+                prefs.setNotifInAppEnabled(bool("in_app_enabled", true))
+                prefs.saveAlertItems(serverAlerts)
             } catch (_: Exception) {
+                // Network failure only: fall back to local DataStore.
                 val alerts = prefs.getAlertItems()
                 _uiState.update {
                     it.copy(
@@ -76,6 +94,21 @@ class NotificationPreferencesViewModel @Inject constructor(
                     )
                 }
             }
+        }
+    }
+
+    /** Parse the server `alert_items` list (a List<Map> from Gson) into AlertItem. */
+    private fun parseAlertItems(raw: Any?): List<AlertItem> {
+        val list = raw as? List<*> ?: return emptyList()
+        return list.mapNotNull { entry ->
+            val m = entry as? Map<*, *> ?: return@mapNotNull null
+            val text = m["text"] as? String ?: return@mapNotNull null
+            AlertItem(
+                id = (m["id"] as? String) ?: UUID.randomUUID().toString(),
+                text = text,
+                frequency = (m["frequency"] as? String) ?: "DAILY",
+                frequencyDay = (m["frequency_day"] as? Number)?.toInt(),
+            )
         }
     }
 
@@ -187,6 +220,7 @@ class NotificationPreferencesViewModel @Inject constructor(
                         emailEnabled = s.emailEnabled,
                         inAppEnabled = s.inAppEnabled,
                         alertItems = alertDtos,
+                        preferredTimeUtc = s.preferredTimeUtc,
                         timezone = java.util.TimeZone.getDefault().id,
                     ),
                 )

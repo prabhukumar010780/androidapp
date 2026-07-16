@@ -85,30 +85,19 @@ class SettingsViewModel @Inject constructor(
             val email = prefs.getUserEmail() ?: return@launch
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                // Map Settings toggles to backend channel schema (parity with iOS).
-                // dailyInsight = master push toggle. Inbox + email default ON unless dailyInsight off.
-                // CRITICAL: Personalized alerts are managed in NotificationPreferencesScreen — Settings
-                // must preserve them. Load the current list and forward it instead of wiping with [].
+                // Map Settings toggles to backend legacy schema ONLY. iOS never derives
+                // push/email/inbox from a coarse switch — those channel prefs are owned by
+                // NotificationPreferencesScreen. Sending pushEnabled=emailEnabled=inAppEnabled=
+                // dailyInsight here silently overwrote a user's channel choices on the server
+                // (e.g. push=on/email=off/inbox=on → all false). Leave channel fields null so
+                // Gson omits them and the server keeps its own channel + alert state.
                 val tz = java.util.TimeZone.getDefault().id
-                val existingAlerts = prefs.getAlertItems().map {
-                    AlertItemDto(
-                        id = it.id,
-                        text = it.text,
-                        frequency = it.frequency.uppercase(),
-                        frequencyDay = it.frequencyDay,
-                    )
-                }
                 api.updateNotificationPrefs(
                     email,
                     NotificationPrefsRequest(
                         dailyInsight = s.notifDailyInsight,
                         transits = s.notifTransits,
                         compatibility = s.notifCompatibility,
-                        isEnabled = s.notifDailyInsight || s.notifTransits || s.notifCompatibility,
-                        pushEnabled = s.notifDailyInsight,
-                        emailEnabled = s.notifDailyInsight,
-                        inAppEnabled = s.notifDailyInsight,
-                        alertItems = existingAlerts,
                         frequency = "DAILY",
                         timezone = tz,
                     )

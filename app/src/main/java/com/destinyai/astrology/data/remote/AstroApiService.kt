@@ -886,8 +886,11 @@ interface AstroApiService {
     suspend fun registerDeviceToken(@Body request: DeviceTokenRequest): SuccessResponse
 
     // Backend uses query param (not path param): GET /notifications/preferences?user_email=...
+    // iOS parity (NotificationPreferencesViewModel.applyFromAPI): the server returns a
+    // {success, preferences:{...}} envelope — channels + alert_items live inside
+    // `preferences`, which is the source of truth (not local DataStore).
     @GET("notifications/preferences")
-    suspend fun getNotificationPrefs(@Query("user_email") email: String): NotificationPrefsDto
+    suspend fun getNotificationPrefs(@Query("user_email") email: String): NotificationPreferencesResponse
 
     // Backend uses PUT (not POST) and query param: PUT /notifications/preferences?user_email=...
     @PUT("notifications/preferences")
