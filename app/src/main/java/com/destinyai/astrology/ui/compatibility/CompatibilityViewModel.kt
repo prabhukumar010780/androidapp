@@ -1012,6 +1012,13 @@ class CompatibilityViewModel @Inject constructor(
     fun deleteHistoryItem(sessionId: String) {
         viewModelScope.launch {
             historyDao.delete(sessionId)
+            // iOS parity: compat matches are backed by chat threads server-side
+            // (compat_sess_ ids). Propagate the delete so it doesn't reappear on a
+            // reinstall / other device. Best-effort — local delete already happened.
+            val email = prefs.getUserEmail()
+            if (email != null) {
+                runCatching { api.deleteChatThread(email, sessionId) }
+            }
         }
     }
 
@@ -1040,6 +1047,42 @@ class CompatibilityViewModel @Inject constructor(
             maxScore = result.maxScore,
             isPinned = false,
             comparisonGroupId = comparisonGroupId,
+            partnerIndex = partnerIndex,
+            resultJson = gson.toJson(result),
+        )
+        historyDao.upsert(entity)
+    }
+
+    /**
+     * iOS parity (analyzeAllPartners saveToHistory per member): persist a single
+     * multi-partner comparison member as a grouped history item with its own unique
+     * sessionId so the whole group survives and can be re-opened via loadFromGroup().
+     */
+    private suspend fun saveComparisonToHistory(
+        result: CompatibilityResult,
+        email: String,
+        profile: BirthProfileDto,
+        partner: PartnerData,
+        groupId: String,
+        partnerIndex: Int,
+    ) {
+        if (!isHistoryEnabled.value) return
+        val entity = CompatibilityHistoryEntity(
+            sessionId = "compat_grp_${groupId}_$partnerIndex",
+            ownerEmail = email,
+            timestampMs = System.currentTimeMillis(),
+            boyName = _uiState.value.personAName,
+            boyDob = profile.dateOfBirth,
+            boyCity = profile.cityOfBirth,
+            boyTime = profile.timeOfBirth,
+            girlName = partner.name,
+            girlDob = partner.dob,
+            girlCity = partner.city,
+            girlTime = partner.time,
+            totalScore = result.totalScore,
+            maxScore = result.maxScore,
+            isPinned = false,
+            comparisonGroupId = groupId,
             partnerIndex = partnerIndex,
             resultJson = gson.toJson(result),
         )
@@ -1190,8 +1233,20 @@ class CompatibilityViewModel @Inject constructor(
                                     isRecommended = result.isRecommended,
                                     adjustedScore = result.adjustedScore ?: result.totalScore,
                                     summary = result.summary,
+                                    // iOS parity (PartnerData.swift:111-129): surface Manglik +
+                                    // rejection reasons so the overview footer and per-partner
+                                    // Manglik row aren't empty. (one-liner verdict pending the
+                                    // comparison_indicators mapper — gap 5.17.)
+                                    mangalCompatibility = result.mangalCompatibility,
+                                    rejectionReasons = result.rejectionReasons,
                                 ))
                                 _comparisonResults.value = newResults.toList()
+                                // iOS parity (analyzeAllPartners saveToHistory per partner):
+                                // persist each partner as a grouped history item so the whole
+                                // comparison survives + can be re-opened without re-charging quota.
+                                runCatching {
+                                    saveComparisonToHistory(result, email, profile, partner, groupId, index)
+                                }
                             }
                             is SseEvent.Error -> newFailed.add(index)
                         }
@@ -1283,8 +1338,14 @@ class CompatibilityViewModel @Inject constructor(
                                     isRecommended = result.isRecommended,
                                     adjustedScore = result.adjustedScore ?: result.totalScore,
                                     summary = result.summary,
+                                    mangalCompatibility = result.mangalCompatibility,
+                                    rejectionReasons = result.rejectionReasons,
                                 ))
                                 _comparisonResults.value = updatedResults.toList()
+                                // iOS parity (retryFailedPartners saveToHistory per partner).
+                                runCatching {
+                                    saveComparisonToHistory(result, email, profile, partner, groupId, index)
+                                }
                             }
                             is SseEvent.Error -> newFailed.add(index)
                         }

@@ -397,10 +397,20 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun friendlyError(e: Throwable): String {
+        // iOS parity (HomeViewModel.swift:604-631): distinguish validation / invalid-email
+        // / no-data / session-expired before the generic fallback so users get actionable text.
+        val msg = e.message?.lowercase().orEmpty()
         return when {
             e is java.net.SocketTimeoutException -> "Request timed out. Please try again."
             e is java.io.IOException -> "Network unavailable. Check your connection."
-            e.message?.contains("401", ignoreCase = true) == true -> "Session expired. Please sign in again."
+            msg.contains("401") || msg.contains("session") || msg.contains("unauthor") ->
+                "Session expired. Please sign in again."
+            msg.contains("invalid") && msg.contains("email") ->
+                "Your account email looks invalid. Please sign in again."
+            msg.contains("validation") ->
+                "Please check your birth details and try again."
+            msg.contains("no data") || msg.contains("empty") ->
+                "No reading available yet. Please try again shortly."
             else -> "Couldn't load home data. Please retry."
         }
     }
