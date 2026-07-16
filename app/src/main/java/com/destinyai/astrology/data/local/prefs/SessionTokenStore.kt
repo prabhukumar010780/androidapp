@@ -37,6 +37,10 @@ class SessionTokenStore @Inject constructor(
             secure.removeRaw(refreshTokenKey(e))
             secure.removeRaw(sessionExpiryKey(e))
             secure.removeRaw(refreshExpiryKey(e))
+            // SECURITY: also drop the active-email pointer. A partial write must
+            // never leave the store pointing at a stale/other user's session —
+            // that would let the interceptor attach the wrong user's JWT.
+            secure.removeRaw(ACTIVE_EMAIL_KEY)
             false
         }
     }

@@ -83,8 +83,11 @@ class AuthRepositoryImpl @Inject constructor(
         // lastAccessState so SplashViewModel/AppNav can route to WaitlistPending
         // on next launch when applicable.
         prefs.setLastAccessState(resp.accessState)
-        // W7 parity: mint a session JWT so authenticated calls carry a real
-        // per-user identity (delete-account, /auth/upgrade, strict-mode routes).
+        // W7 parity + SECURITY: mint a session JWT so authenticated calls carry a
+        // real per-user identity. Clear any prior active session FIRST so that, in
+        // the window between register and a successful mint (or if mint fails), the
+        // interceptor can never attach a previous user's JWT to this user's calls.
+        sessionStore.clearActiveSession()
         if (!idToken.isNullOrBlank()) {
             runCatching { exchangeClient.signInWithGoogle(idToken, nonce = null) }
                 .onFailure { android.util.Log.w("AuthRepository", "google session mint failed: ${it.message}") }
@@ -157,7 +160,10 @@ class AuthRepositoryImpl @Inject constructor(
         // lastAccessState so SplashViewModel/AppNav can route to WaitlistPending
         // on next launch when applicable.
         prefs.setLastAccessState(resp.accessState)
-        // W7 parity: mint a session JWT when the Apple id_token is available.
+        // W7 parity + SECURITY: clear any prior active session before minting so a
+        // stale/failed mint can never leave another user's JWT active for this user.
+        sessionStore.clearActiveSession()
+        // Mint a session JWT when the Apple id_token is available.
         if (!idToken.isNullOrBlank()) {
             runCatching { exchangeClient.signInWithApple(idToken, nonce = null) }
                 .onFailure { android.util.Log.w("AuthRepository", "apple session mint failed: ${it.message}") }
@@ -200,6 +206,9 @@ class AuthRepositoryImpl @Inject constructor(
         // provider IDs cannot leak into the guest's profile-sync calls.
         prefs.clearProviderIds()
         prefs.setLastAccessState("granted")
+        // SECURITY: drop any prior user's active session before the guest mint so a
+        // previous account's JWT can't be attached to this guest's requests.
+        sessionStore.clearActiveSession()
 
         // Best-effort backend register; ignore failures so offline guests still proceed.
         try {

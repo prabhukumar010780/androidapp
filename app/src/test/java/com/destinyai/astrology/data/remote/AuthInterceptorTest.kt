@@ -36,7 +36,6 @@ class AuthInterceptorTest {
 
     @Test
     fun `fresh session attaches session jwt bearer`() {
-        every { store.sessionIsFresh(any()) } returns true
         every { store.currentSessionJwt() } returns "SESS_JWT"
         server.enqueue(MockResponse().setBody("{}"))
 
@@ -48,8 +47,21 @@ class AuthInterceptorTest {
     }
 
     @Test
-    fun `no fresh session falls back to api key bearer`() {
-        every { store.sessionIsFresh(any()) } returns false
+    fun `stale but present session still attaches jwt (Authenticator refreshes on 401)`() {
+        // SECURITY: never silently downgrade an authenticated user to API-key scope
+        // while a session exists — attach the (stale) JWT and let the server 401 +
+        // Authenticator refresh.
+        every { store.currentSessionJwt() } returns "STALE_JWT"
+        server.enqueue(MockResponse().setBody("{}"))
+
+        clientWith().newCall(Request.Builder().url(server.url("/x")).build()).execute().close()
+        val recorded = server.takeRequest()
+        assertEquals("Bearer STALE_JWT", recorded.getHeader("Authorization"))
+    }
+
+    @Test
+    fun `no session at all falls back to api key bearer`() {
+        every { store.currentSessionJwt() } returns null
         server.enqueue(MockResponse().setBody("{}"))
 
         clientWith().newCall(Request.Builder().url(server.url("/x")).build()).execute().close()
@@ -59,7 +71,6 @@ class AuthInterceptorTest {
 
     @Test
     fun `explicit Authorization header is not overridden`() {
-        every { store.sessionIsFresh(any()) } returns true
         every { store.currentSessionJwt() } returns "SESS_JWT"
         server.enqueue(MockResponse().setBody("{}"))
 
