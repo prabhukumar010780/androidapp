@@ -982,6 +982,9 @@ internal fun buildCompatibilityPdfBytes(
         return page to page.canvas
     }
 
+    // Format a kuta score: drop the ".0" for whole numbers (e.g. 8.0 -> "8", 3.5 -> "3.5").
+    fun fmtScore(v: Double): String = if (v % 1.0 == 0.0) v.toInt().toString() else v.toString()
+
     var pageNum = 1
     var (page, canvas) = newPage(pageNum)
     var y = margin
@@ -1015,6 +1018,83 @@ internal fun buildCompatibilityPdfBytes(
     }
     canvas.drawLine(margin, y, margin + contentWidth, y, dividerPaint)
     y += 14f
+
+    // ensureSpace + wrapping helpers are defined below; forward-declare via lambdas.
+    fun ensureSpaceEarly(needed: Float) {
+        if (y + needed > pageHeight - margin - 24f) {
+            doc.finishPage(page)
+            pageNum += 1
+            val np = newPage(pageNum)
+            page = np.first
+            canvas = np.second
+            y = margin
+        }
+    }
+
+    // iOS parity (CompatibilityPDFRenderer): VERDICT box + REASONS-NOT-RECOMMENDED +
+    // full Ashtakoot table with per-kuta adjusted scores and dosha-cancellation coloring.
+    run {
+        ensureSpaceEarly(30f)
+        canvas.drawText("COMPATIBILITY VERDICT", margin, y + 13f, headerPaint)
+        y += 18f
+        val verdict = if (result.isRecommended) {
+            result.recommendation.ifBlank { "Recommended for marriage" }
+        } else {
+            result.recommendation.ifBlank { "Not recommended for marriage" }
+        }
+        canvas.drawText(verdict, margin, y + 12f, bodyPaint)
+        y += 22f
+
+        if (!result.isRecommended && result.rejectionReasons.isNotEmpty()) {
+            ensureSpaceEarly(24f)
+            canvas.drawText("REASONS NOT RECOMMENDED", margin, y + 12f, headerPaint)
+            y += 16f
+            result.rejectionReasons.forEach { reason ->
+                ensureSpaceEarly(bodyPaint.textSize + 4f)
+                canvas.drawText("• $reason", margin, y + bodyPaint.textSize, bodyPaint)
+                y += bodyPaint.textSize + 5f
+            }
+            y += 8f
+        }
+
+        if (result.kutas.isNotEmpty()) {
+            ensureSpaceEarly(28f)
+            canvas.drawText("ASHTAKOOT BREAKDOWN", margin, y + 13f, headerPaint)
+            y += 18f
+            // Columns: Kuta | Score | Max | Adjusted
+            val cx = floatArrayOf(margin, margin + 220f, margin + 300f, margin + 380f)
+            val redPaint = android.graphics.Paint(bodyPaint).apply { color = android.graphics.Color.rgb(180, 60, 60) }
+            val greenPaint = android.graphics.Paint(bodyPaint).apply { color = android.graphics.Color.rgb(40, 130, 70) }
+            canvas.drawText("Kuta", cx[0], y + 10f, dimPaint)
+            canvas.drawText("Score", cx[1], y + 10f, dimPaint)
+            canvas.drawText("Max", cx[2], y + 10f, dimPaint)
+            canvas.drawText("Adj", cx[3], y + 10f, dimPaint)
+            y += 16f
+            result.kutas.forEach { k ->
+                ensureSpaceEarly(bodyPaint.textSize + 4f)
+                val rowPaint = when {
+                    k.doshaCancelled -> greenPaint
+                    k.doshaPresent -> redPaint
+                    else -> bodyPaint
+                }
+                canvas.drawText(k.label, cx[0], y + bodyPaint.textSize, rowPaint)
+                canvas.drawText(fmtScore(k.score), cx[1], y + bodyPaint.textSize, rowPaint)
+                canvas.drawText(fmtScore(k.maxScore), cx[2], y + bodyPaint.textSize, rowPaint)
+                canvas.drawText(k.adjustedScore?.let { fmtScore(it) } ?: "—", cx[3], y + bodyPaint.textSize, rowPaint)
+                y += bodyPaint.textSize + 5f
+            }
+            // Totals row
+            ensureSpaceEarly(bodyPaint.textSize + 6f)
+            canvas.drawText("Total", cx[0], y + bodyPaint.textSize, headerPaint)
+            canvas.drawText("${result.totalScore}", cx[1], y + bodyPaint.textSize, headerPaint)
+            canvas.drawText("${result.maxScore}", cx[2], y + bodyPaint.textSize, headerPaint)
+            canvas.drawText(result.adjustedScore?.toString() ?: "—", cx[3], y + bodyPaint.textSize, headerPaint)
+            y += bodyPaint.textSize + 10f
+        }
+        ensureSpaceEarly(14f)
+        canvas.drawLine(margin, y, margin + contentWidth, y, dividerPaint)
+        y += 14f
+    }
 
     val parsed = parseSections(result.summary)
     val items: List<Pair<String, String>> = if (parsed.isEmpty()) {

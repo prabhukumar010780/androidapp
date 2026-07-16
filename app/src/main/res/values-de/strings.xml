@@ -2687,4 +2687,5 @@ Until then: Use this period for strategic positioning.</string>
     <string name="waitlist_cta">Der Warteliste beitreten</string>
     <string name="waitlist_support_prefix">Fragen oder Hilfe benötigt? Erreichen Sie uns jederzeit unter</string>
     <string name="waitlist_title">Sie sind fast dabei</string>
+    <string name="partner_default_name">Partner</string>
 </resources>

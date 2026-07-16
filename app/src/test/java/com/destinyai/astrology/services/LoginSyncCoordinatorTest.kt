@@ -36,6 +36,7 @@ class LoginSyncCoordinatorTest {
             quotaManager = mockk(relaxed = true),
             chatThreadDao = mockk(relaxed = true),
             partnerDao = mockk(relaxed = true),
+            compatibilityHistoryDao = mockk(relaxed = true),
             prefs = mockk(relaxed = true),
         )
     }

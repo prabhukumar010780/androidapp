@@ -853,6 +853,15 @@ interface AstroApiService {
         @Path("threadId") threadId: String,
     ): List<ChatMessageDto>
 
+    // iOS parity (CompatibilityHistoryService.syncFromServer): raw thread detail so the
+    // compat-history sync can read the `metadata` (full analysis) blob the typed
+    // ChatMessageDto list doesn't model. Returns the whole {metadata, messages, ...} object.
+    @GET("chat-history/threads/{userId}/{threadId}")
+    suspend fun getChatThreadRaw(
+        @Path("userId") userId: String,
+        @Path("threadId") threadId: String,
+    ): okhttp3.ResponseBody
+
     @DELETE("chat-history/threads/{userId}/{threadId}")
     suspend fun deleteChatThread(
         @Path("userId") userId: String,

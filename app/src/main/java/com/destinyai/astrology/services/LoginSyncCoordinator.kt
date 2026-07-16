@@ -45,6 +45,9 @@ class LoginSyncCoordinator @Inject constructor(
     private val quotaManager: QuotaManager,
     private val chatThreadDao: ChatThreadDao,
     private val partnerDao: PartnerDao,
+    // iOS parity (LoginSyncCoordinator runs compat sync in parallel with chat): rebuild
+    // local compat history from the server so matches survive reinstall / follow to a new device.
+    private val compatibilityHistoryDao: com.destinyai.astrology.data.local.db.CompatibilityHistoryDao,
     private val prefs: UserPreferences,
 ) {
     /**
@@ -128,6 +131,12 @@ class LoginSyncCoordinator @Inject constructor(
                 prefs.setHistoryEnabled(settings.historyEnabled)
             }.onFailure { Log.w(TAG, "history settings sync failed: ${it.message}", it) }
         }
+        // iOS parity (CompatibilityHistoryService.syncFromServer): rebuild compat matches
+        // from the server so they survive reinstall / follow to a new device.
+        val compatSync = async {
+            runCatching { syncCompatibilityFromApi(userEmail) }
+                .onFailure { Log.w(TAG, "compat history sync failed: ${it.message}", it) }
+        }
 
         chatSync.await()
         quotaSync.await()
@@ -135,7 +144,59 @@ class LoginSyncCoordinator @Inject constructor(
         chartPrefetch.await()
         predictionPrefetch.await()
         historySettingsSync.await()
+        compatSync.await()
         Log.d(TAG, "syncAll complete for $userEmail")
+    }
+
+    /**
+     * iOS parity (CompatibilityHistoryService.syncFromServer): list the user's chat
+     * threads, keep the compatibility ones (compat_ id prefix or primary_area), fetch
+     * each thread's raw detail (which carries the `metadata` analysis blob), map it via
+     * the shared compat mapper, and upsert into CompatibilityHistoryDao. Every upsert is
+     * gated on a successfully-parsed non-zero result so a shape mismatch can NEVER create
+     * a broken, un-openable match row.
+     */
+    private suspend fun syncCompatibilityFromApi(email: String) {
+        val threads = runCatching { api.listChatThreads(email) }.getOrElse { return }
+        val gson = com.google.gson.Gson()
+        threads.forEach { dto ->
+            val id = dto.threadId.lowercase()
+            val looksCompat = id.startsWith("compat_sess_") || id.startsWith("compat_grp_") ||
+                id.startsWith("compat_") || dto.title.startsWith("match:", ignoreCase = true)
+            if (!looksCompat) return@forEach
+            runCatching {
+                val body = api.getChatThreadRaw(email, dto.threadId).string()
+                val root = com.google.gson.JsonParser.parseString(body).asJsonObject
+                val metadata = root.get("metadata")?.takeIf { it.isJsonObject }?.asJsonObject
+                    ?: return@runCatching
+                val result = com.destinyai.astrology.data.remote.mapCompatibilityResponse(
+                    json = gson.toJson(metadata),
+                    boyName = "", girlName = "", boyDob = null, girlDob = null,
+                    boyCity = null, girlCity = null,
+                )
+                // Only persist a valid, openable match — never a zero/empty stub.
+                if (result.totalScore <= 0) return@runCatching
+                compatibilityHistoryDao.upsert(
+                    com.destinyai.astrology.data.local.db.CompatibilityHistoryEntity(
+                        sessionId = dto.threadId,
+                        ownerEmail = email,
+                        timestampMs = runCatching { java.time.Instant.parse(dto.updatedAt).toEpochMilli() }.getOrDefault(0L),
+                        boyName = result.boyName,
+                        boyDob = result.boyDob ?: "",
+                        boyCity = result.boyCity ?: "",
+                        boyTime = "",
+                        girlName = result.girlName,
+                        girlDob = result.girlDob ?: "",
+                        girlCity = result.girlCity ?: "",
+                        girlTime = "",
+                        totalScore = result.totalScore,
+                        maxScore = result.maxScore,
+                        isPinned = dto.isPinned,
+                        resultJson = gson.toJson(result),
+                    ),
+                )
+            }
+        }
     }
 
     private companion object {

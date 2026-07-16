@@ -2862,4 +2862,5 @@ Until then: Use this period for strategic positioning.</string>
     <string name="dismiss">Dismiss</string>
     <!-- History screen — generic error fallback shown in Snackbar when load/mutation fails -->
     <string name="history_load_error">Something went wrong. Please try again.</string>
+    <string name="partner_default_name">Partner</string>
 </resources>

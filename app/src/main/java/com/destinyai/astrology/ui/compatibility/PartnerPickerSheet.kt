@@ -6,9 +6,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -16,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -157,21 +160,60 @@ fun PartnerPickerSheet(
                                 .padding(horizontal = 16.dp, vertical = 14.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
+                            // iOS parity (PartnerPickerSheet.swift:210-268): gold avatar circle
+                            // with initial.
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        Brush.linearGradient(
+                                            listOf(Gold.copy(alpha = 0.85f), Gold.copy(alpha = 0.45f)),
+                                        ),
+                                    ),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = partner.name.trim().firstOrNull()?.uppercase() ?: "?",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF0D0D1A),
+                                )
+                            }
+                            Spacer(Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = partner.name.ifEmpty { "Partner" },
+                                    text = partner.name.ifEmpty { stringResource(R.string.partner_default_name) },
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = CreamText,
                                 )
-                                if (!partner.cityOfBirth.isNullOrEmpty()) {
+                                // Gender symbol + formatted DOB + city sub-row (iOS parity).
+                                val genderSymbol = when (partner.gender.lowercase()) {
+                                    "male", "m" -> "♂"
+                                    "female", "f" -> "♀"
+                                    else -> ""
+                                }
+                                val dobLabel = formatPickerDob(partner.dateOfBirth)
+                                val subParts = listOfNotNull(
+                                    genderSymbol.takeIf { it.isNotEmpty() },
+                                    dobLabel.takeIf { it.isNotEmpty() },
+                                    partner.cityOfBirth?.takeIf { it.isNotEmpty() },
+                                )
+                                if (subParts.isNotEmpty()) {
                                     Text(
-                                        text = partner.cityOfBirth,
+                                        text = subParts.joinToString("  •  "),
                                         fontSize = 13.sp,
                                         color = CreamDim,
                                     )
                                 }
                             }
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = Gold.copy(alpha = 0.6f),
+                                modifier = Modifier.size(20.dp),
+                            )
                         }
                     }
                 }
@@ -209,4 +251,20 @@ fun PartnerPickerSheet(
             }
         }
     }
+}
+
+/** iOS parity (PartnerPickerSheet long-date DOB): format an ISO/`yyyy-MM-dd` DOB to a
+ *  friendly "MMM d, yyyy"; returns empty on parse failure so the sub-row omits it. */
+private fun formatPickerDob(dob: String?): String {
+    val raw = dob?.takeIf { it.isNotBlank() } ?: return ""
+    val patterns = listOf("yyyy-MM-dd", "yyyy-MM-dd'T'HH:mm:ss", "MM/dd/yyyy")
+    for (p in patterns) {
+        val parsed = runCatching {
+            java.text.SimpleDateFormat(p, java.util.Locale.US).parse(raw)
+        }.getOrNull()
+        if (parsed != null) {
+            return java.text.SimpleDateFormat("MMM d, yyyy", java.util.Locale.getDefault()).format(parsed)
+        }
+    }
+    return raw
 }

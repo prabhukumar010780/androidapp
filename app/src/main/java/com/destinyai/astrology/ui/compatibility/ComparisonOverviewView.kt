@@ -59,6 +59,7 @@ import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
 import java.io.File
 import java.io.FileOutputStream
+import java.util.Locale
 
 private val SuccessColor = Color(0xFF48BB78)
 private val ErrorColor = Color(0xFFFC8181)
@@ -1250,37 +1251,128 @@ internal fun buildComparisonPdf(
     results: List<ComparisonResult>,
 ): Uri? {
     val doc = PdfDocument()
-    val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create() // A4 in points
-    val page = doc.startPage(pageInfo)
-    val canvas = page.canvas
-    val title = Paint().apply {
-        color = android.graphics.Color.BLACK
-        textSize = 18f
-        isFakeBoldText = true
+    val pageWidth = 595
+    val pageHeight = 842
+    val margin = 40f
+    val gold = android.graphics.Color.rgb(212, 175, 55)
+    val title = Paint().apply { color = gold; textSize = 20f; isFakeBoldText = true; isAntiAlias = true }
+    val header = Paint().apply { color = gold; textSize = 13f; isFakeBoldText = true; isAntiAlias = true; letterSpacing = 0.08f }
+    val body = Paint().apply { color = android.graphics.Color.rgb(40, 40, 50); textSize = 11f; isAntiAlias = true }
+    val dim = Paint().apply { color = android.graphics.Color.rgb(120, 120, 130); textSize = 9f; isAntiAlias = true }
+    val greenP = Paint(body).apply { color = android.graphics.Color.rgb(40, 130, 70) }
+    val redP = Paint(body).apply { color = android.graphics.Color.rgb(180, 60, 60) }
+    val divider = Paint().apply { color = gold; alpha = 80; strokeWidth = 0.6f }
+
+    var pageNum = 1
+    var page = doc.startPage(PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNum).create())
+    var canvas = page.canvas
+    var y = margin
+
+    fun ensure(need: Float) {
+        if (y + need > pageHeight - margin) {
+            doc.finishPage(page)
+            pageNum += 1
+            page = doc.startPage(PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNum).create())
+            canvas = page.canvas
+            y = margin
+        }
     }
-    val body = Paint().apply {
-        color = android.graphics.Color.DKGRAY
-        textSize = 12f
+
+    // ── Cover / header ──
+    canvas.drawText("DESTINY AI ASTROLOGY", margin, y + 10f, dim); y += 22f
+    canvas.drawText("$userName — Compatibility Comparison", margin, y + 20f, title); y += 34f
+    canvas.drawLine(margin, y, pageWidth - margin, y, divider); y += 16f
+
+    // ── Executive summary: best match + per-partner score cards ──
+    val best = results.maxByOrNull { it.overallScore }
+    if (best != null) {
+        canvas.drawText("EXECUTIVE SUMMARY", margin, y + 13f, header); y += 18f
+        canvas.drawText(
+            "Top match: ${best.partner.name}  (${best.adjustedScore}/${best.maxScore})",
+            margin, y + 12f, body,
+        )
+        y += 20f
     }
-    var y = 60f
-    canvas.drawText("$userName — Compatibility Report", 40f, y, title)
-    y += 28f
-    canvas.drawText("Analyzed with Destiny AI Astrology", 40f, y, body)
-    y += 24f
     results.forEach { r ->
-        val line = "${r.partner.name}: ${r.adjustedScore}/${r.maxScore}" +
-            if (r.isRecommended) " — Recommended" else " — Not Recommended"
-        canvas.drawText(line, 40f, y, body)
-        y += 18f
+        ensure(16f)
+        val rec = if (r.isRecommended) "Recommended" else "Not Recommended"
+        val recPaint = if (r.isRecommended) greenP else redP
+        canvas.drawText("${r.partner.name}: ${r.adjustedScore}/${r.maxScore}", margin, y + body.textSize, body)
+        canvas.drawText(rec, margin + 260f, y + body.textSize, recPaint)
+        r.oneLiner?.takeIf { it.isNotBlank() }?.let {
+            y += body.textSize + 3f
+            ensure(dim.textSize + 3f)
+            canvas.drawText(it.take(90), margin + 12f, y + dim.textSize, dim)
+        }
+        y += body.textSize + 8f
+    }
+    y += 6f
+    ensure(14f); canvas.drawLine(margin, y, pageWidth - margin, y, divider); y += 16f
+
+    // ── Koota breakdown table: partners as columns, kutas as rows + Manglik + totals ──
+    val kutaKeys = results.flatMap { it.kutaDetails.keys }.distinct()
+    if (kutaKeys.isNotEmpty()) {
+        canvas.drawText("KOOTA BREAKDOWN", margin, y + 13f, header); y += 18f
+        val col0 = margin
+        val colW = ((pageWidth - margin * 2 - 120f) / results.size).coerceAtLeast(50f)
+        // Header row
+        canvas.drawText("Koota", col0, y + 10f, dim)
+        results.forEachIndexed { i, r ->
+            canvas.drawText(r.partner.name.take(8), 120f + margin + i * colW, y + 10f, dim)
+        }
+        y += 15f
+        kutaKeys.forEach { key ->
+            ensure(body.textSize + 4f)
+            val label = results.firstNotNullOfOrNull { it.kutaDetails[key]?.label } ?: key
+            canvas.drawText(label.take(14), col0, y + body.textSize, body)
+            results.forEachIndexed { i, r ->
+                val kd = r.kutaDetails[key]
+                val cell = kd?.let { "${fmtD(it.adjustedScore ?: it.score)}/${fmtD(it.maxScore)}" } ?: "—"
+                val cp = when { kd?.doshaCancelled == true -> greenP; kd?.doshaPresent == true -> redP; else -> body }
+                canvas.drawText(cell, 120f + margin + i * colW, y + body.textSize, cp)
+            }
+            y += body.textSize + 4f
+        }
+        // Manglik row
+        ensure(body.textSize + 4f)
+        canvas.drawText("Manglik", col0, y + body.textSize, body)
+        results.forEachIndexed { i, r ->
+            val mangal = (r.mangalCompatibility?.get("compatible") as? Boolean)
+            val txt = when (mangal) { true -> "OK"; false -> "Caution"; else -> "—" }
+            canvas.drawText(txt, 120f + margin + i * colW, y + body.textSize, if (mangal == false) redP else body)
+        }
+        y += body.textSize + 4f
+        // Totals row
+        ensure(body.textSize + 6f)
+        canvas.drawText("Total", col0, y + body.textSize, header)
+        results.forEachIndexed { i, r ->
+            canvas.drawText("${r.adjustedScore}/${r.maxScore}", 120f + margin + i * colW, y + body.textSize, header)
+        }
+        y += body.textSize + 12f
+    }
+
+    // ── Per-partner analysis pages ──
+    results.forEach { r ->
+        ensure(30f)
+        canvas.drawLine(margin, y, pageWidth - margin, y, divider); y += 14f
+        canvas.drawText(r.partner.name.uppercase(Locale.getDefault()), margin, y + 13f, header); y += 18f
         if (r.summary.isNotBlank()) {
-            r.summary.chunkedByLine(80).forEach { chunk ->
-                canvas.drawText(chunk, 56f, y, body)
-                y += 16f
-                if (y > 800f) return@forEach
+            r.summary.replace("**", "").split("\n").forEach { para ->
+                if (para.isBlank()) { y += 5f } else {
+                    para.chunkedByLine(88).forEach { chunk ->
+                        ensure(body.textSize + 4f)
+                        canvas.drawText(chunk, margin, y + body.textSize, body)
+                        y += body.textSize + 4f
+                    }
+                }
             }
         }
         y += 8f
     }
+
+    ensure(14f)
+    canvas.drawText("AI generated analysis · For guidance only · © 2026 Destiny AI Astrology", margin, y + 10f, dim)
+
     doc.finishPage(page)
     val safeUser = userName.filter { it.isLetterOrDigit() }.take(16).ifBlank { "compat" }
     val file = File(context.cacheDir, "compat-$safeUser.pdf")
@@ -1293,6 +1385,9 @@ internal fun buildComparisonPdf(
         null
     }
 }
+
+/** Format a score double, dropping ".0" for whole numbers. */
+private fun fmtD(v: Double): String = if (v % 1.0 == 0.0) v.toInt().toString() else v.toString()
 
 private fun String.chunkedByLine(maxChars: Int): List<String> {
     if (length <= maxChars) return listOf(this)

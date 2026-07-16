@@ -2689,4 +2689,5 @@ Until then: Use this period for strategic positioning.</string>
     <string name="waitlist_cta">Waitlist-ൽ ചേരുക</string>
     <string name="waitlist_support_prefix">ചോദ്യങ്ങൾ അല്ലെങ്കിൽ സഹായത്തിന് ആവശ്യമുണ്ടോ? ഏതെങ്കിലും സമയത്ത് ഞങ്ങളുമായി ബന്ധപ്പെടുക</string>
     <string name="waitlist_title">നിങ്ങൾ ഏതാണ്ട് ഇൻ ആണ്</string>
+    <string name="partner_default_name">പങ്കാളി</string>
 </resources>
