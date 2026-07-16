@@ -127,6 +127,13 @@ interface ProfileRepository {
 class AccountDeletionBlockedException(message: String) : Exception(message)
 
 /**
+ * iOS parity (ProfileService.swift:579-582 / ProfileError.sessionExpired):
+ * the account-delete flow has no fresh session JWT. Callers should route the
+ * user back to sign-in rather than fire a doomed 401.
+ */
+class SessionExpiredException(message: String = "session_expired") : Exception(message)
+
+/**
  * iOS parity (ProfileService.swift:299-308): birth data is already linked to
  * another registered user. The optional [existingEmail] / [provider] fields let
  * the UI render a friendly "this birth data is linked to your Apple/Google

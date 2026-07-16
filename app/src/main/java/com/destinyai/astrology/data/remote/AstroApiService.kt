@@ -45,6 +45,42 @@ data class UpgradeRequest(
     @SerializedName("new_email") val newEmail: String,
 )
 
+// ---- W7 session-JWT auth (iOS AuthExchangeClient parity) ----
+data class AuthExchangeRequest(
+    @SerializedName("idp") val idp: String, // "apple" | "google" | "guest"
+    @SerializedName("id_token") val idToken: String? = null,
+    @SerializedName("guest_payload") val guestPayload: GuestExchangePayload? = null,
+    @SerializedName("nonce") val nonce: String? = null,
+    @SerializedName("device_id") val deviceId: String? = null,
+)
+
+data class GuestExchangePayload(
+    @SerializedName("user_email") val userEmail: String,
+    @SerializedName("is_generated_email") val isGeneratedEmail: Boolean = true,
+    @SerializedName("user_name") val userName: String? = null,
+)
+
+data class AuthExchangeResponse(
+    @SerializedName("session_jwt") val sessionJwt: String,
+    @SerializedName("session_jwt_expires_at") val sessionJwtExpiresAt: String,
+    @SerializedName("refresh_token") val refreshToken: String,
+    @SerializedName("refresh_token_expires_at") val refreshTokenExpiresAt: String,
+    @SerializedName("user_email") val userEmail: String,
+)
+
+data class AuthRefreshRequest(
+    @SerializedName("refresh_token") val refreshToken: String,
+    @SerializedName("device_id") val deviceId: String? = null,
+    @SerializedName("id_token") val idToken: String? = null,
+)
+
+data class AuthRefreshResponse(
+    @SerializedName("session_jwt") val sessionJwt: String,
+    @SerializedName("session_jwt_expires_at") val sessionJwtExpiresAt: String,
+    @SerializedName("refresh_token") val refreshToken: String,
+    @SerializedName("refresh_token_expires_at") val refreshTokenExpiresAt: String,
+)
+
 data class ProfileRequest(
     @SerializedName("email") val email: String,
     @SerializedName("user_name") val userName: String? = null,
@@ -716,6 +752,22 @@ interface AstroApiService {
     @POST("subscription/upgrade")
     suspend fun upgradeGuest(@Body request: UpgradeRequest): RegisterResponse
 
+    // W7 — /auth/exchange + /auth/refresh are PUBLIC (no bearer). We still send
+    // X-API-Key as an anti-bot signal + explicit User-Agent (iOS parity).
+    @POST("auth/exchange")
+    suspend fun authExchange(
+        @Header("X-API-Key") apiKey: String,
+        @Header("User-Agent") userAgent: String,
+        @Body body: AuthExchangeRequest,
+    ): AuthExchangeResponse
+
+    @POST("auth/refresh")
+    suspend fun authRefresh(
+        @Header("X-API-Key") apiKey: String,
+        @Header("User-Agent") userAgent: String,
+        @Body body: AuthRefreshRequest,
+    ): AuthRefreshResponse
+
     @POST("subscription/profile")
     suspend fun saveProfile(@Body request: ProfileRequest): ProfileResponse
 
@@ -725,7 +777,10 @@ interface AstroApiService {
 
     // Backend uses POST /subscription/account/delete with body (not DELETE + query param)
     @POST("subscription/account/delete")
-    suspend fun deleteAccount(@Body request: DeleteAccountRequest): SuccessResponse
+    suspend fun deleteAccount(
+        @Header("Authorization") authHeader: String,
+        @Body request: DeleteAccountRequest,
+    ): SuccessResponse
 
     // Subscription Plans
     @GET("subscription/plans")

@@ -2661,6 +2661,9 @@ Until then: Use this period for strategic positioning.</string>
     <string name="delete_account_active_subscription_warning">Cancel your subscription before deleting your account. Active subscriptions cannot be refunded after deletion.</string>
     <string name="delete_account_button">Delete Account</string>
     <string name="delete_account_cancel">Cancel</string>
+    <!-- iOS parity (delete_session_expired_message) — shown when the account-delete
+         flow has no fresh session JWT or the server returns 401 session_required. -->
+    <string name="delete_session_expired_message">Your session has expired. Please sign in again to delete your account.</string>
     <!-- Quota-exhausted guest sheet (mirrors iOS QuotaExhaustedView guest path). -->
     <string name="guest_question_limit_reached">Question limit reached</string>
     <string name="sign_in_to_continue_chat">Sign in to keep your chat history and unlock more questions. Your birth data is preserved.</string>

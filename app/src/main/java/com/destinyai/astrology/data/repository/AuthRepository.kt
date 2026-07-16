@@ -21,7 +21,7 @@ interface AuthRepository {
     ): Result<User>
     // Reserved: iOS-cross-platform sign-in. No Android UI path. May be wired via
     // deep-link in a future build — keep the interface + impl + DTO + endpoint intact.
-    suspend fun signInWithApple(appleId: String, email: String?, name: String?): Result<User>
+    suspend fun signInWithApple(appleId: String, email: String?, name: String?, idToken: String? = null): Result<User>
     suspend fun registerGuest(): Result<User>
     suspend fun upgradeGuest(guestEmail: String, newEmail: String): Result<User>
     /**

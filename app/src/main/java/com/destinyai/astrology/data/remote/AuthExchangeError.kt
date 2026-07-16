@@ -1,0 +1,69 @@
+package com.destinyai.astrology.data.remote
+
+import com.google.gson.JsonParser
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
+
+/** iOS parity: AuthExchangeError enum + ISO8601 robust parse. */
+sealed class AuthExchangeError(message: String) : Exception(message) {
+    data class IdpRejected(val code: String, val status: Int) :
+        AuthExchangeError("Sign-in rejected (code=$code, http=$status)")
+    data class ReauthRequired(val code: String) :
+        AuthExchangeError("Please sign in again ($code)")
+    data class CrossIdpCollision(
+        val boundIdp: String?, val attemptedIdp: String?, val userEmail: String?,
+    ) : AuthExchangeError("This email is registered with a different sign-in method.")
+    data class Network(val msg: String) : AuthExchangeError("Network error: $msg")
+    object NoRefreshToken : AuthExchangeError("No refresh token stored")
+
+    companion object {
+        private val REAUTH_CODES = setOf(
+            "refresh_reused", "refresh_unknown", "refresh_expired",
+            "session_revoked", "google_reattest_required",
+        )
+
+        fun fromHttp(status: Int, errorBody: String?): AuthExchangeError {
+            val detail = runCatching {
+                val root = JsonParser.parseString(errorBody.orEmpty())
+                if (!root.isJsonObject) return@runCatching null
+                root.asJsonObject.get("detail")?.takeIf { it.isJsonObject }?.asJsonObject
+            }.getOrNull() ?: return Network("status $status")
+
+            val code = detail.get("code")?.takeIf { it.isJsonPrimitive }?.asString
+                ?: return Network("status $status")
+            return when {
+                code == "cross_idp_collision" -> CrossIdpCollision(
+                    boundIdp = detail.get("bound_idp")?.takeIf { it.isJsonPrimitive }?.asString,
+                    attemptedIdp = detail.get("attempted_idp")?.takeIf { it.isJsonPrimitive }?.asString,
+                    userEmail = detail.get("user_email")?.takeIf { it.isJsonPrimitive }?.asString,
+                )
+                code in REAUTH_CODES -> ReauthRequired(code)
+                else -> IdpRejected(code, status)
+            }
+        }
+    }
+}
+
+/**
+ * Parse the backend's ISO8601 timestamp to epoch-millis. Backend emits an
+ * explicit "Z" but older/naive rows may omit it. Returns null on unparseable
+ * so the caller FAILS the sign-in instead of defaulting to epoch-0 (which would
+ * make sessionIsFresh() always false — the exact iOS 1970 bug that bricked W7).
+ */
+fun parseIso8601Millis(s: String): Long? {
+    val patterns = listOf(
+        "yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'",
+        "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+        "yyyy-MM-dd'T'HH:mm:ss'Z'",
+    )
+    val candidates = if (s.endsWith("Z")) listOf(s) else listOf(s, s + "Z")
+    for (c in candidates) {
+        for (p in patterns) {
+            val fmt = SimpleDateFormat(p, Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
+            val parsed = runCatching { fmt.parse(c)?.time }.getOrNull()
+            if (parsed != null) return parsed
+        }
+    }
+    return null
+}

@@ -55,6 +55,12 @@ class SecureStorage @Inject constructor(
 
     fun clearAll() = prefs.edit().clear().apply()
 
+    // Raw namespaced accessors used by SessionTokenStore (W7 session-JWT layer).
+    // Kept generic so per-email session keys don't need bespoke methods.
+    fun putRaw(key: String, value: String) = prefs.edit().putString(key, value).apply()
+    fun getRaw(key: String): String? = prefs.getString(key, null)
+    fun removeRaw(key: String) = prefs.edit().remove(key).apply()
+
     private companion object {
         const val KEY_EMAIL = "email"
         const val KEY_AUTH_TOKEN = "auth_token"

@@ -97,6 +97,8 @@ class ProfileViewModel @Inject constructor(
     private val threadDao: com.destinyai.astrology.data.local.db.ChatThreadDao,
     private val messageDao: com.destinyai.astrology.data.local.db.ChatMessageDao,
     private val compatibilityHistoryDao: com.destinyai.astrology.data.local.db.CompatibilityHistoryDao,
+    private val sessionStore: com.destinyai.astrology.data.local.prefs.SessionTokenStore,
+    @dagger.hilt.android.qualifiers.ApplicationContext private val appContext: android.content.Context,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -318,10 +320,25 @@ class ProfileViewModel @Inject constructor(
     fun confirmDeleteAccount() {
         viewModelScope.launch {
             val email = prefs.getUserEmail() ?: return@launch
+            // iOS ProfileService.swift:579-582 — irreversible action REQUIRES a
+            // fresh session JWT. Surface sessionExpired instead of a doomed 401.
+            if (!sessionStore.sessionIsFresh() || sessionStore.currentSessionJwt() == null) {
+                _uiState.update {
+                    it.copy(
+                        isDeletingAccount = false,
+                        deleteErrorMessage = appContext.getString(
+                            com.destinyai.astrology.R.string.delete_session_expired_message,
+                        ),
+                    )
+                }
+                return@launch
+            }
+            val jwt = sessionStore.currentSessionJwt()!!
             // Keep sheet open with spinner; clear any stale error.
             _uiState.update { it.copy(isDeletingAccount = true, deleteErrorMessage = null) }
             try {
-                api.deleteAccount(DeleteAccountRequest(userEmail = email))
+                api.deleteAccount("Bearer $jwt", DeleteAccountRequest(userEmail = email))
+                sessionStore.clearActiveSession()
                 prefs.clearAll()
                 _uiState.update {
                     it.copy(
@@ -332,24 +349,39 @@ class ProfileViewModel @Inject constructor(
                     )
                 }
             } catch (e: retrofit2.HttpException) {
-                // Mirrors iOS ProfileService:537-544 — 403 = active subscription blocks
-                // deletion. Parse the server detail message; fall back to a localized
-                // string ("Please cancel your subscription before deleting your account.").
-                if (e.code() == 403) {
-                    val detail = runCatching {
-                        val raw = e.response()?.errorBody()?.string().orEmpty()
-                        com.google.gson.JsonParser.parseString(raw)
-                            .asJsonObject.get("detail")?.asString
-                    }.getOrNull()
-                    _uiState.update {
+                when (e.code()) {
+                    401 -> _uiState.update {
                         it.copy(
                             isDeletingAccount = false,
-                            deleteErrorMessage = detail
-                                ?: "Please cancel your subscription before deleting your account.",
+                            deleteErrorMessage = appContext.getString(
+                                com.destinyai.astrology.R.string.delete_session_expired_message,
+                            ),
                         )
                     }
-                } else {
-                    _uiState.update { it.copy(isDeletingAccount = false, deleteErrorMessage = e.message ?: "Failed to delete account") }
+                    // Mirrors iOS ProfileService:537-544/609-629 — 403/409 = active
+                    // subscription blocks deletion. Parse the server detail message
+                    // (dict or string shape); fall back to a localized string.
+                    403, 409 -> {
+                        val detail = runCatching {
+                            val raw = e.response()?.errorBody()?.string().orEmpty()
+                            val d = com.google.gson.JsonParser.parseString(raw).asJsonObject.get("detail")
+                            when {
+                                d?.isJsonObject == true -> d.asJsonObject.get("message")?.asString
+                                d?.isJsonPrimitive == true -> d.asString
+                                else -> null
+                            }
+                        }.getOrNull()
+                        _uiState.update {
+                            it.copy(
+                                isDeletingAccount = false,
+                                deleteErrorMessage = detail
+                                    ?: "Please cancel your subscription before deleting your account.",
+                            )
+                        }
+                    }
+                    else -> _uiState.update {
+                        it.copy(isDeletingAccount = false, deleteErrorMessage = e.message ?: "Failed to delete account")
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isDeletingAccount = false, deleteErrorMessage = e.message ?: "Failed to delete account") }

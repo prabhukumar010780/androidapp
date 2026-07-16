@@ -23,6 +23,8 @@ class AuthRepositoryImplTest {
     private lateinit var api: AstroApiService
     private lateinit var secure: SecureStorage
     private lateinit var prefs: UserPreferences
+    private lateinit var sessionStore: com.destinyai.astrology.data.local.prefs.SessionTokenStore
+    private lateinit var exchangeClient: com.destinyai.astrology.data.remote.AuthExchangeClient
     private lateinit var quotaManager: QuotaManager
     private lateinit var repo: AuthRepositoryImpl
 
@@ -31,8 +33,10 @@ class AuthRepositoryImplTest {
         api = mockk(relaxed = true)
         secure = mockk(relaxed = true)
         prefs = mockk(relaxed = true)
+        sessionStore = mockk(relaxed = true)
+        exchangeClient = mockk(relaxed = true)
         quotaManager = mockk(relaxed = true)
-        repo = AuthRepositoryImpl(api, secure, prefs, Provider { quotaManager })
+        repo = AuthRepositoryImpl(api, secure, prefs, sessionStore, exchangeClient, Provider { quotaManager })
     }
 
     // ── getSavedUser ──────────────────────────────────────────────────────────
@@ -111,6 +115,55 @@ class AuthRepositoryImplTest {
         verify { secure.saveEmail(any()) }
     }
 
+    @Test
+    fun `registerGuest mints guest session after register`() = runTest {
+        coEvery { api.register(any()) } returns RegisterResponse(
+            userEmail = "guest_x@guest.destiny.ai",
+            planId = "free_guest",
+            isGeneratedEmail = true,
+            isPremium = false,
+            accessState = "granted",
+            dailyQuota = 3,
+            dailyUsed = 0,
+        )
+        coEvery { exchangeClient.signInAsGuest(any(), any(), any()) } returns
+            com.destinyai.astrology.data.remote.ExchangeResult("guest_x@guest.destiny.ai", "jwt", 0L, 0L)
+
+        val result = repo.registerGuest()
+
+        assertTrue(result.isSuccess)
+        coVerify { exchangeClient.signInAsGuest("guest_x@guest.destiny.ai", true, any()) }
+    }
+
+    @Test
+    fun `registerGuest retries guest mint on transient failure`() = runTest {
+        coEvery { api.register(any()) } returns RegisterResponse(
+            userEmail = "guest_x@guest.destiny.ai",
+            planId = "free_guest",
+            isGeneratedEmail = true,
+            isPremium = false,
+            accessState = "granted",
+            dailyQuota = 3,
+            dailyUsed = 0,
+        )
+        // First attempt throws, second succeeds — verifies the 3-attempt retry loop.
+        coEvery { exchangeClient.signInAsGuest(any(), any(), any()) } throws
+            com.destinyai.astrology.data.remote.AuthExchangeError.Network("boom") andThenThrows
+            com.destinyai.astrology.data.remote.AuthExchangeError.Network("boom") // will retry then give up
+
+        val result = repo.registerGuest()
+
+        // Guest mode is offline-first — even if mint never succeeds, registration succeeds.
+        assertTrue(result.isSuccess)
+        coVerify(atLeast = 2) { exchangeClient.signInAsGuest(any(), true, any()) }
+    }
+
+    @Test
+    fun `clearSession clears active session token`() = runTest {
+        repo.clearSession()
+        verify { sessionStore.clearActiveSession() }
+    }
+
     // ── signInWithGoogle ──────────────────────────────────────────────────────
 
     @Test
@@ -137,6 +190,8 @@ class AuthRepositoryImplTest {
         assertEquals("google@user.com", user.email)
         assertFalse(user.isGuestEmail)
         verify { secure.saveEmail("google@user.com") }
+        // W7: session JWT minted from the id_token after register.
+        coVerify { exchangeClient.signInWithGoogle("test-id-token", null, any()) }
         // Verify backend payload matches Pydantic RegisterRequest schema
         coVerify {
             api.signInWithGoogle(

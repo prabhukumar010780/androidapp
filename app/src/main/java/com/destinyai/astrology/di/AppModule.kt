@@ -15,9 +15,13 @@ import com.destinyai.astrology.data.local.db.ChatThreadDao
 import com.destinyai.astrology.data.local.db.CompatibilityHistoryDao
 import com.destinyai.astrology.data.local.db.PartnerDao
 import com.destinyai.astrology.data.local.prefs.SecureStorage
+import com.destinyai.astrology.data.local.prefs.SessionTokenStore
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AstroApiService
+import com.destinyai.astrology.data.remote.AuthExchangeClient
+import com.destinyai.astrology.data.remote.AuthInterceptor
 import com.destinyai.astrology.data.remote.ErrorInterceptor
+import com.destinyai.astrology.data.remote.SessionAuthenticator
 import com.destinyai.astrology.data.repository.AuthRepository
 import com.destinyai.astrology.data.repository.ChatRepository
 import com.destinyai.astrology.data.repository.CompatibilityRepository
@@ -40,6 +44,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 import javax.inject.Named
+import javax.inject.Provider
 import javax.inject.Singleton
 
 @Module
@@ -48,28 +53,31 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(secure: SecureStorage): OkHttpClient {
+    @Named("apiKey")
+    fun provideApiKey(): String = BuildConfig.API_KEY
+
+    @Provides
+    @Singleton
+    @Named("userAgent")
+    fun provideUserAgent(): String = "DestinyAI-Android/${BuildConfig.VERSION_NAME}"
+
+    @Provides
+    @Singleton
+    fun provideOkHttpClient(
+        store: SessionTokenStore,
+        @Named("apiKey") apiKey: String,
+        @Named("userAgent") userAgent: String,
+        authExchangeProvider: Provider<AuthExchangeClient>,
+    ): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply {
             // BASIC level keeps method+URL+status visible without leaking the
-            // Authorization: Bearer <API_KEY> header to logcat (see security finding).
+            // Authorization: Bearer <token> header to logcat (see security finding).
             level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BASIC
             else HttpLoggingInterceptor.Level.NONE
         }
         return OkHttpClient.Builder()
-            .addInterceptor { chain ->
-                val builder = chain.request().newBuilder()
-                if (BuildConfig.API_KEY.isBlank()) {
-                    Log.e(
-                        "NetworkModule",
-                        "BuildConfig.API_KEY is blank — skipping Authorization header. " +
-                            "Rebuild with -PAPI_KEY=... or set DESTINY_API_KEY env var. " +
-                            "All authenticated calls will return 401."
-                    )
-                } else {
-                    builder.addHeader("Authorization", "Bearer ${BuildConfig.API_KEY}")
-                }
-                chain.proceed(builder.build())
-            }
+            .addInterceptor(AuthInterceptor(store, apiKey, userAgent))
+            .authenticator(SessionAuthenticator(store, authExchangeProvider))
             .addInterceptor(ErrorInterceptor())
             .addInterceptor(logging)
             .connectTimeout(30, TimeUnit.SECONDS)
@@ -86,25 +94,20 @@ object NetworkModule {
     @Provides
     @Singleton
     @Named("streaming")
-    fun provideStreamingOkHttpClient(secure: SecureStorage): OkHttpClient {
+    fun provideStreamingOkHttpClient(
+        store: SessionTokenStore,
+        @Named("apiKey") apiKey: String,
+        @Named("userAgent") userAgent: String,
+        authExchangeProvider: Provider<AuthExchangeClient>,
+    ): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply {
             // BASIC level — never HEADERS — so the Authorization header is never logged.
             level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BASIC
             else HttpLoggingInterceptor.Level.NONE
         }
         return OkHttpClient.Builder()
-            .addInterceptor { chain ->
-                val builder = chain.request().newBuilder()
-                if (BuildConfig.API_KEY.isBlank()) {
-                    Log.e(
-                        "NetworkModule",
-                        "BuildConfig.API_KEY is blank (streaming client) — skipping Authorization header."
-                    )
-                } else {
-                    builder.addHeader("Authorization", "Bearer ${BuildConfig.API_KEY}")
-                }
-                chain.proceed(builder.build())
-            }
+            .addInterceptor(AuthInterceptor(store, apiKey, userAgent))
+            .authenticator(SessionAuthenticator(store, authExchangeProvider))
             .addInterceptor(ErrorInterceptor())
             .addInterceptor(logging)
             .connectTimeout(30, TimeUnit.SECONDS)

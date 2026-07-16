@@ -13,6 +13,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,6 +37,7 @@ class ProfileViewModelTest {
     private lateinit var prefs: UserPreferences
     private lateinit var authRepository: AuthRepository
     private lateinit var billingManager: BillingManager
+    private lateinit var sessionStore: com.destinyai.astrology.data.local.prefs.SessionTokenStore
     private lateinit var vm: ProfileViewModel
 
     @BeforeAll
@@ -64,6 +66,9 @@ class ProfileViewModelTest {
         // ProfileChangeBus is a @Singleton with a non-arg constructor — instantiate
         // a real one so the VM's collector subscribes to a live SharedFlow.
         val profileChangeBus = com.destinyai.astrology.services.ProfileChangeBus()
+        sessionStore = mockk(relaxed = true)
+        val appContext = mockk<android.content.Context>(relaxed = true)
+        every { appContext.getString(any()) } returns "Your session has expired. Please sign in again to delete your account."
         vm = ProfileViewModel(
             api,
             prefs,
@@ -73,6 +78,8 @@ class ProfileViewModelTest {
             mockk(relaxed = true), // threadDao
             mockk(relaxed = true), // messageDao
             mockk(relaxed = true), // compatibilityHistoryDao
+            sessionStore,
+            appContext,
         )
     }
 
@@ -160,10 +167,15 @@ class ProfileViewModelTest {
 
     @Test
     fun `confirmDeleteAccount calls api and clears prefs then sets isDeleted`() = runTest {
+        every { sessionStore.sessionIsFresh(any()) } returns true
+        every { sessionStore.currentSessionJwt() } returns "SESS"
+        coEvery { api.deleteAccount(any(), any()) } returns mockk(relaxed = true)
+
         vm.confirmDeleteAccount()
 
-        coVerify { api.deleteAccount(match { it.userEmail == "u@x.com" && it.confirmation == "DELETE" }) }
+        coVerify { api.deleteAccount("Bearer SESS", match { it.userEmail == "u@x.com" && it.confirmation == "DELETE" }) }
         coVerify { prefs.clearAll() }
+        verify { sessionStore.clearActiveSession() }
         vm.uiState.test {
             assertTrue(awaitItem().isDeleted)
             cancelAndIgnoreRemainingEvents()
@@ -171,8 +183,25 @@ class ProfileViewModelTest {
     }
 
     @Test
+    fun `confirmDeleteAccount surfaces sessionExpired when no fresh session`() = runTest {
+        every { sessionStore.sessionIsFresh(any()) } returns false
+
+        vm.confirmDeleteAccount()
+
+        coVerify(exactly = 0) { api.deleteAccount(any(), any()) }
+        vm.uiState.test {
+            val s = awaitItem()
+            assertNotNull(s.deleteErrorMessage)
+            assertFalse(s.isDeleted)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `confirmDeleteAccount sets error on api failure`() = runTest {
-        coEvery { api.deleteAccount(any<DeleteAccountRequest>()) } throws RuntimeException("api error")
+        every { sessionStore.sessionIsFresh(any()) } returns true
+        every { sessionStore.currentSessionJwt() } returns "SESS"
+        coEvery { api.deleteAccount(any(), any()) } throws RuntimeException("api error")
 
         vm.confirmDeleteAccount()
 
@@ -194,7 +223,7 @@ class ProfileViewModelTest {
 
         vm.confirmDeleteAccount()
 
-        coVerify(exactly = 0) { api.deleteAccount(any<DeleteAccountRequest>()) }
+        coVerify(exactly = 0) { api.deleteAccount(any(), any()) }
     }
 
     // ── toggleHistory ──────────────────────────────────────────────────────────

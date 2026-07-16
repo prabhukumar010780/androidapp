@@ -19,6 +19,8 @@ class AuthRepositoryImpl @Inject constructor(
     private val api: AstroApiService,
     private val secure: SecureStorage,
     private val prefs: UserPreferences,
+    private val sessionStore: com.destinyai.astrology.data.local.prefs.SessionTokenStore,
+    private val exchangeClient: com.destinyai.astrology.data.remote.AuthExchangeClient,
     // Provider to break the potential cycle (QuotaManager → AstroApiService → ...)
     // and to keep the manager optional during clearSession (iOS parity:
     // QuotaManager.resetForSignOut is called from signOut to wipe in-memory caches).
@@ -81,6 +83,12 @@ class AuthRepositoryImpl @Inject constructor(
         // lastAccessState so SplashViewModel/AppNav can route to WaitlistPending
         // on next launch when applicable.
         prefs.setLastAccessState(resp.accessState)
+        // W7 parity: mint a session JWT so authenticated calls carry a real
+        // per-user identity (delete-account, /auth/upgrade, strict-mode routes).
+        if (!idToken.isNullOrBlank()) {
+            runCatching { exchangeClient.signInWithGoogle(idToken, nonce = null) }
+                .onFailure { android.util.Log.w("AuthRepository", "google session mint failed: ${it.message}") }
+        }
         resp.toUser()
     }
 
@@ -95,6 +103,7 @@ class AuthRepositoryImpl @Inject constructor(
         appleId: String,
         email: String?,
         name: String?,
+        idToken: String?,
     ): Result<User> = runCatching {
         // iOS parity (AppleAuthService.swift:108-128): dual-store recovery cache.
         // FIRST sign-in: persist email+name into both SecureStorage (primary,
@@ -148,7 +157,31 @@ class AuthRepositoryImpl @Inject constructor(
         // lastAccessState so SplashViewModel/AppNav can route to WaitlistPending
         // on next launch when applicable.
         prefs.setLastAccessState(resp.accessState)
+        // W7 parity: mint a session JWT when the Apple id_token is available.
+        if (!idToken.isNullOrBlank()) {
+            runCatching { exchangeClient.signInWithApple(idToken, nonce = null) }
+                .onFailure { android.util.Log.w("AuthRepository", "apple session mint failed: ${it.message}") }
+        }
         resp.toUser()
+    }
+
+    /** iOS BirthDataViewModel.swift:277-303 parity — mint a guest session JWT
+     *  with 3 attempts + exponential backoff so a transient failure at sign-in
+     *  time doesn't leave the guest without a JWT (needed for later
+     *  guest→registered /auth/upgrade). Best-effort: never blocks guest mode. */
+    private suspend fun mintGuestSession(email: String) {
+        var delayMs = 400L
+        repeat(3) { attempt ->
+            val ok = runCatching { exchangeClient.signInAsGuest(email, isGeneratedEmail = true) }
+                .onFailure {
+                    android.util.Log.w("AuthRepository", "guest mint attempt ${attempt + 1} failed: ${it.message}")
+                }.isSuccess
+            if (ok) return
+            if (attempt < 2) {
+                kotlinx.coroutines.delay(delayMs)
+                delayMs *= 2
+            }
+        }
     }
 
     override suspend fun registerGuest(): Result<User> = runCatching {
@@ -177,12 +210,16 @@ class AuthRepositoryImpl @Inject constructor(
             prefs.setSubscription(resp.isPremium, resp.planId ?: "")
             prefs.setAccessState(resp.accessState)
             prefs.setLastAccessState(resp.accessState)
+            // W7 parity: mint a guest session JWT so a later guest→registered
+            // /auth/upgrade can authorize with the guest bearer.
+            mintGuestSession(resp.userEmail)
             resp.toUser()
         } catch (e: Exception) {
             android.util.Log.w(
                 "AuthRepository",
                 "Guest backend register deferred (offline?): ${e.message}",
             )
+            mintGuestSession(guestEmail)
             User(
                 email = guestEmail,
                 isGuestEmail = true,
@@ -238,6 +275,7 @@ class AuthRepositoryImpl @Inject constructor(
         prefs.clearSubscriptionMeta()
         prefs.clearProviderIds()
         runCatching { quotaManager.get().resetForSignOut() }
+        sessionStore.clearActiveSession()
         secure.clearAll()
         prefs.clearAll()
     }
@@ -263,6 +301,7 @@ class AuthRepositoryImpl @Inject constructor(
         prefs.clearSubscriptionMeta()
         prefs.clearProviderIds()
         runCatching { quotaManager.get().resetForSignOut() }
+        sessionStore.clearActiveSession()
         // NOTE: do NOT call prefs.clearAll() — that wipes BIRTH_DOB/lat/lng/etc.
         // The whole point of this method is to preserve birth data so the user
         // doesn't have to re-enter it after re-auth.

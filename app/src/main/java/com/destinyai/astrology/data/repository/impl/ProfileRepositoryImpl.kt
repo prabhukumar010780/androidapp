@@ -17,6 +17,7 @@ import com.destinyai.astrology.data.remote.UpgradeRequest
 import com.destinyai.astrology.data.repository.AccountDeletionBlockedException
 import com.destinyai.astrology.data.repository.BirthDataTakenException
 import com.destinyai.astrology.data.repository.ProfileRepository
+import com.destinyai.astrology.data.repository.SessionExpiredException
 import com.destinyai.astrology.ui.auth.AccountDeletedError
 import com.destinyai.astrology.ui.auth.ArchivedGuestError
 import com.destinyai.astrology.ui.auth.RegisteredUserConflictError
@@ -32,6 +33,7 @@ class ProfileRepositoryImpl @Inject constructor(
     private val api: AstroApiService,
     private val secure: SecureStorage,
     private val prefs: UserPreferences,
+    private val sessionStore: com.destinyai.astrology.data.local.prefs.SessionTokenStore,
 ) : ProfileRepository {
 
     override suspend fun fetchProfile(email: String): ProfileResponse? = try {
@@ -143,17 +145,27 @@ class ProfileRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteAccount(email: String): SuccessResponse {
+        // iOS ProfileService.swift:579-582 — irreversible action requires a fresh
+        // session JWT; the interceptor's API-key fallback would 401 server-side.
+        val jwt = sessionStore.currentSessionJwt()?.takeIf { sessionStore.sessionIsFresh() }
+            ?: throw SessionExpiredException()
         return try {
-            api.deleteAccount(DeleteAccountRequest(userEmail = email))
+            api.deleteAccount("Bearer $jwt", DeleteAccountRequest(userEmail = email))
         } catch (e: HttpException) {
-            if (e.code() == 403) {
-                // iOS parity (ProfileService.swift:537-544): parse detail string;
-                // fall back to the generic active-subscription guard message.
+            if (e.code() == 403 || e.code() == 409) {
+                // iOS parity (ProfileService.swift:537-544/609-629): parse detail
+                // (dict or string); fall back to the generic active-subscription guard.
                 val detail = runCatching {
                     val raw = e.response()?.errorBody()?.string().orEmpty()
                     if (raw.isBlank()) null
-                    else JsonParser.parseString(raw)
-                        .asJsonObject.get("detail")?.asString
+                    else {
+                        val d = JsonParser.parseString(raw).asJsonObject.get("detail")
+                        when {
+                            d?.isJsonObject == true -> d.asJsonObject.get("message")?.asString
+                            d?.isJsonPrimitive == true -> d.asString
+                            else -> null
+                        }
+                    }
                 }.getOrNull()
                 throw AccountDeletionBlockedException(
                     detail ?: "Please cancel your subscription before deleting your account."
