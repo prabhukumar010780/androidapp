@@ -121,6 +121,13 @@ class ChatViewModel @Inject constructor(
     // stream when the app backgrounds and remember the question for the Retry banner.
     private var streamJob: Job? = null
     private var cosmicProgressJob: Job? = null
+    // iOS parity (ChatViewModel.startSmoothPump:1150-1224): a 60Hz display interpolator
+    // reveals the arrived text into the visible bubble at ~70 ch/s (±20% jitter) so bursty
+    // backend token frames render as steady human-paced typing. pumpTarget is the full text
+    // that has ARRIVED; pumpJob reveals it progressively into the message content.
+    private var pumpJob: Job? = null
+    @Volatile private var pumpTarget: String = ""
+    @Volatile private var pumpRevealed: Int = 0
     private var lastSentQuery: String? = null
     // iOS parity: idempotency key for the in-flight send, reused by the sync fallback.
     private var currentIdempotencyKey: String? = null
@@ -497,6 +504,7 @@ class ChatViewModel @Inject constructor(
 
             val assistantId = UUID.randomUUID().toString()
             var accumulated = ""
+            resetPump()
 
             // iOS parity (AppConfig.shouldStreamFor + ChatViewModel routing): honor the
             // server-driven streaming kill-switch / cohort / min-version gate. When
@@ -535,21 +543,15 @@ class ChatViewModel @Inject constructor(
                 result
                     .onSuccess { chunk ->
                         accumulated += chunk
-                        val assistantMsg = ChatMessage(
-                            id = assistantId,
-                            role = ChatMessage.Role.ASSISTANT,
-                            content = accumulated,
-                            isStreaming = true,
-                            createdAtMs = System.currentTimeMillis(),
-                        )
-                        _uiState.update { s ->
-                            val msgs = s.messages.filterNot { it.id == assistantId } + assistantMsg
-                            s.copy(messages = msgs)
-                        }
+                        // iOS parity: feed the smooth pump; it reveals accumulated text at
+                        // ~70 ch/s (or instantly under reduce-motion) into the bubble.
+                        feedPump(assistantId, accumulated)
                     }
                     .onFailure { e ->
                         // Mirrors iOS quota-error mapping (StreamingPredictionService).
                         stopCosmicProgressTimer()
+                        // Stop the reveal pump — failure branches render their own final state.
+                        pumpJob?.cancel()
                         when (e) {
                             is BackpressureException -> {
                                 // iOS parity (ChatViewModel.swift:1011-1019): server shed load —
@@ -622,6 +624,9 @@ class ChatViewModel @Inject constructor(
 
             // Mark last assistant message as no longer streaming
             stopCosmicProgressTimer()
+            // iOS parity: fast-drain any remaining pumped text so the final answer is
+            // fully visible the instant the stream closes (no lingering partial reveal).
+            drainPump(assistantId)
             _uiState.update { s ->
                 s.copy(
                     isStreaming = false,
@@ -936,6 +941,8 @@ class ChatViewModel @Inject constructor(
     // for the Retry banner, scrubs orphan streaming assistant bubble.
     private fun handleBackgroundExpiry() {
         stopCosmicProgressTimer()
+        pumpJob?.cancel()
+        pumpJob = null
         val job = streamJob
         if (job != null && job.isActive) {
             job.cancel()
@@ -957,6 +964,8 @@ class ChatViewModel @Inject constructor(
     // Unlike background expiry, do NOT set interruptedQuestion — the user chose to stop.
     fun stopGeneration() {
         stopCosmicProgressTimer()
+        pumpJob?.cancel()
+        pumpJob = null
         streamJob?.cancel()
         streamJob = null
         _uiState.update { s ->
@@ -985,6 +994,99 @@ class ChatViewModel @Inject constructor(
         cosmicProgressJob?.cancel()
         cosmicProgressJob = null
         _uiState.update { it.copy(cosmicProgressIndex = null) }
+    }
+
+    // ── Smooth typewriter pump (iOS ChatViewModel.startSmoothPump parity) ──────────
+
+    /** iOS parity: reduce-motion → reveal instantly (no typewriter animation). */
+    private fun reduceMotionEnabled(): Boolean = runCatching {
+        android.provider.Settings.Global.getFloat(
+            appContext.contentResolver,
+            android.provider.Settings.Global.ANIMATOR_DURATION_SCALE,
+            1f,
+        ) == 0f
+    }.getOrDefault(false)
+
+    /** Feed newly-arrived text to the pump. Reveals instantly under reduce-motion. */
+    private fun feedPump(assistantId: String, fullTextSoFar: String) {
+        pumpTarget = fullTextSoFar
+        if (reduceMotionEnabled()) {
+            pumpRevealed = fullTextSoFar.length
+            renderPumpFrame(assistantId, fullTextSoFar)
+            return
+        }
+        if (pumpJob?.isActive != true) startSmoothPump(assistantId)
+    }
+
+    /** 60Hz interpolator revealing pumpTarget at ~70 ch/s ±20% jitter, with catch-up
+     *  scaling when the backend is far ahead (mirrors iOS BASE_CHARS_PER_SEC + jitter). */
+    private fun startSmoothPump(assistantId: String) {
+        pumpJob?.cancel()
+        pumpJob = viewModelScope.launch {
+            val baseCharsPerSec = 70.0
+            val frameMs = 16L // ~60Hz
+            var carry = 0.0
+            while (true) {
+                val remaining = pumpTarget.length - pumpRevealed
+                if (remaining <= 0) {
+                    kotlinx.coroutines.delay(frameMs)
+                    if (pumpTarget.length - pumpRevealed <= 0) continue else continue
+                }
+                // Catch-up: reveal faster when a large backlog has arrived (bursty frames).
+                val catchUp = when {
+                    remaining > 400 -> 3.0
+                    remaining > 150 -> 2.0
+                    else -> 1.0
+                }
+                val jitter = 0.8 + 0.4 * pseudoRandom() // ±20%
+                carry += baseCharsPerSec * catchUp * jitter * (frameMs / 1000.0)
+                val step = carry.toInt()
+                if (step >= 1) {
+                    carry -= step
+                    pumpRevealed = (pumpRevealed + step).coerceAtMost(pumpTarget.length)
+                    renderPumpFrame(assistantId, pumpTarget.substring(0, pumpRevealed))
+                }
+                kotlinx.coroutines.delay(frameMs)
+            }
+        }
+    }
+
+    /** Deterministic-ish jitter without Math.random (avoids test flakiness). */
+    private var pumpTick = 0
+    private fun pseudoRandom(): Double {
+        pumpTick = (pumpTick * 1103515245 + 12345) and 0x7fffffff
+        return (pumpTick % 1000) / 1000.0
+    }
+
+    /** Fast-drain the remaining buffer instantly (stream closed / stop / error). */
+    private fun drainPump(assistantId: String) {
+        pumpJob?.cancel()
+        pumpJob = null
+        if (pumpTarget.isNotEmpty()) {
+            pumpRevealed = pumpTarget.length
+            renderPumpFrame(assistantId, pumpTarget)
+        }
+    }
+
+    private fun resetPump() {
+        pumpJob?.cancel()
+        pumpJob = null
+        pumpTarget = ""
+        pumpRevealed = 0
+    }
+
+    private fun renderPumpFrame(assistantId: String, visible: String) {
+        _uiState.update { s ->
+            val existing = s.messages.firstOrNull { it.id == assistantId }
+            val msg = (existing ?: ChatMessage(
+                id = assistantId,
+                role = ChatMessage.Role.ASSISTANT,
+                content = "",
+                isStreaming = true,
+                createdAtMs = System.currentTimeMillis(),
+            )).copy(content = visible, isStreaming = true)
+            s.copy(messages = s.messages.filterNot { it.id == assistantId } + msg)
+        }
     }
 
     // Mirrors iOS handleAppForeground — re-sync quota so canAskQuestion is accurate
