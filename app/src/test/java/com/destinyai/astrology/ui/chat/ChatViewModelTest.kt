@@ -13,6 +13,7 @@ import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.*
 import org.junit.jupiter.api.*
@@ -63,6 +64,9 @@ class ChatViewModelTest {
         every { prefs.activeProfileIdFlow } returns flowOf(null)
         every { prefs.responseLengthFlow } returns flowOf("standard")
         every { profileChangeBus.events } returns MutableSharedFlow()
+        // ChatViewModel.init() collects quotaManager.isPremium (post-upgrade unlock);
+        // relaxed mockk returns a broken Flow, so provide a real StateFlow.
+        every { quotaManager.isPremium } returns MutableStateFlow(false)
         // sendMessage() pre-flight uses prefs.getUserEmail() to gate the quota check.
         // Returning null lets the test bypass the quota path entirely so the user-msg
         // append + repository.sendMessage call site can be exercised. Tests that

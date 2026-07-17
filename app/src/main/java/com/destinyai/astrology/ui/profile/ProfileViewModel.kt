@@ -9,6 +9,7 @@ import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.remote.DeleteAccountRequest
 import com.destinyai.astrology.data.repository.AuthRepository
 import com.destinyai.astrology.services.ProfileChangeBus
+import com.destinyai.astrology.services.QuotaManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +26,12 @@ data class ProfileUiState(
     val email: String = "",
     val isPremium: Boolean = false,
     val planId: String = "",
+    // Terminal-aware entitlement gates (from QuotaManager, not raw planId). A lapsed Plus
+    // user keeps plan_id="plus" on the backend, so raw-string gates would still grant these.
+    val isPlusEntitled: Boolean = false,
+    val hasSwitchProfile: Boolean = false,
+    val hasMaintainProfile: Boolean = false,
+    val hasAlerts: Boolean = false,
     val dailyQuota: Int = 3,
     val dailyUsed: Int = 0,
     val isLoading: Boolean = false,
@@ -95,6 +102,10 @@ class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val billingManager: BillingManager,
     private val profileChangeBus: ProfileChangeBus,
+    // iOS parity: gate Profile's Plus-only rows (Switch Profile / Manage Charts / Alerts)
+    // on the terminal-aware QuotaManager entitlement, not a raw plan_id string (backend
+    // keeps plan_id="plus" after expiry, so a lapsed user would still see them entitled).
+    private val quotaManager: com.destinyai.astrology.services.QuotaManager,
     // iOS parity (HistorySettingsManager.clearAllHistory step 2-3 at
     // HistorySettingsManager.swift:118-122): after the server DELETE succeeds,
     // wipe local Room mirrors so Chat history sheet + Match list flush
@@ -180,6 +191,10 @@ class ProfileViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 val status = api.getStatus(email)
+                // Keep QuotaManager (the authoritative entitlement store the other screens
+                // read) fresh from the same status, so its terminal-aware isPlus + feature
+                // list reflect what Profile is about to render. force=true: user opened Profile.
+                runCatching { quotaManager.syncStatus(email, force = true) }
                 val name = prefs.getUserName() ?: status.name ?: ""
                 val historyEnabled = prefs.isHistoryEnabled()
                 val chartStyle = prefs.getChartStyle()
@@ -230,6 +245,14 @@ class ProfileViewModel @Inject constructor(
                         email = status.userEmail,
                         isPremium = status.isPremium,
                         planId = status.planId ?: "",
+                        // Terminal-aware gates from QuotaManager (not raw planId).
+                        isPlusEntitled = quotaManager.isPlus,
+                        hasSwitchProfile = quotaManager.hasFeature(QuotaManager.FeatureID.SWITCH_PROFILE) &&
+                            !quotaManager.isInTerminalPaidStatus,
+                        hasMaintainProfile = quotaManager.hasFeature(QuotaManager.FeatureID.MAINTAIN_PROFILE) &&
+                            !quotaManager.isInTerminalPaidStatus,
+                        hasAlerts = quotaManager.hasFeature(QuotaManager.FeatureID.ALERTS) &&
+                            !quotaManager.isInTerminalPaidStatus,
                         dailyQuota = status.dailyQuota ?: 0,
                         dailyUsed = status.dailyUsed ?: 0,
                         isLoading = false,

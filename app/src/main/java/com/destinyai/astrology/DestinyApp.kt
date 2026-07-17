@@ -7,7 +7,9 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import com.destinyai.astrology.data.billing.BillingManager
+import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.services.AppStartupService
+import com.destinyai.astrology.services.QuotaManager
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -19,6 +21,8 @@ import javax.inject.Inject
 class DestinyApp : Application() {
     @Inject lateinit var billingManager: BillingManager
     @Inject lateinit var appStartupService: AppStartupService
+    @Inject lateinit var quotaManager: QuotaManager
+    @Inject lateinit var userPreferences: UserPreferences
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -41,6 +45,17 @@ class DestinyApp : Application() {
             ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
                 override fun onResume(owner: LifecycleOwner) {
                     appScope.launch { runCatching { appStartupService.refreshConfig() } }
+                    // iOS parity (ios_appApp.swift:148 — QuotaManager.syncStatus on foreground):
+                    // refresh the authoritative entitlement store on every foreground so an
+                    // external cancel/expiry (Play Store) or webhook downgrade that happened
+                    // while backgrounded downgrades the gates without waiting for re-login.
+                    // Force-sync (bypasses cooldown) since foreground is an explicit user signal.
+                    appScope.launch {
+                        runCatching {
+                            val email = userPreferences.getUserEmail()
+                            if (!email.isNullOrBlank()) quotaManager.syncStatus(email, force = true)
+                        }
+                    }
                 }
             })
         }

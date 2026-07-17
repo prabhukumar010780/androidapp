@@ -129,6 +129,9 @@ class ChatViewModel @Inject constructor(
     @Volatile private var pumpTarget: String = ""
     @Volatile private var pumpRevealed: Int = 0
     private var lastSentQuery: String? = null
+    // iOS parity (pendingPostUpgradeQuery): the question blocked by a quota gate, buffered
+    // so it auto-resends the moment the user upgrades (isPremium false→true observer above).
+    private var pendingPostUpgradeQuery: String? = null
     // iOS parity: idempotency key for the in-flight send, reused by the sync fallback.
     private var currentIdempotencyKey: String? = null
 
@@ -253,6 +256,25 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             profileChangeBus.events.collect {
                 handleProfileSwitch()
+            }
+        }
+        // iOS parity (ChatViewModel pendingPostUpgradeQuery): when the user completes a
+        // purchase from the chat paywall, isPremium flips false→true. Re-enable the composer
+        // and auto-resend the question that was blocked, without waiting for a foreground/
+        // restart. drop(1) skips the initial replay of the current value.
+        viewModelScope.launch {
+            var wasPremium = quotaManager.isPremium.value
+            quotaManager.isPremium.drop(1).collect { nowPremium ->
+                if (nowPremium && !wasPremium) {
+                    _uiState.update { it.copy(canAskQuestion = true, showPaywall = false) }
+                    val replay = pendingPostUpgradeQuery
+                    pendingPostUpgradeQuery = null
+                    if (!replay.isNullOrBlank()) {
+                        updateInput(replay)
+                        sendMessage()
+                    }
+                }
+                wasPremium = nowPremium
             }
         }
         // iOS parity (ChatView.swift:169-171): observe DataStore activeProfileId so the chat
@@ -415,7 +437,26 @@ class ChatViewModel @Inject constructor(
                                 // iOS parity (ChatViewModel.swift:339-349): overall-limit must surface the
                                 // QuotaExhaustedView sheet — guest path shows sign-in CTA, account path
                                 // shows the upgrade interstitial. NEVER fall back to a red error banner.
-                                if (_uiState.value.isGuestUser) {
+                                //
+                                // D13: the backend returns reason="overall_limit_reached" + fair-use flag
+                                // for a Plus subscriber hitting the lifetime cap. Route that to the
+                                // fair-use "Usage Restricted / Contact Support" sheet, NOT a dead-end
+                                // upgrade paywall (Plus can't upgrade further). iOS parity.
+                                val isFairUse = access.isFairUseViolation ||
+                                    access.planId.equals("plus", ignoreCase = true)
+                                if (isFairUse) {
+                                    _uiState.update {
+                                        it.copy(
+                                            canAskQuestion = false,
+                                            canSend = false,
+                                            showQuotaExhaustedAccountSheet = true,
+                                            quotaReason = "fair_use_violation",
+                                            quotaDetails = access.upgradeCta?.message ?: "",
+                                            quotaPlanId = access.planId,
+                                        )
+                                    }
+                                } else if (_uiState.value.isGuestUser) {
+                                    pendingPostUpgradeQuery = input
                                     _uiState.update {
                                         it.copy(
                                             canAskQuestion = false,
@@ -424,6 +465,7 @@ class ChatViewModel @Inject constructor(
                                         )
                                     }
                                 } else {
+                                    pendingPostUpgradeQuery = input
                                     _uiState.update {
                                         it.copy(
                                             canAskQuestion = false,
@@ -440,6 +482,8 @@ class ChatViewModel @Inject constructor(
                                 // iOS QuotaExhaustedView (ChatView.swift:93-112) shows BOTH guests and
                                 // account users an interstitial sheet first; the upgrade SubscriptionScreen
                                 // is only opened after the user taps "Upgrade".
+                                // Buffer the blocked question so it auto-resends post-upgrade (C11).
+                                pendingPostUpgradeQuery = input
                                 if (_uiState.value.isGuestUser) {
                                     _uiState.update {
                                         it.copy(

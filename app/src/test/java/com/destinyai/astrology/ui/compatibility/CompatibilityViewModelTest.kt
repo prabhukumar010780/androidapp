@@ -103,7 +103,12 @@ class CompatibilityViewModelTest {
         // routes analyze() into the paywall branch and short-circuits the SSE consumer.
         coEvery { api.canAccessFeature(any(), any(), any()) } returns
             com.destinyai.astrology.data.remote.CanAccessResponse(allowed = true)
-        vm = CompatibilityViewModel(api, prefs, compatibilityRepo, historyDao, mockk(relaxed = true), chatRepository, authRepository, profileChangeBus, profileContextManager, mockk(relaxed = true))
+        // CompatibilityViewModel.init() collects quotaManager.currentPlanId (Plus gate);
+        // relaxed mockk returns a broken Flow, so provide a real StateFlow + isPlus.
+        val quotaManager = mockk<com.destinyai.astrology.services.QuotaManager>(relaxed = true)
+        every { quotaManager.currentPlanId } returns kotlinx.coroutines.flow.MutableStateFlow(null)
+        every { quotaManager.isPlus } returns false
+        vm = CompatibilityViewModel(api, prefs, compatibilityRepo, historyDao, mockk(relaxed = true), chatRepository, authRepository, profileChangeBus, profileContextManager, quotaManager, mockk(relaxed = true))
     }
 
     @Test

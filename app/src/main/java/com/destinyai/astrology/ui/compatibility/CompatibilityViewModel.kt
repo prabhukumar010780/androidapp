@@ -103,6 +103,11 @@ class CompatibilityViewModel @Inject constructor(
     // without relying on a screen-side LaunchedEffect(Unit) that fires once.
     private val profileChangeBus: com.destinyai.astrology.services.ProfileChangeBus,
     private val profileContextManager: com.destinyai.astrology.services.ProfileContextManager,
+    // iOS parity (CompatibilityViewModel reads QuotaManager.isPlus): the Plus gate for
+    // multi-partner Add-Partner must reflect the LIVE subscription tier, not a stale
+    // local default. Seeded in loadUserData() + observed in init so a purchase/expiry
+    // flips the gate without an app restart.
+    private val quotaManager: com.destinyai.astrology.services.QuotaManager,
     @dagger.hilt.android.qualifiers.ApplicationContext private val appContext: android.content.Context,
 ) : ViewModel() {
 
@@ -126,6 +131,16 @@ class CompatibilityViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(CompatibilityUiState())
     val uiState: StateFlow<CompatibilityUiState> = _uiState
+
+    init {
+        // Keep the Plus gate in sync with the live subscription tier. Declared AFTER
+        // _uiState because currentPlanId emits its current value immediately on collect
+        // and setPlus touches _uiState — an earlier init block would NPE on the not-yet-
+        // constructed field. Unlocks Add-Partner the moment the user becomes Plus.
+        viewModelScope.launch {
+            quotaManager.currentPlanId.collect { setPlus(quotaManager.isPlus) }
+        }
+    }
 
     private var personAProfile: BirthProfileDto? = null
     private var personAEmail: String? = null
@@ -203,6 +218,11 @@ class CompatibilityViewModel @Inject constructor(
     fun loadUserData() {
         viewModelScope.launch {
             val email = prefs.getUserEmail() ?: return@launch
+            // Refresh subscription tier so the Plus gate (Add-Partner) is correct on entry.
+            // Non-forced: respects QuotaManager's sync cooldown, so this is cheap. The
+            // currentPlanId observer in init pushes the result into state.isPlus.
+            runCatching { quotaManager.syncStatus(email) }
+                .onFailure { setPlus(quotaManager.isPlus) } // fall back to cached tier
             // iOS parity (CompatibilityViewModel.swift:178-210): the "You" card
             // reflects the **active** profile (partner when one is selected),
             // not the owner. Resolve via ProfileContextManager so partner birth

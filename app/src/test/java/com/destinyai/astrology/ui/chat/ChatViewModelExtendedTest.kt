@@ -14,6 +14,7 @@ import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
@@ -54,6 +55,7 @@ class ChatViewModelExtendedTest {
         every { prefs.activeProfileIdFlow } returns flowOf(null)
         every { prefs.responseLengthFlow } returns flowOf("standard")
         every { profileChangeBus.events } returns MutableSharedFlow()
+        every { quotaManager.isPremium } returns MutableStateFlow(false)
         coEvery { prefs.getUserEmail() } returns null
         val appStartup = mockk<com.destinyai.astrology.services.AppStartupService>(relaxed = true)
         every { appStartup.shouldStreamFor(any()) } returns true

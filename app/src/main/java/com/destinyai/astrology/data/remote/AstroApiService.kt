@@ -455,6 +455,11 @@ data class StatusResponse(
     // server gate so a previously-subscribed user (Play intro-offer eligibility
     // may have reset) is not re-offered a free trial.
     @SerializedName("has_ever_subscribed") val hasEverSubscribed: Boolean = false,
+    // Backend StatusResponse.features (subscription_router.py:117) — the plan's enabled
+    // feature ids (compatibility, maintain_profile, switch_profile, alerts, etc.). Dropped
+    // pre-fix, leaving QuotaManager._availableFeatures empty so hasFeature() always false —
+    // even Plus users hit the paywall on alerts/switch-profile. iOS parity: QuotaManager.swift.
+    @SerializedName("features") val features: List<String> = emptyList(),
 )
 
 data class PredictResponse(

@@ -430,26 +430,17 @@ fun SubscriptionScreen(
                             // during the cross-window between Apple/Play webhook
                             // landing and the next backend status sync.
                             val resolvedCurrentPlan = effectiveCurrentPlanId.orEmpty()
+                            // D14 (iOS parity SubscriptionView.swift:600): match the current
+                            // plan on TIER only. `period` is hardcoded "monthly" on every card
+                            // (SubscriptionViewModel:167), so a *.yearly activePlanId never
+                            // contained "monthly" → yearly subscribers wrongly saw no
+                            // "Current Plan" badge and an active re-purchase CTA. Backend
+                            // plan_id is tier-only ("plus"/"core"); the Play product id
+                            // (activePlanId) carries the period which we intentionally ignore.
                             val isCurrentPlan =
-                                resolvedCurrentPlan.equals(plan.planId, ignoreCase = true) &&
-                                    // PlanDto.planId is tier-only ('core'/'plus') with no
-                                    // period suffix — only treat as current when the
-                                    // active product also matches this card's period.
-                                    (
-                                        activePlanId == null ||
-                                            (
-                                                activePlanId?.contains(tier, ignoreCase = true) == true &&
-                                                    activePlanId?.contains(period, ignoreCase = true) == true
-                                            )
-                                        ) ||
-                                    (
-                                        resolvedCurrentPlan.contains(tier, ignoreCase = true) &&
-                                            resolvedCurrentPlan.contains(period, ignoreCase = true)
-                                        ) ||
-                                    (
-                                        activePlanId?.contains(tier, ignoreCase = true) == true &&
-                                            activePlanId?.contains(period, ignoreCase = true) == true
-                                        )
+                                resolvedCurrentPlan.equals(plan.planId, ignoreCase = true) ||
+                                    resolvedCurrentPlan.contains(tier, ignoreCase = true) ||
+                                    activePlanId?.contains(tier, ignoreCase = true) == true
                             val ctaText: String = when {
                                 isCurrentPlan -> stringResource(R.string.current_plan_label)
                                 isPlus && resolvedCurrentPlan.equals("core", ignoreCase = true) ->

@@ -46,6 +46,10 @@ class BillingManager @Inject constructor(
     private val billingClient: BillingClient,
     private val api: AstroApiService,
     private val prefs: UserPreferences,
+    // Lazy to break the QuotaManager <-> BillingManager DI cycle (QuotaManager already
+    // injects BillingManager via Lazy). Used to refresh the authoritative entitlement
+    // store after a purchase/restore/reconcile so gates react without an app restart.
+    private val quotaManager: dagger.Lazy<com.destinyai.astrology.services.QuotaManager>,
 ) {
 
     companion object {
@@ -542,7 +546,15 @@ class BillingManager @Inject constructor(
             if (response.success) {
                 val previous = previousObservedPlanId
                 _purchasedProductIds.value = _purchasedProductIds.value + productId
-                val planId = response.planId ?: productId
+                // D16: never store the raw Play product id (e.g. com.daa.plus.monthly) as
+                // plan_id — QuotaManager.isPlus does an exact `== "plus"` compare, so a raw
+                // product id would read as free. Map SKU→tier; the following syncStatus is
+                // authoritative anyway.
+                val planId = response.planId ?: when {
+                    productId.contains(".plus.", ignoreCase = true) -> "plus"
+                    productId.contains(".core.", ignoreCase = true) -> "core"
+                    else -> "plus"
+                }
                 prefs.setSubscription(true, planId)
 
                 // iOS parity (SubscriptionManager.swift:501-555): track scheduled
@@ -711,6 +723,10 @@ class BillingManager @Inject constructor(
                         if (resp.updated) {
                             // Backend downgraded — clear local premium so gating self-corrects.
                             prefs.setSubscription(isPremium = false, planId = "free_registered")
+                            // Also refresh the authoritative QuotaManager store — it holds
+                            // independent StateFlows (different prefs) that gates read; without
+                            // this, QuotaManager keeps reporting Plus after the downgrade.
+                            runCatching { quotaManager.get().syncStatus(email, force = true) }
                         }
                     }
                 }.onFailure {

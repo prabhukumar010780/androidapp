@@ -339,6 +339,10 @@ class SubscriptionViewModel @Inject constructor(
                         isPremium = status.isPremium,
                     )
                 }
+                // Also refresh the authoritative QuotaManager store so gates elsewhere
+                // (Compat/Profile/Chat) react to a restore or manual refresh immediately.
+                // Reuses the same /status round-trip semantics; force honors user intent.
+                runCatching { quotaManager.syncStatus(email, force = force) }
             } catch (_: Exception) {}
         }
     }

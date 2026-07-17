@@ -56,6 +56,10 @@ class ProfileSwitcherViewModelTest {
         coEvery { prefs.getActiveProfileEmail() } returns null
         coEvery { prefs.getActiveProfileId() } returns null
         coEvery { api.listPartners(any()) } returns emptyList()
+        // switchProfile() now pre-flights the SWITCH_PROFILE entitlement via QuotaManager;
+        // allow it by default so switch-path tests aren't blocked at the gate.
+        coEvery { quotaManager.canAccessFeature(any(), any(), any()) } returns
+            com.destinyai.astrology.data.remote.FeatureAccessResponse(canAccess = true)
         vm = ProfileSwitcherViewModel(api, prefs, bus, quotaManager, partnerDao)
     }
 
@@ -154,14 +158,11 @@ class ProfileSwitcherViewModelTest {
     // ── R2-P22 upgrade_required blocking ──────────────────────────────────────
 
     @Test
-    fun `switchProfile blocks on upgrade_required access state`() = runTest {
-        coEvery { api.getStatus("self@example.com") } returns StatusResponse(
-            userEmail = "self@example.com",
-            planId = "free_registered",
-            isGeneratedEmail = false,
-            isPremium = false,
-            accessState = "upgrade_required",
-        )
+    fun `switchProfile blocks when switch_profile feature not entitled`() = runTest {
+        // D15: block is now driven by the QuotaManager SWITCH_PROFILE entitlement,
+        // not the dead access_state pre-flight. A free user is not entitled.
+        coEvery { quotaManager.canAccessFeature(any(), any(), any()) } returns
+            com.destinyai.astrology.data.remote.FeatureAccessResponse(canAccess = false)
 
         vm.switchProfile("partner@example.com")
 

@@ -38,7 +38,7 @@ class BillingConflictUXTest {
         api = mockk(relaxed = true)
         prefs = mockk(relaxed = true)
         coEvery { prefs.getUserEmail() } returns "u@x.com"
-        manager = BillingManager(billingClient, api, prefs)
+        manager = BillingManager(billingClient, api, prefs, { mockk(relaxed = true) })
     }
 
     private val conflictResponse = VerifyResponse(

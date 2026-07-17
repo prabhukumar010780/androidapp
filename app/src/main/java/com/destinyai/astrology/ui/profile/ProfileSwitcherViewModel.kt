@@ -193,17 +193,19 @@ class ProfileSwitcherViewModel @Inject constructor(
             _isSwitching.value = true
             try {
                 val selfEmail = prefs.getUserEmail() ?: return@launch
-                // R2-P22: pre-flight /subscription/status check — if accessState is
-                // "upgrade_required" the user cannot switch profiles without upgrading.
-                // Abort early and raise the upgrade prompt; do NOT call switchProfile.
-                try {
-                    val status = api.getStatus(selfEmail)
-                    if (status.accessState == "upgrade_required") {
-                        _uiState.value = _uiState.value.copy(upgradeRequiredPrompt = true)
-                        return@launch
-                    }
+                // D15 (iOS parity canSwitchProfiles): pre-flight the switch_profile
+                // entitlement via QuotaManager. The old `status.accessState=="upgrade_required"`
+                // check was dead code — /status never sets access_state (defaults "granted").
+                // Fail OPEN on a network error so a transient blip doesn't block a Plus user;
+                // the server-side switch call remains authoritative.
+                val canSwitch = try {
+                    quotaManager.canAccessFeature(QuotaManager.FeatureID.SWITCH_PROFILE, selfEmail).canAccess
                 } catch (_: Exception) {
-                    // Pre-flight failure is non-fatal — proceed with the switch attempt.
+                    true
+                }
+                if (!canSwitch) {
+                    _uiState.value = _uiState.value.copy(upgradeRequiredPrompt = true)
+                    return@launch
                 }
                 api.switchProfile(SwitchProfileRequest(userEmail = selfEmail, profileId = profileId))
                 // Persist the active profile ID (UUID for partners, email for self).
@@ -213,10 +215,14 @@ class ProfileSwitcherViewModel @Inject constructor(
                 profileChangeBus.emit(profileId)
             } catch (e: Exception) {
                 // iOS parity: ProfileSwitcherSheet.swift:108-113 — when the switch
-                // fails with an "Upgrade"-style message, route to the subscription
+                // fails with an upgrade-style message, route to the subscription
                 // sheet; otherwise surface the underlying error in the alert.
+                // Match "Subscribe" too — backend returns "Subscribe to switch to more
+                // profiles" (403), not just "Upgrade".
                 val message = e.localizedMessage ?: e.message ?: ""
-                if (message.contains("Upgrade", ignoreCase = true)) {
+                if (message.contains("Upgrade", ignoreCase = true) ||
+                    message.contains("Subscribe", ignoreCase = true)
+                ) {
                     _uiState.value = _uiState.value.copy(upgradeRequiredPrompt = true)
                 } else {
                     _uiState.value = _uiState.value.copy(switchError = message)

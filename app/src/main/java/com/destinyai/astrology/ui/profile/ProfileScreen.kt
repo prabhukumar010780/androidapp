@@ -621,10 +621,11 @@ fun ProfileScreen(
                                     HorizontalDivider(color = Gold.copy(alpha = 0.08f))
 
                                     // PREMIUM GATING (iOS ProfileView.swift:332-369)
-                                    val planId = state.planId
-                                    val isFreePlan = planId.isEmpty() || planId == "free_guest" || planId == "free_registered"
-                                    val hasMaintainProfile = !isFreePlan // Core or Plus
-                                    val hasSwitchProfile = planId == "plus" // Plus only
+                                    // Terminal-aware gates (C9): a lapsed Plus user keeps
+                                    // plan_id="plus" on the backend, so gate on QuotaManager-
+                                    // derived entitlement instead of the raw string.
+                                    val hasMaintainProfile = state.hasMaintainProfile
+                                    val hasSwitchProfile = state.hasSwitchProfile
 
                                     // Manage Birth Charts FIRST — iOS ProfileView.swift:332-349
                                     PreferenceArrowRow(
@@ -843,12 +844,12 @@ fun ProfileScreen(
                                             state.isGuestUser -> stringResource(R.string.profile_premium_badge_sign_up)
                                             else -> stringResource(R.string.profile_premium_badge_plus)
                                         },
-                                        // iOS parity: green when Plus-entitled.
-                                        premiumBadgeEntitled = !state.isGuestUser && state.planId == "plus",
+                                        // iOS parity: green when alerts-entitled (terminal-aware).
+                                        premiumBadgeEntitled = !state.isGuestUser && state.hasAlerts,
                                         onClick = {
                                             when {
                                                 state.isGuestUser -> guestSignInFeature = GuestSignInFeature.ALERTS
-                                                state.planId == "plus" -> onNavigateToNotificationPrefs()
+                                                state.hasAlerts -> onNavigateToNotificationPrefs()
                                                 else -> onNavigateToSubscription()
                                             }
                                         },

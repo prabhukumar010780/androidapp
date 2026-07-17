@@ -38,7 +38,7 @@ class BillingAccountSwitchTest {
         api = mockk(relaxed = true)
         prefs = mockk(relaxed = true)
         coEvery { prefs.getUserEmail() } returns "userA@example.com"
-        manager = BillingManager(billingClient, api, prefs)
+        manager = BillingManager(billingClient, api, prefs, { mockk(relaxed = true) })
     }
 
     @Test

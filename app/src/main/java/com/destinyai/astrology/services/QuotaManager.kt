@@ -248,6 +248,8 @@ class QuotaManager @Inject constructor(
             "expired" -> "Expired"
             "grace_period" -> "Grace Period"
             "billing_retry" -> "Payment Failed"
+            "on_hold" -> "On Hold"
+            "paused" -> "Paused"
             "revoked" -> "Subscription Revoked"
             "refunded" -> "Refunded"
             else -> if (_isPremium.value) "Active" else null
@@ -445,10 +447,15 @@ class QuotaManager @Inject constructor(
         _autoRenewStatus.value = status.autoRenewStatus
         _currentPlanDisplayName.value = status.planDisplayName
         _hasEverSubscribed.value = status.hasEverSubscribed
+        // Populate the plan's enabled features so hasFeature() works. Pre-fix this was
+        // never set, so gates (alerts, switch_profile, maintain_profile) always failed —
+        // even for Plus. iOS parity: QuotaManager derives entitlements from the same list.
+        _availableFeatures.value = status.features
         prefs.edit().apply {
             putBoolean(KEY_IS_PREMIUM, status.isPremium)
             putString(KEY_CURRENT_PLAN_ID, status.planId)
             putBoolean(KEY_HAS_EVER_SUBSCRIBED, status.hasEverSubscribed)
+            putString(KEY_CACHED_FEATURES, gson.toJson(status.features))
             if (status.subscriptionStatus != null) {
                 putString(KEY_SUBSCRIPTION_STATUS, status.subscriptionStatus)
             } else {
@@ -521,7 +528,7 @@ class QuotaManager @Inject constructor(
     companion object {
         private const val TAG = "QuotaManager"
         // iOS parity (QuotaManager.swift:786-793): paid statuses that no longer grant entitlement.
-        private val TERMINAL_PAID_STATUSES = setOf("expired", "billing_retry", "revoked", "refunded")
+        private val TERMINAL_PAID_STATUSES = setOf("expired", "billing_retry", "revoked", "refunded", "on_hold", "paused")
         private const val KEY_IS_PREMIUM = "isPremium"
         private const val KEY_CURRENT_PLAN_ID = "currentPlanId"
         private const val KEY_SUBSCRIPTION_STATUS = "subscriptionStatus"

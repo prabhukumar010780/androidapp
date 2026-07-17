@@ -296,6 +296,7 @@ object BillingModule {
         @ApplicationContext context: Context,
         api: AstroApiService,
         prefs: UserPreferences,
+        quotaManager: dagger.Lazy<com.destinyai.astrology.services.QuotaManager>,
     ): BillingManager {
         // PurchasesUpdatedListener is wired after BillingManager is created
         // to avoid circular dependency — BillingManager exposes a factory helper.
@@ -314,7 +315,7 @@ object BillingModule {
                 PendingPurchasesParams.newBuilder().enableOneTimeProducts().build(),
             )
             .build()
-        manager = BillingManager(billingClient, api, prefs)
+        manager = BillingManager(billingClient, api, prefs, quotaManager)
         manager.startConnection()
         return manager
     }

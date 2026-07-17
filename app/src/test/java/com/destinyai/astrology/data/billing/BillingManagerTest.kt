@@ -56,7 +56,7 @@ class BillingManagerTest {
         api = mockk(relaxed = true)
         prefs = mockk(relaxed = true)
         coEvery { prefs.getUserEmail() } returns "test@example.com"
-        manager = BillingManager(billingClient, api, prefs)
+        manager = BillingManager(billingClient, api, prefs, { mockk(relaxed = true) })
     }
 
     // ── Initial state ──────────────────────────────────────────────────────────
