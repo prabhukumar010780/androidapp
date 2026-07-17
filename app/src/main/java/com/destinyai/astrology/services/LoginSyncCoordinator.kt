@@ -11,6 +11,7 @@ import com.destinyai.astrology.data.repository.ChatRepository
 import com.destinyai.astrology.data.repository.HomeRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -50,6 +51,12 @@ class LoginSyncCoordinator @Inject constructor(
     private val compatibilityHistoryDao: com.destinyai.astrology.data.local.db.CompatibilityHistoryDao,
     private val prefs: UserPreferences,
 ) {
+    // Application-lifetime scope for detached background prefetch that must survive after
+    // syncAll() returns (so login navigation isn't blocked on slow LLM prefetches).
+    private val bgScope = kotlinx.coroutines.CoroutineScope(
+        kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO,
+    )
+
     /**
      * Legacy thin shim retained for any caller that just wants the raw thread
      * list (mirrors the original Android stub). New call sites should prefer
@@ -107,45 +114,42 @@ class LoginSyncCoordinator @Inject constructor(
                 profile.userName?.takeIf { it.isNotBlank() }?.let { prefs.setUserName(it) }
             }.onFailure { Log.w(TAG, "profile fetch failed: ${it.message}", it) }
         }
-        // iOS parity (ProfileSetupLoadingView phases 1+3 — chart + today's
-        // prediction prefetch). On iOS these run inside ProfileSetupLoadingView
-        // which is shown WITHIN the loading window. We surface them here so the
-        // single AuthView spinner covers the same span.
-        val chartPrefetch = async {
-            val birth = prefs.getBirthProfile() ?: return@async
-            // Login-time prefetch always uses self profile (no switch yet).
+        // iOS parity (ProfileSetupLoadingView phases 1+3 — chart + today's prediction
+        // prefetch). These are warm-cache optimizations only (Home re-fetches them) and
+        // today's-prediction is a 15s+ LLM call, so they run DETACHED on bgScope and never
+        // gate login navigation — otherwise the user is stranded on the sign-in spinner.
+        bgScope.launch {
+            val birth = prefs.getBirthProfile() ?: return@launch
             runCatching { homeRepository.getRichHomeData(userEmail, birth, userEmail) }
                 .onFailure { Log.w(TAG, "chart prefetch failed: ${it.message}", it) }
         }
-        val predictionPrefetch = async {
-            val birth = prefs.getBirthProfile() ?: return@async
+        bgScope.launch {
+            val birth = prefs.getBirthProfile() ?: return@launch
             runCatching { homeRepository.getDailyInsight(birth, userEmail) }
                 .onFailure { Log.w(TAG, "prediction prefetch failed: ${it.message}", it) }
         }
-        // iOS parity (HistorySettingsManager.fetchSettingsFromServer): pull the
-        // server's history_enabled so a user who disabled history on another device /
-        // before reinstall stays disabled instead of silently re-enabling (defaults true).
+        // iOS parity (CompatibilityHistoryService.syncFromServer): rebuild compat matches.
+        // Also detached — not needed for first render.
+        bgScope.launch {
+            runCatching { syncCompatibilityFromApi(userEmail) }
+                .onFailure { Log.w(TAG, "compat history sync failed: ${it.message}", it) }
+        }
+        // iOS parity (HistorySettingsManager.fetchSettingsFromServer): history_enabled is
+        // fast + gates whether we save chats, so await it with the essentials.
         val historySettingsSync = async {
             runCatching {
                 val settings = api.getChatHistorySettings(userEmail)
                 prefs.setHistoryEnabled(settings.historyEnabled)
             }.onFailure { Log.w(TAG, "history settings sync failed: ${it.message}", it) }
         }
-        // iOS parity (CompatibilityHistoryService.syncFromServer): rebuild compat matches
-        // from the server so they survive reinstall / follow to a new device.
-        val compatSync = async {
-            runCatching { syncCompatibilityFromApi(userEmail) }
-                .onFailure { Log.w(TAG, "compat history sync failed: ${it.message}", it) }
-        }
 
+        // Await only the FAST, essential syncs before returning so the user lands on Home
+        // promptly (profile + quota + history-settings gate correct first render).
         chatSync.await()
         quotaSync.await()
         profileFetch.await()
-        chartPrefetch.await()
-        predictionPrefetch.await()
         historySettingsSync.await()
-        compatSync.await()
-        Log.d(TAG, "syncAll complete for $userEmail")
+        Log.d(TAG, "syncAll essential sync complete for $userEmail")
     }
 
     /**
