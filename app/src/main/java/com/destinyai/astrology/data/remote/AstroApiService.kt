@@ -461,9 +461,13 @@ data class PredictResponse(
     @SerializedName("content") val content: String = "",
     @SerializedName("prediction") val prediction: String? = null,
     @SerializedName("response") val response: String? = null,
+    // Backend PredictionResponse (vedic/api/predict.py) returns the chat answer in
+    // `answer` — the primary field for the non-streaming path. Must be mapped or
+    // ChatRepositoryImpl sees a blank body and throws "Empty prediction".
+    @SerializedName("answer") val answer: String? = null,
     @SerializedName("prediction_id") val predictionId: String? = null,
 ) {
-    val text: String get() = content.ifBlank { prediction ?: response ?: "" }
+    val text: String get() = content.ifBlank { answer ?: prediction ?: response ?: "" }
 }
 
 data class ChatThreadDto(
