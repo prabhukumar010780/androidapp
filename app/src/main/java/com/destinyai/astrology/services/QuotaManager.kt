@@ -3,7 +3,6 @@ package com.destinyai.astrology.services
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
-import com.destinyai.astrology.BuildConfig
 import com.destinyai.astrology.data.billing.BillingManager
 import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.remote.FeatureAccessResponse
@@ -140,8 +139,6 @@ class QuotaManager @Inject constructor(
     private var lastSyncTimeMs: Long = 0L
     private val syncCooldownMs: Long = 5 * 60 * 1000L
 
-    private val authHeader: String get() = "Bearer ${BuildConfig.API_KEY}"
-
     // ── Feature Access ─────────────────────────────────────────────────────────
 
     /**
@@ -153,7 +150,7 @@ class QuotaManager @Inject constructor(
         email: String,
         count: Int = 1,
     ): FeatureAccessResponse {
-        return api.canAccessFeatureFull(authHeader, email, feature.raw, count)
+        return api.canAccessFeatureFull(email, feature.raw, count)
     }
 
     /**
@@ -302,7 +299,6 @@ class QuotaManager @Inject constructor(
      */
     suspend fun recordFeatureUsage(feature: FeatureID, email: String): UseFeatureResponse {
         val response = api.useFeature(
-            authHeader,
             UseFeatureRequest(email = email, featureId = feature.raw),
         )
         if (response.success) {

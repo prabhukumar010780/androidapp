@@ -111,7 +111,6 @@ class HomeRepositoryImpl @Inject constructor(
         val language = prefs.getSelectedLanguage()
         // Bubble up exceptions so the VM can show an error banner with retry (parity with iOS)
         val resp = api.getTodaysPrediction(
-            authHeader = "Bearer ${com.destinyai.astrology.BuildConfig.API_KEY}",
             req = com.destinyai.astrology.data.remote.UserAstroDataRequest(
                 birth_data = mapOf(
                     "email" to email,

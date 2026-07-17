@@ -457,8 +457,7 @@ class CompatibilityViewModel @Inject constructor(
      */
     private suspend fun checkCompatibilityQuota(email: String, count: Int = 1): Boolean {
         return try {
-            val authHeader = "Bearer ${BuildConfig.API_KEY}"
-            val access = api.canAccessFeature(authHeader, email, "compatibility", count)
+            val access = api.canAccessFeature(email, "compatibility", count)
             if (access.allowed) {
                 true
             } else {

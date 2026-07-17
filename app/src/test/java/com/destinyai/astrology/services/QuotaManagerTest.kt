@@ -165,7 +165,7 @@ class QuotaManagerTest {
     fun `canAsk fails open (returns true) when API throws`() = runTest {
         // iOS parity (QuotaManager.swift:460-473, iOS-6 fix): a transient network error
         // must NOT block a user with remaining quota — fail open; server enforces.
-        coEvery { api.canAccessFeatureFull(any(), any(), any(), any()) } throws RuntimeException("network")
+        coEvery { api.canAccessFeatureFull(any(), any(), any()) } throws RuntimeException("network")
 
         val result = manager.canAsk("u@x.com")
 
@@ -174,7 +174,7 @@ class QuotaManagerTest {
 
     @Test
     fun `canAsk returns true when canAccess=true`() = runTest {
-        coEvery { api.canAccessFeatureFull(any(), any(), any(), any()) } returns
+        coEvery { api.canAccessFeatureFull(any(), any(), any()) } returns
             FeatureAccessResponse(canAccess = true, reason = null)
 
         assertTrue(manager.canAsk("u@x.com"))
@@ -182,7 +182,7 @@ class QuotaManagerTest {
 
     @Test
     fun `canAsk returns false when canAccess=false`() = runTest {
-        coEvery { api.canAccessFeatureFull(any(), any(), any(), any()) } returns
+        coEvery { api.canAccessFeatureFull(any(), any(), any()) } returns
             FeatureAccessResponse(canAccess = false, reason = "quota_exceeded")
 
         assertFalse(manager.canAsk("u@x.com"))

@@ -101,7 +101,7 @@ class CompatibilityViewModelTest {
         every { historyDao.observeAll(any()) } returns flowOf(emptyList())
         // Stub the quota check inside analyze() — relaxed mocks return allowed=false which
         // routes analyze() into the paywall branch and short-circuits the SSE consumer.
-        coEvery { api.canAccessFeature(any(), any(), any(), any()) } returns
+        coEvery { api.canAccessFeature(any(), any(), any()) } returns
             com.destinyai.astrology.data.remote.CanAccessResponse(allowed = true)
         vm = CompatibilityViewModel(api, prefs, compatibilityRepo, historyDao, mockk(relaxed = true), chatRepository, authRepository, profileChangeBus, profileContextManager, mockk(relaxed = true))
     }

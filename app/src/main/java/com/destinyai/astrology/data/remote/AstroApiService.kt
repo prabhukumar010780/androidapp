@@ -1004,16 +1004,18 @@ interface AstroApiService {
     ): com.destinyai.astrology.ui.charts.TransitResponse
 
     // Today's prediction (Home tab daily snapshot)
+    // No explicit Authorization header: backend require_owner_or_self needs the
+    // SESSION JWT, which AuthInterceptor attaches. Passing an explicit API-key
+    // header here makes the interceptor skip the JWT → identity=None → 401.
     @POST("vedic/api/todays-prediction")
     suspend fun getTodaysPrediction(
-        @Header("Authorization") authHeader: String,
         @Body req: UserAstroDataRequest,
     ): TodaysPredictionResponse
 
-    // Feature gating — checks if user can access a given feature within plan quota
+    // Feature gating — checks if user can access a given feature within plan quota.
+    // Session-authed (require_owner_or_self[_read]) — let AuthInterceptor attach the JWT.
     @GET("subscription/can-access")
     suspend fun canAccessFeature(
-        @Header("Authorization") authHeader: String,
         @Query("email") email: String,
         @Query("feature") feature: String,
         @Query("count") count: Int? = null,
@@ -1022,16 +1024,15 @@ interface AstroApiService {
     // Richer variant returning full quota / upgrade-CTA payload — used by QuotaManager
     @GET("subscription/can-access")
     suspend fun canAccessFeatureFull(
-        @Header("Authorization") authHeader: String,
         @Query("email") email: String,
         @Query("feature") feature: String,
         @Query("count") count: Int? = null,
     ): FeatureAccessResponse
 
     // Record feature usage after a successful gated action (mirrors iOS recordFeatureUsage)
+    // Session-authed (require_owner_or_self) — let AuthInterceptor attach the JWT.
     @POST("subscription/use")
     suspend fun useFeature(
-        @Header("Authorization") authHeader: String,
         @Body request: UseFeatureRequest,
     ): UseFeatureResponse
 }
