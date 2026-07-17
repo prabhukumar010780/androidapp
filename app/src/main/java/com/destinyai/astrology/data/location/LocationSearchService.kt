@@ -44,7 +44,11 @@ class LocationSearchService @Inject constructor(
     suspend fun search(query: String): LocationSearchResult {
         if (query.length < 2) return LocationSearchResult.Success(emptyList())
         return try {
-            LocationSearchResult.Success(api.searchLocations(query))
+            // Send the API key as Bearer — this endpoint uses require_api_key and rejects
+            // session JWTs. Explicit header so AuthInterceptor won't override with a JWT.
+            LocationSearchResult.Success(
+                api.searchLocations("Bearer ${com.destinyai.astrology.BuildConfig.API_KEY}", query),
+            )
         } catch (e: HttpException) {
             // GAP-2: distinguish auth from generic server errors so the UI can
             // tell the user "sign in again" vs "try again later".
@@ -55,6 +59,17 @@ class LocationSearchService @Inject constructor(
             }
             Log.w("LocationSearchService", "HTTP ${e.code()} from /api/v2/location/search", e)
             LocationSearchResult.Failure(reason, e.message())
+        } catch (e: com.destinyai.astrology.data.remote.ApiException) {
+            // ErrorInterceptor converts non-2xx into ApiException (an IOException subclass).
+            // Map by statusCode so a 401/403 is shown as Auth ("sign in again"), NOT as a
+            // false "No internet connection" — which is what happened here (guest JWT → 401).
+            val reason = when (e.statusCode) {
+                401, 403 -> LocationSearchResult.Reason.Auth
+                in 500..599 -> LocationSearchResult.Reason.Server
+                else -> LocationSearchResult.Reason.Server
+            }
+            Log.w("LocationSearchService", "ApiException ${e.statusCode} on location search", e)
+            LocationSearchResult.Failure(reason, e.serverMessage)
         } catch (e: IOException) {
             Log.w("LocationSearchService", "Network failure on location search", e)
             LocationSearchResult.Failure(LocationSearchResult.Reason.Network, e.message)

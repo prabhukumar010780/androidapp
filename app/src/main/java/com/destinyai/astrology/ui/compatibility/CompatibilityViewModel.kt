@@ -270,7 +270,10 @@ class CompatibilityViewModel @Inject constructor(
     suspend fun searchLocation(query: String): Triple<String, Double, Double>? {
         if (query.isBlank()) return null
         return try {
-            val results = api.searchLocations(query.trim())
+            // require_api_key endpoint — Bearer must be the API key, not a session JWT.
+            val results = api.searchLocations(
+                "Bearer ${com.destinyai.astrology.BuildConfig.API_KEY}", query.trim(),
+            )
             val first = results.firstOrNull() ?: return null
             Triple(
                 first.displayName.ifBlank { first.city },

@@ -30,7 +30,7 @@ class LocationSearchServiceTest {
         val results = listOf(
             LocationResult("Mumbai", 19.0760, 72.8777, "Mumbai, Maharashtra, India"),
         )
-        coEvery { api.searchLocations("Mu") } returns results
+        coEvery { api.searchLocations(any(), "Mu") } returns results
 
         val actual = service.search("Mu")
 
@@ -38,7 +38,7 @@ class LocationSearchServiceTest {
         val list = (actual as LocationSearchResult.Success).results
         assertEquals(1, list.size)
         assertEquals("Mumbai", list[0].city)
-        coVerify { api.searchLocations("Mu") }
+        coVerify { api.searchLocations(any(), "Mu") }
     }
 
     @Test
@@ -47,7 +47,7 @@ class LocationSearchServiceTest {
 
         assertTrue(actual is LocationSearchResult.Success)
         assertTrue((actual as LocationSearchResult.Success).results.isEmpty())
-        coVerify(exactly = 0) { api.searchLocations(any()) }
+        coVerify(exactly = 0) { api.searchLocations(any(), any()) }
     }
 
     @Test
@@ -56,12 +56,12 @@ class LocationSearchServiceTest {
 
         assertTrue(actual is LocationSearchResult.Success)
         assertTrue((actual as LocationSearchResult.Success).results.isEmpty())
-        coVerify(exactly = 0) { api.searchLocations(any()) }
+        coVerify(exactly = 0) { api.searchLocations(any(), any()) }
     }
 
     @Test
     fun `search maps generic api error to result type`() = runTest {
-        coEvery { api.searchLocations(any()) } throws RuntimeException("network error")
+        coEvery { api.searchLocations(any(), any()) } throws RuntimeException("network error")
 
         val actual = service.search("Bhi")
 
@@ -71,10 +71,10 @@ class LocationSearchServiceTest {
 
     @Test
     fun `search passes query to api unchanged`() = runTest {
-        coEvery { api.searchLocations("Bhilai") } returns emptyList()
+        coEvery { api.searchLocations(any(), "Bhilai") } returns emptyList()
 
         service.search("Bhilai")
 
-        coVerify { api.searchLocations("Bhilai") }
+        coVerify { api.searchLocations(any(), "Bhilai") }
     }
 }

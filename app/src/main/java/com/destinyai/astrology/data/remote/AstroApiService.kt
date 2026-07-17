@@ -976,8 +976,14 @@ interface AstroApiService {
     suspend fun updateAnalyticsConsent(@Body request: AnalyticsConsentRequest): SuccessResponse
 
     // Location Search
+    // Location search authenticates via require_api_key — the Bearer MUST be the API key,
+    // NOT a session JWT (the endpoint rejects JWT-shaped bearers). The caller passes the
+    // API key explicitly so AuthInterceptor leaves this request's Authorization untouched.
     @GET("api/v2/location/search")
-    suspend fun searchLocations(@Query("query") query: String): List<LocationResult>
+    suspend fun searchLocations(
+        @Header("Authorization") authHeader: String,
+        @Query("query") query: String,
+    ): List<LocationResult>
 
     // Chart Data (Vedic birth chart with planets, houses, nakshatra, D9)
     @POST("vedic/api/astrodata/full")
