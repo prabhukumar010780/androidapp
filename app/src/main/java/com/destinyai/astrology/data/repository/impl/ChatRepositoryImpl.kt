@@ -44,11 +44,17 @@ class ChatRepositoryImpl @Inject constructor(
 
     // iOS parity (ChatViewModel.capPersistedContent / ChatHistorySyncService): cap
     // persisted message bodies at 64KB (UTF-8) to protect the markdown renderer from
-    // a runaway/oversized backend response.
+    // a runaway/oversized backend response. Also strips the trailing
+    // "FOLLOW_UP_QUESTIONS:" block — the follow-ups render as tappable chips from the
+    // structured field, so keeping the raw block would double them on thread reopen
+    // (iOS parity: CompatibilityResultSheets.displayContent).
     private fun capPersistedContent(s: String): String {
+        val marker = "\nFOLLOW_UP_QUESTIONS:"
+        val idx = s.indexOf(marker, ignoreCase = true)
+        val stripped = if (idx >= 0) s.substring(0, idx).trimEnd() else s
         val maxBytes = 64 * 1024
-        val bytes = s.toByteArray(Charsets.UTF_8)
-        if (bytes.size <= maxBytes) return s
+        val bytes = stripped.toByteArray(Charsets.UTF_8)
+        if (bytes.size <= maxBytes) return stripped
         // Truncate on a UTF-8 char boundary.
         return String(bytes.copyOf(maxBytes), Charsets.UTF_8)
     }
@@ -235,7 +241,15 @@ class ChatRepositoryImpl @Inject constructor(
                                     val sourcesArr = json?.get("sources")?.takeIf { !it.isJsonNull }?.asJsonArray
                                     val sources = sourcesArr?.mapNotNull { e -> runCatching { e.asString }.getOrNull() } ?: emptyList()
                                     val advice = json?.get("advice")?.takeIf { !it.isJsonNull }?.asString
-                                    val timing = json?.get("timing")?.takeIf { !it.isJsonNull }?.asString
+                                    // `timing` is a structured PredictionTiming OBJECT on the backend
+                                    // (predict.py PredictionResponse.timing), not a string. Calling
+                                    // .asString on a JsonObject throws UnsupportedOperationException,
+                                    // which aborted the stream at the terminal event ("JsonObject" error
+                                    // + spurious "Chat was interrupted"). Accept either shape: a plain
+                                    // string, or serialize the object back to JSON for the metadata row.
+                                    val timing = json?.get("timing")?.takeIf { !it.isJsonNull }?.let { el ->
+                                        runCatching { if (el.isJsonPrimitive) el.asString else el.toString() }.getOrNull()
+                                    }
                                     val execMs = json?.get("execution_time_ms")?.takeIf { !it.isJsonNull }
                                         ?.let { runCatching { it.asDouble }.getOrNull() } ?: 0.0
                                     val traceId = json?.get("trace_id")?.takeIf { !it.isJsonNull }?.asString

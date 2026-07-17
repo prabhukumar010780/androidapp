@@ -563,12 +563,12 @@ class ChatViewModel @Inject constructor(
                                     )
                                 }.getOrNull()?.getOrNull()
                                 if (!recovered.isNullOrBlank()) {
-                                    accumulated = recovered
+                                    accumulated = stripFollowUpBlock(recovered)
                                     _uiState.update { s ->
                                         val msg = ChatMessage(
                                             id = assistantId,
                                             role = ChatMessage.Role.ASSISTANT,
-                                            content = recovered,
+                                            content = accumulated,
                                             isStreaming = false,
                                             createdAtMs = System.currentTimeMillis(),
                                         )
@@ -1009,13 +1009,27 @@ class ChatViewModel @Inject constructor(
 
     /** Feed newly-arrived text to the pump. Reveals instantly under reduce-motion. */
     private fun feedPump(assistantId: String, fullTextSoFar: String) {
-        pumpTarget = fullTextSoFar
+        pumpTarget = stripFollowUpBlock(fullTextSoFar)
         if (reduceMotionEnabled()) {
-            pumpRevealed = fullTextSoFar.length
-            renderPumpFrame(assistantId, fullTextSoFar)
+            pumpRevealed = pumpTarget.length
+            renderPumpFrame(assistantId, pumpTarget)
             return
         }
         if (pumpJob?.isActive != true) startSmoothPump(assistantId)
+    }
+
+    /**
+     * iOS parity (CompatibilityResultSheets.displayContent / ChatViewModel finalAnswer
+     * reconciliation): the streamed answer text embeds a trailing
+     * "FOLLOW_UP_QUESTIONS:" block that the backend also returns structurally via
+     * follow_up_suggestions. Those structured suggestions render as tappable chips, so
+     * the raw block must be stripped from the displayed/persisted bubble text — otherwise
+     * the user sees the follow-ups twice (once as plain text, once as chips).
+     */
+    private fun stripFollowUpBlock(text: String): String {
+        val marker = "\nFOLLOW_UP_QUESTIONS:"
+        val idx = text.indexOf(marker, ignoreCase = true)
+        return if (idx >= 0) text.substring(0, idx).trimEnd() else text
     }
 
     /** 60Hz interpolator revealing pumpTarget at ~70 ch/s ±20% jitter, with catch-up
