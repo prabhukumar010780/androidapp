@@ -65,6 +65,7 @@ import com.destinyai.astrology.domain.model.AnalysisStep
 import com.destinyai.astrology.domain.model.PartnerData
 import com.destinyai.astrology.ui.charts.ChartComparisonSheet
 import com.destinyai.astrology.ui.subscription.SubscriptionScreen
+import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.CreamText
@@ -1365,7 +1366,7 @@ private fun HeroPulsingMatchIcon() {
                 text = stringResource(com.destinyai.astrology.R.string.ashtakoot_analysis_title),
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Serif,
+                fontFamily = CanelaFontFamily,
                 color = CreamText,
             )
             Text(

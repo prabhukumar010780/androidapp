@@ -41,7 +41,7 @@ import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavyDeep
 import com.destinyai.astrology.ui.theme.NavySurface
-import com.destinyai.astrology.ui.theme.PlayfairFontFamily
+import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.util.DoshaDescriptions
 
 private val SuccessGreen = Color(0xFF48BB78)
@@ -120,7 +120,7 @@ fun TopicListView(
                     tile.label,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    fontFamily = PlayfairFontFamily,
+                    fontFamily = CanelaFontFamily,
                     color = CreamText,
                 )
                 // Counts row
