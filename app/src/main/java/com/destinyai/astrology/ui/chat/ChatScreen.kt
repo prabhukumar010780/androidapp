@@ -39,6 +39,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -163,18 +164,22 @@ fun ChatScreen(
         }
     }
 
-    // Scroll to bottom when new messages arrive or streaming changes
-    LaunchedEffect(state.messages.size, state.isStreaming) {
-        if (state.messages.isNotEmpty()) {
-            delay(80)
-            listState.animateScrollToItem(listState.layoutInfo.totalItemsCount.coerceAtLeast(1) - 1)
-        }
+    // iOS parity (ChatView.swift:622-642 pin-to-top on Send): when the user sends a
+    // message, scroll THAT message to the TOP so the answer streams below it — do NOT
+    // auto-scroll to the bottom (the "answer dumped at bottom" behavior iOS deliberately
+    // removed, ChatView.swift:651-703). animateScrollToItem(index) places the item's top at
+    // the viewport top — the Compose analog of iOS scrollTo(id, anchor: .top). Keyed on the
+    // last user-message id so it fires once per Send, not on every token/assistant append.
+    val lastUserMsgId = remember(state.messages) {
+        state.messages.lastOrNull { it.role == ChatMessage.Role.USER }?.id
     }
-    LaunchedEffect(state.suggestedQuestions.size) {
-        if (state.suggestedQuestions.isNotEmpty()) {
-            delay(150)
-            listState.animateScrollToItem(listState.layoutInfo.totalItemsCount.coerceAtLeast(1) - 1)
-        }
+    LaunchedEffect(lastUserMsgId) {
+        val id = lastUserMsgId ?: return@LaunchedEffect
+        val mIndex = state.messages.indexOfFirst { it.id == id }
+        if (mIndex < 0) return@LaunchedEffect
+        val leadingCount = if (state.hasOlderMessages) 1 else 0
+        delay(80) // let the new rows + tail spacer commit (mirrors iOS 0.05s defer)
+        listState.animateScrollToItem(leadingCount + mIndex)
     }
 
     // Mirrors iOS ChatView (initialThreadId path: ChatView.swift:14-15, 126-138, 149-153) —
@@ -310,6 +315,23 @@ fun ChatScreen(
                                 },
                             )
                         }
+                    }
+
+                    // iOS parity (ChatView.swift:502-546 reserved tail-space): an
+                    // always-present spacer below the conversation. During generation it
+                    // reserves ~70% of the viewport so pin-to-top-on-send has room to scroll
+                    // the just-sent question to the top; it collapses to 0 at rest. Height is
+                    // ANIMATED (not the item added/removed) so the stream→done transition is a
+                    // non-disruptive layout pass, avoiding a re-anchor jump to the bottom.
+                    item(key = "tailSpacer") {
+                        val screenHeightDp = LocalConfiguration.current.screenHeightDp.dp
+                        val target = if (state.isLoading || state.isStreaming) screenHeightDp * 0.7f else 0.dp
+                        val h by animateDpAsState(
+                            targetValue = target,
+                            animationSpec = tween(350),
+                            label = "tail_spacer",
+                        )
+                        Spacer(Modifier.height(h))
                     }
                 }
             }
