@@ -25,6 +25,10 @@ class AuthRepositoryImpl @Inject constructor(
     // and to keep the manager optional during clearSession (iOS parity:
     // QuotaManager.resetForSignOut is called from signOut to wipe in-memory caches).
     private val quotaManager: Provider<QuotaManager>,
+    // Provider to reset the @Singleton BillingManager's per-session cross-account state
+    // on sign-out (C4). Provider (not direct) mirrors quotaManager + avoids constructing
+    // BillingManager on an unauthenticated launch.
+    private val billingManager: Provider<com.destinyai.astrology.data.billing.BillingManager>,
 ) : AuthRepository {
 
     override suspend fun getSavedUser(): User? {
@@ -284,6 +288,7 @@ class AuthRepositoryImpl @Inject constructor(
         prefs.clearSubscriptionMeta()
         prefs.clearProviderIds()
         runCatching { quotaManager.get().resetForSignOut() }
+        runCatching { billingManager.get().resetForSignOut() }
         sessionStore.clearActiveSession()
         secure.clearAll()
         prefs.clearAll()
@@ -310,6 +315,7 @@ class AuthRepositoryImpl @Inject constructor(
         prefs.clearSubscriptionMeta()
         prefs.clearProviderIds()
         runCatching { quotaManager.get().resetForSignOut() }
+        runCatching { billingManager.get().resetForSignOut() }
         sessionStore.clearActiveSession()
         // NOTE: do NOT call prefs.clearAll() — that wipes BIRTH_DOB/lat/lng/etc.
         // The whole point of this method is to preserve birth data so the user

@@ -745,6 +745,28 @@ fun CompatibilityScreen(
         )
     }
 
+    // Fair-use violation (Plus subscriber hit the lifetime compat cap): show a
+    // "Usage Restricted / Contact Support" dialog, NOT the upgrade paywall (Plus can't
+    // upgrade further). Mirrors the chat fair-use branch (ChatScreen.kt:1744-1790).
+    if (quotaMarker == "FAIR_USE_VIOLATION" && !state.showPaywall) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissError() },
+            icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = Gold) },
+            title = { Text(stringResource(R.string.usage_restricted_title)) },
+            text = { Text(stringResource(R.string.fair_use_violation_message)) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.dismissError() }) {
+                    Text(stringResource(R.string.contact_support))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissError() }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            },
+        )
+    }
+
     // iOS parity (ChatScreen.kt:412-418 / ChatView.swift onSignIn): when the VM signals
     // navigateToAuth, invoke the host callback exactly once so the user lands on AuthScreen.
     androidx.compose.runtime.LaunchedEffect(state.navigateToAuth) {

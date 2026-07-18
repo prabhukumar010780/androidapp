@@ -103,6 +103,9 @@ class CompatibilityViewModelTest {
         // routes analyze() into the paywall branch and short-circuits the SSE consumer.
         coEvery { api.canAccessFeature(any(), any(), any()) } returns
             com.destinyai.astrology.data.remote.CanAccessResponse(allowed = true)
+        // checkCompatibilityQuota now uses canAccessFeatureFull (needs planId + fair-use flag).
+        coEvery { api.canAccessFeatureFull(any(), any(), any()) } returns
+            com.destinyai.astrology.data.remote.FeatureAccessResponse(canAccess = true)
         // CompatibilityViewModel.init() collects quotaManager.currentPlanId (Plus gate);
         // relaxed mockk returns a broken Flow, so provide a real StateFlow + isPlus.
         val quotaManager = mockk<com.destinyai.astrology.services.QuotaManager>(relaxed = true)
@@ -512,6 +515,42 @@ class CompatibilityViewModelTest {
 
         val duplicateId = vm.checkForDuplicate()
         assertEquals("sess_dup", duplicateId)
+    }
+
+    @Test
+    fun `each partner tab holds independent data and switching swaps the form`() = runTest {
+        vm.setPlus(true)
+        // Fill partner 0.
+        vm.setPartnerName("Alice")
+        vm.setPartnerDob("1990-01-01")
+        vm.setPartnerLocation("Delhi", 28.61, 77.20)
+
+        // Add a second tab — form must clear for fresh entry.
+        vm.addPartner()
+        vm.uiState.test {
+            assertEquals("", awaitItem().partnerName)
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(1, vm.activePartnerIndex.value)
+
+        // Fill partner 1 with different data.
+        vm.setPartnerName("Bob")
+        vm.setPartnerDob("1992-02-02")
+        vm.setPartnerLocation("Mumbai", 19.07, 72.87)
+
+        // Both tabs are independent + complete.
+        val partners = vm.partners.value
+        assertEquals(2, partners.size)
+        assertEquals("Alice", partners[0].name)
+        assertEquals("Bob", partners[1].name)
+        assertTrue(partners[0].isComplete && partners[1].isComplete)
+
+        // Switch back to partner 0 — form shows Alice again, not Bob.
+        vm.selectPartner(0)
+        vm.uiState.test {
+            assertEquals("Alice", awaitItem().partnerName)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     private fun fakeBirthProfile() = BirthProfileDto(

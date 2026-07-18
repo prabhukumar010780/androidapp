@@ -257,10 +257,13 @@ class ProfileSwitcherViewModel @Inject constructor(
                 val limit = overall?.limit ?: -1
                 val current = _profiles.value.count { !it.isSelf }
                 when {
-                    !response.canAccess && limit == 0 -> {
+                    // Not entitled + no positive limit (free/Core with no limits map, limit
+                    // defaults to -1) → upgrade prompt. Previously fell through to the
+                    // limitMessage branch and rendered "up to -1 profiles".
+                    !response.canAccess && limit <= 0 -> {
                         _uiState.value = _uiState.value.copy(upgradeRequiredPrompt = true)
                     }
-                    !response.canAccess || (limit != -1 && current >= limit) -> {
+                    limit > 0 && current >= limit -> {
                         _uiState.value = _uiState.value.copy(
                             limitMessage = formatLimitMessage(limit),
                         )

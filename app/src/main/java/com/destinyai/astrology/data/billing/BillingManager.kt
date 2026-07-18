@@ -557,6 +557,12 @@ class BillingManager @Inject constructor(
                 }
                 prefs.setSubscription(true, planId)
 
+                // Refresh the authoritative QuotaManager store immediately so gated
+                // screens (Compat/Profile/Chat) unlock the instant a purchase verifies,
+                // without waiting for the next foreground/screen-load. Mirrors the
+                // reconcile/restore paths. force=true: a purchase is an explicit signal.
+                runCatching { quotaManager.get().syncStatus(userEmail, force = true) }
+
                 // iOS parity (SubscriptionManager.swift:501-555): track scheduled
                 // Core→Plus auto-renew preference change so the UI can render a
                 // "Scheduled" badge and effective date.

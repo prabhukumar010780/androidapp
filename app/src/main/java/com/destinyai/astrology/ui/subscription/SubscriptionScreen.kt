@@ -63,7 +63,10 @@ fun SubscriptionScreen(
     val activePlanId by viewModel.activePlanId.collectAsStateWithLifecycle()
     val conflict by viewModel.subscriptionConflict.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
-    val isPlusTrialEligible by viewModel.isPlusTrialEligible.collectAsStateWithLifecycle()
+    // E2/J1: gate the trial CTA/badge on the server-authoritative shouldShowTrialButton
+    // (billing-eligible AND !hasEverSubscribed) so a lapsed/previously-subscribed user is
+    // never re-shown a "free trial" that Play would actually charge.
+    val isPlusTrialEligible by viewModel.shouldShowTrialButton.collectAsStateWithLifecycle()
     val products by viewModel.products.collectAsStateWithLifecycle()
     val restoreResult by viewModel.restoreResult.collectAsStateWithLifecycle()
     // iOS parity (SubscriptionView.swift:11-12, 312, 692-696) — per-card
@@ -692,10 +695,27 @@ fun SubscriptionScreen(
                                             // product_not_available error via snackbar
                                             // when productDetails is null instead of
                                             // silently no-opping.
-                                            val offerToken = productDetails
-                                                ?.subscriptionOfferDetails
-                                                ?.firstOrNull()
-                                                ?.offerToken
+                                            // DE fix: when the "7-Day Free Trial" CTA is
+                                            // shown, pick the trial offer explicitly. Play does
+                                            // NOT guarantee firstOrNull() is the trial — it often
+                                            // lists the base plan (no free phase) first, which
+                                            // would charge the user immediately despite the label.
+                                            // Prefer an offerId containing "trial", else an offer
+                                            // with a $0 pricing phase, else fall back to first.
+                                            val offers = productDetails?.subscriptionOfferDetails
+                                            val offerToken = if (showTrialCta) {
+                                                (
+                                                    offers?.firstOrNull {
+                                                        it.offerId?.contains("trial", ignoreCase = true) == true
+                                                    }
+                                                        ?: offers?.firstOrNull { o ->
+                                                            o.pricingPhases.pricingPhaseList.any { it.priceAmountMicros == 0L }
+                                                        }
+                                                        ?: offers?.firstOrNull()
+                                                    )?.offerToken
+                                            } else {
+                                                offers?.firstOrNull()?.offerToken
+                                            }
                                             viewModel.purchase(productDetails, activity, offerToken)
                                         },
                                         enabled = !thisCardPurchasing && !isCurrentPlan && !isScheduledForThisCard &&

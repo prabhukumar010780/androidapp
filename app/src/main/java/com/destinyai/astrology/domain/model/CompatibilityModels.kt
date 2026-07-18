@@ -290,6 +290,10 @@ data class PartnerData(
     val city: String = "",
     val latitude: Double = 0.0,
     val longitude: Double = 0.0,
+    // iOS parity (PartnerData.swift gender/timeUnknown) — each partner tab holds
+    // its own gender + birth-time-unknown flag so switching tabs shows independent data.
+    val gender: String = "",
+    val timeUnknown: Boolean = false,
     // iOS parity (PartnerData.swift) — when partner was loaded from a saved
     // birth chart, retain the source partner profile id so the picker can
     // exclude already-selected partners.

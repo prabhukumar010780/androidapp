@@ -277,11 +277,33 @@ class CompatibilityViewModel @Inject constructor(
                 partnerTimeUnknown = false,
             )
         }
+        // Mirror into the active partner tab so multi-partner state stays consistent.
+        val s = _uiState.value
+        updateActivePartner {
+            it.copy(
+                name = s.partnerName,
+                dob = s.partnerDob,
+                time = s.partnerTime,
+                city = s.partnerCity,
+                latitude = s.partnerLatitude,
+                longitude = s.partnerLongitude,
+                timeUnknown = false,
+            )
+        }
     }
 
-    fun setPartnerName(name: String) = _uiState.update { it.copy(partnerName = name) }
-    fun setPartnerDob(dob: String) = _uiState.update { it.copy(partnerDob = dob) }
-    fun setPartnerTime(time: String) = _uiState.update { it.copy(partnerTime = time) }
+    fun setPartnerName(name: String) {
+        _uiState.update { it.copy(partnerName = name) }
+        updateActivePartner { it.copy(name = name) }
+    }
+    fun setPartnerDob(dob: String) {
+        _uiState.update { it.copy(partnerDob = dob) }
+        updateActivePartner { it.copy(dob = dob) }
+    }
+    fun setPartnerTime(time: String) {
+        _uiState.update { it.copy(partnerTime = time) }
+        updateActivePartner { it.copy(time = time) }
+    }
 
     /**
      * Geocode a free-text city query via the backend's location search endpoint.
@@ -304,10 +326,18 @@ class CompatibilityViewModel @Inject constructor(
             null
         }
     }
-    fun setPartnerLocation(city: String, lat: Double, lon: Double) =
+    fun setPartnerLocation(city: String, lat: Double, lon: Double) {
         _uiState.update { it.copy(partnerCity = city, partnerLatitude = lat, partnerLongitude = lon) }
-    fun setPartnerGender(gender: String) = _uiState.update { it.copy(partnerGender = gender) }
-    fun setPartnerTimeUnknown(unknown: Boolean) = _uiState.update { it.copy(partnerTimeUnknown = unknown) }
+        updateActivePartner { it.copy(city = city, latitude = lat, longitude = lon) }
+    }
+    fun setPartnerGender(gender: String) {
+        _uiState.update { it.copy(partnerGender = gender) }
+        updateActivePartner { it.copy(gender = gender) }
+    }
+    fun setPartnerTimeUnknown(unknown: Boolean) {
+        _uiState.update { it.copy(partnerTimeUnknown = unknown) }
+        updateActivePartner { it.copy(timeUnknown = unknown) }
+    }
     fun setShowDatePicker(show: Boolean) = _uiState.update { it.copy(showDatePicker = show) }
     fun setShowTimePicker(show: Boolean) = _uiState.update { it.copy(showTimePicker = show) }
     fun setShowLocationSearch(show: Boolean) = _uiState.update { it.copy(showLocationSearch = show) }
@@ -355,6 +385,14 @@ class CompatibilityViewModel @Inject constructor(
                 error = null,
             )
         }
+        // Clear the active partner tab too so the list stays in sync with the form.
+        updateActivePartner {
+            it.copy(
+                name = "", dob = "", time = "", city = "",
+                latitude = 0.0, longitude = 0.0, gender = "",
+                timeUnknown = false, savedProfileId = null,
+            )
+        }
     }
 
     /**
@@ -399,6 +437,20 @@ class CompatibilityViewModel @Inject constructor(
                 partnerTimeUnknown = partner.birthTimeUnknown,
                 partnerFromSaved = true,
                 showPartnerPicker = false,
+            )
+        }
+        // Write the saved partner into the active tab so multi-partner sees it.
+        updateActivePartner {
+            it.copy(
+                name = partner.name,
+                dob = partner.dateOfBirth ?: "",
+                time = partner.timeOfBirth ?: "",
+                city = partner.cityOfBirth ?: "",
+                latitude = partner.latitude ?: 0.0,
+                longitude = partner.longitude ?: 0.0,
+                gender = partner.gender,
+                timeUnknown = partner.birthTimeUnknown,
+                savedProfileId = partner.id,
             )
         }
     }
@@ -477,13 +529,28 @@ class CompatibilityViewModel @Inject constructor(
      */
     private suspend fun checkCompatibilityQuota(email: String, count: Int = 1): Boolean {
         return try {
-            val access = api.canAccessFeature(email, "compatibility", count)
-            if (access.allowed) {
+            // Use the FULL response so we receive planId + is_fair_use_violation (the lean
+            // CanAccessResponse dropped them). Needed to route a Plus subscriber who hit the
+            // lifetime fair-use cap to Contact-Support, NOT a dead-end upgrade paywall.
+            val access = api.canAccessFeatureFull(email, "compatibility", count)
+            if (access.canAccess) {
                 true
             } else {
+                // A Plus subscriber can't "upgrade" — a hard cap is a fair-use violation.
+                if (access.isFairUseViolation) {
+                    _uiState.update {
+                        it.copy(
+                            isAnalyzing = false,
+                            showStreamingView = false,
+                            showPaywall = false,
+                            error = "FAIR_USE_VIOLATION",
+                        )
+                    }
+                    return false
+                }
                 when (access.reason) {
                     "daily_limit_reached" -> {
-                        val msg = access.resets_at?.let { "Daily limit reached. Resets at $it." }
+                        val msg = access.resetAt?.let { "Daily limit reached. Resets at $it." }
                             ?: "Daily limit reached. Resets tomorrow."
                         _uiState.update {
                             it.copy(isAnalyzing = false, showStreamingView = false, error = msg)
@@ -1208,6 +1275,40 @@ class CompatibilityViewModel @Inject constructor(
         _uiState.update { it.copy(isPlus = isPlus) }
     }
 
+    /**
+     * Write-through helper: apply [transform] to the ACTIVE partner in [_partners].
+     * Every setPartnerX() calls this so _partners[activeIndex] is the authoritative,
+     * always-in-sync copy of what the form is editing (iOS parity: partnerName etc. are
+     * computed properties over partners[activePartnerIndex]). Bounds-guarded.
+     */
+    private fun updateActivePartner(transform: (PartnerData) -> PartnerData) {
+        val idx = _activePartnerIndex.value
+        val list = _partners.value
+        if (!list.indices.contains(idx)) return
+        _partners.value = list.toMutableList().also { it[idx] = transform(it[idx]) }
+    }
+
+    /**
+     * Load a partner's data into the _uiState form fields so the form shows that
+     * partner. Called on select/add/remove so switching tabs swaps the visible data
+     * (fixes "switching tabs keeps Partner 1 data"). An empty PartnerData clears the form.
+     */
+    private fun loadPartnerIntoForm(p: PartnerData) {
+        _uiState.update {
+            it.copy(
+                partnerName = p.name,
+                partnerDob = p.dob,
+                partnerTime = p.time,
+                partnerCity = p.city,
+                partnerLatitude = p.latitude,
+                partnerLongitude = p.longitude,
+                partnerGender = p.gender,
+                partnerTimeUnknown = p.timeUnknown,
+                partnerFromSaved = p.savedProfileId != null,
+            )
+        }
+    }
+
     fun addPartner() {
         // Multi-partner is a Plus-only feature (parity with iOS QuotaManager.isPlus gate).
         if (!_uiState.value.isPlus) {
@@ -1216,8 +1317,11 @@ class CompatibilityViewModel @Inject constructor(
         }
         val current = _partners.value
         if (current.size >= 3) return
+        // Current form is already synced into _partners[activeIndex] via write-through.
         _partners.value = current + PartnerData()
         _activePartnerIndex.value = _partners.value.size - 1
+        // Clear the form for the new (empty) partner entry.
+        loadPartnerIntoForm(_partners.value[_activePartnerIndex.value])
     }
 
     fun removePartner(at: Int) {
@@ -1228,11 +1332,15 @@ class CompatibilityViewModel @Inject constructor(
         if (_activePartnerIndex.value >= _partners.value.size) {
             _activePartnerIndex.value = _partners.value.size - 1
         }
+        // Show whichever partner is now active.
+        loadPartnerIntoForm(_partners.value[_activePartnerIndex.value])
     }
 
     fun selectPartner(at: Int) {
         if (!_partners.value.indices.contains(at)) return
         _activePartnerIndex.value = at
+        // Swap the form to the selected partner's independent data.
+        loadPartnerIntoForm(_partners.value[at])
     }
 
     fun analyzeAllPartners() {
