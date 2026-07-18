@@ -1329,9 +1329,16 @@ class CompatibilityComponentLogicTest {
 
     // ── intensityFactorCountLabel ──────────────────────────────────────────────
 
+    private fun intensityContext(): android.content.Context {
+        val ctx = mockk<android.content.Context>(relaxed = true)
+        every { ctx.getString(com.destinyai.astrology.R.string.intensifying_factor_singular) } returns "intensifying factor"
+        every { ctx.getString(com.destinyai.astrology.R.string.intensifying_factor_plural) } returns "intensifying factors"
+        return ctx
+    }
+
     @Test
     fun `intensityFactorCountLabel singular for count 1`() {
-        val label = intensityFactorCountLabel(1)
+        val label = intensityFactorCountLabel(intensityContext(), 1)
         assertTrue(label.contains("1"), "Expected '1' in: $label")
         assertFalse(label.contains("factors"), "Singular should not say 'factors': $label")
         assertTrue(label.lowercase().contains("factor"), "Expected 'factor' in: $label")
@@ -1339,14 +1346,14 @@ class CompatibilityComponentLogicTest {
 
     @Test
     fun `intensityFactorCountLabel plural for count 3`() {
-        val label = intensityFactorCountLabel(3)
+        val label = intensityFactorCountLabel(intensityContext(), 3)
         assertTrue(label.contains("3"), "Expected '3' in: $label")
         assertTrue(label.contains("factors"), "Expected 'factors' in: $label")
     }
 
     @Test
     fun `intensityFactorCountLabel zero is plural`() {
-        val label = intensityFactorCountLabel(0)
+        val label = intensityFactorCountLabel(intensityContext(), 0)
         assertTrue(label.contains("0"), "Expected '0' in: $label")
         assertTrue(label.contains("factors"), "Expected 'factors' for 0: $label")
     }

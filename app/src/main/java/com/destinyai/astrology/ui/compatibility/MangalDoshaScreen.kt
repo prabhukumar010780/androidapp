@@ -21,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -514,6 +515,7 @@ private fun ExceptionPersonBlock(
     val successColor = Color(0xFF48BB78)
     val accentColor = if (isCancelled) successColor else Color(0xFFECC94B)
     val warningOrange = Color(0xFFED8936)
+    val context = LocalContext.current
 
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(
@@ -539,7 +541,7 @@ private fun ExceptionPersonBlock(
         if (intensityFactors.isNotEmpty()) {
             Spacer(Modifier.height(4.dp))
             Text(
-                intensityFactorCountLabel(intensityFactors.size),
+                intensityFactorCountLabel(context, intensityFactors.size),
                 fontSize = 11.sp, color = warningOrange,
                 modifier = Modifier.padding(start = 4.dp),
             )
@@ -637,5 +639,12 @@ internal fun localizeExceptionKeysInText(text: String): String {
     return result
 }
 
-internal fun intensityFactorCountLabel(count: Int): String =
-    if (count == 1) "1 intensifying factor" else "$count intensifying factors"
+internal fun intensityFactorCountLabel(context: android.content.Context, count: Int): String {
+    // iOS parity: localized noun (intensifying_factor_singular/plural), count prefixed.
+    val noun = if (count == 1) {
+        context.getString(R.string.intensifying_factor_singular)
+    } else {
+        context.getString(R.string.intensifying_factor_plural)
+    }
+    return "$count $noun"
+}
