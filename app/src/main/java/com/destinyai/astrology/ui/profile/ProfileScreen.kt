@@ -317,6 +317,13 @@ fun ProfileScreen(
             onConfirmDelete = { viewModel.confirmDeleteAccount() },
             isDeleting = state.isDeletingAccount,
             errorMessage = state.deleteErrorMessage,
+            // iOS parity (G3): stale-session delete offers a Sign In CTA (re-auth-and-retry)
+            // routed to the embedded auth flow, instead of a dead-end inline error.
+            sessionExpired = state.deleteSessionExpired,
+            onSignIn = {
+                viewModel.dismissDeleteConfirmation()
+                onLaunchEmbeddedAuth()
+            },
         )
     }
 

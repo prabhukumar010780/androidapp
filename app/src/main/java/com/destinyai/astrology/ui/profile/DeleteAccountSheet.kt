@@ -36,6 +36,7 @@ import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
+import com.destinyai.astrology.ui.theme.NavyDeep
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
 
@@ -49,6 +50,10 @@ fun DeleteAccountSheet(
     onConfirmDelete: () -> Unit,
     isDeleting: Boolean = false,
     errorMessage: String? = null,
+    // iOS parity (DeleteAccountSheet re-auth affordance, G3): when the session is expired
+    // the destructive action can't proceed — offer a Sign In CTA instead of a dead end.
+    sessionExpired: Boolean = false,
+    onSignIn: () -> Unit = {},
 ) {
     var inputText by remember { mutableStateOf("") }
     val inputMatches = inputText == DELETE_CONFIRM_WORD
@@ -218,6 +223,33 @@ fun DeleteAccountSheet(
                 )
             }
 
+            // iOS parity (G3): a stale session can't delete — show a Sign In CTA so the
+            // user can re-auth-and-retry instead of hitting a dead end. Replaces the
+            // destructive button while expired.
+            if (sessionExpired) {
+                Button(
+                    onClick = {
+                        focusManager.clearFocus()
+                        haptic.medium()
+                        onSignIn()
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp)
+                        .testTag("delete_account_sign_in_button"),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Gold),
+                ) {
+                    Text(stringResource(R.string.sign_in_button), fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = NavyDeep)
+                }
+                Spacer(Modifier.height(8.dp))
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                ) {
+                    Text(stringResource(R.string.delete_account_cancel), color = CreamDim, fontSize = 15.sp)
+                }
+            } else {
             Button(
                 onClick = {
                     // iOS parity: DeleteAccountSheet.swift:123 sets isTextFieldFocused=false before
@@ -273,6 +305,7 @@ fun DeleteAccountSheet(
                 Text(stringResource(R.string.delete_account_cancel), color = CreamDim, fontSize = 15.sp)
             }
             }
+        }
         }
     }
 }

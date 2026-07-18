@@ -64,6 +64,9 @@ data class ProfileUiState(
     // isDeleting=true; deleteErrorMessage renders inline above the confirm button.
     val isDeletingAccount: Boolean = false,
     val deleteErrorMessage: String? = null,
+    // iOS parity (DeleteAccountSheet shows a proactive "Sign In" affordance when the
+    // session is stale/expired, ProfileView.swift:206-215): drives the re-auth CTA (G3).
+    val deleteSessionExpired: Boolean = false,
     // Selected language code (e.g. "en", "hi", "ta") and response style key.
     // Surfaced as live subtitles on Language / Response Style preference rows.
     // Mirrors iOS currentLanguageDisplay (ProfileView.swift:385) and
@@ -362,7 +365,7 @@ class ProfileViewModel @Inject constructor(
 
     fun dismissProfileSwitcher() = _uiState.update { it.copy(showProfileSwitcher = false) }
 
-    fun showDeleteConfirmation() = _uiState.update { it.copy(showDeleteSheet = true, showDeleteConfirmation = true, deleteErrorMessage = null) }
+    fun showDeleteConfirmation() = _uiState.update { it.copy(showDeleteSheet = true, showDeleteConfirmation = true, deleteErrorMessage = null, deleteSessionExpired = false) }
 
     fun dismissDeleteConfirmation() = _uiState.update {
         // Block dismiss while a delete is mid-flight — mirrors iOS
@@ -379,6 +382,7 @@ class ProfileViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isDeletingAccount = false,
+                        deleteSessionExpired = true,
                         deleteErrorMessage = appContext.getString(
                             com.destinyai.astrology.R.string.delete_session_expired_message,
                         ),
@@ -415,6 +419,7 @@ class ProfileViewModel @Inject constructor(
                     401 -> _uiState.update {
                         it.copy(
                             isDeletingAccount = false,
+                            deleteSessionExpired = true,
                             deleteErrorMessage = appContext.getString(
                                 com.destinyai.astrology.R.string.delete_session_expired_message,
                             ),
