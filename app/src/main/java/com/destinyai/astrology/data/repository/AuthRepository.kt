@@ -24,6 +24,15 @@ interface AuthRepository {
     suspend fun signInWithApple(appleId: String, email: String?, name: String?, idToken: String? = null): Result<User>
     suspend fun registerGuest(): Result<User>
     suspend fun upgradeGuest(guestEmail: String, newEmail: String): Result<User>
+
+    /**
+     * iOS parity (deterministic guest identity, DL-3/M5): re-key a guest's temporary
+     * random email to the deterministic birth-data-derived [newEmail] once birth data
+     * exists, so a reinstalled guest recovers the same server identity. Updates the
+     * stored email, mints a guest session JWT for the new email, and drops the old
+     * random email's session entry. No-op if the guest already uses [newEmail].
+     */
+    suspend fun rekeyGuestEmail(newEmail: String)
     /**
      * iOS parity (AuthViewModel.swift fetchAndRestoreProfile): fetch the
      * server-side profile (including birth_profile) for [email]. Returns

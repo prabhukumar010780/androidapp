@@ -71,6 +71,7 @@ data class BirthDataUiState(
 class BirthDataViewModel @Inject constructor(
     private val api: AstroApiService,
     private val prefs: UserPreferences,
+    private val authRepository: com.destinyai.astrology.data.repository.AuthRepository,
     private val locationSearchService: LocationSearchService,
     private val soundManager: SoundManager,
     private val chatRepository: ChatRepository,
@@ -307,18 +308,27 @@ class BirthDataViewModel @Inject constructor(
 
             try {
                 val isGuest = prefs.isGuestUser()
-                // iOS parity (BirthDataViewModel.swift:94-107 effectiveEmail):
-                // generate a deterministic guest email from birth components when
-                // the stored email is empty so guests still have a stable identity.
+                // iOS parity (BirthDataViewModel.swift:94-107 effectiveEmail): guests get a
+                // DETERMINISTIC email derived from birth components so a reinstalled guest
+                // recovers the same server identity (history/quota). registerGuest() assigns
+                // a temporary random email before birth data exists; once we HAVE birth data,
+                // re-key to the deterministic email (DL-3/M5). Safe because a brand-new guest
+                // has no local history rows yet, and the deterministic register is idempotent.
                 val storedEmail = prefs.getUserEmail().orEmpty()
-                val email = if (storedEmail.isBlank() && isGuest) {
-                    generateGuestEmail(
+                val email = if (isGuest) {
+                    val deterministic = generateGuestEmail(
                         dob = s.dateOfBirth,
                         time = s.timeOfBirth,
                         city = s.cityOfBirth,
                         lat = s.latitude,
                         lng = s.longitude,
-                    ).also { prefs.setUserEmail(it) }
+                    )
+                    // Re-key (email + guest session JWT) via the repository so the bearer
+                    // matches the deterministic email. No-op if already deterministic.
+                    if (storedEmail != deterministic) {
+                        runCatching { authRepository.rekeyGuestEmail(deterministic) }
+                    }
+                    deterministic
                 } else {
                     storedEmail
                 }

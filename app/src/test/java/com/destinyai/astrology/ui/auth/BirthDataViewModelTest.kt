@@ -68,6 +68,7 @@ class BirthDataViewModelTest {
         vm = BirthDataViewModel(
             api,
             prefs,
+            mockk(relaxed = true), // AuthRepository
             locationSearchService,
             soundManager,
             mockk(relaxed = true), // ChatRepository

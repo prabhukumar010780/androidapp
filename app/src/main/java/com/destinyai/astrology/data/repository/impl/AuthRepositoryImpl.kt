@@ -279,6 +279,19 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun rekeyGuestEmail(newEmail: String) {
+        val current = runCatching { prefs.getUserEmail() }.getOrNull().orEmpty()
+        if (!runCatching { prefs.isGuestUser() }.getOrDefault(false)) return
+        if (current == newEmail) return
+        // Point the app at the deterministic email and mint a guest session for it so
+        // authenticated calls carry a matching bearer. Drop the old random email's session
+        // entry so it can't be re-attached. (No history rows exist yet for a fresh guest.)
+        secure.saveEmail(newEmail)
+        prefs.setUserEmail(newEmail)
+        mintGuestSession(newEmail)
+        if (current.isNotBlank()) runCatching { sessionStore.clearSession(forEmail = current) }
+    }
+
     override suspend fun upgradeGuest(guestEmail: String, newEmail: String): Result<User> = runCatching {
         try {
             // iOS parity (ProfileService upgrade uses the GUEST's session JWT so the backend
