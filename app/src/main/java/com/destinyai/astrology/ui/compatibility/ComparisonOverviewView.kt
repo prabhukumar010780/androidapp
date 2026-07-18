@@ -639,7 +639,9 @@ private fun RecommendationFooter(
 
 // ── Koota Breakdown Table ─────────────────────────────────────────────────────
 
-private val kootaKeys = listOf("varna", "vashya", "tara", "yoni", "maitri", "gana", "bhakoot", "nadi")
+// iOS parity (ComparisonOverviewView.swift:379-391): Detailed Breakdown lists gunas
+// Health→Work (Nadi first, Varna last). Must match iOS row order exactly.
+private val kootaKeys = listOf("nadi", "bhakoot", "gana", "maitri", "yoni", "vashya", "tara", "varna")
 private val kootaDisplayNames = mapOf(
     "varna" to "Varna", "vashya" to "Vashya", "tara" to "Tara",
     "yoni" to "Yoni", "maitri" to "Maitri", "gana" to "Gana",
@@ -681,7 +683,7 @@ private fun KootaBreakdownTable(
             Text(areaLabel, fontSize = 11.sp, color = CreamDim.copy(alpha = 0.5f), modifier = Modifier.weight(1f))
             results.forEach { r ->
                 Text(
-                    firstNameFrom(r.partner.name),
+                    r.partner.name.take(8),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = CreamDim,
@@ -810,23 +812,22 @@ private fun KootaBreakdownTable(
             }
         }
 
-        // Adjusted Total row (iOS "Adjusted Total") — only when scores differ
-        if (results.any { it.adjustedScore != it.totalScore }) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(adjustedLabel, fontSize = 12.sp, color = Gold, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                results.forEach { r ->
-                    Text(
-                        "${r.adjustedScore}/${r.maxScore}",
-                        fontSize = 12.sp,
-                        color = Gold,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.Center,
-                    )
-                }
+        // Adjusted Total row (iOS "Adjusted Total") — iOS always renders it
+        // (ComparisonOverviewView.swift:417-434), so we do too for row-count parity.
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(adjustedLabel, fontSize = 12.sp, color = Gold, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            results.forEach { r ->
+                Text(
+                    "${r.adjustedScore}/${r.maxScore}",
+                    fontSize = 12.sp,
+                    color = Gold,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                )
             }
         }
     }

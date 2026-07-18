@@ -250,6 +250,20 @@ interface CompatibilityHistoryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: CompatibilityHistoryEntity)
 
+    /**
+     * iOS parity (CompatibilityHistoryService caps stored matches at 50,
+     * `CompatibilityHistoryService.swift:13,201-204`): delete the oldest rows for
+     * an owner beyond the newest [keep], so the local table can't grow unbounded.
+     * Pinned rows are kept regardless (they float to the top by timestamp anyway;
+     * this only trims the unpinned tail once total exceeds the cap).
+     */
+    @Query(
+        "DELETE FROM compatibility_history WHERE owner_email = :ownerEmail AND session_id NOT IN (" +
+            "SELECT session_id FROM compatibility_history WHERE owner_email = :ownerEmail " +
+            "ORDER BY is_pinned DESC, timestamp_ms DESC LIMIT :keep)",
+    )
+    suspend fun trimToNewest(ownerEmail: String, keep: Int)
+
     @Query("UPDATE compatibility_history SET is_pinned = :pinned WHERE session_id = :sessionId")
     suspend fun setPin(sessionId: String, pinned: Boolean)
 

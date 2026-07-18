@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.destinyai.astrology.BuildConfig
+import com.destinyai.astrology.R
 import com.destinyai.astrology.data.local.db.CompatibilityHistoryDao
 import com.destinyai.astrology.data.local.db.CompatibilityHistoryEntity
 import com.destinyai.astrology.data.local.prefs.UserPreferences
@@ -20,6 +21,7 @@ import com.destinyai.astrology.data.remote.mapCompatibilityResponse
 import com.destinyai.astrology.data.repository.CompatibilityRepository
 import com.destinyai.astrology.data.repository.SseEvent
 import com.destinyai.astrology.domain.model.AnalysisStep
+import com.destinyai.astrology.domain.model.CompatChatMessageData
 import com.destinyai.astrology.domain.model.CompatibilityHistoryItem
 import com.destinyai.astrology.domain.model.CompatibilityResult
 import com.destinyai.astrology.domain.model.ComparisonResult
@@ -74,6 +76,9 @@ data class CompatibilityUiState(
     val error: String? = null,
     val isLoadingFromSaved: Boolean = false,
     val isPlus: Boolean = false,
+    // iOS parity (CompatibilityView.swift:942 gates Save-partner on !isFreePlan):
+    // true for any paid plan (Core OR Plus), so Core subscribers can save charts too.
+    val isPaidPlan: Boolean = false,
 ) {
     val canAnalyze: Boolean
         get() = personALoaded &&
@@ -138,7 +143,7 @@ class CompatibilityViewModel @Inject constructor(
         // and setPlus touches _uiState — an earlier init block would NPE on the not-yet-
         // constructed field. Unlocks Add-Partner the moment the user becomes Plus.
         viewModelScope.launch {
-            quotaManager.currentPlanId.collect { setPlus(quotaManager.isPlus) }
+            quotaManager.currentPlanId.collect { setPlus(quotaManager.isPlus, !quotaManager.isFreePlan) }
         }
     }
 
@@ -228,7 +233,7 @@ class CompatibilityViewModel @Inject constructor(
             // Non-forced: respects QuotaManager's sync cooldown, so this is cheap. The
             // currentPlanId observer in init pushes the result into state.isPlus.
             runCatching { quotaManager.syncStatus(email) }
-                .onFailure { setPlus(quotaManager.isPlus) } // fall back to cached tier
+                .onFailure { setPlus(quotaManager.isPlus, !quotaManager.isFreePlan) } // fall back to cached tier
             // iOS parity (CompatibilityViewModel.swift:178-210): the "You" card
             // reflects the **active** profile (partner when one is selected),
             // not the owner. Resolve via ProfileContextManager so partner birth
@@ -602,6 +607,32 @@ class CompatibilityViewModel @Inject constructor(
         }
     }
 
+    /**
+     * iOS parity (CompatibilityResultSheets.swift:1432-1451): pre-flight the
+     * ai_questions quota for follow-up chat. Returns true if the user may send;
+     * on a hard block it surfaces the inline follow-up banner (daily-limit vs
+     * upgrade) and returns false. Fail-open on network error like iOS.
+     */
+    private suspend fun checkFollowUpQuota(email: String): Boolean {
+        return try {
+            val access = api.canAccessFeatureFull(email, "ai_questions")
+            if (access.canAccess) {
+                true
+            } else {
+                _followUpError.value = if (access.reason == "daily_limit_reached") {
+                    access.resetAt?.let { appContext.getString(R.string.daily_limit_reset_time, it) }
+                        ?: appContext.getString(R.string.daily_limit_reached_tomorrow)
+                } else {
+                    appContext.getString(R.string.upgrade_to_unlock)
+                }
+                false
+            }
+        } catch (e: Exception) {
+            // Fail-open: backend still gates the follow-up endpoint server-side.
+            true
+        }
+    }
+
     fun analyze() {
         viewModelScope.launch {
             val s = _uiState.value
@@ -900,6 +931,12 @@ class CompatibilityViewModel @Inject constructor(
             val email = personAEmail ?: return@launch
             val sessionId = currentSessionId ?: return@launch
             if (query.isBlank()) return@launch
+            // iOS parity (CompatibilityResultSheets.swift:1432-1451): check the
+            // ai_questions quota BEFORE appending the user bubble. Appending first
+            // let an exhausted user briefly see their question accepted before the
+            // banner popped. Fail-open on network error — the backend still gates
+            // the follow-up endpoint server-side.
+            if (!checkFollowUpQuota(email)) return@launch
             // iOS parity (CompatibilityResultSheets.swift:1346-1348): optimistic
             // user-message append — rolled back below on quota/limit errors so
             // the banner does not flash above a stale transcript entry.
@@ -1160,16 +1197,51 @@ class CompatibilityViewModel @Inject constructor(
         }
     }
 
-    fun deleteHistoryItem(sessionId: String) {
+    /**
+     * iOS parity (CompatibilityHistoryService.togglePinGroup:292-302): flip the
+     * pin on EVERY member of a multi-partner group so the whole group pins/unpins
+     * together. `groupId` may be a real comparisonGroupId or a single item's
+     * sessionId (single-item groups use sessionId as their group id).
+     */
+    fun toggleHistoryGroupPin(groupId: String) {
         viewModelScope.launch {
-            historyDao.delete(sessionId)
-            // iOS parity: compat matches are backed by chat threads server-side
-            // (compat_sess_ ids). Propagate the delete so it doesn't reappear on a
-            // reinstall / other device. Best-effort — local delete already happened.
-            val email = prefs.getUserEmail()
-            if (email != null) {
-                runCatching { api.deleteChatThread(email, sessionId) }
+            val members = _historyItems.value.filter {
+                it.comparisonGroupId == groupId || it.sessionId == groupId
             }
+            if (members.isEmpty()) return@launch
+            val newPinState = !(members.first().isPinned)
+            members.forEach { historyDao.setPin(it.sessionId, newPinState) }
+        }
+    }
+
+    fun deleteHistoryItem(sessionId: String) {
+        viewModelScope.launch { deleteSessionLocalAndServer(sessionId) }
+    }
+
+    /**
+     * iOS parity (CompatibilityHistoryService.deleteGroup:154-163): delete EVERY
+     * member of a multi-partner group (local + server), not just the first. A
+     * 3-partner group otherwise left 2 orphaned rows. `groupId` may be a real
+     * comparisonGroupId or a single item's sessionId.
+     */
+    fun deleteHistoryGroup(groupId: String) {
+        viewModelScope.launch {
+            val members = _historyItems.value.filter {
+                it.comparisonGroupId == groupId || it.sessionId == groupId
+            }
+            val ids = members.map { it.sessionId }.ifEmpty { listOf(groupId) }
+            ids.forEach { deleteSessionLocalAndServer(it) }
+        }
+    }
+
+    private suspend fun deleteSessionLocalAndServer(sessionId: String) {
+        historyDao.delete(sessionId)
+        // iOS parity: compat matches are backed by chat threads server-side
+        // (compat_sess_ ids). Propagate the delete so it doesn't reappear on a
+        // reinstall / other device. Best-effort — local delete already happened.
+        val email = prefs.getUserEmail()
+        if (email != null) {
+            runCatching { api.deleteChatThread(email, sessionId) }
         }
     }
 
@@ -1202,6 +1274,8 @@ class CompatibilityViewModel @Inject constructor(
             resultJson = gson.toJson(result),
         )
         historyDao.upsert(entity)
+        // iOS parity: cap stored matches at 50 (delete-oldest tail).
+        historyDao.trimToNewest(entity.ownerEmail, MAX_HISTORY_ITEMS)
     }
 
     /**
@@ -1238,6 +1312,8 @@ class CompatibilityViewModel @Inject constructor(
             resultJson = gson.toJson(result),
         )
         historyDao.upsert(entity)
+        // iOS parity: cap stored matches at 50 (delete-oldest tail).
+        historyDao.trimToNewest(entity.ownerEmail, MAX_HISTORY_ITEMS)
     }
 
     private fun CompatibilityHistoryEntity.toDomain() = CompatibilityHistoryItem(
@@ -1256,10 +1332,40 @@ class CompatibilityViewModel @Inject constructor(
         isPinned = isPinned,
         comparisonGroupId = comparisonGroupId,
         partnerIndex = partnerIndex,
+        // iOS parity (CompatibilityHistoryItem carries its chat so the History row
+        // shows a follow-up question-count bubble): hydrate from the durable
+        // follow-up store keyed by the (compat_-prefixed) sessionId.
+        chatMessages = storedChatMessagesFor(sessionId),
         result = resultJson.takeIf { it.isNotEmpty() }?.let {
             runCatching { gson.fromJson(it, CompatibilityResult::class.java) }.getOrNull()
         },
     )
+
+    /**
+     * Read the persisted Ask-Destiny transcript for a match and map it to the
+     * domain chat model so the History row can show its follow-up count. Filters
+     * the initial report row like [loadStoredFollowUpMessages]. Returns empty on
+     * any parse/lookup failure.
+     */
+    private fun storedChatMessagesFor(sessionId: String): List<CompatChatMessageData> {
+        val prefixed = if (sessionId.startsWith("compat_")) sessionId else "compat_$sessionId"
+        val raw = readFollowUpHistory(prefixed) ?: readFollowUpHistory(sessionId) ?: return emptyList()
+        val msgs = runCatching {
+            gson.fromJson(raw, Array<FollowUpMessage>::class.java).toList()
+        }.getOrNull().orEmpty()
+        return msgs
+            .filter { m ->
+                !(m.text.contains("---|") || m.text.contains("|---") || m.text.contains("KEY STRENGTHS"))
+            }
+            .map { m ->
+                CompatChatMessageData(
+                    content = m.text,
+                    isUser = m.isUser,
+                    timestamp = m.timestampMs,
+                    executionTimeMs = m.executionTimeMs.takeIf { it > 0L },
+                )
+            }
+    }
 
     // -- Multi-partner support
     private val _partners = MutableStateFlow<List<PartnerData>>(listOf(PartnerData()))
@@ -1281,8 +1387,8 @@ class CompatibilityViewModel @Inject constructor(
      * QuotaManager.isPlus). Visible to allow unit tests to drive the gate without
      * spinning up the full subscription stack.
      */
-    fun setPlus(isPlus: Boolean) {
-        _uiState.update { it.copy(isPlus = isPlus) }
+    fun setPlus(isPlus: Boolean, isPaidPlan: Boolean = isPlus) {
+        _uiState.update { it.copy(isPlus = isPlus, isPaidPlan = isPaidPlan) }
     }
 
     /**
@@ -1707,5 +1813,10 @@ class CompatibilityViewModel @Inject constructor(
         } catch (_: Exception) {
             // Silently swallow — partner save is best-effort and must not break analysis flow.
         }
+    }
+
+    companion object {
+        // iOS parity (CompatibilityHistoryService max stored matches).
+        private const val MAX_HISTORY_ITEMS = 50
     }
 }

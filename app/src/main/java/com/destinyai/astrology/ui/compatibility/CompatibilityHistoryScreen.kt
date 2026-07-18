@@ -64,6 +64,7 @@ fun CompatibilityHistoryScreen(
     var searchText by remember { mutableStateOf("") }
     var pendingDeleteId by remember { mutableStateOf<String?>(null) }
     var pendingDeleteTitle by remember { mutableStateOf("") }
+    var pendingDeleteIsGroup by remember { mutableStateOf(false) }
     val haptics = LocalHapticFeedback.current
     val context = LocalContext.current
 
@@ -158,7 +159,11 @@ fun CompatibilityHistoryScreen(
                         TextButton(
                             onClick = {
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                viewModel.deleteHistoryItem(pendingDeleteId!!)
+                                if (pendingDeleteIsGroup) {
+                                    viewModel.deleteHistoryGroup(pendingDeleteId!!)
+                                } else {
+                                    viewModel.deleteHistoryItem(pendingDeleteId!!)
+                                }
                                 pendingDeleteId = null
                             },
                         ) {
@@ -254,14 +259,18 @@ fun CompatibilityHistoryScreen(
                                 SwipeToDeleteGroupRow(
                                     group = group,
                                     onTap = { onGroupSelect?.invoke(group) },
-                                    onDeleteRequest = { item ->
-                                        pendingDeleteId = item.sessionId
-                                        pendingDeleteTitle = group.displayTitle
-                                    },
-                                    onPin = { item ->
-                                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        viewModel.toggleHistoryPin(item.sessionId)
-                                    },
+                                    onDeleteRequest = {
+                                    // iOS parity (deleteGroup): a multi-partner group deletes
+                                    // ALL members, keyed by the group id.
+                                    pendingDeleteId = group.id
+                                    pendingDeleteTitle = group.displayTitle
+                                    pendingDeleteIsGroup = true
+                                },
+                                onPin = {
+                                    // iOS parity (togglePinGroup): pin/unpin the whole group.
+                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    viewModel.toggleHistoryGroupPin(group.id)
+                                },
                                     modifier = Modifier.animateItemPlacement(),
                                 )
                             } else {
@@ -276,6 +285,7 @@ fun CompatibilityHistoryScreen(
                                     onDeleteRequest = {
                                         pendingDeleteId = item.sessionId
                                         pendingDeleteTitle = item.displayTitle
+                                        pendingDeleteIsGroup = false
                                     },
                                     modifier = Modifier.animateItemPlacement(),
                                 )
@@ -347,8 +357,8 @@ private fun SwipeToDeleteHistoryItem(
 private fun SwipeToDeleteGroupRow(
     group: ComparisonGroup,
     onTap: () -> Unit,
-    onDeleteRequest: (CompatibilityHistoryItem) -> Unit,
-    onPin: (CompatibilityHistoryItem) -> Unit,
+    onDeleteRequest: () -> Unit,
+    onPin: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val firstItem = group.items.firstOrNull()
@@ -356,8 +366,8 @@ private fun SwipeToDeleteGroupRow(
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             when (value) {
-                SwipeToDismissBoxValue.EndToStart -> firstItem?.let { onDeleteRequest(it) }
-                SwipeToDismissBoxValue.StartToEnd -> pinTarget?.let { onPin(it) }
+                SwipeToDismissBoxValue.EndToStart -> onDeleteRequest()
+                SwipeToDismissBoxValue.StartToEnd -> onPin()
                 else -> Unit
             }
             false
@@ -595,8 +605,8 @@ private fun HistoryEmptyState(modifier: Modifier = Modifier) {
 private fun GroupHistoryRow(
     group: ComparisonGroup,
     onTap: () -> Unit = {},
-    onDeleteRequest: (CompatibilityHistoryItem) -> Unit = {},
-    onPin: (CompatibilityHistoryItem) -> Unit = {},
+    onDeleteRequest: () -> Unit = {},
+    onPin: () -> Unit = {},
 ) {
     val best = group.bestMatch
     val scoreColor = when {
@@ -630,7 +640,7 @@ private fun GroupHistoryRow(
                 text = { Text(if (pinTarget?.isPinned == true) stringResource(R.string.unpin) else stringResource(R.string.pin)) },
                 onClick = {
                     showContextMenu = false
-                    pinTarget?.let { onPin(it) }
+                    onPin()
                 },
                 modifier = Modifier.semantics { contentDescription = "history_group_pin_action" },
             )
@@ -638,7 +648,7 @@ private fun GroupHistoryRow(
                 text = { Text(stringResource(R.string.delete_action), color = Color(0xFFFC8181)) },
                 onClick = {
                     showContextMenu = false
-                    pinTarget?.let { onDeleteRequest(it) }
+                    onDeleteRequest()
                 },
                 modifier = Modifier.semantics { contentDescription = "history_group_delete_action" },
             )

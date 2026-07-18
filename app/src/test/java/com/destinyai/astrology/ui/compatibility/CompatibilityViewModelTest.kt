@@ -560,4 +560,65 @@ class CompatibilityViewModelTest {
         latitude = 21.2138,
         longitude = 81.3943,
     )
+
+    // ── Group delete / pin parity (iOS deleteGroup / togglePinGroup) ──────────────
+
+    private fun groupEntity(session: String, groupId: String, idx: Int, pinned: Boolean = false) =
+        com.destinyai.astrology.data.local.db.CompatibilityHistoryEntity(
+            sessionId = session,
+            ownerEmail = "u@x.com",
+            timestampMs = 1000L + idx,
+            boyName = "Prabhu",
+            boyDob = "1980-07-01",
+            boyCity = "Bhilai",
+            boyTime = "06:32",
+            girlName = "Partner$idx",
+            girlDob = "1990-01-0$idx",
+            girlCity = "Delhi",
+            girlTime = "10:00",
+            totalScore = 20 + idx,
+            maxScore = 36,
+            isPinned = pinned,
+            comparisonGroupId = groupId,
+            partnerIndex = idx,
+            resultJson = "",
+        )
+
+    @Test
+    fun `deleteHistoryGroup deletes every member of the group`() = runTest {
+        val members = listOf(
+            groupEntity("s1", "grp1", 1),
+            groupEntity("s2", "grp1", 2),
+            groupEntity("s3", "grp1", 3),
+        )
+        every { historyDao.observeAll(any()) } returns flowOf(members)
+        val deleted = mutableListOf<String>()
+        coEvery { historyDao.delete(any()) } answers { deleted.add(firstArg()); Unit }
+        coEvery { prefs.getUserEmail() } returns "u@x.com"
+
+        vm.loadUserData()
+        vm.loadHistory()
+        vm.deleteHistoryGroup("grp1")
+
+        assertEquals(setOf("s1", "s2", "s3"), deleted.toSet())
+    }
+
+    @Test
+    fun `toggleHistoryGroupPin pins every member of the group`() = runTest {
+        val members = listOf(
+            groupEntity("s1", "grp1", 1, pinned = false),
+            groupEntity("s2", "grp1", 2, pinned = false),
+        )
+        every { historyDao.observeAll(any()) } returns flowOf(members)
+        val pinned = mutableListOf<Pair<String, Boolean>>()
+        coEvery { historyDao.setPin(any(), any()) } answers { pinned.add(firstArg<String>() to secondArg()); Unit }
+
+        vm.loadUserData()
+        vm.loadHistory()
+        vm.toggleHistoryGroupPin("grp1")
+
+        assertEquals(2, pinned.size)
+        assertTrue(pinned.all { it.second }) // all flipped to pinned = true
+        assertEquals(setOf("s1", "s2"), pinned.map { it.first }.toSet())
+    }
 }

@@ -520,7 +520,9 @@ fun CompatibilityScreen(
                 // iOS parity (CompatibilityView.swift:919-938): show the checkbox in a
                 // disabled (greyed-out) state when partner originated from a saved
                 // entry, instead of hiding it entirely. Hidden only for free-plan users.
-                if (state.isPlus) {
+                // iOS parity (CompatibilityView.swift:942): show for ANY paid plan
+                // (Core OR Plus), not Plus only — Core subscribers can save charts too.
+                if (state.isPaidPlan) {
                     val savePartnerEnabled = !state.partnerFromSaved
                     Row(
                         verticalAlignment = Alignment.CenterVertically,

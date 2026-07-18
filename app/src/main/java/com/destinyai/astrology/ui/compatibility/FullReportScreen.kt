@@ -122,17 +122,40 @@ fun FullReportScreen(
             try {
                 val bitmap = renderShareCardBitmap()
                 val sessionTag = result.boyName.take(4) + result.girlName.take(4)
-                val file = File(context.cacheDir, "report-$sessionTag.png")
-                withContext(Dispatchers.IO) {
-                    FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 90, it) }
-                }
                 val authority = "${context.packageName}.fileprovider"
-                val uri = FileProvider.getUriForFile(context, authority, file)
-                val intent = Intent(Intent.ACTION_SEND).apply {
-                    type = "image/png"
-                    putExtra(Intent.EXTRA_STREAM, uri)
-                    putExtra(Intent.EXTRA_TEXT, shareText)
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                val pngUri = withContext(Dispatchers.IO) {
+                    val file = File(context.cacheDir, "report-$sessionTag.png")
+                    FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 90, it) }
+                    FileProvider.getUriForFile(context, authority, file)
+                }
+                // iOS parity (CompatibilityResultSheets.swift:107-151 shares text + PNG
+                // + PDF): render the full PDF report and attach it alongside the card.
+                val pdfUri = runCatching {
+                    withContext(Dispatchers.IO) {
+                        val pdfBytes = buildCompatibilityPdfBytes(result, sections)
+                        val pdfFile = File(context.cacheDir, "report-$sessionTag.pdf")
+                        FileOutputStream(pdfFile).use { it.write(pdfBytes) }
+                        FileProvider.getUriForFile(context, authority, pdfFile)
+                    }
+                }.getOrNull()
+
+                val intent = if (pdfUri != null) {
+                    Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                        type = "*/*"
+                        putParcelableArrayListExtra(
+                            Intent.EXTRA_STREAM,
+                            arrayListOf(pngUri, pdfUri),
+                        )
+                        putExtra(Intent.EXTRA_TEXT, shareText)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                } else {
+                    Intent(Intent.ACTION_SEND).apply {
+                        type = "image/png"
+                        putExtra(Intent.EXTRA_STREAM, pngUri)
+                        putExtra(Intent.EXTRA_TEXT, shareText)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
                 }
                 context.startActivity(
                     Intent.createChooser(intent, context.getString(R.string.full_report_share_chooser))
