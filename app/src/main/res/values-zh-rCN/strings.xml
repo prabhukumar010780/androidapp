@@ -2597,6 +2597,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_astrology_settings_subtitle">选择您的占星路径</string>
     <string name="profile_chat_history_clear_failed">清除历史记录失败</string>
     <string name="profile_chat_history_cleared">聊天历史记录已清除</string>
+    <string name="profile_clear_history_failed">无法清除历史记录。请检查网络连接后重试。</string>
     <string name="profile_clear_chat_history">清除聊天历史记录</string>
     <string name="profile_clear_chat_history_message">所有聊天历史记录将被永久删除。</string>
     <string name="profile_daily_questions_label">每日问题</string>
@@ -2626,6 +2627,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_settings_button">设置</string>
     <string name="profile_sign_in_or_sign_up">登录 / 注册</string>
     <string name="profile_sign_out_message_short">您需要重新登录才能访问数据。</string>
+    <string name="profile_sign_out_guest_message">作为访客，您的出生数据和历史记录将被删除。使用 Google 登录以保存您的数据。</string>
     <string name="profile_sign_out_question">退出登录？</string>
     <string name="profile_sign_up_cta">注册</string>
     <string name="profile_switch_profile">切换档案</string>

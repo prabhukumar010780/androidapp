@@ -2597,6 +2597,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_astrology_settings_subtitle">Elige tu camino astrológico</string>
     <string name="profile_chat_history_clear_failed">Error al limpiar el historial</string>
     <string name="profile_chat_history_cleared">Historial de chat eliminado</string>
+    <string name="profile_clear_history_failed">No se pudo borrar el historial. Comprueba tu conexión e inténtalo de nuevo.</string>
     <string name="profile_clear_chat_history">Limpiar historial de chat</string>
     <string name="profile_clear_chat_history_message">Todo el historial de chat será eliminado permanentemente.</string>
     <string name="profile_daily_questions_label">Preguntas diarias</string>
@@ -2626,6 +2627,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_settings_button">Ajustes</string>
     <string name="profile_sign_in_or_sign_up">Iniciar sesión / Registrarse</string>
     <string name="profile_sign_out_message_short">Tendrás que iniciar sesión de nuevo para acceder a tus datos.</string>
+    <string name="profile_sign_out_guest_message">Como invitado, tus datos de nacimiento e historial se eliminarán. Inicia sesión con Google para guardar tus datos.</string>
     <string name="profile_sign_out_question">¿Cerrar sesión?</string>
     <string name="profile_sign_up_cta">Registrarse</string>
     <string name="profile_switch_profile">Cambiar perfil</string>

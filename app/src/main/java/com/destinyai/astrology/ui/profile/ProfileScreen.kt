@@ -235,7 +235,16 @@ fun ProfileScreen(
         AlertDialog(
             onDismissRequest = { showSignOutDialog = false },
             title = { Text(stringResource(R.string.profile_sign_out_question), color = CreamText, fontFamily = CanelaFontFamily) },
-            text = { Text(stringResource(R.string.profile_sign_out_message_short), color = CreamDim) },
+            // iOS parity (D8): guests get a data-loss warning; registered users the standard message.
+            text = {
+                Text(
+                    stringResource(
+                        if (state.isGuestUser) R.string.profile_sign_out_guest_message
+                        else R.string.profile_sign_out_message_short,
+                    ),
+                    color = CreamDim,
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     showSignOutDialog = false
@@ -440,7 +449,10 @@ fun ProfileScreen(
                                             Text(text = emailDisplay, fontSize = 13.sp, color = CreamDim)
                                         }
 
-                                        // R2-P3 Plan badge
+                                        // R2-P3 Plan badge — iOS parity (ProfileView:316-331):
+                                        // only shown for non-premium; premium plan state is
+                                        // already conveyed by the paid subscription card (D6).
+                                        if (!state.isPremium) {
                                         Spacer(Modifier.height(6.dp))
                                         val isPaid = state.planId.isNotEmpty() && state.planId != "free_registered" && state.planId != "free_guest"
                                         Box(
@@ -460,6 +472,7 @@ fun ProfileScreen(
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = if (isPaid) Gold else CreamDim,
                                             )
+                                        }
                                         }
                                     }
                                 }
@@ -537,6 +550,7 @@ fun ProfileScreen(
                             if (!state.showPaidCard) {
                                 FreeUpgradeHeroCard(
                                     isGuest = state.isGuestUser,
+                                    trialEligible = state.trialEligible,
                                     onClick = {
                                         // GUEST RULE: Guests must sign in first to view plans
                                         if (state.isGuestUser) {
@@ -941,32 +955,10 @@ fun ProfileScreen(
                                 onNavigateToFaq = onNavigateToFaq,
                             )
 
-                            // Sign Out (destructive shimmer CTA, opens confirm dialog)
-                            ShimmerButton(
-                                text = stringResource(R.string.sign_out),
-                                onClick = { showSignOutDialog = true },
-                                modifier = Modifier.fillMaxWidth(),
-                                destructive = true,
-                            )
-
-                            // iOS parity (ProfileView.swift:110-113 — Delete Account is
-                            // registered-users-only): hide for guests. A guest has no fresh
-                            // session JWT, so confirmDeleteAccount would dead-end in the
-                            // session-expired path (D1).
-                            if (!state.isGuestUser) {
-                                TextButton(
-                                    onClick = { viewModel.showDeleteConfirmation() },
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    Text(stringResource(R.string.profile_delete_account), color = Color(0xFFFF5252), fontWeight = FontWeight.SemiBold)
-                                }
-                            }
-
-                            // App info footer — parity with iOS appInfoSection (ProfileView.swift:775-790):
-                            // brand name, version+build, copyright. Renders three Text rows.
-                            // Env label mirrors iOS ProfileView.swift:1005-1007 — appends "[STAGING]"
-                            // or "[LOCAL]" only when ENV != production. ENV is set per-build-type
-                            // in build.gradle.kts (debug=local, staging=staging, release=production).
+                            // App info footer — iOS parity (ProfileView.swift:897-912 places
+                            // the footer BEFORE Sign Out / Delete, D10): brand name,
+                            // version+build, copyright. Env label appends [STAGING]/[LOCAL]
+                            // when ENV != production (build.gradle.kts per build type).
                             val appVersionText = remember {
                                 val base = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
                                 val env = BuildConfig.ENV
@@ -998,6 +990,29 @@ fun ProfileScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                             )
+
+                            Spacer(Modifier.height(8.dp))
+
+                            // Sign Out (destructive shimmer CTA, opens confirm dialog)
+                            ShimmerButton(
+                                text = stringResource(R.string.sign_out),
+                                onClick = { showSignOutDialog = true },
+                                modifier = Modifier.fillMaxWidth(),
+                                destructive = true,
+                            )
+
+                            // iOS parity (ProfileView.swift:110-113 — Delete Account is
+                            // registered-users-only): hide for guests. A guest has no fresh
+                            // session JWT, so confirmDeleteAccount would dead-end in the
+                            // session-expired path (D1).
+                            if (!state.isGuestUser) {
+                                TextButton(
+                                    onClick = { viewModel.showDeleteConfirmation() },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(stringResource(R.string.profile_delete_account), color = Color(0xFFFF5252), fontWeight = FontWeight.SemiBold)
+                                }
+                            }
 
                             Spacer(Modifier.height(32.dp))
                         }
@@ -1520,7 +1535,7 @@ private fun PreferenceToggleRow(
  * star/crown icon, two-line headline + subtitle, trailing chevron.
  */
 @Composable
-private fun FreeUpgradeHeroCard(isGuest: Boolean, onClick: () -> Unit) {
+private fun FreeUpgradeHeroCard(isGuest: Boolean, trialEligible: Boolean = false, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -1551,6 +1566,9 @@ private fun FreeUpgradeHeroCard(isGuest: Boolean, onClick: () -> Unit) {
                 Text(
                     text = if (isGuest) {
                         stringResource(R.string.profile_sign_up_cta)
+                    } else if (trialEligible) {
+                        // iOS parity (D7): trial-eligible non-guests see the free-week CTA.
+                        stringResource(R.string.start_7_day_free_trial)
                     } else {
                         stringResource(R.string.profile_upgrade_premium)
                     },

@@ -51,6 +51,9 @@ data class ProfileUiState(
     val showProfileSwitcher: Boolean = false,
     val pendingUpgradePlanId: String? = null,
     val pendingUpgradeDate: String? = null,
+    // iOS parity (ProfileView free-card CTA swaps to "Start my free week" when eligible, D7):
+    // true when a Plus trial offer is available AND the user hasn't used it.
+    val trialEligible: Boolean = false,
     val hasActiveSubscription: Boolean = false,
     // Chart style ("north" / "south") — drives the Chart Style row subtitle and
     // ChartStylePickerSheet. Mirrors iOS ProfileView.swift @AppStorage("chartStyle").
@@ -173,7 +176,12 @@ class ProfileViewModel @Inject constructor(
                     }
                 }
         }
-        // Surface a "Now viewing as <Name>" snackbar after a successful Switch
+        // iOS parity (D7): free-card CTA becomes "Start my free week" when a trial is available.
+        viewModelScope.launch {
+            billingManager.shouldShowTrialButton.collect { eligible ->
+                _uiState.update { it.copy(trialEligible = eligible) }
+            }
+        }
         // Profile. The bus emits the new profile id; we resolve it to a display
         // name via the locally-cached partner list (Room) or, for self, the
         // current account name in prefs. Mirrors iOS NotificationCenter
@@ -405,7 +413,7 @@ class ProfileViewModel @Inject constructor(
                 }
                 _uiState.update { it.copy(clearedThreadCount = count) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(snackbarMessage = "Failed to clear history") }
+                _uiState.update { it.copy(snackbarMessage = appContext.getString(com.destinyai.astrology.R.string.profile_clear_history_failed)) }
             }
         }
     }

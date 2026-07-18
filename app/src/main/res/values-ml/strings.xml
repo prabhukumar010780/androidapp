@@ -2597,6 +2597,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_astrology_settings_subtitle">നിങ്ങളുടെ ജ്യോതിഷ പാത തിരഞ്ഞെടുക്കുക</string>
     <string name="profile_chat_history_clear_failed">ചരിത്രം മായ്ക്കാൻ പരാജയപ്പെട്ടു</string>
     <string name="profile_chat_history_cleared">ചാറ്റ് ചരിത്രം മായ്ച്ചു</string>
+    <string name="profile_clear_history_failed">ചരിത്രം മായ്‌ക്കാനായില്ല. കണക്ഷൻ പരിശോധിച്ച് വീണ്ടും ശ്രമിക്കുക.</string>
     <string name="profile_clear_chat_history">ചാറ്റ് ചരിത്രം മായ്ക്കുക</string>
     <string name="profile_clear_chat_history_message">എല്ലാ ചാറ്റ് ചരിത്രം സ്ഥിരമായി ഇല്ലാതാക്കപ്പെടും.</string>
     <string name="profile_daily_questions_label">ദൈനിക ചോദ്യങ്ങൾ</string>
@@ -2626,6 +2627,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_settings_button">ക്രമീകരണങ്ങൾ</string>
     <string name="profile_sign_in_or_sign_up">സൈൻ ഇൻ / സൈൻ അപ്പ്</string>
     <string name="profile_sign_out_message_short">നിങ്ങളുടെ ഡാറ്റ ആക്സസ് ചെയ്യാൻ നിങ്ങൾ വീണ്ടും സൈൻ ഇൻ ചെയ്യേണ്ടിവരും.</string>
+    <string name="profile_sign_out_guest_message">അതിഥിയായി, നിങ്ങളുടെ ജനന ഡാറ്റയും ചരിത്രവും ഇല്ലാതാക്കും. ഡാറ്റ സംരക്ഷിക്കാൻ Google ഉപയോഗിച്ച് സൈൻ ഇൻ ചെയ്യുക.</string>
     <string name="profile_sign_out_question">സൈൻ ഔട്ട് ചെയ്യണോ?</string>
     <string name="profile_sign_up_cta">സൈൻ അപ്പ്</string>
     <string name="profile_switch_profile">പ്രോഫൈൽ മാറുക</string>

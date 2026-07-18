@@ -63,6 +63,7 @@ class ProfileViewModelTest {
         every { billingManager.pendingUpgradePlanId } returns MutableStateFlow<String?>(null)
         every { billingManager.pendingUpgradeEffectiveDate } returns MutableStateFlow<Long?>(null)
         every { billingManager.purchasedProductIds } returns MutableStateFlow<Set<String>>(emptySet())
+        every { billingManager.shouldShowTrialButton } returns MutableStateFlow(false)
         coEvery { prefs.getUserEmail() } returns "u@x.com"
         coEvery { prefs.getUserName() } returns "Prabhu"
         // ProfileChangeBus is a @Singleton with a non-arg constructor — instantiate

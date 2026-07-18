@@ -2597,6 +2597,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_astrology_settings_subtitle">Выберите свой астрологический путь</string>
     <string name="profile_chat_history_clear_failed">Не удалось очистить историю</string>
     <string name="profile_chat_history_cleared">История чата очищена</string>
+    <string name="profile_clear_history_failed">Не удалось очистить историю. Проверьте подключение и повторите попытку.</string>
     <string name="profile_clear_chat_history">Очистить историю чата</string>
     <string name="profile_clear_chat_history_message">Вся история чата будет навсегда удалена.</string>
     <string name="profile_daily_questions_label">Ежедневные вопросы</string>
@@ -2626,6 +2627,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_settings_button">Настройки</string>
     <string name="profile_sign_in_or_sign_up">Войти / Зарегистрироваться</string>
     <string name="profile_sign_out_message_short">Для доступа к данным вам нужно будет войти снова.</string>
+    <string name="profile_sign_out_guest_message">Как у гостя, ваши данные о рождении и история будут удалены. Войдите через Google, чтобы сохранить данные.</string>
     <string name="profile_sign_out_question">Выйти?</string>
     <string name="profile_sign_up_cta">Зарегистрироваться</string>
     <string name="profile_switch_profile">Переключить профиль</string>

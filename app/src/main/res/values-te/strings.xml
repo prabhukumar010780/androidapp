@@ -2597,6 +2597,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_astrology_settings_subtitle">మీ జ్యోతిష్య మార్గాన్ని ఎంచుకోండి</string>
     <string name="profile_chat_history_clear_failed">చరిత్రను క్లియర్ చేయడం విఫలమైంది</string>
     <string name="profile_chat_history_cleared">చాట్ చరిత్ర క్లియర్ చేయబడింది</string>
+    <string name="profile_clear_history_failed">చరిత్రను తొలగించడం సాధ్యపడలేదు. దయచేసి మీ కనెక్షన్‌ను తనిఖీ చేసి మళ్లీ ప్రయత్నించండి.</string>
     <string name="profile_clear_chat_history">చాట్ చరిత్రను క్లియర్ చేయండి</string>
     <string name="profile_clear_chat_history_message">అన్ని చాట్ చరిత్ర శాశ్వతంగా తొలగించబడుతుంది.</string>
     <string name="profile_daily_questions_label">రోజువారీ ప్రశ్నలు</string>
@@ -2626,6 +2627,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_settings_button">సెట్టింగ్‌లు</string>
     <string name="profile_sign_in_or_sign_up">సైన్ ఇన్ / సైన్ అప్</string>
     <string name="profile_sign_out_message_short">మీ డేటాను యాక్సెస్ చేయడానికి మీరు తిరిగి సైన్ ఇన్ చేయవలసి ఉంటుంది.</string>
+    <string name="profile_sign_out_guest_message">అతిథిగా, మీ జనన డేటా మరియు చరిత్ర తొలగించబడతాయి. మీ డేటాను సేవ్ చేయడానికి Googleతో సైన్ ఇన్ చేయండి.</string>
     <string name="profile_sign_out_question">సైన్ అవుట్ చేయాలా?</string>
     <string name="profile_sign_up_cta">సైన్ అప్</string>
     <string name="profile_switch_profile">ప్రొఫైల్‌ను స్విచ్ చేయండి</string>

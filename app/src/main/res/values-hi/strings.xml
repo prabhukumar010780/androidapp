@@ -2577,6 +2577,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_astrology_settings_subtitle">अपना ज्योतिष पथ चुनें</string>
     <string name="profile_chat_history_clear_failed">इतिहास साफ़ करने में विफल</string>
     <string name="profile_chat_history_cleared">चैट इतिहास साफ़ किया गया</string>
+    <string name="profile_clear_history_failed">इतिहास साफ़ नहीं हो सका। कृपया अपना कनेक्शन जांचें और पुनः प्रयास करें।</string>
     <string name="profile_clear_chat_history">चैट इतिहास साफ़ करें</string>
     <string name="profile_clear_chat_history_message">सभी चैट इतिहास स्थायी रूप से हटा दिया जाएगा।</string>
     <string name="profile_daily_questions_label">दैनिक प्रश्न</string>
@@ -2606,6 +2607,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_settings_button">सेटिंग</string>
     <string name="profile_sign_in_or_sign_up">साइन इन / साइन अप</string>
     <string name="profile_sign_out_message_short">अपना डेटा एक्सेस करने के लिए आपको फिर से साइन इन करना होगा।</string>
+    <string name="profile_sign_out_guest_message">अतिथि के रूप में, आपका जन्म डेटा और इतिहास हट जाएगा। अपना डेटा सहेजने के लिए Google से साइन इन करें।</string>
     <string name="profile_sign_out_question">साइन आउट करें?</string>
     <string name="profile_sign_up_cta">साइन अप करें</string>
     <string name="profile_switch_profile">प्रोफ़ाइल बदलें</string>

@@ -15,6 +15,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.*
+import androidx.compose.ui.res.stringResource
+import com.destinyai.astrology.R
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,10 +74,10 @@ fun FaqHelpScreen(onBack: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = CreamDim)
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back), tint = CreamDim)
                 }
                 Text(
-                    text = "Help & FAQ",
+                    text = stringResource(R.string.faq_and_help),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = CanelaFontFamily,
@@ -93,7 +95,7 @@ fun FaqHelpScreen(onBack: () -> Unit) {
             ) {
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "Common Questions",
+                    text = stringResource(R.string.common_questions),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = Gold.copy(alpha = 0.7f),

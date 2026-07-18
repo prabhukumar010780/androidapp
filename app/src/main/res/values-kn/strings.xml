@@ -2597,6 +2597,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_astrology_settings_subtitle">ನಿಮ್ಮ ಜ್ಯೋತಿಷ್ಯ ಮಾರ್ಗವನ್ನು ಆರಿಸಿ</string>
     <string name="profile_chat_history_clear_failed">ಇತಿಹಾಸ ಸ್ಪಷ್ಟ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ</string>
     <string name="profile_chat_history_cleared">ಚ್ಯಾಟ್ ಇತಿಹಾಸ ಸ್ಪಷ್ಟ ಮಾಡಲಾಗಿದೆ</string>
+    <string name="profile_clear_history_failed">ಇತಿಹಾಸವನ್ನು ಅಳಿಸಲಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ನಿಮ್ಮ ಸಂಪರ್ಕವನ್ನು ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.</string>
     <string name="profile_clear_chat_history">ಚ್ಯಾಟ್ ಇತಿಹಾಸ ಸ್ಪಷ್ಟ ಮಾಡಿ</string>
     <string name="profile_clear_chat_history_message">ಎಲ್ಲಾ ಚ್ಯಾಟ್ ಇತಿಹಾಸ ಶಾಶ್ವತವಾಗಿ ಅಳಿಸಲಾಗುತ್ತದೆ.</string>
     <string name="profile_daily_questions_label">ದೈನಿಕ ಪ್ರಶ್ನೆಗಳು</string>
@@ -2626,6 +2627,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_settings_button">ಸೆಟ್ಟಿಂಗ್‌ಗಳು</string>
     <string name="profile_sign_in_or_sign_up">ಸೈನ್ ಇನ್ / ಸೈನ್ ಅಪ್</string>
     <string name="profile_sign_out_message_short">ನಿಮ್ಮ ಡೇಟಾ ಪ್ರವೇಶಿಸಲು ನೀವು ಮತ್ತೆ ಸೈನ್ ಇನ್ ಮಾಡಬೇಕಾಗುತ್ತದೆ.</string>
+    <string name="profile_sign_out_guest_message">ಅತಿಥಿಯಾಗಿ, ನಿಮ್ಮ ಜನ್ಮ ಡೇಟಾ ಮತ್ತು ಇತಿಹಾಸ ಅಳಿಸಲಾಗುತ್ತದೆ. ನಿಮ್ಮ ಡೇಟಾ ಉಳಿಸಲು Google ನೊಂದಿಗೆ ಸೈನ್ ಇನ್ ಮಾಡಿ.</string>
     <string name="profile_sign_out_question">ಸೈನ್ ಔಟ್ ಮಾಡುವುದೇ?</string>
     <string name="profile_sign_up_cta">ಸೈನ್ ಅಪ್</string>
     <string name="profile_switch_profile">ಪ್ರೊಫೈಲ್ ಬದಲಾಯಿಸಿ</string>

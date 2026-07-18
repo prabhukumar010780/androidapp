@@ -2485,6 +2485,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_clear_chat_history">Clear chat history</string>
     <string name="profile_clear_chat_history_message">All chat history will be permanently deleted.</string>
     <string name="profile_chat_history_cleared">Chat history cleared</string>
+    <string name="profile_clear_history_failed">Couldn\'t clear history. Please check your connection and try again.</string>
     <string name="profile_chat_history_clear_failed">Failed to clear history</string>
     <string name="profile_analytics">Analytics</string>
     <!-- Note: key name reads "help_faq" for legacy reasons; value intentionally
@@ -2496,6 +2497,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_settings_button">Settings</string>
     <string name="profile_sign_out_question">Sign Out?</string>
     <string name="profile_sign_out_message_short">You\'ll need to sign in again to access your data.</string>
+    <string name="profile_sign_out_guest_message">As a guest, your birth data and history will be deleted. Sign in with Google to save your data.</string>
     <string name="profile_delete_account">Delete Account</string>
     <string name="profile_back">Back</string>
     <string name="profile_guest_label">Guest</string>

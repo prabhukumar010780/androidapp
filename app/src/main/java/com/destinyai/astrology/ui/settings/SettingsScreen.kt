@@ -174,25 +174,12 @@ fun SettingsScreen(
                     }
                 }
 
-                CosmicSettingsSection(title = stringResource(R.string.settings_notifications_section)) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SettingsToggleRow(
-                            stringResource(R.string.settings_notif_daily_insights),
-                            state.notifDailyInsight,
-                            viewModel::setNotifDailyInsight,
-                        )
-                        SettingsToggleRow(
-                            stringResource(R.string.settings_notif_transits),
-                            state.notifTransits,
-                            viewModel::setNotifTransits,
-                        )
-                        SettingsToggleRow(
-                            stringResource(R.string.settings_notif_compatibility),
-                            state.notifCompatibility,
-                            viewModel::setNotifCompatibility,
-                        )
-                    }
-                }
+                // iOS parity (D5): iOS owns notification channels/categories solely in
+                // NotificationPreferences — it never writes coarse daily/transits/compat
+                // category flags. The 3 legacy toggles + their Save button were removed
+                // because saving them overwrote server-side channel state iOS leaves
+                // untouched (cross-platform drift). The Personalized Alerts row below is
+                // the single source of truth, matching iOS.
 
                 // iOS parity: NotificationPreferencesSheet is presented from ProfileView; on Android
                 // we expose it via a row in Settings so users can manage personalized alerts.
@@ -227,30 +214,6 @@ fun SettingsScreen(
                         tint = Gold.copy(alpha = 0.6f),
                         modifier = Modifier.size(16.dp),
                     )
-                }
-
-                if (state.error != null) {
-                    Text(text = state.error ?: "", color = Color(0xFFFF8A80), fontSize = 13.sp)
-                }
-                if (state.isSaved) {
-                    Text(text = stringResource(R.string.settings_saved), color = Gold, fontSize = 13.sp)
-                }
-
-                Button(
-                    onClick = { viewModel.saveNotifPrefs() },
-                    enabled = !state.isLoading,
-                    modifier = Modifier.fillMaxWidth().height(54.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Gold,
-                        contentColor = Color(0xFF0D0D1A),
-                    ),
-                ) {
-                    if (state.isLoading) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color(0xFF0D0D1A), strokeWidth = 2.dp)
-                    } else {
-                        Text(stringResource(R.string.settings_save_button), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                    }
                 }
 
                 Spacer(Modifier.height(32.dp))

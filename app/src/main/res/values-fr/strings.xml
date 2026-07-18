@@ -2597,6 +2597,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_astrology_settings_subtitle">Choisis ton parcours astrologique</string>
     <string name="profile_chat_history_clear_failed">Échec de l\'effacement de l\'historique</string>
     <string name="profile_chat_history_cleared">Historique des chats effacé</string>
+    <string name="profile_clear_history_failed">Impossible d\'effacer l\'historique. Vérifie ta connexion et réessaie.</string>
     <string name="profile_clear_chat_history">Effacer l\'historique des chats</string>
     <string name="profile_clear_chat_history_message">Tout l\'historique des chats sera définitivement supprimé.</string>
     <string name="profile_daily_questions_label">Questions quotidiennes</string>
@@ -2626,6 +2627,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_settings_button">Réglages</string>
     <string name="profile_sign_in_or_sign_up">Se connecter / S\'inscrire</string>
     <string name="profile_sign_out_message_short">Tu devras te reconnecter pour accéder à tes données.</string>
+    <string name="profile_sign_out_guest_message">En tant qu\'invité, vos données de naissance et votre historique seront supprimés. Connectez-vous avec Google pour les enregistrer.</string>
     <string name="profile_sign_out_question">Se déconnecter ?</string>
     <string name="profile_sign_up_cta">S\'inscrire</string>
     <string name="profile_switch_profile">Changer de profil</string>

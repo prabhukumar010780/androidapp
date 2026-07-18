@@ -2597,6 +2597,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_astrology_settings_subtitle">占星術の方向性を選択してください</string>
     <string name="profile_chat_history_clear_failed">履歴のクリアに失敗しました</string>
     <string name="profile_chat_history_cleared">チャット履歴をクリアしました</string>
+    <string name="profile_clear_history_failed">履歴を消去できませんでした。接続を確認して、もう一度お試しください。</string>
     <string name="profile_clear_chat_history">チャット履歴をクリア</string>
     <string name="profile_clear_chat_history_message">すべてのチャット履歴が完全に削除されます。</string>
     <string name="profile_daily_questions_label">1日の質問数</string>
@@ -2626,6 +2627,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_settings_button">設定</string>
     <string name="profile_sign_in_or_sign_up">サインイン / サインアップ</string>
     <string name="profile_sign_out_message_short">データにアクセスするには再度サインインが必要です。</string>
+    <string name="profile_sign_out_guest_message">ゲストのままだと、出生データと履歴が削除されます。データを保存するには Google でサインインしてください。</string>
     <string name="profile_sign_out_question">サインアウトしますか？</string>
     <string name="profile_sign_up_cta">サインアップ</string>
     <string name="profile_switch_profile">プロフィールを切り替え</string>
