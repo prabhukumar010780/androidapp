@@ -38,17 +38,34 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun getSavedUser(): User? {
         val email = secure.getEmail() ?: return null
+        val isGuest = runCatching { prefs.isGuestUser() }.getOrDefault(false)
+        // Local-first fallback (iOS restores the session from local storage without a
+        // network round-trip): if the reconcile call fails or is skipped, an already-
+        // authenticated user must NOT be bounced to the sign-in screen (G2/DL-5).
+        val localUser = User(
+            email = email,
+            isGuestEmail = isGuest,
+            name = runCatching { prefs.getUserName() }.getOrNull(),
+            googleId = runCatching { prefs.getGoogleUserId() }.getOrNull(),
+            isPremium = runCatching { prefs.isPremium() }.getOrDefault(false),
+            accessState = runCatching { prefs.getAccessState() }.getOrDefault("granted"),
+        )
         return try {
             api.getStatus(email).toUser()
         } catch (e: HttpException) {
             when (e.code()) {
-                // 404: user not found in DB (deleted or never existed)
-                404 -> throw AccountDeletedException()
-                // iOS parity: 403 on /subscription/status is treated as transient
-                // (rate-limit, expired token, etc.) — keep the session intact.
-                // Account-deletion is signaled by the backend on register/upgrade only.
-                else -> null
+                // 404: account not found. For a REGISTERED user this is an authoritative
+                // "account deleted on server" signal → force logout. For a GUEST it's a
+                // false positive (the deferred backend register may simply not have run
+                // yet, e.g. offline) — do NOT nuke a valid local guest session (DL-5).
+                404 -> if (isGuest) localUser else throw AccountDeletedException()
+                // Transient (403 rate-limit / expired token, etc.) — keep the session:
+                // restore from local so an authenticated user stays in (G2).
+                else -> localUser
             }
+        } catch (e: Exception) {
+            // Network unavailable — offline restore from local storage (iOS parity, G2).
+            localUser
         }
     }
 
@@ -346,31 +363,20 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun signOutPreserveBirthData() {
-        // iOS parity (ChatView.swift signOutAndReauth + Components/QuotaExhaustedView.swift onSignIn):
-        // a softer sign-out used when a guest hits the quota wall and taps Sign In.
-        // Clears just enough state for AuthScreen to route to login UI (not bounce
-        // back to Main) without nuking the guest's birth profile. The new
-        // registered account flow reads the preserved birth data and carries it forward.
-        secure.clearAll()
-        // Reset auth flag + guest flag so AuthScreen's loadSession() returns null user.
+        // iOS parity (ChatView.signOutAndReauth: "DO NOT clear guest data — just set
+        // isAuthenticated=false to trigger navigation to AuthView; performSignIn captures
+        // guestBirthData and carries it forward"). This is the quota-wall "Sign In" path.
+        //
+        // CRITICAL (DL-2): a guest MUST keep its identity so the subsequent Google sign-in
+        // runs the upgrade + carry-forward: preserve isGuest, the guest email, AND the guest
+        // per-email session JWT (the backend owner-check needs it). Previously this called
+        // secure.clearAll() + cleared the email/guest flag, which made wasGuest=false and
+        // destroyed the guest JWT → carry-forward was skipped and guest history orphaned.
+        //
+        // Only flip the auth flag so SplashViewModel/AuthScreen route to sign-in. The active
+        // session pointer stays (guest is still the active session until the new sign-in
+        // swaps it). Do NOT touch birth data, subscription, quota, or the token store.
         prefs.setAuthenticated(false)
-        prefs.setGuestUser(false)
-        prefs.setUserEmail("")
-        prefs.setUserName("")
-        // Subscription / quota — match iOS resetForSignOut so account-A's plan
-        // cannot leak into account-B's first sync.
-        prefs.setSubscription(isPremium = false, planId = "free")
-        prefs.setAccessState("granted")
-        prefs.setLastAccessState("unknown")
-        prefs.setFcmTokenRegistered(false)
-        prefs.clearSubscriptionMeta()
-        prefs.clearProviderIds()
-        runCatching { quotaManager.get().resetForSignOut() }
-        runCatching { billingManager.get().resetForSignOut() }
-        sessionStore.clearActiveSession()
-        // NOTE: do NOT call prefs.clearAll() — that wipes BIRTH_DOB/lat/lng/etc.
-        // The whole point of this method is to preserve birth data so the user
-        // doesn't have to re-enter it after re-auth.
     }
 
     /**

@@ -70,6 +70,8 @@ class AuthViewModelTest {
     fun `init loads saved session from keystore`() = runTest {
         val savedUser = User(email = "test@example.com", isGuestEmail = false)
         coEvery { repository.getSavedUser() } returns savedUser
+        // loadSession is now gated on the persisted isAuthenticated flag (DL-2 parity).
+        coEvery { prefs.isAuthenticated() } returns true
 
         val vm = AuthViewModel(repository, haptic, prefs, appStartup, soundManager, loginSync, context)
 
@@ -231,6 +233,8 @@ class AuthViewModelTest {
     @Test
     fun `403 account_deleted on any call forces logout`() = runTest {
         coEvery { repository.getSavedUser() } throws AccountDeletedException()
+        // loadSession reaches getSavedUser only when the persisted flag is authenticated.
+        coEvery { prefs.isAuthenticated() } returns true
 
         val vm = AuthViewModel(repository, haptic, prefs, appStartup, soundManager, loginSync, context)
 

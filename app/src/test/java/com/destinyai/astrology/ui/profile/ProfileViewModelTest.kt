@@ -38,6 +38,8 @@ class ProfileViewModelTest {
     private lateinit var authRepository: AuthRepository
     private lateinit var billingManager: BillingManager
     private lateinit var sessionStore: com.destinyai.astrology.data.local.prefs.SessionTokenStore
+    private lateinit var threadDao: com.destinyai.astrology.data.local.db.ChatThreadDao
+    private lateinit var messageDao: com.destinyai.astrology.data.local.db.ChatMessageDao
     private lateinit var vm: ProfileViewModel
 
     @BeforeAll
@@ -67,6 +69,8 @@ class ProfileViewModelTest {
         // a real one so the VM's collector subscribes to a live SharedFlow.
         val profileChangeBus = com.destinyai.astrology.services.ProfileChangeBus()
         sessionStore = mockk(relaxed = true)
+        threadDao = mockk(relaxed = true)
+        messageDao = mockk(relaxed = true)
         val appContext = mockk<android.content.Context>(relaxed = true)
         every { appContext.getString(any()) } returns "Your session has expired. Please sign in again to delete your account."
         vm = ProfileViewModel(
@@ -76,8 +80,8 @@ class ProfileViewModelTest {
             billingManager,
             profileChangeBus,
             mockk(relaxed = true), // quotaManager
-            mockk(relaxed = true), // threadDao
-            mockk(relaxed = true), // messageDao
+            threadDao,
+            messageDao,
             mockk(relaxed = true), // compatibilityHistoryDao
             sessionStore,
             appContext,
@@ -175,8 +179,12 @@ class ProfileViewModelTest {
         vm.confirmDeleteAccount()
 
         coVerify { api.deleteAccount("Bearer SESS", match { it.userEmail == "u@x.com" && it.confirmation == "DELETE" }) }
-        coVerify { prefs.clearAll() }
-        verify { sessionStore.clearActiveSession() }
+        // DL-1: delete now runs the FULL teardown (clearSession resets quota/billing +
+        // wipes owner-scoped Room caches) plus this account's chat threads/messages —
+        // not the bare clearActiveSession()+clearAll() that left data resident.
+        coVerify { authRepository.clearSession() }
+        coVerify { messageDao.deleteAllForUser("u@x.com") }
+        coVerify { threadDao.deleteAllForUser("u@x.com") }
         vm.uiState.test {
             assertTrue(awaitItem().isDeleted)
             cancelAndIgnoreRemainingEvents()

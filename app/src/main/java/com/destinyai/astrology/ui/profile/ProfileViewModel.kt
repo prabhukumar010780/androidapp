@@ -391,8 +391,17 @@ class ProfileViewModel @Inject constructor(
             _uiState.update { it.copy(isDeletingAccount = true, deleteErrorMessage = null) }
             try {
                 api.deleteAccount("Bearer $jwt", DeleteAccountRequest(userEmail = email))
-                sessionStore.clearActiveSession()
-                prefs.clearAll()
+                // iOS parity (delete success runs the FULL sign-out teardown via
+                // AuthViewModel.signOutAsync): bare clearActiveSession()+clearAll() left the
+                // deleted account's quota/billing in-memory state and Room rows resident on a
+                // shared device (DL-1). clearSession() resets quota + billing and wipes the
+                // owner-scoped astro-cache + compat-history; also drop this email's chat
+                // threads + messages (not covered by clearSession).
+                runCatching {
+                    messageDao.deleteAllForUser(email)
+                    threadDao.deleteAllForUser(email)
+                }
+                authRepository.clearSession()
                 _uiState.update {
                     it.copy(
                         isDeletingAccount = false,

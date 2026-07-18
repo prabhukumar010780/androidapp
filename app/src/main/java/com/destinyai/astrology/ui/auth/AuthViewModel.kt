@@ -124,6 +124,14 @@ class AuthViewModel @Inject constructor(
     private fun loadSession() {
         viewModelScope.launch {
             try {
+                // iOS parity: the persisted isAuthenticated flag is authoritative for
+                // routing. signOutPreserveBirthData / quota-wall Sign-In set it false while
+                // KEEPING the saved email + guest identity for carry-forward — so a saved
+                // user must NOT auto-authenticate the screen back to Main (DL-2).
+                if (!prefs.isAuthenticated()) {
+                    _uiState.update { it.copy(currentUser = null, isAuthenticated = false) }
+                    return@launch
+                }
                 val user = repository.getSavedUser()
                 _uiState.update {
                     it.copy(currentUser = user, isAuthenticated = user != null)
