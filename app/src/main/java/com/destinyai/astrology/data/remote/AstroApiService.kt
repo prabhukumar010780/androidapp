@@ -824,7 +824,10 @@ interface AstroApiService {
     @GET("subscription/profile")
     suspend fun getProfile(@Query("email") email: String): ProfileResponse
 
-    // Backend uses POST /subscription/account/delete with body (not DELETE + query param)
+    // Backend uses POST /subscription/account/delete with body (not DELETE + query param).
+    // X-Skip-Reauth marks this request so SessionAuthenticator does NOT auto-refresh+retry a
+    // 401 — the delete flow surfaces session-expired to its own re-auth UI instead (SEC-3).
+    @Headers("X-Skip-Reauth: 1")
     @POST("subscription/account/delete")
     suspend fun deleteAccount(
         @Header("Authorization") authHeader: String,

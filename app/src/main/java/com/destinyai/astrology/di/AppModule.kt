@@ -68,6 +68,7 @@ object NetworkModule {
         @Named("apiKey") apiKey: String,
         @Named("userAgent") userAgent: String,
         authExchangeProvider: Provider<AuthExchangeClient>,
+        prefs: UserPreferences,
     ): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply {
             // BASIC level keeps method+URL+status visible without leaking the
@@ -77,7 +78,7 @@ object NetworkModule {
         }
         return OkHttpClient.Builder()
             .addInterceptor(AuthInterceptor(store, apiKey, userAgent))
-            .authenticator(SessionAuthenticator(store, authExchangeProvider))
+            .authenticator(SessionAuthenticator(store, authExchangeProvider, prefs))
             .addInterceptor(ErrorInterceptor())
             .addInterceptor(logging)
             .connectTimeout(30, TimeUnit.SECONDS)
@@ -99,6 +100,7 @@ object NetworkModule {
         @Named("apiKey") apiKey: String,
         @Named("userAgent") userAgent: String,
         authExchangeProvider: Provider<AuthExchangeClient>,
+        prefs: UserPreferences,
     ): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply {
             // BASIC level — never HEADERS — so the Authorization header is never logged.
@@ -107,7 +109,7 @@ object NetworkModule {
         }
         return OkHttpClient.Builder()
             .addInterceptor(AuthInterceptor(store, apiKey, userAgent))
-            .authenticator(SessionAuthenticator(store, authExchangeProvider))
+            .authenticator(SessionAuthenticator(store, authExchangeProvider, prefs))
             .addInterceptor(ErrorInterceptor())
             .addInterceptor(logging)
             .connectTimeout(30, TimeUnit.SECONDS)
