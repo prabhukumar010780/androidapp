@@ -770,10 +770,10 @@ internal fun ScoreBadge(kuta: KutaDetail) {
 
     val (label, color) = when {
         kuta.doshaPresent && !kuta.doshaCancelled ->
-            "⚠ Active" to errorColor
+            "⚠ ${stringResource(R.string.active)}" to errorColor
         kuta.doshaPresent && kuta.doshaCancelled -> {
             val adj = kuta.adjustedScore ?: kuta.maxScore
-            "✓ Cancelled · ${formatScore(adj)}/${formatScore(kuta.maxScore)}" to successColor
+            "✓ ${stringResource(R.string.cancelled)} · ${formatScore(adj)}/${formatScore(kuta.maxScore)}" to successColor
         }
         kuta.score >= kuta.maxScore ->
             "✓ ${formatScore(kuta.score)}/${formatScore(kuta.maxScore)}" to successColor

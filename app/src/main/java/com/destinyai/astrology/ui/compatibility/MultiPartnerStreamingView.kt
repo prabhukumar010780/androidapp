@@ -148,7 +148,7 @@ private fun MultiPartnerProgressBar(fraction: Float, completedCount: Int, totalC
             )
         }
         Text(
-            "$completedCount of $totalCount complete",
+            stringResource(R.string.partners_complete_count, completedCount, totalCount),
             fontSize = 12.sp,
             color = CreamDim,
         )
@@ -226,13 +226,13 @@ private fun MultiPartnerCard(
         // Name + status
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                text = partner.name.ifEmpty { "Partner ${index + 1}" },
+                text = partner.name.ifEmpty { stringResource(R.string.partner_index_label, index + 1) },
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
                 color = if (isPending) CreamDim.copy(alpha = 0.5f) else CreamText,
             )
             when {
-                isActive -> Text(currentStep.title, fontSize = 12.sp, color = Gold)
+                isActive -> Text(stringResource(currentStep.titleRes), fontSize = 12.sp, color = Gold)
                 isPending -> Text(stringResource(R.string.compat_pending_label), fontSize = 12.sp, color = CreamDim.copy(alpha = 0.5f))
             }
         }

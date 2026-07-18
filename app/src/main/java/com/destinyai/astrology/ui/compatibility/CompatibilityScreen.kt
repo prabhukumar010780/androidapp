@@ -1210,12 +1210,18 @@ private fun GenderSelectionSheet(
     onSelect: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val options = listOf("male" to "Male", "female" to "Female", "non-binary" to "Non-Binary", "prefer_not_to_say" to "Prefer not to say")
+    // iOS parity: localized gender sheet (keys compat_gender_*), not hardcoded English.
+    val options = listOf(
+        "male" to R.string.compat_gender_male,
+        "female" to R.string.compat_gender_female,
+        "non-binary" to R.string.compat_gender_non_binary,
+        "prefer_not_to_say" to R.string.compat_gender_prefer_not_to_say,
+    )
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = NavySurface) {
         Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Gender Identity", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = CreamText)
+            Text(stringResource(R.string.compat_gender_identity_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = CreamText)
             Spacer(Modifier.height(8.dp))
-            options.forEach { (key, display) ->
+            options.forEach { (key, labelRes) ->
                 val isSelected = selected == key
                 Row(
                     modifier = Modifier
@@ -1226,7 +1232,7 @@ private fun GenderSelectionSheet(
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(display, style = MaterialTheme.typography.bodyMedium, color = if (isSelected) Gold else CreamText, modifier = Modifier.weight(1f))
+                    Text(stringResource(labelRes), style = MaterialTheme.typography.bodyMedium, color = if (isSelected) Gold else CreamText, modifier = Modifier.weight(1f))
                     if (isSelected) Icon(Icons.Filled.Check, contentDescription = null, tint = Gold, modifier = Modifier.size(16.dp))
                 }
             }
@@ -1246,11 +1252,13 @@ private fun LocationSearchDialog(
     var isSearching by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    // Resolve in composable scope; the coroutine below can't call stringResource.
+    val notFoundText = stringResource(R.string.compat_location_not_found)
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = NavySurface,
         title = {
-            Text("City of Birth", style = MaterialTheme.typography.titleMedium, color = CreamText)
+            Text(stringResource(R.string.compat_location_title), style = MaterialTheme.typography.titleMedium, color = CreamText)
         },
         text = {
             Column {
@@ -1260,7 +1268,7 @@ private fun LocationSearchDialog(
                         cityInput = it
                         errorMessage = null
                     },
-                    label = { Text("Enter city name", color = Color(0xFF718096)) },
+                    label = { Text(stringResource(R.string.compat_location_input_label), color = Color(0xFF718096)) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp),
                     enabled = !isSearching,
@@ -1295,12 +1303,12 @@ private fun LocationSearchDialog(
                         val result = onSearch(q)
                         isSearching = false
                         if (result == null) {
-                            errorMessage = "Location not found"
+                            errorMessage = notFoundText
                             return@launch
                         }
                         val (name, lat, lon) = result
                         if (lat == 0.0 && lon == 0.0) {
-                            errorMessage = "Location not found"
+                            errorMessage = notFoundText
                             return@launch
                         }
                         onLocationSelected(name, lat, lon)
@@ -1308,12 +1316,12 @@ private fun LocationSearchDialog(
                 },
                 enabled = cityInput.isNotBlank() && !isSearching,
             ) {
-                Text(if (isSearching) "Searching…" else "Select", color = Gold)
+                Text(if (isSearching) stringResource(R.string.compat_location_searching) else stringResource(R.string.compat_location_select), color = Gold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss, enabled = !isSearching) {
-                Text("Cancel", color = CreamDim)
+                Text(stringResource(R.string.compat_location_cancel), color = CreamDim)
             }
         },
     )
