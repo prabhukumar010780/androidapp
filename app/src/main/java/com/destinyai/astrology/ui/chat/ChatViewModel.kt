@@ -725,6 +725,9 @@ class ChatViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             activeThreadId = latest.id,
+                            // iOS parity: opening the latest thread on launch must also set
+                            // sessionId so a follow-up continues it (D1), not a stale UUID.
+                            sessionId = latest.id,
                             messages = messages,
                             hasOlderMessages = older,
                         )
@@ -790,6 +793,11 @@ class ChatViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     activeThreadId = threadId,
+                    // iOS parity (ChatViewModel.loadThread sets currentThreadId=thread.id):
+                    // the send path keys off sessionId, so it MUST become the opened thread
+                    // — otherwise a follow-up persists under the stale init UUID and spawns
+                    // an orphan thread instead of continuing this one (D1).
+                    sessionId = threadId,
                     messages = messages,
                     hasOlderMessages = older,
                     suggestedQuestions = followUps,
@@ -975,6 +983,12 @@ class ChatViewModel @Inject constructor(
         // Mirrors iOS ChatViewModel.deleteThread(id:) which calls dataManager.deleteThread.
         _uiState.update { state ->
             state.copy(threads = state.threads.filterNot { it.id == threadId })
+        }
+        // iOS parity (ChatViewModel.swift:385-393): if the deleted thread is the one
+        // currently open, reset to a fresh chat — otherwise its messages stay on screen
+        // and the next send re-persists into the just-deleted (ghost) id (F1).
+        if (threadId == _uiState.value.activeThreadId) {
+            startNewChat()
         }
         viewModelScope.launch {
             runCatching { repository.deleteThread(threadId) }

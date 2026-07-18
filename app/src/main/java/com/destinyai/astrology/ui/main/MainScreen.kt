@@ -242,7 +242,11 @@ fun MainScreen(
                 // hand the matchItem to the Match tab via pendingMatchItem.
                 onMatchSelected = { sessionId ->
                     if (isGuestUser) {
+                        // iOS parity (MainTabView.swift:47-48): a guest tapping a match must be
+                        // routed to the sign-in prompt, not silently dismissed. The Match tab
+                        // already renders GuestSignInPromptScreen for guests, so switch to it (F2).
                         showHistory = false
+                        selectedTab = 2
                     } else {
                         viewModel.findMatchHistoryItem(sessionId)?.let {
                             pendingMatchItem = it
@@ -254,7 +258,9 @@ fun MainScreen(
                 },
                 onMatchGroupSelected = { groupId ->
                     if (isGuestUser) {
+                        // iOS parity (MainTabView.swift:56-57): guest → sign-in prompt (F2).
                         showHistory = false
+                        selectedTab = 2
                     } else {
                         viewModel.findMatchHistoryGroup(groupId)?.let {
                             pendingMatchGroup = it

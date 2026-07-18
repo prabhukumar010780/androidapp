@@ -36,7 +36,7 @@ class AuthRepositoryImplTest {
         sessionStore = mockk(relaxed = true)
         exchangeClient = mockk(relaxed = true)
         quotaManager = mockk(relaxed = true)
-        repo = AuthRepositoryImpl(api, secure, prefs, sessionStore, exchangeClient, Provider { quotaManager }, Provider { mockk(relaxed = true) })
+        repo = AuthRepositoryImpl(api, secure, prefs, sessionStore, exchangeClient, Provider { quotaManager }, Provider { mockk(relaxed = true) }, mockk(relaxed = true), mockk(relaxed = true))
     }
 
     // ── getSavedUser ──────────────────────────────────────────────────────────

@@ -604,21 +604,22 @@ class CompatibilityViewModelTest {
     }
 
     @Test
-    fun `toggleHistoryGroupPin pins every member of the group`() = runTest {
-        val members = listOf(
-            groupEntity("s1", "grp1", 1, pinned = false),
-            groupEntity("s2", "grp1", 2, pinned = false),
-        )
-        every { historyDao.observeAll(any()) } returns flowOf(members)
-        val pinned = mutableListOf<Pair<String, Boolean>>()
-        coEvery { historyDao.setPin(any(), any()) } answers { pinned.add(firstArg<String>() to secondArg()); Unit }
+    fun `deleteHistoryItem propagates a compat_-prefixed id to the server (D3)`() = runTest {
+        // Row stored under the backend thread key "compat_sess_..." — the server DELETE
+        // must use that exact id, else it 404s and the match reappears on next sync.
+        val item = groupEntity("compat_sess_123", "grp1", 1)
+        every { historyDao.observeAll(any()) } returns flowOf(listOf(item))
+        coEvery { prefs.getUserEmail() } returns "u@x.com"
+        val deletedThreadIds = mutableListOf<String>()
+        coEvery { api.deleteChatThread(any(), any()) } answers {
+            deletedThreadIds.add(secondArg())
+            com.destinyai.astrology.data.remote.SuccessResponse(success = true)
+        }
 
         vm.loadUserData()
         vm.loadHistory()
-        vm.toggleHistoryGroupPin("grp1")
+        vm.deleteHistoryItem("compat_sess_123")
 
-        assertEquals(2, pinned.size)
-        assertTrue(pinned.all { it.second }) // all flipped to pinned = true
-        assertEquals(setOf("s1", "s2"), pinned.map { it.first }.toSet())
+        assertEquals(listOf("compat_sess_123"), deletedThreadIds)
     }
 }

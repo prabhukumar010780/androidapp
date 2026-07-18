@@ -45,6 +45,7 @@ class LoginSyncCoordinator @Inject constructor(
     private val homeRepository: HomeRepository,
     private val quotaManager: QuotaManager,
     private val chatThreadDao: ChatThreadDao,
+    private val chatMessageDao: com.destinyai.astrology.data.local.db.ChatMessageDao,
     private val partnerDao: PartnerDao,
     // iOS parity (LoginSyncCoordinator runs compat sync in parallel with chat): rebuild
     // local compat history from the server so matches survive reinstall / follow to a new device.
@@ -90,6 +91,12 @@ class LoginSyncCoordinator @Inject constructor(
         //    DataManager.shared.deleteAllThreads(for: guestEmail) at AuthVM:208.
         if (!previousGuestEmail.isNullOrBlank() && previousGuestEmail != userEmail) {
             runCatching {
+                // iOS parity (DataManager.deleteAllThreads cascades messages): delete the
+                // guest's chat_messages BEFORE its threads. chat_messages has no FK cascade
+                // and ChatMessageDao.deleteAllForUser resolves thread_id via a subquery over
+                // chat_threads — so once the threads are gone the messages can NEVER be
+                // cleaned up and would resurface if a thread re-migrates under the same id (D6).
+                chatMessageDao.deleteAllForUser(previousGuestEmail)
                 chatThreadDao.deleteAllForUser(previousGuestEmail)
                 partnerDao.deleteForOwner(previousGuestEmail)
             }.onFailure { Log.w(TAG, "guest row purge failed: ${it.message}", it) }
@@ -180,6 +187,15 @@ class LoginSyncCoordinator @Inject constructor(
                 )
                 // Only persist a valid, openable match — never a zero/empty stub.
                 if (result.totalScore <= 0) return@runCatching
+                // iOS parity (CompatibilityHistoryService.syncFromServer:688-708 reads
+                // metadata.comparisonGroupId + metadata.partnerIndex): carry group metadata
+                // so a multi-partner comparison rebuilds AS A GROUP after login sync instead
+                // of N ungrouped single rows (F3). Backend stores these in the result blob
+                // (compatibility_agent/agent.py:737-738).
+                val groupId = metadata.get("comparison_group_id")
+                    ?.takeIf { !it.isJsonNull }?.asString
+                val partnerIdx = metadata.get("partner_index")
+                    ?.takeIf { !it.isJsonNull }?.let { runCatching { it.asInt }.getOrNull() }
                 compatibilityHistoryDao.upsert(
                     com.destinyai.astrology.data.local.db.CompatibilityHistoryEntity(
                         sessionId = dto.threadId,
@@ -196,6 +212,8 @@ class LoginSyncCoordinator @Inject constructor(
                         totalScore = result.totalScore,
                         maxScore = result.maxScore,
                         isPinned = dto.isPinned,
+                        comparisonGroupId = groupId,
+                        partnerIndex = partnerIdx,
                         resultJson = gson.toJson(result),
                     ),
                 )

@@ -1236,14 +1236,24 @@ class CompatibilityViewModel @Inject constructor(
 
     private suspend fun deleteSessionLocalAndServer(sessionId: String) {
         historyDao.delete(sessionId)
-        // iOS parity: compat matches are backed by chat threads server-side
-        // (compat_sess_ ids). Propagate the delete so it doesn't reappear on a
-        // reinstall / other device. Best-effort — local delete already happened.
+        // iOS parity (CompatibilityHistoryService.deleteFromServer): compat matches are
+        // backed by chat threads keyed "compat_<session_id>" server-side
+        // (compatibility.py:255,393). The row id is already stored compat_-prefixed
+        // (see compatThreadId), so send it verbatim — a bare id would 404 and the
+        // match would reappear on the next login sync.
         val email = prefs.getUserEmail()
         if (email != null) {
-            runCatching { api.deleteChatThread(email, sessionId) }
+            runCatching { api.deleteChatThread(email, compatThreadId(sessionId)) }
         }
     }
+
+    /**
+     * iOS parity (CompatibilityHistoryService storageSessionId, swift:940): map any
+     * session id to the SAME key the backend threads a compat analysis under —
+     * "compat_<id>". Idempotent when the id is already prefixed.
+     */
+    private fun compatThreadId(sessionId: String): String =
+        if (sessionId.startsWith("compat_")) sessionId else "compat_$sessionId"
 
     private suspend fun saveToHistory(
         result: CompatibilityResult,
@@ -1254,8 +1264,15 @@ class CompatibilityViewModel @Inject constructor(
         partnerIndex: Int? = null,
     ) {
         if (!isHistoryEnabled.value) return
+        // iOS parity (storageSessionId): key the row to the SAME id the backend threads
+        // this analysis under — "compat_<sid>". Prefer the server-returned session_id
+        // (already prefixed), else prefix the client-minted one. This makes the login-sync
+        // upsert collide (no duplicate, D4) and the server DELETE hit (no reappear, D3).
+        val rowSessionId = compatThreadId(
+            result.sessionId.takeIf { it.startsWith("compat_") } ?: currentSessionId ?: "sess_${System.currentTimeMillis()}",
+        )
         val entity = CompatibilityHistoryEntity(
-            sessionId = currentSessionId ?: "sess_${System.currentTimeMillis()}",
+            sessionId = rowSessionId,
             ownerEmail = email,
             timestampMs = System.currentTimeMillis(),
             boyName = s.personAName,
@@ -1292,8 +1309,14 @@ class CompatibilityViewModel @Inject constructor(
         partnerIndex: Int,
     ) {
         if (!isHistoryEnabled.value) return
+        // iOS parity: key each group member to its SERVER thread id (result.sessionId,
+        // already "compat_<hex>") so per-member server DELETE hits (D5) and login-sync
+        // upserts collide instead of duplicating. Fall back to the synthetic id only if
+        // the server didn't return one.
+        val memberSessionId = result.sessionId.takeIf { it.startsWith("compat_") }
+            ?: "compat_grp_${groupId}_$partnerIndex"
         val entity = CompatibilityHistoryEntity(
-            sessionId = "compat_grp_${groupId}_$partnerIndex",
+            sessionId = memberSessionId,
             ownerEmail = email,
             timestampMs = System.currentTimeMillis(),
             boyName = _uiState.value.personAName,

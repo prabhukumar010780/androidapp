@@ -295,6 +295,44 @@ class ChatViewModelTest {
         }
     }
 
+    @Test
+    fun `openThread sets sessionId to the opened thread so follow-ups continue it (D1)`() = runTest {
+        coEvery { repository.loadThread("t1") } returns listOf(
+            ChatMessage(id = "m1", role = ChatMessage.Role.USER, content = "Hi"),
+        )
+
+        viewModel.openThread("t1")
+
+        viewModel.uiState.test {
+            val s = awaitItem()
+            // sessionId (the send key) MUST equal the opened thread, not the init UUID —
+            // otherwise a follow-up spawns an orphan thread.
+            assertEquals("t1", s.sessionId)
+            assertEquals("t1", s.activeThreadId)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `deleting the currently-open thread resets to a new chat (F1)`() = runTest {
+        coEvery { repository.loadThread("t1") } returns listOf(
+            ChatMessage(id = "m1", role = ChatMessage.Role.USER, content = "Hi"),
+        )
+        viewModel.openThread("t1")
+        val openSession = viewModel.uiState.value.sessionId
+
+        viewModel.deleteThread("t1")
+
+        viewModel.uiState.test {
+            val s = awaitItem()
+            // Open thread deleted → fresh chat: new sessionId, activeThreadId cleared.
+            assertNotEquals("t1", s.sessionId)
+            assertNotEquals(openSession, s.sessionId)
+            assertEquals(null, s.activeThreadId)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     // --- Charts ---
 
     @Test

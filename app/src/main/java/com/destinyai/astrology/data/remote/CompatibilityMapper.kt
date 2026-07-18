@@ -464,7 +464,14 @@ fun mapCompatibilityResponse(
         ?.optStr("one_liner")
         ?.takeIf { it.isNotEmpty() }
 
+    // Server-minted session id (already "compat_"-prefixed for multi-partner; may be
+    // bare/absent for single-analyze where the client mints it). Captured so history
+    // rows can be keyed to the SAME id the backend threads it under, matching iOS
+    // storageSessionId — otherwise server DELETE 404s and the match reappears on sync.
+    val serverSessionId = root.optStr("session_id", "").takeIf { it.isNotBlank() }
+
     return CompatibilityResult(
+        sessionId = serverSessionId ?: java.util.UUID.randomUUID().toString(),
         totalScore = totalScore,
         maxScore = 36,
         kutas = kutas,

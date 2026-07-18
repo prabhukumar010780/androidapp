@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.destinyai.astrology.data.local.db.CompatibilityHistoryDao
 import com.destinyai.astrology.data.local.db.CompatibilityHistoryEntity
 import com.destinyai.astrology.data.local.prefs.UserPreferences
+import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.repository.ChatRepository
 import com.destinyai.astrology.domain.model.ChatThread
 import com.destinyai.astrology.domain.model.CompatChatMessageData
@@ -256,6 +257,7 @@ private fun sectionKeyFor(itemMs: Long, nowMs: Long): HistorySectionKey {
 class HistoryViewModel @Inject constructor(
     private val repository: ChatRepository,
     private val compatibilityHistoryDao: CompatibilityHistoryDao,
+    private val api: AstroApiService,
     private val prefs: UserPreferences,
 ) : ViewModel() {
 
@@ -363,6 +365,14 @@ class HistoryViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 compatibilityHistoryDao.delete(sessionId)
+                // iOS parity (HistoryViewModel → CompatibilityHistoryService.delete →
+                // deleteFromServer): propagate to the server thread so the match doesn't
+                // reappear on the next login sync. Row id is stored compat_-prefixed, so
+                // send it verbatim. Best-effort — local delete already succeeded.
+                val email = prefs.getUserEmail()
+                if (email != null) {
+                    runCatching { api.deleteChatThread(email, sessionId) }
+                }
                 _uiState.update { state ->
                     state.copy(compatibilityItems = state.compatibilityItems.filterNot { it.sessionId == sessionId })
                 }
@@ -378,7 +388,15 @@ class HistoryViewModel @Inject constructor(
                 val ids = _uiState.value.compatibilityItems
                     .filter { it.comparisonGroupId == groupId }
                     .map { it.sessionId }
-                ids.forEach { compatibilityHistoryDao.delete(it) }
+                val email = prefs.getUserEmail()
+                ids.forEach { sid ->
+                    compatibilityHistoryDao.delete(sid)
+                    // iOS parity (deleteGroup → deleteFromServer per member): propagate
+                    // each member's server thread delete so the group doesn't re-sync.
+                    if (email != null) {
+                        runCatching { api.deleteChatThread(email, sid) }
+                    }
+                }
                 _uiState.update { state ->
                     state.copy(compatibilityItems = state.compatibilityItems.filterNot { it.comparisonGroupId == groupId })
                 }

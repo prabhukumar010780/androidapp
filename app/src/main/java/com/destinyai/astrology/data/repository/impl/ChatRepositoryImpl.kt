@@ -86,19 +86,24 @@ class ChatRepositoryImpl @Inject constructor(
         val historyEnabled = runCatching { prefs.isHistoryEnabled() }.getOrDefault(true)
         if (historyEnabled) {
             runCatching {
-                threadDao.insert(
+                val nowIso = java.time.Instant.now().toString()
+                // iOS parity: create the thread row ONCE (title from the first message,
+                // pin/createdAt preserved), then only bump updated_at on later sends.
+                // A blind REPLACE here wiped pin/title/createdAt/primaryArea every send (D2).
+                threadDao.insertIfAbsent(
                     LocalChatThreadEntity(
                         id = sessionId,
                         ownerEmail = email,
                         title = text.take(60),
-                        createdAt = java.time.Instant.now().toString(),
-                        updatedAt = java.time.Instant.now().toString(),
+                        createdAt = nowIso,
+                        updatedAt = nowIso,
                         isPinned = false,
                         // iOS parity (LocalChatThread.profileId): scope to the active
                         // profile so Switch Profile isolates history. Null when self is active.
                         profileId = prefs.getActiveProfileId()?.takeIf { it.isNotBlank() && it != email },
                     ),
                 )
+                threadDao.touch(sessionId, nowIso)
                 messageDao.insert(
                     LocalChatMessageEntity(
                         id = java.util.UUID.randomUUID().toString(),
@@ -626,6 +631,17 @@ class ChatRepositoryImpl @Inject constructor(
                     isPinned = dto.isPinned,
                 ),
             )
+        }
+        // iOS parity (ChatHistorySyncService clears+repopulates): the server is
+        // authoritative, so drop any local thread it no longer lists — a thread
+        // deleted elsewhere, or whose local-delete server call failed, otherwise
+        // lingers forever and resurfaces (D8). Reached only after a SUCCESSFUL fetch
+        // (the getOrElse above returns on network error), so an empty server list
+        // means the account genuinely has no threads.
+        val keepIds = apiThreads.map { it.threadId }
+        runCatching {
+            if (keepIds.isEmpty()) threadDao.deleteAllForUser(email)
+            else threadDao.pruneNotIn(email, keepIds)
         }
     }
 

@@ -128,6 +128,20 @@ interface ChatThreadDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(thread: LocalChatThreadEntity)
 
+    /**
+     * iOS parity (a thread's title/createdAt/pin are set ONCE at creation, never
+     * rewritten by later messages — ChatModels.swift:121-137): insert only if the
+     * row is new. Combined with [touch] on every send this preserves pin, the
+     * first-message title, createdAt, and primaryArea across the conversation
+     * instead of the blind REPLACE that wiped them (D2).
+     */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertIfAbsent(thread: LocalChatThreadEntity)
+
+    /** Bump only updated_at so an existing thread re-sorts to the top on each send. */
+    @Query("UPDATE chat_threads SET updated_at = :updatedAt WHERE id = :threadId")
+    suspend fun touch(threadId: String, updatedAt: String)
+
     @Query("UPDATE chat_threads SET is_pinned = :pinned WHERE id = :threadId")
     suspend fun setPin(threadId: String, pinned: Boolean)
 
@@ -141,6 +155,16 @@ interface ChatThreadDao {
 
     @Query("DELETE FROM chat_threads WHERE owner_email = :ownerEmail")
     suspend fun deleteAllForUser(ownerEmail: String)
+
+    /**
+     * iOS parity (ChatHistorySyncService.syncFromServer clears local then repopulates
+     * from the server set): prune local threads for an owner whose id is NOT in the
+     * authoritative server list, so a thread deleted on another device / whose local
+     * delete's server call failed doesn't linger and resurface (D8). Scoped delete
+     * (not a full wipe) so surviving threads keep their messages.
+     */
+    @Query("DELETE FROM chat_threads WHERE owner_email = :ownerEmail AND id NOT IN (:keepIds)")
+    suspend fun pruneNotIn(ownerEmail: String, keepIds: List<String>)
 }
 
 @Dao

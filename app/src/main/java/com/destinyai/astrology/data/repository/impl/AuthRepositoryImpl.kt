@@ -29,6 +29,11 @@ class AuthRepositoryImpl @Inject constructor(
     // on sign-out (C4). Provider (not direct) mirrors quotaManager + avoids constructing
     // BillingManager on an unauthenticated launch.
     private val billingManager: Provider<com.destinyai.astrology.data.billing.BillingManager>,
+    // iOS parity (AuthViewModel.signOut wipes AstroDataCache + CompatibilityHistory for
+    // the departing account): Room caches are owner_email-scoped, so same-account rows
+    // otherwise persist as bloat and server-deleted compat matches can reappear (F6).
+    private val astroDataCacheDao: com.destinyai.astrology.data.local.db.AstroDataCacheDao,
+    private val compatibilityHistoryDao: com.destinyai.astrology.data.local.db.CompatibilityHistoryDao,
 ) : AuthRepository {
 
     override suspend fun getSavedUser(): User? {
@@ -289,6 +294,17 @@ class AuthRepositoryImpl @Inject constructor(
         prefs.clearProviderIds()
         runCatching { quotaManager.get().resetForSignOut() }
         runCatching { billingManager.get().resetForSignOut() }
+        // iOS parity (AuthViewModel.signOut:174-191): wipe the departing account's
+        // owner_email-scoped Room caches BEFORE clearing prefs (which erases the email).
+        // Without this, same-account rows persist as unbounded bloat and a server-deleted
+        // compat match can reappear on next sign-in via upsert-only sync (F6).
+        val departingEmail = runCatching { secure.getEmail() }.getOrNull()
+        if (!departingEmail.isNullOrBlank()) {
+            runCatching {
+                astroDataCacheDao.deleteForUser(departingEmail)
+                compatibilityHistoryDao.deleteAllForUser(departingEmail)
+            }
+        }
         sessionStore.clearActiveSession()
         secure.clearAll()
         prefs.clearAll()

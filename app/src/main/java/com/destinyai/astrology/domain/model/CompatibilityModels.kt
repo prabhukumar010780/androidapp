@@ -56,6 +56,10 @@ data class KutaDetail(
 }
 
 data class CompatibilityResult(
+    // Server-minted session id ("compat_<hex>" for multi-partner; blank/UUID for
+    // single-analyze where the client mints it). Used to key history rows to the
+    // backend thread so deletes propagate and sync doesn't duplicate.
+    val sessionId: String = "",
     val totalScore: Int,
     val maxScore: Int,
     val kutas: List<KutaDetail>,
