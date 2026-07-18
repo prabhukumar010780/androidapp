@@ -1,34 +1,48 @@
 package com.destinyai.astrology.ui.compatibility
 
+import android.content.Context
+import com.destinyai.astrology.R
 import com.destinyai.astrology.domain.model.KutaDetail
 
 // KutaTextBuilder — pure functions for kuta rich descriptions and classical prompts.
 // Mirrors iOS KutaTextBuilder.swift. All logic is stateless — testable without Compose.
 
-// Expands zodiac sign abbreviations (e.g. "Ar" → "Aries", "Cn" → "Cancer") using word boundaries.
-// Mirrors iOS KutaTextBuilder.expand() which uses NSRegularExpression for localized sign names.
-internal fun expandSignAbbreviation(value: String): String {
-    val map = mapOf(
-        "Ar" to "Aries", "Ta" to "Taurus", "Ge" to "Gemini", "Cn" to "Cancer",
-        "Le" to "Leo", "Vi" to "Virgo", "Li" to "Libra", "Sc" to "Scorpio",
-        "Sg" to "Sagittarius", "Cp" to "Capricorn", "Aq" to "Aquarius", "Pi" to "Pisces",
-    )
+// iOS parity (KutaTextBuilder.swift:55-69 expand()): abbreviation → localization-key map
+// (note: Cancer abbr is "Cn", key is "sign_ca").
+private val SIGN_KEY_MAP = mapOf(
+    "Ar" to R.string.sign_ar, "Ta" to R.string.sign_ta, "Ge" to R.string.sign_ge, "Cn" to R.string.sign_ca,
+    "Le" to R.string.sign_le, "Vi" to R.string.sign_vi, "Li" to R.string.sign_li, "Sc" to R.string.sign_sc,
+    "Sg" to R.string.sign_sg, "Cp" to R.string.sign_cp, "Aq" to R.string.sign_aq, "Pi" to R.string.sign_pi,
+)
+
+// English fallback used when no Context is available (tests / non-UI call sites).
+private val SIGN_ENGLISH_MAP = mapOf(
+    "Ar" to "Aries", "Ta" to "Taurus", "Ge" to "Gemini", "Cn" to "Cancer",
+    "Le" to "Leo", "Vi" to "Virgo", "Li" to "Libra", "Sc" to "Scorpio",
+    "Sg" to "Sagittarius", "Cp" to "Capricorn", "Aq" to "Aquarius", "Pi" to "Pisces",
+)
+
+// Expands zodiac sign abbreviations (e.g. "Ar" → "Aries", "Cn" → "Cancer") using word
+// boundaries. With a [context] the full names are LOCALIZED via sign_* keys (iOS parity);
+// without one it falls back to English (kept for unit tests / non-Composable callers).
+internal fun expandSignAbbreviation(value: String, context: Context? = null): String {
     var result = value
-    for ((abbr, full) in map) {
-        result = result.replace(Regex("\\b$abbr\\b"), full)
+    for ((abbr, full) in SIGN_ENGLISH_MAP) {
+        val replacement = if (context != null) context.getString(SIGN_KEY_MAP.getValue(abbr)) else full
+        result = result.replace(Regex("\\b$abbr\\b"), replacement)
     }
     return result
 }
 
-internal fun kutaRichDescription(kuta: KutaDetail, boyName: String, girlName: String): String {
+internal fun kutaRichDescription(kuta: KutaDetail, boyName: String, girlName: String, context: Context? = null): String {
     val score = kuta.score.toInt()
     val maxScore = kuta.maxScore.toInt()
     val effectiveScore = if (kuta.doshaCancelled && kuta.adjustedScore != null) kuta.adjustedScore.toInt() else score
     val effectiveDisplay = "$effectiveScore out of $maxScore"
-    val bv = expandSignAbbreviation(kuta.boyValue ?: "")
-    val gv = expandSignAbbreviation(kuta.girlValue ?: "")
+    val bv = expandSignAbbreviation(kuta.boyValue ?: "", context)
+    val gv = expandSignAbbreviation(kuta.girlValue ?: "", context)
     val hasValues = bv.isNotEmpty() && gv.isNotEmpty()
-    val cancellation = expandSignAbbreviation(kuta.cancellationReason ?: "exemption conditions in your charts")
+    val cancellation = expandSignAbbreviation(kuta.cancellationReason ?: "exemption conditions in your charts", context)
     val restoredNote = if (kuta.doshaCancelled) "Your score is restored to $maxScore/$maxScore. This does not count against your match." else ""
 
     val parts = mutableListOf<String>()

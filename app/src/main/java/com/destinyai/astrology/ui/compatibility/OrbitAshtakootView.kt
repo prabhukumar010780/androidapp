@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
@@ -621,6 +622,7 @@ private fun OrbitTooltipCard(
     val successColor = SuccessGreen
     val errorColor = Color(0xFFFC8181)
     val statusColor = when (kuta.statusTier) { 1 -> successColor; 2 -> errorColor; else -> Gold }
+    val context = LocalContext.current
     val themeLabel = kutaThemeLabel(kuta.key)
     val sanskritName = kutaSanskritName(kuta.key)
     val subtitle = stringResource(
@@ -727,7 +729,7 @@ private fun OrbitTooltipCard(
         // Description — uses KutaTextBuilder.descriptionParagraph() equivalent
         // (kutaRichDescription) ported in KutaTextBuilder.kt.
         Text(
-            text = kutaRichDescription(kuta, boyName, girlName),
+            text = kutaRichDescription(kuta, boyName, girlName, context),
             style = MaterialTheme.typography.bodySmall,
             color = CreamDim,
             lineHeight = 20.sp,

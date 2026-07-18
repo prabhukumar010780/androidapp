@@ -560,6 +560,7 @@ private fun OrbitTooltipView(
     val successColor = Color(0xFF48BB78)
     val errorColor = Color(0xFFFC8181)
     val statusColor = when (kuta.statusTier) { 1 -> successColor; 2 -> errorColor; else -> Gold }
+    val context = LocalContext.current
 
     Column(
         modifier = Modifier
@@ -646,7 +647,7 @@ private fun OrbitTooltipView(
 
         // Description
         Text(
-            text = kutaRichDescription(kuta, boyName, girlName),
+            text = kutaRichDescription(kuta, boyName, girlName, context),
             style = MaterialTheme.typography.bodySmall,
             color = CreamDim,
             lineHeight = 20.sp,
@@ -688,6 +689,7 @@ fun RecommendationBanner(
     val errorColor = Color(0xFFFC8181)
     val borderColor = if (result.isRecommended) successColor else errorColor
     val displayScore = result.adjustedScore ?: result.totalScore
+    val context = LocalContext.current
 
     Column(
         modifier = modifier
@@ -728,6 +730,7 @@ fun RecommendationBanner(
             if (result.isRecommended) {
                 Text(
                     text = AffirmationBuilder.affirmationText(
+                        context = context,
                         kutas = result.kutas,
                         adjustedScore = result.adjustedScore,
                         totalScore = result.totalScore,

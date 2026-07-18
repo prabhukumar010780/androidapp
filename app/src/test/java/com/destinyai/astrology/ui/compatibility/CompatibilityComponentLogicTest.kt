@@ -6,6 +6,8 @@ import com.destinyai.astrology.domain.model.KutaDetail
 import com.destinyai.astrology.domain.model.MangalDoshaModel
 import com.destinyai.astrology.domain.model.PartnerData
 import com.destinyai.astrology.domain.model.YogaItem
+import io.mockk.every
+import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
@@ -290,21 +292,23 @@ class CompatibilityComponentLogicTest {
     // ── Kalsarpa doshaDescription ─────────────────────────────────────────────
 
     @Test
-    fun `kalsarpaDoshaDescription returns non-blank for all 12 yoga names`() {
+    fun `kalsarpaDoshaDescriptionRes maps all 12 yoga names to distinct localized resources`() {
         val yogaNames = listOf(
             "Anant", "Kulik", "Vasuki", "Shankhpal", "Padma", "Mahapadma",
             "Takshak", "Karkotak", "Shankhachud", "Ghatak", "Vishdhar", "Sheshnag"
         )
+        val fallback = kalsarpaDoshaDescriptionRes("UnknownYoga")
         yogaNames.forEach { name ->
-            val desc = kalsarpaDoshaDescription(name)
-            assertTrue(desc.isNotBlank(), "Expected non-blank for $name")
+            val res = kalsarpaDoshaDescriptionRes(name)
+            assertTrue(res != 0, "Expected a resource id for $name")
+            assertTrue(res != fallback, "Expected a named (non-fallback) resource for $name")
         }
     }
 
     @Test
-    fun `kalsarpaDoshaDescription returns fallback for unknown name`() {
-        val desc = kalsarpaDoshaDescription("UnknownYoga")
-        assertTrue(desc.isNotBlank())
+    fun `kalsarpaDoshaDescriptionRes returns fallback resource for unknown name`() {
+        val res = kalsarpaDoshaDescriptionRes("UnknownYoga")
+        assertTrue(res != 0)
     }
 
     // ── yogasSortedAlphabetically ─────────────────────────────────────────────
@@ -811,13 +815,13 @@ class CompatibilityComponentLogicTest {
         assertEquals(2, result.size)
     }
 
-    // ── affirmationWeightOrder includes varna ─────────────────────────────────
+    // ── affirmationWeightOrder excludes varna (iOS parity: 7 kootas) ──────────
 
     @Test
-    fun `affirmationWeightOrder includes all 8 koota keys including varna`() {
+    fun `affirmationWeightOrder has 7 kootas and excludes varna (iOS parity)`() {
         val keys = affirmationWeightOrder()
-        assertTrue(keys.contains("varna"), "Expected 'varna' in weight order but got: $keys")
-        assertEquals(8, keys.size, "Expected all 8 kootas, got: $keys")
+        assertFalse(keys.contains("varna"), "Varna (max=1) must be absent to match iOS: $keys")
+        assertEquals(7, keys.size, "Expected 7 kootas (iOS AffirmationBuilder.swift:42), got: $keys")
     }
 
     // ── MangalDoshaModel.baseSeverityLabel ────────────────────────────────────
@@ -1051,10 +1055,26 @@ class CompatibilityComponentLogicTest {
 
     // ── AffirmationBuilder ────────────────────────────────────────────────────
 
+    // Mock Context whose getString echoes the resolved score arg (tier strings take
+    // a "%1$s/36" score) and returns a stub for theme lookups, so we can assert on
+    // score presence and koota names without a real resources bundle.
+    private fun affirmationContext(): android.content.Context {
+        val ctx = mockk<android.content.Context>(relaxed = true)
+        // Theme lookups: getString(resId) → stub label.
+        every { ctx.getString(any<Int>()) } returns "theme"
+        // Tier lookups: getString(resId, score) → echo the score arg so tests can assert on it.
+        every { ctx.getString(any<Int>(), any()) } answers {
+            val a = arg<Any?>(1)
+            val score = if (a is Array<*>) a.joinToString() else a.toString()
+            "Scoring $score/36 tier"
+        }
+        return ctx
+    }
+
     @Test
-    fun `affirmationBuildText score 28+ returns excellent tier`() {
+    fun `affirmationBuildText score 28+ returns non-empty tier sentence`() {
         val kutas = emptyList<KutaDetail>()
-        val result = affirmationBuildText(kutas, adjustedScore = null, totalScore = 28)
+        val result = affirmationBuildText(affirmationContext(), kutas, adjustedScore = null, totalScore = 28)
         assertTrue(result.isNotEmpty(), "Expected non-empty affirmation for score 28")
     }
 
@@ -1065,7 +1085,7 @@ class CompatibilityComponentLogicTest {
             KutaDetail(key = "bhakoot", label = "Bhakoot", icon = "~", score = 7.0, maxScore = 7.0),
             KutaDetail(key = "gana", label = "Gana", icon = "~", score = 6.0, maxScore = 6.0),
         )
-        val result = affirmationBuildText(kutas, adjustedScore = null, totalScore = 30)
+        val result = affirmationBuildText(affirmationContext(), kutas, adjustedScore = null, totalScore = 30)
         assertTrue(
             result.contains("Nadi", ignoreCase = true) &&
             result.contains("Bhakoot", ignoreCase = true) &&
@@ -1077,7 +1097,7 @@ class CompatibilityComponentLogicTest {
     @Test
     fun `affirmationBuildText uses adjustedScore when present`() {
         val kutas = emptyList<KutaDetail>()
-        val result = affirmationBuildText(kutas, adjustedScore = 30, totalScore = 20)
+        val result = affirmationBuildText(affirmationContext(), kutas, adjustedScore = 30, totalScore = 20)
         assertTrue(result.contains("30"), "Expected adjusted score 30 in: $result")
     }
 
@@ -1087,7 +1107,7 @@ class CompatibilityComponentLogicTest {
             KutaDetail(key = "nadi", label = "Nadi", icon = "~", score = 8.0, maxScore = 8.0),
             KutaDetail(key = "bhakoot", label = "Bhakoot", icon = "~", score = 3.0, maxScore = 7.0),
         )
-        val result = affirmationBuildText(kutas, adjustedScore = null, totalScore = 25)
+        val result = affirmationBuildText(affirmationContext(), kutas, adjustedScore = null, totalScore = 25)
         assertTrue(result.contains("Nadi", ignoreCase = true), "Expected Nadi in single-perfect: $result")
     }
 
@@ -1098,7 +1118,7 @@ class CompatibilityComponentLogicTest {
             KutaDetail(key = "bhakoot", label = "Bhakoot", icon = "~", score = 7.0, maxScore = 7.0),
             KutaDetail(key = "gana", label = "Gana", icon = "~", score = 3.0, maxScore = 6.0),
         )
-        val result = affirmationBuildText(kutas, adjustedScore = null, totalScore = 26)
+        val result = affirmationBuildText(affirmationContext(), kutas, adjustedScore = null, totalScore = 26)
         assertTrue(
             result.contains("Nadi", ignoreCase = true) && result.contains("Bhakoot", ignoreCase = true),
             "Expected two perfect kootas named: $result"

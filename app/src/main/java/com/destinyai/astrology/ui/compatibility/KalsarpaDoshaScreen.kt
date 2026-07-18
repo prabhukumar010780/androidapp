@@ -663,7 +663,7 @@ private fun DoshaDetailsCard(data: KalaSarpaModel) {
         }
 
         // Named dosha description (iOS namedDoshaDescription card)
-        val doshaDesc = kalsarpaDoshaDescription(displayName)
+        val doshaDesc = stringResource(kalsarpaDoshaDescriptionRes(displayName))
         if (doshaDesc.isNotBlank()) {
             Spacer(Modifier.height(12.dp))
             Row(
@@ -951,19 +951,22 @@ private fun KalGlassCard(
 internal fun kalsarpaSharedRemedies(boyRemedies: List<String>, girlRemedies: List<String>): List<String> =
     (boyRemedies + girlRemedies).distinct().take(3)
 
-// Pure helper — unit testable
-internal fun kalsarpaDoshaDescription(yogaName: String): String = when (yogaName) {
-    "Anant" -> "Anant Kalsarpa Yoga forms when Rahu is in the first house and Ketu in the seventh. It intensifies ambition and self-reliance, but can bring struggles in partnerships and a restless, driven nature."
-    "Kulik" -> "Kulik Kalsarpa Yoga arises when Rahu occupies the second house and Ketu the eighth. It creates challenges around accumulated wealth, family bonds, and speech, while deepening interest in hidden knowledge."
-    "Vasuki" -> "Vasuki Kalsarpa Yoga occurs with Rahu in the third house and Ketu in the ninth. It strengthens courage and determination but may bring tensions with siblings and test one's faith and higher beliefs."
-    "Shankhpal" -> "Shankhpal Kalsarpa Yoga forms with Rahu in the fourth house and Ketu in the tenth. Home life and inner peace may be disrupted, yet career can see unconventional rise through persistent effort."
-    "Padma" -> "Padma Kalsarpa Yoga arises when Rahu is in the fifth house and Ketu in the eleventh. Creativity and intelligence are heightened, but issues around children and speculative gains may surface."
-    "Mahapadma" -> "Mahapadma Kalsarpa Yoga occurs with Rahu in the sixth house and Ketu in the twelfth. Enemies and debts may prove challenging, yet strong capacity to overcome adversity and achieve spiritual liberation."
-    "Takshak" -> "Takshak Kalsarpa Yoga forms when Rahu occupies the seventh house and Ketu the first. Partnerships and marriage become central karmic lessons, often bringing repeated cycles of union and separation."
-    "Karkotak" -> "Karkotak Kalsarpa Yoga arises with Rahu in the eighth house and Ketu in the second. Sudden transformations, inheritance disputes, and hidden fears define the life path, alongside deep occult interest."
-    "Shankhachud" -> "Shankhachud Kalsarpa Yoga occurs when Rahu is in the ninth house and Ketu in the third. Karmic challenges with father, religion, and long journeys shape destiny, requiring persistent ethical effort."
-    "Ghatak" -> "Ghatak Kalsarpa Yoga forms with Rahu in the tenth house and Ketu in the fourth. Career ambitions can be thwarted by hidden enemies and erratic reputation shifts, demanding resilience and adaptability."
-    "Vishdhar" -> "Vishdhar Kalsarpa Yoga arises when Rahu is in the eleventh house and Ketu in the fifth. Gains and friendships are karmic themes; children and speculative ventures require careful attention and patience."
-    "Sheshnag" -> "Sheshnag Kalsarpa Yoga occurs with Rahu in the twelfth house and Ketu in the sixth. Losses, exile, and hidden expenses may recur, yet deep spiritual progress and liberation are strongly indicated."
-    else -> "This Kalsarpa Yoga pattern creates a specific karmic axis in the chart. All seven planets fall between Rahu and Ketu, focusing life themes intensely on the affected houses and calling for conscious karmic resolution."
+// Pure helper — maps the yoga name to its localized description resource.
+// iOS parity (KalsarpaDoshaSheet.swift:733-749 doshaDescription): the paragraphs
+// are localized (kalsarpa_*_desc keys, translated in all 12 locales), not hardcoded.
+@androidx.annotation.StringRes
+internal fun kalsarpaDoshaDescriptionRes(yogaName: String): Int = when (yogaName.lowercase()) {
+    "anant", "ananta" -> R.string.kalsarpa_ananta_desc
+    "kulik" -> R.string.kalsarpa_kulik_desc
+    "vasuki" -> R.string.kalsarpa_vasuki_desc
+    "shankhpal", "shankhapal" -> R.string.kalsarpa_shankhapal_desc
+    "padma", "padam" -> R.string.kalsarpa_padam_desc
+    "mahapadma", "mahapadam", "maha padma" -> R.string.kalsarpa_mahapadam_desc
+    "takshak" -> R.string.kalsarpa_takshak_desc
+    "karkotak" -> R.string.kalsarpa_karkotak_desc
+    "shankhachud", "shankachood" -> R.string.kalsarpa_shankachood_desc
+    "sheshnag", "shesh" -> R.string.kalsarpa_sheshnag_desc
+    "ghatak" -> R.string.kalsarpa_ghatak_desc
+    "vishdhar" -> R.string.kalsarpa_vishdhar_desc
+    else -> R.string.kalsarpa_default_desc
 }
