@@ -223,6 +223,15 @@ interface CompatibilityHistoryDao {
     fun observeAll(ownerEmail: String): Flow<List<CompatibilityHistoryEntity>>
 
     /**
+     * Synchronous snapshot of all saved matches for cache-reuse lookup at analyze time.
+     * Mirrors iOS CompatibilityHistoryService.loadAll() (called inside findExistingMatch):
+     * a deterministic read that doesn't depend on the observeAll Flow having emitted yet
+     * (which can still be emptyList() on fresh screen entry / cold start → silent miss).
+     */
+    @Query("SELECT * FROM compatibility_history WHERE owner_email = :ownerEmail ORDER BY is_pinned DESC, timestamp_ms DESC")
+    suspend fun getAllForUser(ownerEmail: String): List<CompatibilityHistoryEntity>
+
+    /**
      * Lookup a single saved match by sessionId. Mirrors iOS
      * dataManager.fetchCompatibilityHistoryItem(by:) — used for deep-link
      * navigation from Home/History into the Match tab.

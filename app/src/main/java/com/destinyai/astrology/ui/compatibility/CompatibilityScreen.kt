@@ -215,7 +215,10 @@ fun CompatibilityScreen(
                 isVisible = true,
                 partners = partners,
                 completedResults = comparisonResults,
-                currentPartnerIndex = activePartnerIndex,
+                // Analysis is sequential (analyzeAllPartners forEach), so the partner
+                // in progress is the next one after the completed ones — NOT the last
+                // selected tab (activePartnerIndex), which would wrongly highlight t3.
+                currentPartnerIndex = comparisonResults.size,
                 currentStep = currentStep,
                 totalPartners = partners.count { it.isComplete },
             )

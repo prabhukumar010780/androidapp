@@ -157,6 +157,12 @@ class CompatibilityViewModel @Inject constructor(
     private val _comparisonResults = MutableStateFlow<List<ComparisonResult>>(emptyList())
     val comparisonResults: StateFlow<List<ComparisonResult>> = _comparisonResults
 
+    // Full per-partner CompatibilityResult, keyed by the ComparisonResult.id. The overview's
+    // lightweight ComparisonResult can't drive the individual-analysis screen (which needs the
+    // full CompatibilityResult), so we retain it here and restore it on card tap. iOS parity:
+    // its ComparisonResult embeds `result: CompatibilityResult` directly.
+    private val fullResultsByComparisonId = mutableMapOf<String, CompatibilityResult>()
+
     // iOS parity (CompatibilityViewModel.swift:87): brief "Loaded from history" toast flag.
     // Set true when a saved match is hydrated from local history without an API call;
     // the screen renders an animated transient toast and auto-clears after a short delay.
@@ -607,7 +613,11 @@ class CompatibilityViewModel @Inject constructor(
             // Mirrors iOS CompatibilityHistoryService.findExistingMatch behaviour.
             // Also match on girlName to prevent cross-contamination when different partners
             // share the same DOB/time/city (e.g. testing with multiple people).
-            val cached = _historyItems.value.firstOrNull { item ->
+            // Fix E: authoritative DB snapshot (like iOS loadAll()), not the observeAll Flow
+            // which may not have emitted on fresh entry → silent miss → needless paid call.
+            val historySnapshot = runCatching { historyDao.getAllForUser(email).map { it.toDomain() } }
+                .getOrDefault(_historyItems.value)
+            val cached = historySnapshot.firstOrNull { item ->
                 val forward = item.boyDob == profile.dateOfBirth &&
                     item.boyTime == profile.timeOfBirth &&
                     item.boyCity.equals(profile.cityOfBirth, ignoreCase = true) &&
@@ -1356,6 +1366,7 @@ class CompatibilityViewModel @Inject constructor(
             val groupId = java.util.UUID.randomUUID().toString()
             currentComparisonGroupId = groupId
             _comparisonResults.value = emptyList()
+            fullResultsByComparisonId.clear()
             _failedPartnerIndices.value = emptyList()
             _uiState.update { it.copy(isAnalyzing = true, error = null, showStreamingView = true) }
             _currentStep.value = AnalysisStep.CALCULATING_CHARTS
@@ -1363,19 +1374,33 @@ class CompatibilityViewModel @Inject constructor(
             val newFailed = mutableListOf<Int>()
             val newResults = mutableListOf<ComparisonResult>()
 
+            // Fix E: authoritative history snapshot at analyze time (like iOS loadAll()),
+            // not the observeAll Flow which may not have emitted yet on fresh entry.
+            val historySnapshot = runCatching { historyDao.getAllForUser(email).map { it.toDomain() } }
+                .getOrDefault(_historyItems.value)
+
             validPartners.forEachIndexed { index, partner ->
                 // iOS parity (CompatibilityViewModel.swift:701-723 findExistingMatch): reuse a
                 // cached result FREE (no LLM call) when this boy+girl pair was already analyzed.
-                val cachedItem = _historyItems.value.firstOrNull { item ->
-                    item.result != null &&
-                        item.boyDob == profile.dateOfBirth && item.boyTime == profile.timeOfBirth &&
+                // Match on dob+time+city (forward OR reverse role-swap), mirroring iOS
+                // findMatchIndex. girlTime is included (Fix A) so two partners with the same
+                // name/DOB/city but different birth times aren't wrongly collapsed.
+                val cachedItem = historySnapshot.firstOrNull { item ->
+                    if (item.result == null) return@firstOrNull false
+                    val forward = item.boyDob == profile.dateOfBirth && item.boyTime == profile.timeOfBirth &&
                         item.boyCity.equals(profile.cityOfBirth, ignoreCase = true) &&
-                        item.girlDob == partner.dob && item.girlCity.equals(partner.city, ignoreCase = true) &&
+                        item.girlDob == partner.dob && item.girlTime == partner.time &&
+                        item.girlCity.equals(partner.city, ignoreCase = true) &&
                         item.girlName.equals(partner.name, ignoreCase = true)
+                    val reverse = item.girlDob == profile.dateOfBirth && item.girlTime == profile.timeOfBirth &&
+                        item.girlCity.equals(profile.cityOfBirth, ignoreCase = true) &&
+                        item.boyDob == partner.dob && item.boyTime == partner.time &&
+                        item.boyCity.equals(partner.city, ignoreCase = true)
+                    forward || reverse
                 }
                 val cachedResult = cachedItem?.result
                 if (cachedResult != null) {
-                    newResults.add(ComparisonResult(
+                    val comparison = ComparisonResult(
                         partner = partner,
                         totalScore = cachedResult.totalScore,
                         maxScore = cachedResult.maxScore,
@@ -1383,10 +1408,13 @@ class CompatibilityViewModel @Inject constructor(
                         isRecommended = cachedResult.isRecommended,
                         adjustedScore = cachedResult.adjustedScore ?: cachedResult.totalScore,
                         summary = cachedResult.summary,
+                        kutaDetails = cachedResult.kutas.associateBy { it.key },
                         oneLiner = cachedResult.oneLiner,
                         mangalCompatibility = cachedResult.mangalCompatibility,
                         rejectionReasons = cachedResult.rejectionReasons,
-                    ))
+                    )
+                    fullResultsByComparisonId[comparison.id] = cachedResult
+                    newResults.add(comparison)
                     _comparisonResults.value = newResults.toList()
                     runCatching { saveComparisonToHistory(cachedResult, email, profile, partner, groupId, index) }
                     return@forEachIndexed
@@ -1434,7 +1462,7 @@ class CompatibilityViewModel @Inject constructor(
                                     boyCity = profile.cityOfBirth,
                                     girlCity = partner.city,
                                 )
-                                newResults.add(ComparisonResult(
+                                val comparison = ComparisonResult(
                                     partner = partner,
                                     totalScore = result.totalScore,
                                     maxScore = result.maxScore,
@@ -1442,6 +1470,10 @@ class CompatibilityViewModel @Inject constructor(
                                     isRecommended = result.isRecommended,
                                     adjustedScore = result.adjustedScore ?: result.totalScore,
                                     summary = result.summary,
+                                    // Per-area Koota breakdown: map the mapper's kutas list →
+                                    // key-indexed map so the overview's Detailed Breakdown shows
+                                    // scores instead of "—" for every area.
+                                    kutaDetails = result.kutas.associateBy { it.key },
                                     // iOS parity (PartnerData.swift:111-129): surface Manglik +
                                     // rejection reasons so the overview footer and per-partner
                                     // Manglik row aren't empty. (one-liner verdict pending the
@@ -1449,7 +1481,9 @@ class CompatibilityViewModel @Inject constructor(
                                     oneLiner = result.oneLiner,
                                     mangalCompatibility = result.mangalCompatibility,
                                     rejectionReasons = result.rejectionReasons,
-                                ))
+                                )
+                                fullResultsByComparisonId[comparison.id] = result
+                                newResults.add(comparison)
                                 _comparisonResults.value = newResults.toList()
                                 // iOS parity (analyzeAllPartners saveToHistory per partner):
                                 // persist each partner as a grouped history item so the whole
@@ -1632,6 +1666,14 @@ class CompatibilityViewModel @Inject constructor(
     fun selectComparisonResult(index: Int) {
         val results = _comparisonResults.value
         val r = results.getOrNull(index) ?: return
+        // Restore the FULL CompatibilityResult so the individual-analysis screen renders
+        // (the lightweight ComparisonResult alone can't drive it). Card tap → this → the
+        // screen's resultObj gate shows the full per-partner analysis. iOS parity.
+        val full = fullResultsByComparisonId[r.id]
+        if (full != null) {
+            currentCompatibilityResult = full
+            _compatibilityResult.value = full
+        }
         _uiState.update {
             it.copy(
                 result = r.summary,
