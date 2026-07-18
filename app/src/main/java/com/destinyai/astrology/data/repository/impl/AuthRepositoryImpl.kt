@@ -80,6 +80,12 @@ class AuthRepositoryImpl @Inject constructor(
         }
         secure.saveEmail(resp.userEmail)
         prefs.setUserEmail(resp.userEmail)
+        // iOS parity (AuthViewModel.handleAuthSuccess sets isAuthenticated=true,
+        // swift:649): persist the flag so a COLD LAUNCH routes to Main instead of
+        // bouncing to the sign-in screen. Without it the warm-start gate
+        // (SplashViewModel: !isAuthenticated → Auth) fired on every relaunch (G1).
+        // Waitlist gating still holds — SplashViewModel re-checks lastAccessState after.
+        prefs.setAuthenticated(true)
         // iOS parity (BirthDataView.swift:614-616): persist google_id so subsequent
         // profile saves can include it for backend user lookup. setGoogleUserId
         // also clears any previously-stored appleUserId — the two are mutually
@@ -92,11 +98,13 @@ class AuthRepositoryImpl @Inject constructor(
         // lastAccessState so SplashViewModel/AppNav can route to WaitlistPending
         // on next launch when applicable.
         prefs.setLastAccessState(resp.accessState)
-        // W7 parity + SECURITY: mint a session JWT so authenticated calls carry a
-        // real per-user identity. Clear any prior active session FIRST so that, in
-        // the window between register and a successful mint (or if mint fails), the
-        // interceptor can never attach a previous user's JWT to this user's calls.
-        sessionStore.clearActiveSession()
+        // W7 parity + SECURITY: clear the ACTIVE POINTER before minting so that, in the
+        // window between register and a successful mint (or if mint fails), the interceptor
+        // falls back to the API key and can never attach a previous user's JWT to this
+        // user's calls. We deliberately DO NOT wipe per-email JWT entries here — a guest's
+        // JWT must survive so a guest→registered upgrade can authenticate /subscription/upgrade
+        // as the guest (M2). The guest entry is cleared in upgradeGuest only after a 200.
+        sessionStore.clearActivePointer()
         if (!idToken.isNullOrBlank()) {
             runCatching { exchangeClient.signInWithGoogle(idToken, nonce = null) }
                 .onFailure { android.util.Log.w("AuthRepository", "google session mint failed: ${it.message}") }
@@ -157,6 +165,8 @@ class AuthRepositoryImpl @Inject constructor(
         }
         secure.saveEmail(resp.userEmail)
         prefs.setUserEmail(resp.userEmail)
+        // iOS parity (handleAuthSuccess isAuthenticated=true): survive cold launch (G1).
+        prefs.setAuthenticated(true)
         // iOS parity (BirthDataView.swift:611-613): persist apple_id so subsequent
         // profile saves can include it for backend user lookup (handles Hide-My-Email).
         // setAppleUserId also clears any previously-stored googleUserId — the two
@@ -208,6 +218,9 @@ class AuthRepositoryImpl @Inject constructor(
         secure.saveEmail(guestEmail)
         prefs.setUserEmail(guestEmail)
         prefs.setGuestUser(true)
+        // iOS parity (guest sessions are authenticated sessions): persist the flag so a
+        // cold launch keeps the guest in the app instead of routing to sign-in (G1).
+        prefs.setAuthenticated(true)
         prefs.setSubscription(isPremium = false, planId = "free")
         prefs.setAccessState("granted")
         // iOS parity (AuthViewModel.swift:600-603): guest sessions clear any
@@ -251,10 +264,32 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun upgradeGuest(guestEmail: String, newEmail: String): Result<User> = runCatching {
         try {
-            val resp = api.upgradeGuest(UpgradeRequest(oldEmail = guestEmail, newEmail = newEmail))
+            // iOS parity (ProfileService upgrade uses the GUEST's session JWT so the backend
+            // ownership check identity.user_email == old_email passes). Resolve the guest
+            // bearer; lazy-mint it if the per-email entry is missing (e.g. offline register
+            // earlier). Without an explicit guest bearer the interceptor would attach the
+            // new user's JWT → 403 body_email_mismatch → migration silently fails (M1).
+            var guestJwt = sessionStore.sessionJwt(forEmail = guestEmail)
+            if (guestJwt.isNullOrBlank()) {
+                mintGuestSession(guestEmail)
+                guestJwt = sessionStore.sessionJwt(forEmail = guestEmail)
+            }
+            if (guestJwt.isNullOrBlank()) {
+                // Can't authenticate as the guest → the server migration would 403 and
+                // orphan the guest's history. Surface loudly rather than swallow.
+                throw IllegalStateException("guest_jwt_unavailable_for_upgrade")
+            }
+            val resp = api.upgradeGuest("Bearer $guestJwt", UpgradeRequest(oldEmail = guestEmail, newEmail = newEmail))
             secure.saveEmail(resp.userEmail)
             prefs.setUserEmail(resp.userEmail)
+            // iOS parity (handleAuthSuccess): the upgraded user is authenticated — persist
+            // the flag so a cold launch keeps them in the app (G1).
+            prefs.setAuthenticated(true)
             prefs.setSubscription(resp.isPremium, resp.planId ?: "")
+            // iOS parity (ProfileService.swift:303 clears guest session only AFTER a 200):
+            // now that the migration succeeded, drop the guest's per-email JWT entry and
+            // make the new user the active session.
+            sessionStore.clearSession(forEmail = guestEmail)
             resp.toUser()
         } catch (e: HttpException) {
             // 409: email already registered (ConflictException)

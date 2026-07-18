@@ -125,7 +125,7 @@ class AstroApiServiceTest {
             .setBody("""{"user_email":"new@x.com","plan_id":"free_registered","is_generated_email":false}""")
             .addHeader("Content-Type", "application/json"))
 
-        service.upgradeGuest(UpgradeRequest(oldEmail = "old@x.com", newEmail = "new@x.com"))
+        service.upgradeGuest("Bearer test", UpgradeRequest(oldEmail = "old@x.com", newEmail = "new@x.com"))
 
         val req = server.takeRequest()
         val body = req.body.readUtf8()
@@ -139,7 +139,7 @@ class AstroApiServiceTest {
             .setBody("""{"detail":"conflict"}"""))
 
         val ex = assertThrows<retrofit2.HttpException> {
-            service.upgradeGuest(UpgradeRequest(oldEmail = "g@x.com", newEmail = "existing@x.com"))
+            service.upgradeGuest("Bearer test", UpgradeRequest(oldEmail = "g@x.com", newEmail = "existing@x.com"))
         }
         assertEquals(409, ex.code())
     }

@@ -1,6 +1,7 @@
 package com.destinyai.astrology.ui.auth
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.destinyai.astrology.R
@@ -212,9 +213,17 @@ class AuthViewModel @Inject constructor(
                     haptic.success()
                     // Carry forward guest birth profile + run upgrade in best-effort mode.
                     if (wasGuest && guestEmail != null && user.email != guestEmail) {
-                        try {
-                            repository.upgradeGuest(guestEmail, user.email).getOrNull()
-                        } catch (_: Exception) { /* ignore */ }
+                        // iOS parity (AuthViewModel.swift:344-350 logs "GUEST MIGRATION FAILED"):
+                        // do NOT swallow — a failed migration orphans the guest's chat/compat/
+                        // partner history, so surface it in logs for diagnosis (M3).
+                        repository.upgradeGuest(guestEmail, user.email)
+                            .onFailure {
+                                Log.e(
+                                    "AuthViewModel",
+                                    "GUEST MIGRATION FAILED guest=$guestEmail new=${user.email}: ${it.message}",
+                                    it,
+                                )
+                            }
                         if (guestBirth != null) {
                             try { prefs.setBirthProfile(guestBirth) } catch (_: Exception) {}
                         }

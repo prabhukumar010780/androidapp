@@ -96,6 +96,21 @@ class SessionTokenStore @Inject constructor(
         if (e != null) clearSession(e) else secure.removeRaw(ACTIVE_EMAIL_KEY)
     }
 
+    /**
+     * Clear ONLY the active-email pointer, leaving each per-email JWT entry intact
+     * (iOS SessionTokenStore keeps per-email keychain entries; only the active
+     * pointer is swapped). Used before minting a new session so that:
+     *  - the interceptor can't attach a stale user's JWT (no active pointer → API-key
+     *    fallback until the new mint sets it), AND
+     *  - a guest's per-email JWT survives so a guest→registered upgrade can still
+     *    authenticate the /subscription/upgrade call with the guest bearer (M2).
+     * The guest entry is cleared explicitly via [clearSession] only AFTER the upgrade
+     * succeeds.
+     */
+    fun clearActivePointer() {
+        secure.removeRaw(ACTIVE_EMAIL_KEY)
+    }
+
     private companion object {
         const val ACTIVE_EMAIL_KEY = "w7_current_session_email"
         fun sessionJwtKey(email: String) = "w7_session_jwt::$email"

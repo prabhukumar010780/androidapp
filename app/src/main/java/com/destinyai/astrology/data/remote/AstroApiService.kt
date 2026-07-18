@@ -791,8 +791,15 @@ interface AstroApiService {
     @GET("api/v2/app/config")
     suspend fun getAppConfig(): AppConfigResponse
 
+    // Guest→registered migration. The backend ownership check requires the caller to
+    // authenticate as old_email (the GUEST) — mirrors iOS ProfileService which sends the
+    // guest session JWT. The caller passes "Bearer <guestJwt>" explicitly so AuthInterceptor
+    // leaves it untouched (it would otherwise attach the NEW user's JWT → 403 body_email_mismatch).
     @POST("subscription/upgrade")
-    suspend fun upgradeGuest(@Body request: UpgradeRequest): RegisterResponse
+    suspend fun upgradeGuest(
+        @Header("Authorization") authHeader: String,
+        @Body request: UpgradeRequest,
+    ): RegisterResponse
 
     // W7 — /auth/exchange + /auth/refresh are PUBLIC (no bearer). We still send
     // X-API-Key as an anti-bot signal + explicit User-Agent (iOS parity).

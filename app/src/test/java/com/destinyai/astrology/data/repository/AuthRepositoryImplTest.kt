@@ -223,7 +223,9 @@ class AuthRepositoryImplTest {
     @Test
     fun `upgradeGuest migrates email in secure storage on success`() = runTest {
         every { secure.getEmail() } returns "guest_old@destinyai.app"
-        coEvery { api.upgradeGuest(any()) } returns RegisterResponse(
+        // Guest bearer must resolve so the upgrade authenticates as the guest (M1).
+        every { sessionStore.sessionJwt(forEmail = "guest_old@destinyai.app") } returns "guest-jwt"
+        coEvery { api.upgradeGuest(any(), any()) } returns RegisterResponse(
             userEmail = "real@user.com",
             planId = "free_registered",
             isGeneratedEmail = false,
@@ -237,12 +239,35 @@ class AuthRepositoryImplTest {
 
         assertTrue(result.isSuccess)
         verify { secure.saveEmail("real@user.com") }
+        // M1: the upgrade MUST authenticate as the guest (Bearer <guestJwt>), else the
+        // backend ownership check 403s and guest history is orphaned.
+        coVerify { api.upgradeGuest("Bearer guest-jwt", any()) }
+        // M2: the guest per-email JWT is cleared only AFTER a successful upgrade.
+        verify { sessionStore.clearSession(forEmail = "guest_old@destinyai.app") }
+        // G1: the upgraded user is marked authenticated so a cold launch keeps them in.
+        coVerify { prefs.setAuthenticated(true) }
+    }
+
+    @Test
+    fun `upgradeGuest fails loudly when no guest JWT is available (M1)`() = runTest {
+        every { secure.getEmail() } returns "guest_x@destinyai.app"
+        // No per-email JWT and lazy-mint also can't produce one → must NOT call the API
+        // with the wrong bearer; surface a failure instead of a silent 403.
+        every { sessionStore.sessionJwt(forEmail = "guest_x@destinyai.app") } returns null
+        coEvery { exchangeClient.signInAsGuest(any(), any(), any()) } throws
+            com.destinyai.astrology.data.remote.AuthExchangeError.Network("offline")
+
+        val result = repo.upgradeGuest("guest_x@destinyai.app", "real2@user.com")
+
+        assertTrue(result.isFailure)
+        coVerify(exactly = 0) { api.upgradeGuest(any(), any()) }
     }
 
     @Test
     fun `upgradeGuest returns ConflictException on 409`() = runTest {
         every { secure.getEmail() } returns "guest@destinyai.app"
-        coEvery { api.upgradeGuest(any()) } throws retrofit2.HttpException(
+        every { sessionStore.sessionJwt(forEmail = "guest@destinyai.app") } returns "guest-jwt"
+        coEvery { api.upgradeGuest(any(), any()) } throws retrofit2.HttpException(
             okhttp3.ResponseBody.create(null, "").let {
                 retrofit2.Response.error<Any>(409, it)
             }

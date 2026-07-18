@@ -42,6 +42,7 @@ class LoginSyncCoordinator @Inject constructor(
     private val api: AstroApiService,
     private val chatRepository: ChatRepository,
     private val authRepository: AuthRepository,
+    private val profileRepository: com.destinyai.astrology.data.repository.ProfileRepository,
     private val homeRepository: HomeRepository,
     private val quotaManager: QuotaManager,
     private val chatThreadDao: ChatThreadDao,
@@ -120,6 +121,20 @@ class LoginSyncCoordinator @Inject constructor(
                 val profile = authRepository.fetchProfile(userEmail) ?: return@runCatching
                 profile.userName?.takeIf { it.isNotBlank() }?.let { prefs.setUserName(it) }
             }.onFailure { Log.w(TAG, "profile fetch failed: ${it.message}", it) }
+            // iOS parity (M4: guest→registered upgrade creates the self partner under the
+            // new email so Switch Profile works). A guest-upgrade carries birth data
+            // locally but skips the server-profile restore path that normally bootstraps
+            // the self partner — do it here. Idempotent: no-ops if a self partner exists.
+            runCatching {
+                val birth = prefs.getBirthProfile()
+                if (birth != null) {
+                    profileRepository.createSelfPartnerProfile(
+                        email = userEmail,
+                        userName = prefs.getUserName() ?: "Me",
+                        birthProfile = birth,
+                    )
+                }
+            }.onFailure { Log.w(TAG, "self-partner bootstrap failed: ${it.message}", it) }
         }
         // iOS parity (ProfileSetupLoadingView phases 1+3 — chart + today's prediction
         // prefetch). These are warm-cache optimizations only (Home re-fetches them) and

@@ -228,7 +228,12 @@ class ProfileRepositoryImpl @Inject constructor(
             return newEmail
         }
         return try {
-            val resp = api.upgradeGuest(UpgradeRequest(oldEmail = oldEmail, newEmail = newEmail))
+            // Authenticate as the GUEST (old_email) so the backend ownership check passes —
+            // mirrors AuthRepositoryImpl.upgradeGuest / iOS ProfileService. The interceptor
+            // would otherwise attach the active (new) user's JWT → 403 body_email_mismatch.
+            val guestJwt = sessionStore.sessionJwt(forEmail = oldEmail)
+                ?: return null.also { Log.w(TAG, "upgradeGuestToRegistered: no guest JWT for $oldEmail") }
+            val resp = api.upgradeGuest("Bearer $guestJwt", UpgradeRequest(oldEmail = oldEmail, newEmail = newEmail))
             resp.userEmail
         } catch (e: HttpException) {
             // iOS parity (ProfileService.swift:189-198 + AuthErrors.kt):
