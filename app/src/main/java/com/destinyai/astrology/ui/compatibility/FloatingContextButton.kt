@@ -9,18 +9,17 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -28,19 +27,20 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.destinyai.astrology.ui.theme.Gold
-import com.destinyai.astrology.ui.theme.GoldLight
+import com.destinyai.astrology.ui.theme.GoldChampagne
+import com.destinyai.astrology.ui.theme.NavyDeep
 
 @Composable
 fun FloatingContextButton(
     onClick: () -> Unit,
-    icon: ImageVector = Icons.AutoMirrored.Filled.Chat,
+    icon: ImageVector = Icons.Filled.Forum,
     modifier: Modifier = Modifier,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val haptic = LocalHapticFeedback.current
     val buttonScale by animateFloatAsState(
-        targetValue = if (isPressed) 0.88f else 1.0f,
+        targetValue = if (isPressed) 0.9f else 1.0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMedium,
@@ -52,14 +52,12 @@ fun FloatingContextButton(
         modifier = modifier.semantics { contentDescription = "ask_destiny_button" },
         contentAlignment = Alignment.Center,
     ) {
-        // Glow aura behind button
+        // Glow aura behind button (blurred halo to match iOS)
         Box(
             modifier = Modifier
-                .size(72.dp)
-                .drawBehind {
-                    drawCircle(color = Gold.copy(alpha = 0.20f), radius = size.minDimension / 2)
-                    drawCircle(color = Gold.copy(alpha = 0.10f), radius = size.minDimension / 2 * 0.75f)
-                },
+                .size(70.dp)
+                .blur(12.dp)
+                .background(Gold.copy(alpha = 0.30f), CircleShape),
         )
 
         // Main gold circle button
@@ -76,7 +74,7 @@ fun FloatingContextButton(
                 .clip(CircleShape)
                 .background(
                     Brush.linearGradient(
-                        colors = listOf(GoldLight, Gold),
+                        colors = listOf(GoldChampagne, Gold),
                         start = Offset(0f, 0f),
                         end = Offset(100f, 100f),
                     )
@@ -94,7 +92,7 @@ fun FloatingContextButton(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = Color(0xFF0D0D1A),
+                tint = NavyDeep,
                 modifier = Modifier.size(24.dp),
             )
         }

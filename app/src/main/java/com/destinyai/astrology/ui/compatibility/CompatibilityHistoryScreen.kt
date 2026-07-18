@@ -15,8 +15,11 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.HistoryToggleOff
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -440,6 +443,16 @@ private fun HistoryItemRow(
             .semantics { contentDescription = "history_item_row" },
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // Pin indicator — iOS parity: leading, before the score badge (size 10, gold).
+        if (item.isPinned) {
+            Icon(
+                Icons.Filled.PushPin,
+                contentDescription = null,
+                tint = Gold,
+                modifier = Modifier.size(10.dp),
+            )
+            Spacer(Modifier.width(14.dp))
+        }
         // Score badge
         Box(
             modifier = Modifier
@@ -468,18 +481,12 @@ private fun HistoryItemRow(
         Spacer(Modifier.width(14.dp))
 
         Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (item.isPinned) {
-                    Icon(Icons.Filled.PushPin, contentDescription = null, tint = Gold, modifier = Modifier.size(11.dp))
-                    Spacer(Modifier.width(4.dp))
-                }
-                Text(
-                    text = item.displayTitle,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = CreamText,
-                )
-            }
+            Text(
+                text = item.displayTitle,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = CreamText,
+            )
             Spacer(Modifier.height(3.dp))
             Text(
                 text = item.displayDate,
@@ -546,7 +553,12 @@ private fun HistoryDisabledState(
 ) {
     Box(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("🕐", fontSize = 56.sp)
+            Icon(
+                Icons.Filled.HistoryToggleOff,
+                contentDescription = null,
+                tint = CreamDim.copy(alpha = 0.4f),
+                modifier = Modifier.size(48.dp),
+            )
             Text(
                 text = stringResource(R.string.compat_history_disabled_title),
                 style = MaterialTheme.typography.titleMedium,
@@ -578,7 +590,12 @@ private fun HistoryDisabledState(
 private fun HistoryEmptyState(modifier: Modifier = Modifier) {
     Box(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("🕐", fontSize = 60.sp)
+            Icon(
+                Icons.Filled.History,
+                contentDescription = null,
+                tint = Gold.copy(alpha = 0.3f),
+                modifier = Modifier.size(60.dp),
+            )
             Spacer(Modifier.height(16.dp))
             Text(
                 text = stringResource(R.string.compat_history_empty_title),
@@ -609,13 +626,10 @@ private fun GroupHistoryRow(
     onPin: () -> Unit = {},
 ) {
     val best = group.bestMatch
-    val scoreColor = when {
-        (best?.scorePercentage ?: 0.0) >= 70 -> Color(0xFF48BB78)
-        (best?.scorePercentage ?: 0.0) >= 50 -> Color(0xFFED8936)
-        else -> Color(0xFFFC8181)
-    }
     var showContextMenu by remember { mutableStateOf(false) }
     val pinTarget = group.items.firstOrNull { it.isPinned } ?: best ?: group.items.firstOrNull()
+    // iOS parity: GroupHistoryRow.accentPurple = Color(red: 0.75, green: 0.55, blue: 0.95)
+    val accentPurple = Color(0xFFBF8CF2)
 
     Row(
         modifier = Modifier
@@ -658,21 +672,21 @@ private fun GroupHistoryRow(
             modifier = Modifier
                 .size(50.dp)
                 .clip(CircleShape)
-                .background(Gold.copy(alpha = 0.15f)),
+                .background(accentPurple.copy(alpha = 0.15f)),
             contentAlignment = Alignment.Center,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(
                     Icons.Filled.Group,
                     contentDescription = null,
-                    tint = Gold,
+                    tint = accentPurple,
                     modifier = Modifier.size(20.dp),
                 )
                 Text(
                     text = "${group.partnerCount}",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
-                    color = Gold,
+                    color = accentPurple,
                     fontSize = 10.sp,
                     lineHeight = 12.sp,
                 )
@@ -694,30 +708,41 @@ private fun GroupHistoryRow(
                 maxLines = 1,
             )
             Spacer(Modifier.height(3.dp))
-            Text(
-                text = group.displayDate,
-                style = MaterialTheme.typography.labelSmall,
-                color = CreamDim,
-            )
-        }
-        Spacer(Modifier.width(8.dp))
-        if (best != null) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(scoreColor.copy(alpha = 0.15f))
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                contentAlignment = Alignment.Center,
+            // iOS parity: date + best-score star indicator inline (spacing 8).
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
-                    text = "${best.totalScore}/${best.maxScore}",
+                    text = group.displayDate,
                     style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = scoreColor,
+                    color = CreamDim,
                 )
+                if (best != null) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(3.dp),
+                    ) {
+                        Icon(
+                            Icons.Filled.Star,
+                            contentDescription = null,
+                            tint = accentPurple,
+                            modifier = Modifier.size(10.dp),
+                        )
+                        Text(
+                            text = stringResource(
+                                R.string.best_match_score,
+                                best.totalScore,
+                                best.maxScore,
+                            ),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = accentPurple,
+                        )
+                    }
+                }
             }
-            Spacer(Modifier.width(8.dp))
         }
+        Spacer(Modifier.width(8.dp))
         // Trailing chevron — iOS parity (CompatibilityHistorySheet.swift line 373).
         Icon(
             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,

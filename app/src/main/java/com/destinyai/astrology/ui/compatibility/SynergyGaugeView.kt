@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.destinyai.astrology.R
 import com.destinyai.astrology.ui.theme.AppTheme
+import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.Gold
 
@@ -106,14 +107,15 @@ fun SynergyGaugeView(
                 Text(
                     text = "$score",
                     style = MaterialTheme.typography.displaySmall,
+                    fontFamily = CanelaFontFamily,
                     fontWeight = FontWeight.Bold,
                     color = Gold,
                     fontSize = (size.value * if (hasAdjustment) 0.28f else 0.32f).sp,
                     modifier = Modifier.semantics { contentDescription = "synergy_score_value" },
                 )
                 Text(
-                    // Issue 18: localized "out of N" format
-                    text = stringResource(R.string.out_of_max_score_format, maxScore),
+                    // Matches iOS literal "/ N"
+                    text = "/ $maxScore",
                     style = MaterialTheme.typography.bodySmall,
                     color = CreamDim,
                     fontSize = (size.value * 0.08f).sp,
@@ -261,7 +263,7 @@ internal fun firstName(fullName: String): String =
     fullName.split(' ').firstOrNull()?.takeIf { it.isNotEmpty() } ?: fullName
 
 internal fun synergyArcColor(percentage: Double): Color = when {
-    percentage >= 0.75 -> Color(0xFF48BB78)
+    percentage >= 0.75 -> Color(0xFF4CAF50)
     percentage >= 0.5 -> Gold
     // Issue 14: align lower-bucket hex with iOS AppTheme.Colors.error (#FF5252)
     else -> Color(0xFFFF5252)
@@ -271,7 +273,7 @@ internal fun synergyArcColor(percentage: Double): Color = when {
 internal fun synergyArcBrush(percentage: Double): Brush {
     val base = synergyArcColor(percentage)
     return Brush.linearGradient(
-        colors = listOf(base.copy(alpha = 0.8f), base.copy(alpha = 0.7f)),
+        colors = listOf(base.copy(alpha = 1.0f), base.copy(alpha = 0.8f)),
     )
 }
 

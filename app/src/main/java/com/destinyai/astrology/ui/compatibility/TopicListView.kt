@@ -22,7 +22,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -45,8 +47,8 @@ import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.util.DoshaDescriptions
 
 private val SuccessGreen = Color(0xFF48BB78)
-private val ErrorRed = Color(0xFFFC8181)
-private val ReducedAmber = Color(0xFFED8936)
+private val ErrorRed = Color(0xFFFF5252)
+private val ReducedAmber = Color(0xFFFFC107)
 
 /**
  * Maps a DestinyTileType to its active glyph drawable — mirrors iOS
@@ -98,13 +100,15 @@ fun TopicListView(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                // SVG tile glyph with shadow glow
+                // SVG tile glyph with shadow glow (iOS parity — glow, no circle bg)
                 Box(
                     modifier = Modifier
                         .size(40.dp)
-                        .background(
-                            color = tile.accentColor.copy(alpha = 0.18f),
+                        .shadow(
+                            elevation = 12.dp,
                             shape = CircleShape,
+                            ambientColor = tile.accentColor.copy(alpha = 0.3f),
+                            spotColor = tile.accentColor.copy(alpha = 0.3f),
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -322,9 +326,9 @@ private fun ActiveYogaCard(
         modifier = modifier
             .fillMaxWidth()
             .semantics { contentDescription = "yoga_card_${item.name.take(20)}" }
-            .clip(RoundedCornerShape(14.dp))
-            .background(NavySurface)
-            .border(1.dp, SuccessGreen.copy(alpha = 0.25f), RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color.White.copy(alpha = 0.03f))
+            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(20.dp))
             .clickable(onClick = onTap)
             .padding(16.dp),
     ) {
@@ -521,9 +525,10 @@ private fun BlockedYogaCard(
         modifier = modifier
             .fillMaxWidth()
             .semantics { contentDescription = "blocked_yoga_card_${item.name.take(20)}" }
-            .clip(RoundedCornerShape(14.dp))
-            .background(ErrorRed.copy(alpha = 0.04f))
-            .border(1.dp, ErrorRed.copy(alpha = 0.15f), RoundedCornerShape(14.dp))
+            .alpha(0.85f)
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color.White.copy(alpha = 0.02f))
+            .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(20.dp))
             .clickable(onClick = onTap)
             .padding(14.dp),
     ) {
@@ -549,7 +554,7 @@ private fun BlockedYogaCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     item.displayName,
-                    fontSize = 14.sp,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Medium,
                     color = AppTheme.colors.textSecondary,
                 )
@@ -577,7 +582,7 @@ private fun BlockedYogaCard(
         }
         if (isExpanded) {
             Spacer(Modifier.height(10.dp))
-            HorizontalDivider(color = ErrorRed.copy(alpha = 0.15f))
+            HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
             Spacer(Modifier.height(10.dp))
 
             // Outcome

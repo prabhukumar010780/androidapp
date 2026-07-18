@@ -36,7 +36,6 @@ import com.destinyai.astrology.R
 import com.destinyai.astrology.domain.model.KutaDetail
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
-import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,12 +53,15 @@ fun AshtakootGlassGrid(
     Column(
         modifier = modifier.semantics { contentDescription = "ashtakoot_glass_grid" },
     ) {
+        // iOS parity (AshtakootGlassGrid.swift:128-131): title uses the analysis title key,
+        // 16pt title font, textPrimary color, 4pt horizontal padding.
         Text(
-            text = stringResource(R.string.ashtakoot_kutas_section),
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = Gold.copy(alpha = 0.7f),
-            modifier = Modifier.padding(bottom = 10.dp),
+            text = stringResource(R.string.ashtakoot_analysis_title),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp,
+            color = CreamText,
+            modifier = Modifier.padding(start = 4.dp, bottom = 16.dp),
         )
         kutas.chunked(2).forEach { row ->
             Row(
@@ -210,9 +212,10 @@ fun GlassPill(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            // ultraThinMaterial parity stub — translucent navy + faint gradient overlay until
-            // an AGSL blur is wired in. Strict glass sampling is tracked separately.
-            .background(NavySurface.copy(alpha = 0.55f))
+            // iOS uses .ultraThinMaterial (frosted glass). Compose has no true backdrop-blur,
+            // so this APPROXIMATES it: a faint translucent white overlay over the navy surface
+            // to mimic the light frosted sheen of ultraThinMaterial in dark mode.
+            .background(Color.White.copy(alpha = 0.08f))
             .border(borderWidth, borderColor, RoundedCornerShape(12.dp))
             .clickable {
                 // iOS triggers HapticManager.play(.light) — closest Android equivalent is TextHandleMove.

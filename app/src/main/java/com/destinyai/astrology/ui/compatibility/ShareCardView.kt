@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.Icon
@@ -189,8 +190,9 @@ fun ShareCardView(
             // Names
             Text(
                 boyName.uppercase(Locale.getDefault()),
-                fontSize = 28.sp,
+                fontSize = 36.sp,
                 fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Serif,
                 color = Color.White,
                 textAlign = TextAlign.Center,
             )
@@ -201,14 +203,20 @@ fun ShareCardView(
                 modifier = Modifier.padding(vertical = 6.dp),
             ) {
                 GoldDividerLine(modifier = Modifier.weight(1f))
-                Text("♡", fontSize = 14.sp, color = GoldColor)
+                Icon(
+                    imageVector = Icons.Default.Favorite,
+                    contentDescription = null,
+                    tint = GoldColor,
+                    modifier = Modifier.size(16.dp),
+                )
                 GoldDividerLine(modifier = Modifier.weight(1f))
             }
 
             Text(
                 girlName.uppercase(Locale.getDefault()),
-                fontSize = 28.sp,
+                fontSize = 36.sp,
                 fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Serif,
                 color = Color.White,
                 textAlign = TextAlign.Center,
             )

@@ -207,28 +207,8 @@ fun OrbitAshtakootView(
                 },
         )
 
-        // Issue 1: blurred radial aura layer behind the orbit ring — mirrors
-        // iOS RadialGradient(.gold) + .blur on the orbit ambient.
-        Box(
-            modifier = Modifier
-                .size((orbitRadius * 2) + 60.dp)
-                .blur(radius = 28.dp)
-                .drawBehind {
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                Gold.copy(alpha = 0.18f),
-                                Gold.copy(alpha = 0.06f),
-                                Color.Transparent,
-                            ),
-                            radius = size.minDimension / 2,
-                        ),
-                        radius = size.minDimension / 2,
-                    )
-                },
-        )
-
-        // Orbit ring decorations — outer thin ring + inner thick wash (Issue 1).
+        // Orbit ring decorations — outer thin ring + inner thick wash.
+        // iOS (:96-102) draws only these two rings — no radial aura behind them.
         Box(
             modifier = Modifier
                 .size(orbitRadius * 2)
@@ -767,7 +747,7 @@ private fun OrbitTooltipCard(
 //   4. partial score           → gold  "◑ score/max"
 @Composable
 internal fun ScoreBadge(kuta: KutaDetail) {
-    val successColor = Color(0xFF48BB78)
+    val successColor = Color(0xFF4CAF50)
     val errorColor = Color(0xFFFC8181)
 
     val (label, color) = when {

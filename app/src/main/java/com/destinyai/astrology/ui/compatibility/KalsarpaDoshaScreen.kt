@@ -19,6 +19,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowCircleUp
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.VerifiedUser
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -312,7 +320,12 @@ private fun DivineProtectionView(boyName: String, girlName: String) {
                         .border(1.dp, successColor.copy(alpha = 0.3f), CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("🛡️", fontSize = 60.sp)
+                    Icon(
+                        Icons.Filled.VerifiedUser,
+                        contentDescription = null,
+                        tint = successColor,
+                        modifier = Modifier.size(60.dp),
+                    )
                 }
             }
         }
@@ -342,7 +355,12 @@ private fun DivineProtectionView(boyName: String, girlName: String) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("✨", fontSize = 16.sp)
+                Icon(
+                    Icons.Filled.AutoAwesome,
+                    contentDescription = null,
+                    tint = Gold,
+                    modifier = Modifier.size(16.dp),
+                )
                 Text(
                     stringResource(R.string.kalsarpa_relationship_benefits),
                     fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = CreamText,
@@ -350,22 +368,22 @@ private fun DivineProtectionView(boyName: String, girlName: String) {
             }
             Spacer(Modifier.height(16.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                BenefitItem(icon = "❤️", text = stringResource(R.string.kalsarpa_emotional_harmony_short))
-                BenefitItem(icon = "⬆️", text = stringResource(R.string.kalsarpa_smooth_progression_short))
-                BenefitItem(icon = "☀️", text = stringResource(R.string.kalsarpa_positive_energy_short))
+                BenefitItem(icon = Icons.Filled.Favorite, text = stringResource(R.string.kalsarpa_emotional_harmony_short))
+                BenefitItem(icon = Icons.Filled.ArrowCircleUp, text = stringResource(R.string.kalsarpa_smooth_progression_short))
+                BenefitItem(icon = Icons.Filled.WbSunny, text = stringResource(R.string.kalsarpa_positive_energy_short))
             }
         }
     }
 }
 
 @Composable
-private fun BenefitItem(icon: String, text: String) {
+private fun BenefitItem(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.width(90.dp),
     ) {
-        Text(icon, fontSize = 32.sp)
+        Icon(icon, contentDescription = null, tint = Gold, modifier = Modifier.size(32.dp))
         Text(text, fontSize = 12.sp, color = CreamDim, textAlign = TextAlign.Center, lineHeight = 16.sp)
     }
 }
@@ -439,7 +457,12 @@ private fun SingleDoshaView(
                             .background(successColor.copy(alpha = 0.1f)),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text("🛡️", fontSize = 28.sp)
+                        Icon(
+                            Icons.Filled.Shield,
+                            contentDescription = null,
+                            tint = successColor,
+                            modifier = Modifier.size(24.dp),
+                        )
                     }
                     Text(safeName, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = CreamText, maxLines = 1)
                     Box(
@@ -687,7 +710,7 @@ private fun DoshaDetailsCard(data: KalaSarpaModel) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("🔮", fontSize = 14.sp)
+                Icon(Icons.Filled.Favorite, contentDescription = null, tint = Gold, modifier = Modifier.size(14.dp))
                 Text(
                     stringResource(R.string.affected_areas),
                     fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CreamDim,
@@ -757,7 +780,7 @@ private fun DoshaDetailsCard(data: KalaSarpaModel) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("📝", fontSize = 14.sp)
+                Icon(Icons.Filled.Description, contentDescription = null, tint = Gold, modifier = Modifier.size(14.dp))
                 Text(
                     stringResource(R.string.analysis_notes),
                     fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CreamDim,
@@ -777,7 +800,7 @@ private fun DoshaDetailsCard(data: KalaSarpaModel) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("📝", fontSize = 14.sp)
+                Icon(Icons.Filled.Description, contentDescription = null, tint = Gold, modifier = Modifier.size(14.dp))
                 Text(
                     stringResource(R.string.analysis_notes),
                     fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CreamDim,
@@ -835,7 +858,7 @@ private fun DoshaDetailsCard(data: KalaSarpaModel) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("⏳", fontSize = 14.sp)
+                Icon(Icons.Filled.Schedule, contentDescription = null, tint = Gold, modifier = Modifier.size(14.dp))
                 Text(
                     stringResource(R.string.peak_period),
                     fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CreamDim,

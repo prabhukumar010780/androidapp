@@ -96,9 +96,7 @@ internal fun MagicTabbar(
                     .clip(RoundedCornerShape(14.dp))
                     .background(backgroundColor)
                     .clickable {
-                        if (!isSelected) {
-                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        }
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         onSelect(tab)
                     }
                     .padding(top = 8.dp, bottom = 6.dp, start = 2.dp, end = 2.dp)
@@ -231,7 +229,7 @@ internal fun ProfileSwitcher(
                 label = "profile_switcher_elevation",
             )
             val labelColor by animateColorAsState(
-                targetValue = if (isSelected) Color(0xFF0D0D1A) else CreamDim,
+                targetValue = if (isSelected) Color(0xFF0B0F19) else CreamDim,
                 animationSpec = tween(durationMillis = 300),
                 label = "profile_switcher_label",
             )

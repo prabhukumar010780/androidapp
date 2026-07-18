@@ -68,7 +68,7 @@ fun PartnerConnectionView(
                 contentDescription = null,
                 tint = Gold,
                 modifier = Modifier
-                    .size(14.dp)
+                    .size(12.dp)
                     .rotate(45f),
             )
         }

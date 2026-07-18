@@ -14,10 +14,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.IosShare
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -64,6 +66,29 @@ import java.util.Locale
 private val SuccessColor = Color(0xFF48BB78)
 private val ErrorColor = Color(0xFFFC8181)
 private val WarningColor = Color(0xFFED8936)
+
+// iOS parity (DivineGlassCard.swift): tinted-glass slab with a gold chamfered rim
+// (white→gold→gold-dim→gold→white diagonal gradient, 1.5dp) and a soft drop shadow.
+// Compose has no ultraThinMaterial, so the translucent look is approximated with the
+// NavySurface card fill plus the gold gradient rim.
+private fun Modifier.divineGlassCard(cornerRadius: androidx.compose.ui.unit.Dp = 24.dp): Modifier =
+    this
+        .shadow(10.dp, RoundedCornerShape(cornerRadius), clip = false)
+        .clip(RoundedCornerShape(cornerRadius))
+        .background(NavySurface.copy(alpha = 0.85f))
+        .border(
+            1.5.dp,
+            Brush.linearGradient(
+                colorStops = arrayOf(
+                    0.05f to Color.White.copy(alpha = 0.8f),
+                    0.2f to Gold,
+                    0.5f to Gold.copy(alpha = 0.3f),
+                    0.8f to Gold,
+                    0.98f to Color.White.copy(alpha = 0.7f),
+                ),
+            ),
+            RoundedCornerShape(cornerRadius),
+        )
 
 private data class KutaCellOverlay(
     val partnerName: String,
@@ -334,21 +359,20 @@ fun ComparisonOverviewView(
                     Icon(
                         Icons.Default.Download,
                         contentDescription = null,
-                        tint = if (isGeneratingPDF) Gold.copy(alpha = 0.4f) else Gold,
-                        modifier = Modifier.size(20.dp),
+                        tint = if (isGeneratingPDF) CreamText.copy(alpha = 0.4f) else CreamText,
+                        modifier = Modifier.size(18.dp),
                     )
                     Text(
                         stringResource(R.string.save_to_files),
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium,
+                        fontSize = 14.sp,
                         color = if (isGeneratingPDF) CreamText.copy(alpha = 0.4f) else CreamText,
                         modifier = Modifier.weight(1f),
                     )
                     Icon(
-                        Icons.AutoMirrored.Filled.ArrowForward,
+                        Icons.Default.ChevronRight,
                         contentDescription = null,
-                        tint = CreamDim.copy(alpha = 0.4f),
-                        modifier = Modifier.size(16.dp),
+                        tint = CreamDim,
+                        modifier = Modifier.size(14.dp),
                     )
                 }
 
@@ -362,7 +386,10 @@ fun ComparisonOverviewView(
                     border = ButtonDefaults.outlinedButtonBorder.copy(
                         brush = Brush.horizontalGradient(listOf(Gold.copy(alpha = 0.3f), Gold.copy(alpha = 0.3f)))
                     ),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Gold,
+                        containerColor = Gold.copy(alpha = 0.1f),
+                    ),
                 ) {
                     Icon(Icons.Default.AddCircle, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
@@ -415,10 +442,16 @@ private fun ComparisonHeader(userName: String, onBack: () -> Unit, onShare: () -
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
+            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("👤 $userName", fontSize = 12.sp, color = CreamDim.copy(alpha = 0.6f))
+            Icon(
+                Icons.Default.Person,
+                contentDescription = null,
+                tint = CreamDim.copy(alpha = 0.6f),
+                modifier = Modifier.size(11.dp),
+            )
+            Text(userName, fontSize = 12.sp, color = CreamDim.copy(alpha = 0.6f))
         }
     }
 }
@@ -444,12 +477,13 @@ private fun CompactPartnerCard(
     Column(
         modifier = modifier
             .semantics { contentDescription = "partner_card_${result.partner.name.take(10)}" }
-            .clip(RoundedCornerShape(14.dp))
-            .background(NavySurface)
-            .border(
-                1.dp,
-                if (isBest) Gold.copy(alpha = 0.6f) else statusColor.copy(alpha = 0.3f),
-                RoundedCornerShape(14.dp),
+            .divineGlassCard(14.dp)
+            .then(
+                when {
+                    isBest -> Modifier.border(2.dp, Gold.copy(alpha = 0.6f), RoundedCornerShape(14.dp))
+                    !result.isRecommended -> Modifier.border(1.dp, ErrorColor.copy(alpha = 0.3f), RoundedCornerShape(14.dp))
+                    else -> Modifier
+                },
             )
             .clickable(onClick = onTap)
             .padding(12.dp),
@@ -458,7 +492,7 @@ private fun CompactPartnerCard(
     ) {
         Text(
             result.partner.name.uppercase(),
-            fontSize = 13.sp,
+            fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
             color = CreamText,
             maxLines = 1,
@@ -467,7 +501,7 @@ private fun CompactPartnerCard(
 
         Box(
             modifier = Modifier
-                .size(8.dp)
+                .size(10.dp)
                 .clip(CircleShape)
                 .background(statusColor),
         )
@@ -479,14 +513,14 @@ private fun CompactPartnerCard(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     "${result.adjustedScore}/36*",
-                    fontSize = 16.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = Gold,
                     textAlign = TextAlign.Center,
                 )
                 Text(
                     "${result.overallScore}/36 actual",
-                    fontSize = 10.sp,
+                    fontSize = 9.sp,
                     color = CreamDim.copy(alpha = 0.6f),
                     textAlign = TextAlign.Center,
                 )
@@ -495,14 +529,14 @@ private fun CompactPartnerCard(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     "${result.overallScore}/36 actual",
-                    fontSize = 14.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = Gold,
                     textAlign = TextAlign.Center,
                 )
                 Text(
                     noAdjustmentLabel,
-                    fontSize = 10.sp,
+                    fontSize = 14.sp,
                     color = CreamDim.copy(alpha = 0.6f),
                     textAlign = TextAlign.Center,
                 )
@@ -546,25 +580,21 @@ private fun RecommendationFooter(
     //   2) bestMatch present → 🏆 + final_recommendation_label +
     //      comparisonReasonText + (best.oneLiner ?: all_doshas_safe_fallback)
     //   3) bestMatch null but not all rejected → graceful fallback
+    // iOS parity (ComparisonOverviewView.swift:694-700): overlay stroke on top of the
+    // glass rim — warning tint when all rejected, gold otherwise, at 1.5dp.
     val borderColor = when {
         allRejected -> WarningColor.copy(alpha = 0.4f)
         bestMatch != null -> Gold.copy(alpha = 0.5f)
         else -> ErrorColor.copy(alpha = 0.3f)
     }
-    val bgColor = when {
-        allRejected -> WarningColor.copy(alpha = 0.06f)
-        bestMatch != null -> SuccessColor.copy(alpha = 0.08f)
-        else -> ErrorColor.copy(alpha = 0.05f)
-    }
 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(bgColor)
-            .border(1.dp, borderColor, RoundedCornerShape(14.dp))
+            .divineGlassCard(14.dp)
+            .border(1.5.dp, borderColor, RoundedCornerShape(14.dp))
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         when {
             allRejected -> {
@@ -661,23 +691,39 @@ private fun KootaBreakdownTable(
     val adjustedLabel = stringResource(R.string.adjusted_label)
     val detailedBreakdownTitle = stringResource(R.string.detailed_breakdown_title)
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(NavySurface)
-            .border(1.dp, Gold.copy(alpha = 0.15f), RoundedCornerShape(14.dp))
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text(
-            detailedBreakdownTitle,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Gold.copy(alpha = 0.7f),
-            letterSpacing = 1.sp,
-            modifier = Modifier.padding(bottom = 8.dp),
-        )
+        // iOS parity (ComparisonOverviewView.swift:350-351, 861-874): section divider
+        // with flanking gold rule lines instead of a bare label.
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Box(
+                modifier = Modifier
+                    .width(16.dp)
+                    .height(1.dp)
+                    .background(Gold.copy(alpha = 0.4f)),
+            )
+            Text(
+                detailedBreakdownTitle,
+                fontSize = 10.sp,
+                letterSpacing = 1.2.sp,
+                color = Gold.copy(alpha = 0.8f),
+            )
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(1.dp)
+                    .background(Gold.copy(alpha = 0.4f)),
+            )
+        }
 
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .divineGlassCard(14.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
         // Header row
         Row(modifier = Modifier.fillMaxWidth()) {
             Text(areaLabel, fontSize = 11.sp, color = CreamDim.copy(alpha = 0.5f), modifier = Modifier.weight(1f))
@@ -830,6 +876,7 @@ private fun KootaBreakdownTable(
                 )
             }
         }
+        }
     }
 }
 
@@ -848,7 +895,8 @@ private fun MangalRow(
     Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(
             manglikLabel,
-            fontSize = 12.sp,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
             color = CreamDim,
             modifier = Modifier.weight(1f),
         )

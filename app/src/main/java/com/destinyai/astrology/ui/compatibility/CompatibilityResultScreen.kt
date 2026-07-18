@@ -33,6 +33,8 @@ import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -50,6 +52,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -236,7 +239,7 @@ fun CompatibilityResultScreen(
                     girlName = result.girlName,
                     subtitle = resultScreenSubtitle(result.boyCity ?: "", result.girlCity ?: ""),
                     onBack = onBack,
-                    onNewAnalysis = if (isFromComparison) null else onNewAnalysis,
+                    onNewAnalysis = onNewAnalysis,
                     onHistoryTap = { showHistorySheet = true },
                     onChartTap = onCharts,
                     onShareTap = { shareBitmap() },
@@ -285,7 +288,7 @@ fun CompatibilityResultScreen(
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
 
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(12.dp))
 
                     val kalsarpaStatus = deriveKalsarpaStatus(result)
                     DoshaStatusRow(
@@ -298,7 +301,7 @@ fun CompatibilityResultScreen(
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
 
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(12.dp))
 
                     DoshaStatusRow(
                         title = "Additional Yogas",
@@ -694,6 +697,12 @@ fun RecommendationBanner(
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(14.dp),
+                ambientColor = borderColor,
+                spotColor = borderColor,
+            )
             .clip(RoundedCornerShape(14.dp))
             .border(1.dp, borderColor.copy(alpha = 0.3f), RoundedCornerShape(14.dp)),
     ) {
@@ -704,10 +713,11 @@ fun RecommendationBanner(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = if (result.isRecommended) "✓" else "⚠",
-                fontSize = 18.sp,
-                color = borderColor,
+            Icon(
+                imageVector = if (result.isRecommended) Icons.Filled.CheckCircle else Icons.Filled.Cancel,
+                contentDescription = null,
+                tint = borderColor,
+                modifier = Modifier.size(18.dp),
             )
             Spacer(Modifier.width(10.dp))
             Text(

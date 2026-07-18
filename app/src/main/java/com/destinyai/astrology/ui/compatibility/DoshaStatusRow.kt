@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -45,7 +47,7 @@ fun DoshaStatusRow(
             .background(Color.White.copy(alpha = 0.03f))
             .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(16.dp))
             .clickable(onClick = {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onClick()
             })
             .padding(horizontal = 16.dp, vertical = 14.dp),
@@ -105,7 +107,12 @@ fun DoshaStatusRow(
             }
         }
 
-        Text("›", color = CreamDim, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Icon(
+            imageVector = Icons.Filled.ChevronRight,
+            contentDescription = null,
+            tint = CreamDim,
+            modifier = Modifier.size(20.dp),
+        )
     }
 }
 

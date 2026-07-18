@@ -9,9 +9,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowCircleDown
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -140,7 +143,7 @@ private fun SafeScenarioView(boyName: String, girlName: String) {
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Shield,
+                    imageVector = Icons.Filled.VerifiedUser,
                     contentDescription = null,
                     tint = successColor,
                     modifier = Modifier.size(50.dp),
@@ -241,7 +244,7 @@ private fun CancelledScenarioView(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    imageVector = Icons.Filled.CheckCircle,
+                    imageVector = Icons.Filled.Verified,
                     contentDescription = null,
                     tint = cancelBlue,
                     modifier = Modifier.size(40.dp),
@@ -264,7 +267,12 @@ private fun CancelledScenarioView(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text("ℹ️", fontSize = 16.sp)
+                    Icon(
+                        imageVector = Icons.Filled.Info,
+                        contentDescription = null,
+                        tint = Gold,
+                        modifier = Modifier.size(16.dp),
+                    )
                     Text(stringResource(R.string.why_cancelled), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = CreamText)
                 }
                 Spacer(Modifier.height(10.dp))
@@ -415,16 +423,23 @@ private fun EffectiveScenarioView(
                 Spacer(Modifier.height(10.dp))
                 allRemedies.forEachIndexed { i, remedy ->
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.padding(bottom = 8.dp),
                     ) {
-                        Text(
-                            "${i + 1}.",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Gold,
-                            modifier = Modifier.width(20.dp),
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(CircleShape)
+                                .background(Gold),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                "${i + 1}",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = NavySurface,
+                            )
+                        }
                         Text(remedy, fontSize = 13.sp, color = CreamDim, lineHeight = 20.sp, modifier = Modifier.weight(1f))
                     }
                 }
@@ -522,7 +537,12 @@ private fun ExceptionPersonBlock(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(if (isCancelled) "✓" else "↓", fontSize = 13.sp, color = accentColor)
+            Icon(
+                imageVector = if (isCancelled) Icons.Filled.CheckCircle else Icons.Filled.ArrowCircleDown,
+                contentDescription = null,
+                tint = accentColor,
+                modifier = Modifier.size(14.dp),
+            )
             Text(
                 text = if (impactSummary != null) "$name: $impactSummary" else name,
                 fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
