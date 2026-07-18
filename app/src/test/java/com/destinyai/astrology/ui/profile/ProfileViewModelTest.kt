@@ -79,6 +79,7 @@ class ProfileViewModelTest {
             authRepository,
             billingManager,
             profileChangeBus,
+            mockk(relaxed = true), // profileContextManager
             mockk(relaxed = true), // quotaManager
             threadDao,
             messageDao,

@@ -9,6 +9,7 @@ import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.remote.DeleteAccountRequest
 import com.destinyai.astrology.data.repository.AuthRepository
 import com.destinyai.astrology.services.ProfileChangeBus
+import com.destinyai.astrology.ui.compatibility.firstNameFrom
 import com.destinyai.astrology.services.QuotaManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +24,10 @@ import javax.inject.Inject
 
 data class ProfileUiState(
     val userName: String = "",
+    // iOS parity (ProfileView binds profileContext.activeProfileName, D2/D3): the ACTIVE
+    // profile's name (partner when a partner chart is active, else self) — first-name only.
+    // Drives the "Viewing X's chart" row + Switch-Profile subtitle. Falls back to userName.
+    val activeProfileName: String = "",
     val email: String = "",
     val isPremium: Boolean = false,
     val planId: String = "",
@@ -56,6 +61,15 @@ data class ProfileUiState(
     // iOS parity (QuotaManager.subscriptionStatusDisplayText): per-status capsule label
     // (Active / Expired / Grace Period / Payment Failed / Subscription Revoked / Refunded).
     val subscriptionStatusText: String? = null,
+    // iOS parity (ProfileView.showPaidCard, :607-639): render the paid card — with a
+    // status-aware Renew/Manage/Contact CTA — for premium users AND lapsed-paid users
+    // (expired/canceled/revoked/refunded/billing_retry), instead of dropping a lapsed
+    // payer to the generic "Upgrade to Premium" card (M2).
+    val showPaidCard: Boolean = false,    // iOS parity (QuotaManager.subscriptionStatusDetailText / subscriptionStatusCTA, M1):
+    // per-status body copy + CTA label shown on the paid card. Null CTA = no button
+    // (active + auto-renew).
+    val subscriptionStatusDetailText: String? = null,
+    val subscriptionStatusCTA: String? = null,
     // History-cleared success alert: number of threads deleted. Null = alert hidden.
     // Mirrors iOS ProfileView.clearedThreadCount + showClearSuccessAlert (line 227-243).
     val clearedThreadCount: Int? = null,
@@ -105,6 +119,7 @@ class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val billingManager: BillingManager,
     private val profileChangeBus: ProfileChangeBus,
+    private val profileContextManager: com.destinyai.astrology.services.ProfileContextManager,
     // iOS parity: gate Profile's Plus-only rows (Switch Profile / Manage Charts / Alerts)
     // on the terminal-aware QuotaManager entitlement, not a raw plan_id string (backend
     // keeps plan_id="plus" after expiry, so a lapsed user would still see them entitled).
@@ -168,6 +183,9 @@ class ProfileViewModel @Inject constructor(
                 val displayName = resolveProfileDisplayName(newProfileId)
                 if (!displayName.isNullOrBlank()) {
                     _profileSwitchedToName.value = displayName
+                    // iOS parity (D2/D3): keep the "Viewing X's chart" row + Switch subtitle
+                    // in sync when the active profile changes without a full reload.
+                    _uiState.update { it.copy(activeProfileName = firstNameFrom(displayName)) }
                 }
             }
         }
@@ -199,6 +217,10 @@ class ProfileViewModel @Inject constructor(
                 // list reflect what Profile is about to render. force=true: user opened Profile.
                 runCatching { quotaManager.syncStatus(email, force = true) }
                 val name = prefs.getUserName() ?: status.name ?: ""
+                // iOS parity (D2/D3): active-profile first name (partner when a partner chart
+                // is active, else self). Best-effort — falls back to self name on failure.
+                val activeName = runCatching { firstNameFrom(profileContextManager.activeProfileName()) }
+                    .getOrDefault(firstNameFrom(name))
                 val historyEnabled = prefs.isHistoryEnabled()
                 val chartStyle = prefs.getChartStyle()
                 val languageCode = prefs.getSelectedLanguage()
@@ -242,9 +264,42 @@ class ProfileViewModel @Inject constructor(
                     "refunded" -> "Refunded"
                     else -> if (status.isPremium) "Active" else null
                 }
+                // iOS parity (ProfileView.showPaidCard :620-639): a lapsed-paid user still
+                // sees the paid card (with Renew/Manage CTA), not the generic upgrade card.
+                val lapsedStatuses = setOf("expired", "canceled", "cancelled", "revoked", "refunded", "billing_retry")
+                val showPaidCard = status.isPremium || (statusLower != null && statusLower in lapsedStatuses)
+                // iOS parity (QuotaManager.subscriptionStatusDetailText, :927-949): per-status body.
+                val statusDetail = when (statusLower) {
+                    "active" -> if (status.autoRenewStatus == false) {
+                        "Your plan is active and will end at the next renewal date."
+                    } else {
+                        "Your subscription is active and renews automatically."
+                    }
+                    "expired" -> "Your subscription has ended. Renew to keep premium features."
+                    "grace_period" -> "Google is retrying your payment. Update your payment method to keep your subscription active."
+                    "canceled", "cancelled" -> "Auto-renew is off. You'll keep premium features until the period ends."
+                    "billing_retry" -> "Your payment failed. Update your payment method in Google Play to restore access."
+                    "revoked" -> "Your subscription was revoked. This can happen after a refund or billing dispute. Subscribe again to restore premium features."
+                    "refunded" -> "Your purchase was refunded. Contact support if this was unexpected."
+                    else -> null
+                }
+                // iOS parity (QuotaManager.subscriptionStatusCTA, :954-971): CTA label per
+                // status; null = no button (active + auto-renew). Canonical English labels
+                // — the screen routes on these exact strings (like iOS handleStatusCTA).
+                val statusCta = when (statusLower) {
+                    "active" -> if (status.autoRenewStatus == false) "Re-enable auto-renew" else null
+                    "expired" -> "Renew subscription"
+                    "grace_period" -> "Update payment method"
+                    "canceled", "cancelled" -> "Manage subscription"
+                    "billing_retry" -> "Update payment method"
+                    "revoked" -> "Resubscribe"
+                    "refunded" -> "Contact support"
+                    else -> null
+                }
                 _uiState.update {
                     it.copy(
                         userName = name,
+                        activeProfileName = activeName,
                         email = status.userEmail,
                         isPremium = status.isPremium,
                         planId = status.planId ?: "",
@@ -265,6 +320,9 @@ class ProfileViewModel @Inject constructor(
                         chartStyle = chartStyle,
                         subscriptionExpiryDisplayText = expiryDisplay,
                         subscriptionStatusText = statusText,
+                        showPaidCard = showPaidCard,
+                        subscriptionStatusDetailText = statusDetail,
+                        subscriptionStatusCTA = statusCta,
                         languageCode = languageCode,
                         responseStyle = responseStyle,
                     )
@@ -316,7 +374,10 @@ class ProfileViewModel @Inject constructor(
             try {
                 api.updateAnalyticsConsent(AnalyticsConsentRequest(email = email, consent = enabled))
             } catch (_: Exception) {
-                // best-effort; state already flipped locally
+                // iOS parity (ProfileView.swift:1103-1108 reverts on catch, D4): the toggle
+                // reflects PERSISTED consent — if the server write fails, flip it back so it
+                // doesn't misrepresent the user's actual GDPR/analytics consent state.
+                _uiState.update { it.copy(analyticsConsent = !enabled) }
             }
         }
     }

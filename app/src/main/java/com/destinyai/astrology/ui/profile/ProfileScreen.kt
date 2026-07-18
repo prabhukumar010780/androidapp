@@ -489,8 +489,8 @@ fun ProfileScreen(
                                 )
                                 Spacer(Modifier.width(10.dp))
                                 Text(
-                                    text = if (state.userName.isNotEmpty()) {
-                                        stringResource(R.string.profile_viewing_birth_chart, state.userName)
+                                    text = if (state.activeProfileName.isNotEmpty()) {
+                                        stringResource(R.string.profile_viewing_birth_chart, state.activeProfileName)
                                     } else {
                                         stringResource(R.string.profile_viewing_birth_chart_default)
                                     },
@@ -532,9 +532,9 @@ fun ProfileScreen(
                             // / History / Preferences sections — so users see plan state
                             // at a glance without scrolling through preferences.
                             //
-                            // Free / guest users see the upgrade hero; paid users see the
-                            // crown card + Manage Subscription + View All Plans.
-                            if (!state.isPremium) {
+                            // Free / guest users see the upgrade hero; paid AND lapsed-paid
+                            // users see the crown card + status-aware CTA (iOS showPaidCard).
+                            if (!state.showPaidCard) {
                                 FreeUpgradeHeroCard(
                                     isGuest = state.isGuestUser,
                                     onClick = {
@@ -548,7 +548,7 @@ fun ProfileScreen(
                                 )
                             }
 
-                            if (state.isPremium && state.planId.isNotEmpty()) {
+                            if (state.showPaidCard) {
                                 PaidSubscriptionHeroCard(
                                     planDisplayName = if (state.planId == "plus") {
                                         stringResource(R.string.profile_plan_plus)
@@ -562,23 +562,61 @@ fun ProfileScreen(
                                         } ?: stringResource(R.string.profile_pending_upgrade_format, id)
                                     },
                                     statusText = state.subscriptionStatusText,
+                                    // iOS parity (M1): per-status body copy under the card.
+                                    detailText = state.subscriptionStatusDetailText,
                                 )
-                                OutlinedButton(
-                                    onClick = {
-                                        // iOS opens itms-apps://apps.apple.com/account/subscriptions.
-                                        // Mirror that by opening Google Play's general subs list.
-                                        val url = "https://play.google.com/store/account/subscriptions"
-                                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                                    },
-                                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                                    shape = RoundedCornerShape(14.dp),
-                                    border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(width = 1.dp),
-                                    colors = ButtonDefaults.outlinedButtonColors(
-                                        contentColor = Gold,
-                                        containerColor = NavySurface,
-                                    ),
-                                ) {
-                                    Text(stringResource(R.string.profile_manage_subscription), fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                                // iOS parity (M1): status-aware CTA. Route on the canonical
+                                // English label (like iOS handleStatusCTA) — Renew/Resubscribe
+                                // → in-app paywall; Contact support → mailto; everything else
+                                // (Manage / Update payment / Re-enable) → Google Play subs.
+                                val cta = state.subscriptionStatusCTA
+                                if (cta != null) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            when (cta) {
+                                                "Renew subscription", "Resubscribe" -> onNavigateToSubscription()
+                                                "Contact support" -> {
+                                                    val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:support@destinyaiastrology.com"))
+                                                    runCatching { context.startActivity(intent) }
+                                                }
+                                                else -> {
+                                                    val url = "https://play.google.com/store/account/subscriptions"
+                                                    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                                        shape = RoundedCornerShape(14.dp),
+                                        border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(width = 1.dp),
+                                        colors = ButtonDefaults.outlinedButtonColors(
+                                            contentColor = Gold,
+                                            containerColor = NavySurface,
+                                        ),
+                                    ) {
+                                        Text(cta, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                                    }
+                                }
+                                // Manage Subscription (Google Play) — shown for active payers;
+                                // suppressed for lapsed users whose primary CTA above already
+                                // routes them (avoids a redundant second "manage" button).
+                                if (state.isPremium) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            // iOS opens itms-apps://apps.apple.com/account/subscriptions.
+                                            // Mirror that by opening Google Play's general subs list.
+                                            val url = "https://play.google.com/store/account/subscriptions"
+                                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                        },
+                                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                                        shape = RoundedCornerShape(14.dp),
+                                        border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(width = 1.dp),
+                                        colors = ButtonDefaults.outlinedButtonColors(
+                                            contentColor = Gold,
+                                            containerColor = NavySurface,
+                                        ),
+                                    ) {
+                                        Text(stringResource(R.string.profile_manage_subscription), fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                                    }
                                 }
                                 TextButton(
                                     onClick = onNavigateToSubscription,
@@ -659,8 +697,8 @@ fun ProfileScreen(
                                     // Switch Profile SECOND — iOS ProfileView.swift:351-369
                                     PreferenceArrowRow(
                                         label = stringResource(R.string.profile_switch_profile),
-                                        subtitle = if (state.userName.isNotEmpty()) {
-                                            stringResource(R.string.viewing_as_label, state.userName)
+                                        subtitle = if (state.activeProfileName.isNotEmpty()) {
+                                            stringResource(R.string.viewing_as_label, state.activeProfileName)
                                         } else {
                                             null
                                         },
@@ -911,11 +949,17 @@ fun ProfileScreen(
                                 destructive = true,
                             )
 
-                            TextButton(
-                                onClick = { viewModel.showDeleteConfirmation() },
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Text(stringResource(R.string.profile_delete_account), color = Color(0xFFFF5252), fontWeight = FontWeight.SemiBold)
+                            // iOS parity (ProfileView.swift:110-113 — Delete Account is
+                            // registered-users-only): hide for guests. A guest has no fresh
+                            // session JWT, so confirmDeleteAccount would dead-end in the
+                            // session-expired path (D1).
+                            if (!state.isGuestUser) {
+                                TextButton(
+                                    onClick = { viewModel.showDeleteConfirmation() },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(stringResource(R.string.profile_delete_account), color = Color(0xFFFF5252), fontWeight = FontWeight.SemiBold)
+                                }
                             }
 
                             // App info footer — parity with iOS appInfoSection (ProfileView.swift:775-790):
@@ -1233,6 +1277,7 @@ private fun PaidSubscriptionHeroCard(
     expiryDisplayText: String?,
     pendingUpgradeText: String?,
     statusText: String? = null,
+    detailText: String? = null,
 ) {
     // Mirrors iOS paidSubscriptionCard hero (ProfileView.swift:639-693): gradient
     // hero box with crown icon, plan name, expiry/pending text and Active capsule.
@@ -1244,6 +1289,7 @@ private fun PaidSubscriptionHeroCard(
             .border(0.5.dp, Gold.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
             .padding(20.dp),
     ) {
+      Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
@@ -1299,6 +1345,16 @@ private fun PaidSubscriptionHeroCard(
                 )
             }
         }
+        // iOS parity (M1): per-status body copy under the hero row (renew/manage guidance).
+        if (!detailText.isNullOrEmpty()) {
+            Text(
+                text = detailText,
+                fontSize = 13.sp,
+                color = CreamDim,
+                modifier = Modifier.padding(top = 12.dp),
+            )
+        }
+      }
     }
 }
 
