@@ -399,6 +399,10 @@ private fun LanguageCard(
     val shape = RoundedCornerShape(cornerRadius)
     Box(
         modifier = Modifier
+            // Fill the grid cell so every card is the SAME width — otherwise the Box sizes
+            // to its text and short labels (हिन्दी, 中文) render narrower than long ones
+            // (Malayalam), looking uneven. Grid gives equal cell widths; card fills each.
+            .fillMaxWidth()
             // iOS parity (AppTheme cardHeight = 72 fixed; LanguageSelectionView.swift:357):
             // fixed short/wide tile. Was .aspectRatio(1f) → square tiles ~30% taller than
             // iOS, so 5 rows of 13 languages overflowed and the last tile clipped under the
