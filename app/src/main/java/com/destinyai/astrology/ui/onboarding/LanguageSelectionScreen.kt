@@ -156,6 +156,9 @@ fun LanguageSelectionScreen(
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(3),
                     modifier = Modifier.weight(1f),
+                    // Bottom padding so the last row always clears the pinned CTA on short
+                    // screens (mirrors iOS Spacer(minLength:8) between grid and button).
+                    contentPadding = PaddingValues(bottom = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
@@ -396,7 +399,11 @@ private fun LanguageCard(
     val shape = RoundedCornerShape(cornerRadius)
     Box(
         modifier = Modifier
-            .aspectRatio(1f)
+            // iOS parity (AppTheme cardHeight = 72 fixed; LanguageSelectionView.swift:357):
+            // fixed short/wide tile. Was .aspectRatio(1f) → square tiles ~30% taller than
+            // iOS, so 5 rows of 13 languages overflowed and the last tile clipped under the
+            // "Select a language" CTA. Grid sets the width; height is fixed.
+            .height(72.dp)
             .then(
                 if (isSelected) {
                     Modifier.shadow(

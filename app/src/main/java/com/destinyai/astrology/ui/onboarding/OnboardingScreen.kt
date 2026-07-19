@@ -8,6 +8,8 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
@@ -103,7 +105,7 @@ fun OnboardingScreen(
                     },
                     modifier = Modifier
                         .align(Alignment.TopStart)
-                        .padding(top = 8.dp, start = 16.dp)
+                        .padding(top = 16.dp, start = 24.dp)
                         .testTag("onboarding_skip")
                         .semantics { contentDescription = "onboarding_skip" },
                 ) {
@@ -120,7 +122,10 @@ fun OnboardingScreen(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Spacer(Modifier.height(120.dp))
+                // iOS parity (OnboardingView.swift:58-60 reserves ~50pt for the top
+                // Skip bar): was 120dp, pushing slide content ~70dp too low and
+                // contributing to overflow on short screens.
+                Spacer(Modifier.height(50.dp))
 
                 // RTL polish: explicitly force LTR pager direction for parity with iOS,
                 // which does not invert horizontal carousel scroll for RTL locales.
@@ -157,9 +162,9 @@ fun OnboardingScreen(
 
                 // Capsule page indicators
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 24.dp),
+                    modifier = Modifier.padding(bottom = 16.dp),
                 ) {
                     slides.indices.forEach { index ->
                         val width by animateDpAsState(
@@ -172,7 +177,7 @@ fun OnboardingScreen(
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(
                                     if (index == pagerState.currentPage) Gold
-                                    else NavyVariant,
+                                    else CreamDim.copy(alpha = 0.3f),
                                 ),
                         )
                     }
@@ -209,7 +214,8 @@ fun OnboardingScreen(
                     )
                 }
 
-                Spacer(Modifier.height(48.dp))
+                // iOS parity (OnboardingView.swift:124 bottom inset ~30): was 48dp.
+                Spacer(Modifier.height(30.dp))
             }
         }
     }
@@ -219,9 +225,15 @@ fun OnboardingScreen(
 private fun OnboardingPage(slide: OnboardingSlide, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
-            .fillMaxWidth()
+            .fillMaxSize()
+            // iOS parity (OnboardingSlideView.swift:36-72 distributes each slide with
+            // top/bottom spacers so content centers and compresses). Center vertically and
+            // allow scroll so the stats/features slides never render under the page dots or
+            // Continue button on short screens.
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
         // iOS parity (OnboardingSlideView.swift:120-153): icon routing helper —
         // drawable hero image with personalizationIconScale, or Material ImageVector
@@ -527,9 +539,11 @@ private fun SlideIcon(
         label = "slideIconBobY",
     )
 
-    val containerSize = 180.dp
+    // iOS parity (AppTheme.swift:381-383): hero container 120 / base image 88 (was 180/140,
+    // ~1.6× oversized — added ~60dp per slide, triggering overflow on small screens).
+    val containerSize = 120.dp
     val isPersonalization = slide.imageRes == R.drawable.onboarding_personalization
-    val baseSize = 140.dp
+    val baseSize = 88.dp
     val iconSize = if (isPersonalization) baseSize * PERSONALIZATION_ICON_SCALE else baseSize
 
     Box(

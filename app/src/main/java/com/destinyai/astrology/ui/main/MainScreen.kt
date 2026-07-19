@@ -439,11 +439,15 @@ fun MainScreen(
                     }
                     selectedTab = newTab
                 },
-                // 20dp horizontal / 10dp vertical outer padding mirrors iOS
-                // CustomTabBar's outer chrome (Issue P2-7).
+                // iOS parity (MainTabView:117-119: "No horizontal padding for full
+                // width" + .padding(.bottom, 0) docked to bottom; the bar itself is a
+                // full-width Rectangle with .frame(maxWidth: .infinity)). The bar's own
+                // inner Row already has .padding(horizontal = 30.dp) matching iOS's inner
+                // 30pt touch-target inset. Previously an outer 20dp/10dp padding made the
+                // bar a floating inset pill with edge gaps — remove it so it spans the full
+                // width and docks flush to the bottom like iOS.
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(horizontal = 20.dp, vertical = 10.dp),
+                    .align(Alignment.BottomCenter),
             )
         }
     }
@@ -497,15 +501,15 @@ private fun DestinyTabBar(
     modifier: Modifier = Modifier,
 ) {
     // iOS parity (MainTabView CustomTabBar:305-330): tab bar is a SOLID rectangle
-    // filled with mainBackground, with a gold gradient line at the top edge and a
-    // FAB contained INSIDE the bar (no overhang). The full 76dp height is opaque
-    // so content scrolling underneath doesn't bleed through gaps.
+    // filled with mainBackground that IGNORES the safe area (navy paints all the way
+    // to the physical bottom edge, behind the gesture-nav indicator), with a gold
+    // gradient line at the top edge and a FAB contained INSIDE the bar. Only the tab
+    // CONTENT respects the navigation-bar inset — the background does not — so there's
+    // no unpainted gap below the bar.
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(NavyDeep)
-            .windowInsetsPadding(WindowInsets.navigationBars)
-            .height(76.dp),
+            .background(NavyDeep),
     ) {
         // Gold top border (1dp gradient) — anchored to the very top of the bar.
         Box(
@@ -520,12 +524,16 @@ private fun DestinyTabBar(
                 ),
         )
 
-        // Row of 3 tab slots — fills the full 76dp height, anchored center.
+        // Row of 3 tab slots — fixed 76dp content height ABOVE the nav-bar inset, so the
+        // navy background below (the inset region) stays painted like iOS's ignoresSafeArea.
         // Center slot is a transparent Spacer placeholder so layout/weights stay
         // consistent; the visible FAB is rendered separately above this Row.
         Row(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .height(76.dp)
                 .padding(horizontal = 30.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -553,18 +561,25 @@ private fun DestinyTabBar(
             )
         }
 
-        // Center FAB — fully INSIDE the bar (no negative offset). zIndex keeps
-        // it visually layered above the row but every pixel of the bar remains
-        // opaque navy so content underneath never bleeds through.
-        AskFabButton(
-            isSelected = selectedTab == 1,
-            label = stringResource(R.string.ask),
-            onClick = { onTabSelected(1) },
+        // Center FAB — occupies the same 76dp content region as the tab Row (above the
+        // nav-bar inset) and is centered within it, matching iOS where the Ask button is an
+        // inline center item. Its own internal -12dp icon offset provides the slight raise.
+        Box(
             modifier = Modifier
-                .align(Alignment.Center)
-                .zIndex(1f)
-                .testTag("tab_chat"),
-        )
+                .align(Alignment.BottomCenter)
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .height(76.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            AskFabButton(
+                isSelected = selectedTab == 1,
+                label = stringResource(R.string.ask),
+                onClick = { onTabSelected(1) },
+                modifier = Modifier
+                    .zIndex(1f)
+                    .testTag("tab_chat"),
+            )
+        }
     }
 }
 
