@@ -149,6 +149,10 @@ fun AuthLogo(
                 .shadow(
                     elevation = 15.dp,
                     shape = CircleShape,
+                    // clip defaults to TRUE when elevation > 0 → the CircleShape was cropping
+                    // the logo's top-right mark. clip=false keeps the circular gold glow but
+                    // stops truncating the image (iOS draws the shadow without clipping).
+                    clip = false,
                     ambientColor = Gold.copy(alpha = 0.5f),
                     spotColor = Gold.copy(alpha = 0.5f),
                 )
