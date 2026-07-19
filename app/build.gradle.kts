@@ -78,7 +78,13 @@ android {
         targetSdk = 36
         // CI injects versionCode via -PversionCode=<GITHUB_RUN_NUMBER>
         versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 1
-        versionName = "1.0"
+        // Keep in lock-step with iOS MARKETING_VERSION (currently 1.10). The
+        // server-driven streaming gate (STREAMING_MIN_APP_VERSION, default
+        // 1.9.0) compares against this string: a stale "1.0" put Android below
+        // the floor, so shouldStreamFor() fell back to the non-streaming path —
+        // no typewriter effect and no follow-up suggestion chips (those are only
+        // emitted on the streaming path). Bumped to match iOS and clear the gate.
+        versionName = "1.10"
 
         testInstrumentationRunner = "com.destinyai.astrology.HiltTestRunner"
     }
