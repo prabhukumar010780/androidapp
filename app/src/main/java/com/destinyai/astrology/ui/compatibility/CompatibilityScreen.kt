@@ -414,7 +414,9 @@ fun CompatibilityScreen(
                             icon = Icons.Filled.Person,
                             label = if (state.partnerGender.isEmpty()) stringResource(com.destinyai.astrology.R.string.compat_gender) else state.partnerGender.replaceFirstChar { it.uppercase() },
                             isPlaceholder = state.partnerGender.isEmpty(),
-                            modifier = Modifier.width(130.dp),
+                            // Responsive: split the row proportionally instead of a fixed
+                            // 130dp, which squeezed the weighted sibling on narrow phones.
+                            modifier = Modifier.weight(1f),
                             onClick = { showGenderSheet = true },
                         )
                     }
@@ -438,7 +440,7 @@ fun CompatibilityScreen(
                                 else -> state.partnerTime
                             },
                             isPlaceholder = state.partnerTime.isEmpty() && !state.partnerTimeUnknown,
-                            modifier = Modifier.width(130.dp),
+                            modifier = Modifier.weight(1f),
                             onClick = {
                                 if (!state.partnerTimeUnknown) viewModel.setShowTimePicker(true)
                             },

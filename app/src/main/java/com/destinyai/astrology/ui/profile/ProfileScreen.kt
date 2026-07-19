@@ -358,7 +358,9 @@ fun ProfileScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .statusBarsPadding()
+                            // Scaffold innerPadding (applied at the Box above) already
+                            // insets the status bar; a second statusBarsPadding() here
+                            // double-counted it and pushed the header too far down.
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {

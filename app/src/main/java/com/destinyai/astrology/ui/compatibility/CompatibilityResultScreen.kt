@@ -338,6 +338,8 @@ fun CompatibilityResultScreen(
                 },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
+                    // Edge-to-edge: float above the gesture pill, not inside it.
+                    .navigationBarsPadding()
                     .padding(20.dp),
             )
 
@@ -567,7 +569,11 @@ private fun OrbitTooltipView(
 
     Column(
         modifier = Modifier
-            .width(300.dp)
+            // Responsive: shrink on narrow phones, cap at 300dp. Fixed .width(300.dp)
+            // risked clipping the border/text on ~320dp devices.
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .widthIn(max = 300.dp)
             .clip(RoundedCornerShape(18.dp))
             .background(NavySurface)
             .border(1.dp, statusColor.copy(alpha = 0.35f), RoundedCornerShape(18.dp))

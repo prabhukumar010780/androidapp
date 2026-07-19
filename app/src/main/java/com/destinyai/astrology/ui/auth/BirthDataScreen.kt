@@ -273,6 +273,11 @@ fun BirthDataScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
+                    // Edge-to-edge: lift content above the keyboard (imePadding) and
+                    // the gesture pill (navigationBarsPadding) so the Save button and
+                    // last fields stay reachable.
+                    .imePadding()
+                    .navigationBarsPadding()
                     .padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {

@@ -231,7 +231,9 @@ private fun OnboardingPage(slide: OnboardingSlide, modifier: Modifier = Modifier
             // allow scroll so the stats/features slides never render under the page dots or
             // Continue button on short screens.
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 32.dp),
+            // 24dp (was 32dp) so hero text/stats don't cramp on 320dp phones while
+            // staying comfortable on standard widths.
+            .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {

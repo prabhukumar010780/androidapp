@@ -628,7 +628,10 @@ private fun OrbitTooltipCard(
 
     Column(
         modifier = Modifier
-            .width(300.dp)
+            // Responsive: shrink on narrow phones, cap at 300dp.
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .widthIn(max = 300.dp)
             .clip(RoundedCornerShape(18.dp))
             .background(NavySurface)
             .border(1.dp, statusColor.copy(alpha = 0.35f), RoundedCornerShape(18.dp))

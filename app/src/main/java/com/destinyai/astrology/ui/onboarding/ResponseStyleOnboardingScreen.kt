@@ -157,6 +157,8 @@ fun ResponseStyleOnboardingScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
+                    // Edge-to-edge: keep the Continue/Save button clear of the gesture pill.
+                    .navigationBarsPadding()
                     .padding(horizontal = 20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {

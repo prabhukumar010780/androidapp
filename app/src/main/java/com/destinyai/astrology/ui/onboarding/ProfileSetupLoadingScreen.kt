@@ -207,7 +207,10 @@ fun ProfileSetupLoadingScreen(
             ) {
                 Box(
                     modifier = Modifier
-                        .width(220.dp)
+                        // Responsive: scale the progress bar with the device instead of
+                        // a fixed 220dp.
+                        .fillMaxWidth(0.6f)
+                        .widthIn(max = 260.dp)
                         .height(8.dp)
                         .clip(RoundedCornerShape(4.dp))
                         .background(Color.White.copy(alpha = 0.2f))

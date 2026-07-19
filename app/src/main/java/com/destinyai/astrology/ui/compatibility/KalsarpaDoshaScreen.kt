@@ -367,21 +367,27 @@ private fun DivineProtectionView(boyName: String, girlName: String) {
                 )
             }
             Spacer(Modifier.height(16.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                BenefitItem(icon = Icons.Filled.Favorite, text = stringResource(R.string.kalsarpa_emotional_harmony_short))
-                BenefitItem(icon = Icons.Filled.ArrowCircleUp, text = stringResource(R.string.kalsarpa_smooth_progression_short))
-                BenefitItem(icon = Icons.Filled.WbSunny, text = stringResource(R.string.kalsarpa_positive_energy_short))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                BenefitItem(icon = Icons.Filled.Favorite, text = stringResource(R.string.kalsarpa_emotional_harmony_short), modifier = Modifier.weight(1f))
+                BenefitItem(icon = Icons.Filled.ArrowCircleUp, text = stringResource(R.string.kalsarpa_smooth_progression_short), modifier = Modifier.weight(1f))
+                BenefitItem(icon = Icons.Filled.WbSunny, text = stringResource(R.string.kalsarpa_positive_energy_short), modifier = Modifier.weight(1f))
             }
         }
     }
 }
 
 @Composable
-private fun BenefitItem(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
+private fun BenefitItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    text: String,
+    modifier: Modifier = Modifier,
+) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.width(90.dp),
+        // Responsive: width is supplied by the caller (weight in the Row) instead
+        // of a fixed 90dp, which totaled ~310dp and overflowed on 320dp phones.
+        modifier = modifier,
     ) {
         Icon(icon, contentDescription = null, tint = Gold, modifier = Modifier.size(32.dp))
         Text(text, fontSize = 12.sp, color = CreamDim, textAlign = TextAlign.Center, lineHeight = 16.sp)

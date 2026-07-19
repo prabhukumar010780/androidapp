@@ -364,6 +364,8 @@ fun AuthScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                // Edge-to-edge: keep the footer (Terms/Privacy) above the gesture pill.
+                .navigationBarsPadding()
                 .padding(horizontal = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
