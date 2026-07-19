@@ -177,6 +177,52 @@ class SubscriptionViewModelTest {
         }
     }
 
+    // ── effectiveCurrentPlanId — expired/lapsed paid plan must be renewable ──────
+
+    @Test
+    fun `effectiveCurrentPlanId is empty for expired paid plan so user can renew`() = runTest {
+        // Expired Plus: backend keeps plan_id="plus" as history but is_premium=false.
+        // The paywall must treat this as NO current plan so the Plus card is
+        // selectable ("Choose Plus") instead of a disabled "Current Plan".
+        coEvery { api.getStatus("u@x.com") } returns StatusResponse(
+            userEmail = "u@x.com",
+            planId = "plus",
+            isGeneratedEmail = false,
+            isPremium = false,
+        )
+
+        vm.loadCurrentPlan()
+
+        vm.effectiveCurrentPlanId.test {
+            // may emit an initial null before loadCurrentPlan lands; await the resolved value
+            var v = awaitItem()
+            if (v == null) v = awaitItem()
+            assertEquals("", v)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `effectiveCurrentPlanId keeps plan for active paid subscriber`() = runTest {
+        // Active Plus: is_premium=true → plan stays current so the card shows
+        // "Current Plan" + disabled (unchanged behavior).
+        coEvery { api.getStatus("u@x.com") } returns StatusResponse(
+            userEmail = "u@x.com",
+            planId = "plus",
+            isGeneratedEmail = false,
+            isPremium = true,
+        )
+
+        vm.loadCurrentPlan()
+
+        vm.effectiveCurrentPlanId.test {
+            var v = awaitItem()
+            if (v.isNullOrBlank()) v = awaitItem()
+            assertEquals("plus", v)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     // ── Billing integration — purchase() ──────────────────────────────────────
 
     @Test

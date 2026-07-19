@@ -184,10 +184,21 @@ class SubscriptionViewModel @Inject constructor(
         val dbIsFree = dbPlan.isBlank() ||
             dbPlan.equals("free_guest", ignoreCase = true) ||
             dbPlan.equals("free_registered", ignoreCase = true)
-        if (dbIsFree && conflict == null && !applePlanId.isNullOrBlank()) {
-            applePlanId
-        } else {
-            dbPlan
+        // iOS parity (SubscriptionView.swift:299-330 isPaidPlanExpired → userCurrentPlanId=""):
+        // a paid plan_id whose entitlement has LAPSED is HISTORY, not the current plan. The
+        // backend deliberately preserves plan_id="plus" after expiry (so Profile can show
+        // "Plus (expired)"), but sets is_premium=false for every non-entitled state
+        // (expired / billing_retry / revoked / refunded / past-expiry canceled / on_hold).
+        // Keying off is_premium — the backend's canonical entitlement flag, populated fresh
+        // from the SAME /status call in loadCurrentPlan — makes the expired user's card match
+        // NO plan (return ""), so isCurrentPlan is false downstream: the "Current Plan" badge
+        // is hidden, the buy button is enabled, and the "Choose Plus" CTA appears so the user
+        // can RENEW. Active users (is_premium=true) are unaffected → badge + disabled preserved.
+        val dbIsLapsedPaid = !dbIsFree && !state.isPremium
+        when {
+            dbIsLapsedPaid -> ""
+            dbIsFree && conflict == null && !applePlanId.isNullOrBlank() -> applePlanId
+            else -> dbPlan
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
