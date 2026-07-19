@@ -41,10 +41,33 @@
 -keep class com.destinyai.astrology.data.remote.dto.** { *; }
 -keep class com.destinyai.astrology.data.remote.** { *; }
 -keep class com.destinyai.astrology.data.local.entity.** { *; }
+# Gson-deserialized API DTOs that (for historical reasons) live under ui.charts
+# and ui.home instead of data.remote — e.g. DashaResponse/DashaPeriod/
+# ChartApiResponse/PlanetApiData (ui.charts) and the Home rich-data models
+# (ui.home). Without these keeps, R8 in staging/release (minify+shrink) strips
+# or renames the Kotlin data-class constructor metadata, so Gson instantiates
+# them with nulls and getRichHomeData() throws → transit/dasha/yoga cards go
+# empty. Debug (non-minified) is unaffected, which is why this only reproduced
+# on the staging build. Keep the model classes fully.
+-keep class com.destinyai.astrology.ui.charts.** { *; }
+-keep class com.destinyai.astrology.ui.home.** { *; }
 
 # Honor @SerializedName on any class
 -keep @com.google.gson.annotations.SerializedName class *
 -keepclassmembers class * {
+    @com.google.gson.annotations.SerializedName <fields>;
+}
+
+# Robust catch-all: keep ANY class that HAS an @SerializedName member, plus its
+# members. The rules above only keep classes *annotated* with @SerializedName
+# (none are — the annotation sits on fields) or fields *within already-kept*
+# classes. Neither keeps a Gson DTO whose only use is reflective — so in R8 full
+# mode (AGP 8+, default) such a class is judged "unused" and stripped whole,
+# constructor included. This is exactly what wiped the ui.charts astrodata DTOs
+# (DashaResponse/DashaPeriod/ChartApiResponse/PlanetApiData) → transit/dasha/yoga
+# cards went blank on staging/release only. This rule covers every Gson data
+# class regardless of package (incl. services.ProfileContextManager.LegacyBirthData).
+-keepclasseswithmembers class * {
     @com.google.gson.annotations.SerializedName <fields>;
 }
 
