@@ -9,6 +9,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
@@ -133,19 +134,24 @@ fun AuthLogo(
         }
 
         // Layer 4 — the logo image with gold drop shadow.
+        // iOS parity (AuthView.swift:158-163): .resizable().scaledToFit().frame(logoSize)
+        // .offset(x: logoOpticalOffset). iOS does NOT clip the logo to a circle — clipping
+        // a square logo asset crops the 'D' and makes it look off-center / not fitting the
+        // ring. Keep the circular SHADOW, drop the clip, and apply the 6dp optical X-offset
+        // that centers the 'D' shape within the ring.
         Image(
             painter = painterResource(R.drawable.logo_gold),
             contentDescription = "Destiny Logo",
             contentScale = ContentScale.Fit,
             modifier = Modifier
                 .size(AuthDimens.logoSize)
+                .offset(x = AuthDimens.logoOpticalOffsetX, y = AuthDimens.logoOpticalOffsetY)
                 .shadow(
                     elevation = 15.dp,
                     shape = CircleShape,
                     ambientColor = Gold.copy(alpha = 0.5f),
                     spotColor = Gold.copy(alpha = 0.5f),
                 )
-                .clip(CircleShape)
                 .semantics { contentDescription = "Destiny Logo" },
         )
     }

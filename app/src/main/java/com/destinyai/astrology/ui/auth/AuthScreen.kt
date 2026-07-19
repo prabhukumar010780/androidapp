@@ -436,22 +436,10 @@ fun AuthScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            // iOS parity gap (AuthView.swift:188-196): iOS shows a primary gold
-            // "Continue with Apple" button via ASAuthorizationController. Apple's
-            // Sign-In flow has no native Android UI and we no longer launch the
-            // OAuth web fallback, so we surface a visible inline notice instead
-            // of silently omitting the option. Users who originally signed up
-            // with Apple need to know they should use the iOS app.
-            Text(
-                text = stringResource(R.string.apple_unavailable_inline_notice),
-                style = MaterialTheme.typography.bodySmall,
-                color = TextTertiary,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp)
-                    .testTag("auth_apple_unavailable_notice"),
-            )
+            // NOTE: the "Apple sign-in is not available on Android…" inline notice was
+            // removed per design — Android is Google + Guest only, and surfacing Apple
+            // (an iOS-only option) just adds noise. Apple users are handled server-side
+            // if they ever sign in via Google with the same email.
 
             // iOS parity (AuthView.swift:222-229): the auth error is rendered
             // BELOW the auth buttons (not above), as small caption-sized text
