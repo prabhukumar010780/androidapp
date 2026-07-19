@@ -371,12 +371,18 @@ fun HomeScreen(
                     .fillMaxSize()
                     .alpha(contentOpacity),
             ) {
+                // iOS parity + bug fix: the overlaid DestinyTabBar is 76dp of content ABOVE
+                // the navigation-bar inset (gesture ~24dp / 3-button ~48dp). A static 90dp
+                // reserve was shorter than 76 + inset, so the last card scrolled behind the
+                // bar. Reserve the true bar height + dynamic nav inset + a 16dp margin.
+                val tabBarReserve = 76.dp +
+                    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
                 LazyColumn(
                     state = listState,
                     modifier = Modifier
                         .fillMaxSize()
                         .testTag("home_scroll_view"),
-                    contentPadding = PaddingValues(bottom = 90.dp),
+                    contentPadding = PaddingValues(bottom = tabBarReserve),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                 // Offline banner — first list item so it scrolls with content
@@ -1525,14 +1531,14 @@ private fun YogaFilterChip(
         animationSpec = spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessMedium),
         label = "yoga_chip_press_alpha",
     )
-    // Issue P2-9: spring animation on selection-driven background/border alpha.
+    // iOS parity (filterButton): selected fill gold 0.1 (was 0.22); unselected transparent.
     val bgAlpha by animateFloatAsState(
-        targetValue = if (selected) 0.22f else 0f,
+        targetValue = if (selected) 0.1f else 0f,
         animationSpec = spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessMedium),
         label = "yoga_chip_bg_alpha",
     )
     val borderAlpha by animateFloatAsState(
-        targetValue = if (selected) 1f else 0.25f,
+        targetValue = if (selected) 0.5f else 0.2f,
         animationSpec = spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessMedium),
         label = "yoga_chip_border_alpha",
     )
@@ -1543,14 +1549,17 @@ private fun YogaFilterChip(
                 scaleY = pressScale
                 alpha = pressAlpha
             }
-            .clip(RoundedCornerShape(14.dp))
+            // iOS parity: Capsule chip; unselected = transparent fill + gray border;
+            // selected = gold 0.1 fill + gold 0.5 border (was RoundedCornerShape(14) +
+            // opaque NavySurface unselected + gold border).
+            .clip(CircleShape)
             .background(
-                if (selected) Gold.copy(alpha = bgAlpha) else NavySurface,
+                if (selected) Gold.copy(alpha = bgAlpha) else Color.Transparent,
             )
             .border(
-                0.5.dp,
-                Gold.copy(alpha = borderAlpha),
-                RoundedCornerShape(14.dp),
+                1.dp,
+                if (selected) Gold.copy(alpha = borderAlpha) else CreamDim.copy(alpha = 0.2f),
+                CircleShape,
             )
             .clickable(
                 interactionSource = interactionSource,
@@ -1564,12 +1573,12 @@ private fun YogaFilterChip(
             .testTag("home_yoga_filter_${filter.name.lowercase()}")
             // Issue P2-10: .isSelected accessibility trait parity with iOS.
             .semantics { this.selected = selected }
-            .padding(horizontal = 10.dp, vertical = 5.dp),
+            .padding(horizontal = 10.dp, vertical = 6.dp),
     ) {
         Text(
             text = stringResource(labelRes),
             fontSize = 11.sp,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             color = if (selected) Gold else CreamDim,
         )
     }
@@ -1591,120 +1600,150 @@ private fun PremiumYogaCard(
         "cancelled", "canceled", "c" -> stringResource(R.string.yoga_status_cancelled)
         else -> if (yoga.isActive) stringResource(R.string.yoga_status_active) else stringResource(R.string.yoga_status_inactive)
     }
+    // iOS parity (PremiumYogaCard.baseColor): green for yogas, red for doshas — drives
+    // the icon circle, divider, border, and the ACTIVE badge color.
+    val baseColor = if (yoga.isDosha) Color(0xFFFC8181) else Color(0xFF48BB78)
+    // Badge color: Active = baseColor (green/red), Reduced = orange, else = gray.
     val statusColor = when (yoga.status.lowercase()) {
-        "active", "a" -> Color(0xFF48BB78)
+        "active", "a" -> baseColor
         "reduced", "r" -> Color(0xFFED8936)
-        "cancelled", "canceled", "c" -> Color(0xFFFC8181)
-        else -> Gold.copy(alpha = 0.7f)
+        "cancelled", "canceled", "c" -> Color(0xFFB0B0C0)
+        else -> if (yoga.isActive) baseColor else Color(0xFFB0B0C0)
     }
     Box(
         modifier = Modifier
-            .width(170.dp)
-            .heightIn(min = 170.dp)
-            .clip(RoundedCornerShape(14.dp))
+            // iOS parity: fixed 170×170 so every card is identical and detail rows align
+            // across the row (was heightIn(min) → variable height broke cross-card alignment).
+            .size(170.dp)
+            .clip(RoundedCornerShape(16.dp))
             .background(NavySurface)
-            .border(1.dp, Gold.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
+            .border(
+                width = if (yoga.isDosha) 1.5.dp else 2.dp,
+                color = if (yoga.isDosha) baseColor.copy(alpha = 0.4f) else Gold.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(16.dp),
+            )
             .clickable(onClick = onClick)
             .testTag("yoga_card_$index")
-            .padding(12.dp),
+            .padding(14.dp),
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Header: circle-wrapped icon (left) + status badge pushed FAR RIGHT.
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = if (yoga.isDosha) Icons.Filled.Warning else Icons.Filled.Star,
-                    contentDescription = null,
-                    tint = if (yoga.isDosha) Color(0xFFFC8181) else Gold,
-                    modifier = Modifier.size(16.dp),
-                )
-                Spacer(Modifier.width(6.dp))
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(statusColor.copy(alpha = 0.15f))
-                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(baseColor.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Text(
-                        text = statusLabel,
-                        fontSize = 9.sp,
-                        color = statusColor,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-            }
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = yoga.name,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color = CreamText,
-                fontFamily = CanelaFontFamily,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (yoga.planets.isNotBlank()) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = stringResource(R.string.home_yoga_planets_label, yoga.planets),
-                    fontSize = 10.sp,
-                    color = CreamDim,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            if (yoga.houses.isNotBlank()) {
-                Spacer(Modifier.height(2.dp))
-                // Issue 64: prefix 'H' to each house token on the front face,
-                // matching iOS PremiumYogaCard behaviour.
-                val housesDisplay = yoga.houses
-                    .split(",")
-                    .map { it.trim() }
-                    .filter { it.isNotEmpty() }
-                    .joinToString(", ") { "H$it" }
-                Text(
-                    text = stringResource(R.string.home_yoga_houses_label, housesDisplay),
-                    fontSize = 10.sp,
-                    color = CreamDim,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(0.5.dp)
-                    .background(Gold.copy(alpha = 0.2f)),
-            )
-            Spacer(Modifier.height(6.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (yoga.strength > 0) {
-                    Text(
-                        text = stringResource(R.string.home_yoga_strength_label, yoga.strength),
-                        fontSize = 10.sp,
-                        color = Gold,
-                        fontWeight = FontWeight.SemiBold,
+                    Icon(
+                        imageVector = if (yoga.isDosha) Icons.Filled.Warning else Icons.Filled.Star,
+                        contentDescription = null,
+                        tint = baseColor,
+                        modifier = Modifier.size(14.dp),
                     )
                 }
                 Spacer(Modifier.weight(1f))
-                // Issue 41/65: gold-gradient filled circle arrow CTA matching iOS.
                 Box(
                     modifier = Modifier
-                        .size(20.dp)
                         .clip(CircleShape)
-                        .background(Brush.linearGradient(listOf(GoldLight, Gold))),
-                    contentAlignment = Alignment.Center,
+                        .background(statusColor.copy(alpha = 0.1f))
+                        .border(1.dp, statusColor.copy(alpha = 0.4f), CircleShape)
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
                 ) {
                     Text(
-                        text = "→",
-                        fontSize = 12.sp,
+                        text = statusLabel,
+                        fontSize = 10.sp,
+                        color = statusColor,
                         fontWeight = FontWeight.Bold,
-                        color = Color(red = 0.15f, green = 0.15f, blue = 0.2f),
                     )
                 }
             }
+            Spacer(Modifier.height(8.dp))
+            // Yoga name — reserved 2-line height so dividers align across cards (iOS frame(36)).
+            Text(
+                text = yoga.name,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                fontFamily = CanelaFontFamily,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = 18.sp,
+                modifier = Modifier.height(36.dp),
+            )
+            Spacer(Modifier.height(8.dp))
+            // Divider directly below the name (iOS order), gradient from baseColor → clear.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(Brush.horizontalGradient(listOf(baseColor.copy(alpha = 0.5f), Color.Transparent))),
+            )
+            Spacer(Modifier.height(8.dp))
+            // Details: Planets (left) + Houses (right) as two columns, uppercase micro-labels.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.planets_label),
+                        fontSize = 9.sp,
+                        color = CreamDim.copy(alpha = 0.7f),
+                        letterSpacing = 1.sp,
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = yoga.planets.ifBlank { stringResource(R.string.yoga_label_unknown) },
+                        fontSize = 11.sp,
+                        color = CreamDim,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                if (yoga.houses.isNotBlank()) {
+                    Spacer(Modifier.width(8.dp))
+                    val housesDisplay = yoga.houses
+                        .split(",")
+                        .map { it.trim() }
+                        .filter { it.isNotEmpty() }
+                        .joinToString(", ") { "H$it" }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = stringResource(R.string.houses_label),
+                            fontSize = 9.sp,
+                            color = CreamDim.copy(alpha = 0.7f),
+                            letterSpacing = 1.sp,
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = housesDisplay,
+                            fontSize = 11.sp,
+                            color = CreamDim,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+        }
+        // Bottom-right arrow CTA overlay (iOS: absolute corner, independent of content).
+        // No "Strength" on the front face — iOS keeps strength in the detail popup only.
+        Box(
+            modifier = Modifier
+                .size(20.dp)
+                .align(Alignment.BottomEnd)
+                .clip(CircleShape)
+                .background(Brush.linearGradient(listOf(GoldLight, Gold))),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "→",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(red = 0.15f, green = 0.15f, blue = 0.2f),
+            )
         }
     }
 }
