@@ -55,6 +55,18 @@ data class AuthUiState(
 class ConflictException(val code: String) : Exception(code)
 class AccountDeletedException : Exception("account_deleted")
 
+/**
+ * The federated sign-in succeeded at /subscription/register but the W7 session
+ * JWT could NOT be minted (/auth/exchange skipped for a missing id_token, or it
+ * failed/was rejected). Proceeding would leave the app session-less: the OkHttp
+ * interceptor falls back to the bundled API key, and every owner-scoped call
+ * (profile, status, chat-history) 401s — which previously surfaced as an
+ * existing user being wrongly shown the birth-data onboarding form. We fail the
+ * sign-in instead so the user can retry rather than land in a broken state.
+ */
+class SessionMintFailedException(cause: Throwable? = null) :
+    Exception("session_mint_failed", cause)
+
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val repository: AuthRepository,
@@ -82,6 +94,9 @@ class AuthViewModel @Inject constructor(
         when (e) {
             is ConflictException, is AccountDeletedException -> e.message
                 ?: context.getString(R.string.auth_generic_sign_in_failed)
+            // Session mint failed (no id_token / rejected exchange) — retryable.
+            is SessionMintFailedException ->
+                context.getString(R.string.google_sign_in_failed_generic)
             else -> context.getString(R.string.auth_generic_sign_in_failed)
         }
 
@@ -435,7 +450,14 @@ class AuthViewModel @Inject constructor(
         }
         val profile = try {
             repository.fetchProfile(email)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            // fetchProfile rethrows on 401/403 (auth failure) — an inconclusive
+            // read, NOT proof the user has no birth data. With the session mint
+            // now enforced at sign-in this should not occur, but if it does we
+            // must not force onboarding on an unverified auth error: fall back to
+            // whatever local birth pref exists (the line below) rather than
+            // treating a 401 as "no server profile".
+            Log.w("AuthViewModel", "profile fetch inconclusive (auth/transient): ${e.message}")
             null
         }
         val serverBirth = profile?.birthProfile

@@ -11,6 +11,7 @@ import com.destinyai.astrology.domain.model.User
 import com.destinyai.astrology.services.QuotaManager
 import com.destinyai.astrology.ui.auth.AccountDeletedException
 import com.destinyai.astrology.ui.auth.ConflictException
+import com.destinyai.astrology.ui.auth.SessionMintFailedException
 import io.mockk.*
 import javax.inject.Provider
 import kotlinx.coroutines.test.runTest
@@ -216,6 +217,59 @@ class AuthRepositoryImplTest {
             idToken = "bad-token",
         )
         assertTrue(result.isFailure)
+    }
+
+    @Test
+    fun `signInWithGoogle fails when no idToken to mint session`() = runTest {
+        // register succeeds, but a missing id_token means the W7 session JWT
+        // cannot be minted → we must NOT proceed session-less (that produced the
+        // 401 cascade → existing user wrongly shown the birth-data form).
+        coEvery { api.signInWithGoogle(any()) } returns RegisterResponse(
+            userEmail = "nosession@user.com",
+            planId = "free_registered",
+            isGeneratedEmail = false,
+            isPremium = false,
+            accessState = "granted",
+            dailyQuota = 5,
+            dailyUsed = 0,
+        )
+
+        val result = repo.signInWithGoogle(
+            email = "nosession@user.com",
+            googleId = "g-2",
+            name = null,
+            idToken = null,
+        )
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is SessionMintFailedException)
+        // Exchange must NOT have been attempted with a null token.
+        coVerify(exactly = 0) { exchangeClient.signInWithGoogle(any(), any(), any()) }
+    }
+
+    @Test
+    fun `signInWithGoogle fails when session mint throws`() = runTest {
+        coEvery { api.signInWithGoogle(any()) } returns RegisterResponse(
+            userEmail = "mintfail@user.com",
+            planId = "free_registered",
+            isGeneratedEmail = false,
+            isPremium = false,
+            accessState = "granted",
+            dailyQuota = 5,
+            dailyUsed = 0,
+        )
+        coEvery { exchangeClient.signInWithGoogle(any(), any(), any()) } throws
+            RuntimeException("exchange 401")
+
+        val result = repo.signInWithGoogle(
+            email = "mintfail@user.com",
+            googleId = "g-3",
+            name = null,
+            idToken = "good-token",
+        )
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is SessionMintFailedException)
     }
 
     // ── upgradeGuest ──────────────────────────────────────────────────────────

@@ -8,6 +8,7 @@ import com.destinyai.astrology.domain.model.User
 import com.destinyai.astrology.services.QuotaManager
 import com.destinyai.astrology.ui.auth.AccountDeletedException
 import com.destinyai.astrology.ui.auth.ConflictException
+import com.destinyai.astrology.ui.auth.SessionMintFailedException
 import retrofit2.HttpException
 import java.util.UUID
 import javax.inject.Inject
@@ -122,10 +123,23 @@ class AuthRepositoryImpl @Inject constructor(
         // JWT must survive so a guest→registered upgrade can authenticate /subscription/upgrade
         // as the guest (M2). The guest entry is cleared in upgradeGuest only after a 200.
         sessionStore.clearActivePointer()
-        if (!idToken.isNullOrBlank()) {
-            runCatching { exchangeClient.signInWithGoogle(idToken, nonce = null) }
-                .onFailure { android.util.Log.w("AuthRepository", "google session mint failed: ${it.message}") }
+        // W7 SECURITY (SESSION-REQUIRED): mint the session JWT and FAIL the
+        // sign-in if it can't be obtained. A registered user with no active
+        // session is broken — the interceptor falls back to the bundled API
+        // key, and every owner-scoped call (profile/status/chat-history) 401s.
+        // That 401 cascade previously misfired as "existing user shown the
+        // birth-data form". We no longer proceed session-less: no id_token, or
+        // a failed/rejected /auth/exchange, throws SessionMintFailedException so
+        // the ViewModel surfaces a retryable error instead of a broken Home.
+        if (idToken.isNullOrBlank()) {
+            android.util.Log.w("AuthRepository", "google sign-in: missing id_token, cannot mint session")
+            throw SessionMintFailedException()
         }
+        runCatching { exchangeClient.signInWithGoogle(idToken, nonce = null) }
+            .onFailure {
+                android.util.Log.w("AuthRepository", "google session mint failed: ${it.message}", it)
+                throw SessionMintFailedException(it)
+            }
         resp.toUser()
     }
 
@@ -408,8 +422,15 @@ class AuthRepositoryImpl @Inject constructor(
         resp.accessState?.let { prefs.setAccessState(it) }
         resp
     } catch (e: HttpException) {
-        // 404 = no profile saved yet for this user. Other HTTP errors are
-        // treated as transient — never block sign-in on a profile read.
+        // 401/403 = the session bearer was missing/invalid — the read is an AUTH
+        // failure, NOT "this user has no profile". Backend get_profile only 404s
+        // when the user ROW is absent; a just-registered user always has a row,
+        // so a 401 here can never mean "new user". Rethrow so the caller does not
+        // misread an auth failure as "no birth data" and force onboarding on an
+        // existing user (that was the birth-data-form-on-login bug).
+        if (e.code() == 401 || e.code() == 403) throw e
+        // 404 = genuinely no profile saved yet. Other HTTP errors are treated as
+        // transient — never block sign-in on a profile read.
         null
     } catch (e: Exception) {
         android.util.Log.w("AuthRepository", "fetchProfile failed: ${e.message}", e)
