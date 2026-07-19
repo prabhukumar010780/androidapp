@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
@@ -39,6 +40,16 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Opt into edge-to-edge BEFORE super/setContent. On targetSdk 35+ Android
+        // forces edge-to-edge regardless, but calling enableEdgeToEdge() installs
+        // the proper WindowInsets dispatch so Compose's WindowInsets.navigationBars /
+        // statusBars / ime resolve correctly. Without it, on a real device with
+        // gesture navigation the bottom tab bar's windowInsetsPadding(navigationBars)
+        // could resolve to 0 and the bar rendered behind/under the gesture pill →
+        // "tab bar missing on device" (emulator dispatched insets differently, so it
+        // showed there). Also required for IME (keyboard) insets to be reported so
+        // adjustResize + imePadding behave.
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         // Debug-only: capture E2E partner pre-fill extras before any Compose
         // graph runs so CompatibilityViewModel.loadUserData() can consume them

@@ -17,8 +17,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -165,7 +169,24 @@ fun AppNav() {
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    // Global tap-to-dismiss keyboard (iOS parity — tapping outside a text field
+    // resigns the responder). Several screens (birth details, partner picker,
+    // history/search sheets, alert editor) have text fields but no per-field
+    // dismiss, so the IME could stay up with no way down. A root-level tap
+    // handler in the Initial pass clears focus + hides the keyboard on any tap
+    // that children don't consume, without stealing taps from buttons/fields.
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = {
+                    focusManager.clearFocus(force = true)
+                    keyboardController?.hide()
+                })
+            },
+    ) {
         // key(localeVersion) — when LocaleManager.applyLocale() bumps the counter,
         // the entire NavHost is recomposed so every screen picks up the new
         // string resources. Mirrors iOS AppRootView's .id(languageRefreshID).

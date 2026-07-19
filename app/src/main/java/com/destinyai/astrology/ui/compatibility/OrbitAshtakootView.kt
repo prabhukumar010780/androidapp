@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
@@ -155,10 +156,9 @@ fun OrbitAshtakootView(
     modifier: Modifier = Modifier,
     centerContent: (@Composable () -> Unit)? = null,
 ) {
-    val orbitRadius = 155.dp
+    val maxOrbitRadius = 155.dp
     val bubbleSize = 64.dp
     val density = LocalDensity.current
-    val orbitRadiusPx = with(density) { orbitRadius.toPx() }
 
     var hintVisible by remember { mutableStateOf(true) }
 
@@ -187,13 +187,26 @@ fun OrbitAshtakootView(
         label = "center_alpha",
     ) { isSelected -> if (isSelected) 0.3f else 1.0f }
 
-    Box(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .height((orbitRadius * 2) + bubbleSize + 24.dp)
             .semantics { contentDescription = "orbit_ashtakoot_view" },
         contentAlignment = Alignment.Center,
     ) {
+        // Responsive orbit: derive the radius from the available width so the
+        // outermost bubbles (0°/180°) never clip off-screen on narrow phones.
+        // Needed diameter = 2*(radius + bubbleSize/2); solve for radius from
+        // maxWidth, then cap at 155dp so tablets don't over-expand. Fixed
+        // orbitRadius=155.dp needed ~374dp width and clipped on 320–360dp devices.
+        val orbitRadius = ((maxWidth - bubbleSize) / 2 - 8.dp).coerceIn(96.dp, maxOrbitRadius)
+        val orbitRadiusPx = with(density) { orbitRadius.toPx() }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height((orbitRadius * 2) + bubbleSize + 24.dp)
+                .clipToBounds(),
+            contentAlignment = Alignment.Center,
+        ) {
         // Tap-outside-to-dismiss surface — mirrors iOS .contentShape(Rectangle())
         // + .onTapGesture which clears selectedKuta when tapping empty orbit area.
         Box(
@@ -264,6 +277,7 @@ fun OrbitAshtakootView(
                 },
                 modifier = Modifier.offset(x = xOffset, y = yOffset),
             )
+        }
         }
     }
 }

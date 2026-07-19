@@ -304,6 +304,10 @@ fun CompatibilityScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
+                    // Match tab hides the global tab bar, so this scroll content is the
+                    // bottom-most surface. Under edge-to-edge, add the gesture-nav inset
+                    // so the trailing Analyze CTA is not hidden behind the gesture pill.
+                    .navigationBarsPadding()
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {

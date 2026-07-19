@@ -438,7 +438,15 @@ private fun UnifiedHistoryList(
 
     val flatThreads: List<ChatThread> = state.filteredThreads
     LazyColumn(
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            end = 16.dp,
+            top = 8.dp,
+            // Edge-to-edge: add the gesture-nav inset so the last history row
+            // isn't obscured behind the navigation bar.
+            bottom = 8.dp + WindowInsets.navigationBars.asPaddingValues()
+                .calculateBottomPadding(),
+        ),
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.testTag("history_unified_list"),
     ) {

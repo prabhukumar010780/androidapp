@@ -1392,6 +1392,13 @@ private fun ChatInputBar(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color(0xFF0B0F19))
+            // Edge-to-edge (enableEdgeToEdge in MainActivity): the chat tab hides the
+            // global tab bar, so this input bar is the bottom-most content and must
+            // supply its own insets. imePadding() lifts it above the soft keyboard;
+            // navigationBarsPadding() keeps it above the gesture pill when the
+            // keyboard is down. Without these it clipped behind the gesture nav.
+            .imePadding()
+            .navigationBarsPadding()
             .padding(horizontal = 12.dp, vertical = 10.dp)
             .padding(bottom = 4.dp),
         verticalAlignment = Alignment.Bottom,

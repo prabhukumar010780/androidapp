@@ -1059,7 +1059,12 @@ private fun CancellationOverlay(
     ) {
         Column(
             modifier = Modifier
-                .width(320.dp)
+                // Responsive: fill available width with a comfortable side margin and
+                // cap at 340dp so it stays readable on tablets. Fixed .width(320.dp)
+                // overflowed / clipped the gold border on 320–360dp phones.
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .widthIn(max = 340.dp)
                 .clickable(enabled = false, onClick = {})
                 .clip(RoundedCornerShape(20.dp))
                 .drawBehind {

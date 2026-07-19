@@ -266,7 +266,15 @@ fun SubscriptionScreen(
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     LazyColumn(
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                    contentPadding = PaddingValues(
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = 4.dp,
+                        // Edge-to-edge: reserve the gesture-nav inset so the footer
+                        // (Terms / Privacy / Restore) isn't hidden behind the nav bar.
+                        bottom = 4.dp + WindowInsets.navigationBars.asPaddingValues()
+                            .calculateBottomPadding(),
+                    ),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     item {
