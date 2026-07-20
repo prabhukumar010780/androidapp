@@ -53,6 +53,7 @@ fun PartnerPickerSheet(
     onAddNew: (() -> Unit)? = null,
 ) {
     val savedPartners by viewModel.savedPartners.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isSavedPartnersLoading.collectAsStateWithLifecycle()
     var searchText by remember { mutableStateOf("") }
     val haptic = LocalHapticFeedback.current
 
@@ -122,7 +123,18 @@ fun PartnerPickerSheet(
             )
             Spacer(Modifier.height(12.dp))
 
-            if (filteredPartners.isEmpty()) {
+            if (isLoading && savedPartners.isEmpty()) {
+                // Loading branch — mirrors iOS spinner so the sheet doesn't flash
+                // "No matches found" during the async loadSavedPartners() fetch.
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 32.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(color = Gold, strokeWidth = 2.dp)
+                }
+            } else if (filteredPartners.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()

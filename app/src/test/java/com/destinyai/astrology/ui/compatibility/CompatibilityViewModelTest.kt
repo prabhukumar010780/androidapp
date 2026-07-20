@@ -111,7 +111,7 @@ class CompatibilityViewModelTest {
         val quotaManager = mockk<com.destinyai.astrology.services.QuotaManager>(relaxed = true)
         every { quotaManager.currentPlanId } returns kotlinx.coroutines.flow.MutableStateFlow(null)
         every { quotaManager.isPlus } returns false
-        vm = CompatibilityViewModel(api, prefs, compatibilityRepo, historyDao, mockk(relaxed = true), chatRepository, authRepository, profileChangeBus, profileContextManager, quotaManager, mockk(relaxed = true))
+        vm = CompatibilityViewModel(api, prefs, compatibilityRepo, historyDao, mockk(relaxed = true), chatRepository, authRepository, profileChangeBus, profileContextManager, quotaManager, mockk(relaxed = true), mockk(relaxed = true))
     }
 
     @Test

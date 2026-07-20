@@ -260,7 +260,17 @@ fun CompatibilityScreen(
     if (currentResult != null) {
         CompatibilityResultScreen(
             result = currentResult,
-            onBack = { viewModel.clearResult() },
+            onBack = {
+                // Comparison-aware back: from a drilled-in partner result in
+                // multi-partner mode, return to the comparison OVERVIEW (iOS
+                // parity) instead of clearing everything back to the input form.
+                if (comparisonResults.size > 1) {
+                    viewModel.clearResult()
+                    viewModel.setShowComparisonOverview(true)
+                } else {
+                    viewModel.clearResult()
+                }
+            },
             onNewAnalysis = {
                 viewModel.clearResult()
                 viewModel.resetPartnerForm()
@@ -323,8 +333,10 @@ fun CompatibilityScreen(
                 } else {
                     YouCard(
                         name = state.personAName,
+                        // Omit the name from the summary — YouCard already shows it as
+                        // the title, so passing it again duplicated "Name · Name · Male…".
                         summary = formattedUserSummary(
-                            name = state.personAName,
+                            name = "",
                             gender = state.personAGender,
                             dob = state.personADob,
                             time = state.personATime,
@@ -457,15 +469,24 @@ fun CompatibilityScreen(
                         onClick = { viewModel.setShowLocationSearch(true) },
                     )
 
-                    // Inline location search dialog
+                    // Type-ahead city search — shared LocationSearchSheet (same
+                    // component the birth-data screen uses), giving live autocomplete
+                    // instead of the old one-shot geocode dialog. iOS parity.
                     if (state.showLocationSearch) {
-                        LocationSearchDialog(
-                            onSearch = { query -> viewModel.searchLocation(query) },
-                            onLocationSelected = { city, lat, lon ->
+                        com.destinyai.astrology.ui.components.LocationSearchSheet(
+                            results = state.locationResults,
+                            isSearching = state.isSearchingLocation,
+                            errorRes = state.locationErrorRes,
+                            onQueryChange = { viewModel.searchLocation(it) },
+                            onSelect = { city, lat, lon, _ ->
                                 viewModel.setPartnerLocation(city, lat, lon)
+                                viewModel.clearLocationResults()
                                 viewModel.setShowLocationSearch(false)
                             },
-                            onDismiss = { viewModel.setShowLocationSearch(false) },
+                            onDismiss = {
+                                viewModel.clearLocationResults()
+                                viewModel.setShowLocationSearch(false)
+                            },
                         )
                     }
 
@@ -729,6 +750,14 @@ fun CompatibilityScreen(
             excludeIds = excluded,
             forCompatibilityOnly = true,
             onDismiss = { viewModel.dismissPartnerPicker() },
+            // iOS parity (PartnerPickerSheet always shows an "Add new birth chart"
+            // action): route to the Partners screen so an empty picker isn't a
+            // dead-end. Without this the add-new row was omitted and users with no
+            // saved charts saw only "No matches found" with no way forward.
+            onAddNew = {
+                viewModel.dismissPartnerPicker()
+                onNavigateToPartners()
+            },
         )
     }
 
@@ -1250,91 +1279,6 @@ private fun GenderSelectionSheet(
     }
 }
 
-// Simple city-name entry dialog — mirrors iOS LocationSearchView sheet
-@Composable
-private fun LocationSearchDialog(
-    onSearch: suspend (String) -> Triple<String, Double, Double>?,
-    onLocationSelected: (city: String, lat: Double, lon: Double) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var cityInput by remember { mutableStateOf("") }
-    var isSearching by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    val scope = rememberCoroutineScope()
-    // Resolve in composable scope; the coroutine below can't call stringResource.
-    val notFoundText = stringResource(R.string.compat_location_not_found)
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = NavySurface,
-        title = {
-            Text(stringResource(R.string.compat_location_title), style = MaterialTheme.typography.titleMedium, color = CreamText)
-        },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = cityInput,
-                    onValueChange = {
-                        cityInput = it
-                        errorMessage = null
-                    },
-                    label = { Text(stringResource(R.string.compat_location_input_label), color = Color(0xFF718096)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
-                    enabled = !isSearching,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Gold,
-                        unfocusedBorderColor = Gold.copy(alpha = 0.25f),
-                        focusedTextColor = CreamText,
-                        unfocusedTextColor = CreamText,
-                        cursorColor = Gold,
-                        unfocusedContainerColor = NavySurface,
-                        focusedContainerColor = NavySurface,
-                    ),
-                )
-                if (errorMessage != null) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = errorMessage!!,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFFE57373),
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    val q = cityInput.trim()
-                    if (q.isBlank() || isSearching) return@TextButton
-                    isSearching = true
-                    errorMessage = null
-                    scope.launch {
-                        val result = onSearch(q)
-                        isSearching = false
-                        if (result == null) {
-                            errorMessage = notFoundText
-                            return@launch
-                        }
-                        val (name, lat, lon) = result
-                        if (lat == 0.0 && lon == 0.0) {
-                            errorMessage = notFoundText
-                            return@launch
-                        }
-                        onLocationSelected(name, lat, lon)
-                    }
-                },
-                enabled = cityInput.isNotBlank() && !isSearching,
-            ) {
-                Text(if (isSearching) stringResource(R.string.compat_location_searching) else stringResource(R.string.compat_location_select), color = Gold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSearching) {
-                Text(stringResource(R.string.compat_location_cancel), color = CreamDim)
-            }
-        },
-    )
-}
 
 internal fun ageBlockBannerVisible(ageMessage: String?): Boolean =
     !ageMessage.isNullOrBlank()

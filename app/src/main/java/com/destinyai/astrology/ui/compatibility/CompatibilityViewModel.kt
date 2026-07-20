@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.destinyai.astrology.BuildConfig
 import com.destinyai.astrology.R
+import com.destinyai.astrology.data.location.LocationSearchResult
 import com.destinyai.astrology.data.local.db.CompatibilityHistoryDao
 import com.destinyai.astrology.data.local.db.CompatibilityHistoryEntity
 import com.destinyai.astrology.data.local.prefs.UserPreferences
@@ -29,6 +30,8 @@ import com.destinyai.astrology.domain.model.PartnerData
 import com.google.gson.Gson
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.launchIn
@@ -60,6 +63,10 @@ data class CompatibilityUiState(
     val showDatePicker: Boolean = false,
     val showTimePicker: Boolean = false,
     val showLocationSearch: Boolean = false,
+    // Live city type-ahead state (parity with BirthDataViewModel / iOS LocationSearchView).
+    val locationResults: List<com.destinyai.astrology.data.remote.LocationResult> = emptyList(),
+    val isSearchingLocation: Boolean = false,
+    val locationErrorRes: Int? = null,
     val showStreamingView: Boolean = false,
     val showComparisonOverview: Boolean = false,
     val showPaywall: Boolean = false,
@@ -113,6 +120,9 @@ class CompatibilityViewModel @Inject constructor(
     // local default. Seeded in loadUserData() + observed in init so a purchase/expiry
     // flips the gate without an app restart.
     private val quotaManager: com.destinyai.astrology.services.QuotaManager,
+    // Shared location type-ahead (same stack the birth-data screen uses) so the
+    // compat city field gets live autocomplete instead of a one-shot dialog.
+    private val locationSearchService: com.destinyai.astrology.data.location.LocationSearchService,
     @dagger.hilt.android.qualifiers.ApplicationContext private val appContext: android.content.Context,
 ) : ViewModel() {
 
@@ -320,22 +330,46 @@ class CompatibilityViewModel @Inject constructor(
      * Geocode a free-text city query via the backend's location search endpoint.
      * Returns Triple(displayName, lat, lon) on success, or null on no result / error.
      */
-    suspend fun searchLocation(query: String): Triple<String, Double, Double>? {
-        if (query.isBlank()) return null
-        return try {
-            // require_api_key endpoint — Bearer must be the API key, not a session JWT.
-            val results = api.searchLocations(
-                "Bearer ${com.destinyai.astrology.BuildConfig.API_KEY}", query.trim(),
-            )
-            val first = results.firstOrNull() ?: return null
-            Triple(
-                first.displayName.ifBlank { first.city },
-                first.latitude,
-                first.longitude,
-            )
-        } catch (_: Exception) {
-            null
+    private var locationSearchJob: Job? = null
+
+    /**
+     * Live city type-ahead — parity with BirthDataViewModel.searchLocation and iOS
+     * LocationSearchView. Debounced 300ms, results into state.locationResults so the
+     * shared LocationSearchSheet renders a suggestions dropdown instead of the old
+     * one-shot geocode dialog.
+     */
+    fun searchLocation(query: String) {
+        locationSearchJob?.cancel()
+        if (query.length < 2) {
+            _uiState.update {
+                it.copy(locationResults = emptyList(), isSearchingLocation = false, locationErrorRes = null)
+            }
+            return
         }
+        locationSearchJob = viewModelScope.launch {
+            delay(300)
+            _uiState.update { it.copy(isSearchingLocation = true, locationErrorRes = null) }
+            when (val result = locationSearchService.search(query)) {
+                is LocationSearchResult.Success -> _uiState.update {
+                    it.copy(locationResults = result.results, isSearchingLocation = false, locationErrorRes = null)
+                }
+                is LocationSearchResult.Failure -> {
+                    val msgRes = when (result.reason) {
+                        LocationSearchResult.Reason.Network -> R.string.location_search_error_network
+                        LocationSearchResult.Reason.Auth -> R.string.location_search_error_auth
+                        LocationSearchResult.Reason.Server,
+                        LocationSearchResult.Reason.Unknown -> R.string.location_search_error_generic
+                    }
+                    _uiState.update {
+                        it.copy(locationResults = emptyList(), isSearchingLocation = false, locationErrorRes = msgRes)
+                    }
+                }
+            }
+        }
+    }
+
+    fun clearLocationResults() = _uiState.update {
+        it.copy(locationResults = emptyList(), isSearchingLocation = false, locationErrorRes = null)
     }
     fun setPartnerLocation(city: String, lat: Double, lon: Double) {
         _uiState.update { it.copy(partnerCity = city, partnerLatitude = lat, partnerLongitude = lon) }
@@ -1768,6 +1802,12 @@ class CompatibilityViewModel @Inject constructor(
      * sets the comparison results without re-running an LLM analysis.
      */
     fun loadFromGroup(group: com.destinyai.astrology.domain.model.ComparisonGroup) {
+        // Rebuild the full-result side-map so a tile tap in the overview can open
+        // that partner's INDIVIDUAL result (selectComparisonResult reads this map).
+        // Without this, tiles opened from saved history had no full result and the
+        // screen fell back to the empty input form. iOS embeds the full result in
+        // each tile; Android keys it by the ComparisonResult id.
+        fullResultsByComparisonId.clear()
         val results = group.items.mapNotNull { item ->
             val saved = item.result ?: return@mapNotNull null
             val partner = PartnerData(
@@ -1776,7 +1816,7 @@ class CompatibilityViewModel @Inject constructor(
                 time = item.girlTime,
                 city = item.girlCity,
             )
-            ComparisonResult(
+            val comparison = ComparisonResult(
                 partner = partner,
                 totalScore = saved.totalScore,
                 maxScore = item.maxScore,
@@ -1785,6 +1825,11 @@ class CompatibilityViewModel @Inject constructor(
                 adjustedScore = saved.adjustedScore ?: saved.totalScore,
                 summary = saved.summary,
             )
+            // `saved` (item.result) is already a full CompatibilityResult — the
+            // same object the single-item history loader assigns to
+            // _compatibilityResult. Store it so the individual result renders.
+            fullResultsByComparisonId[comparison.id] = saved
+            comparison
         }
         _comparisonResults.value = results
         currentComparisonGroupId = group.id
@@ -1807,6 +1852,11 @@ class CompatibilityViewModel @Inject constructor(
             it.copy(
                 result = r.summary,
                 score = r.totalScore,
+                // Hide the overview so the individual result screen renders — the
+                // screen checks showComparisonOverview BEFORE resultObj, so leaving
+                // it true would keep showing the overview instead of the tapped
+                // partner's result.
+                showComparisonOverview = false,
             )
         }
     }
