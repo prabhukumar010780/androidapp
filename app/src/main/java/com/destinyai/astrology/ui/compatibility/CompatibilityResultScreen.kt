@@ -326,7 +326,14 @@ fun CompatibilityResultScreen(
                             .padding(horizontal = 16.dp),
                     )
 
-                    Spacer(Modifier.height(80.dp))
+                    // Reserve just enough for the overlay FAB (~56dp) + gesture inset
+                    // instead of a flat 80dp void.
+                    Spacer(
+                        Modifier.height(
+                            56.dp + WindowInsets.navigationBars.asPaddingValues()
+                                .calculateBottomPadding(),
+                        ),
+                    )
                 }
             }
 

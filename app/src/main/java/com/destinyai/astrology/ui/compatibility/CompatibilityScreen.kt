@@ -67,6 +67,7 @@ import com.destinyai.astrology.ui.charts.ChartComparisonSheet
 import com.destinyai.astrology.ui.subscription.SubscriptionScreen
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
+import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.CreamDim
@@ -652,7 +653,9 @@ fun CompatibilityScreen(
                     )
                 }
 
-                Spacer(Modifier.height(32.dp))
+                // Small trailing buffer; the scroll Column already adds
+                // navigationBarsPadding(), so a large spacer here was dead space.
+                Spacer(Modifier.height(Spacing.sm))
             }
         }
 
@@ -1405,14 +1408,14 @@ private fun HeroPulsingMatchIcon() {
         ) {
             Text(
                 text = stringResource(com.destinyai.astrology.R.string.ashtakoot_analysis_title),
-                fontSize = 22.sp,
+                fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = CanelaFontFamily,
                 color = CreamText,
             )
             Text(
                 text = stringResource(com.destinyai.astrology.R.string.enter_details_desc_compatibility),
-                fontSize = 13.sp,
+                fontSize = 14.sp,
                 color = CreamDim,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 20.dp),

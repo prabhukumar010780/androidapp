@@ -156,7 +156,7 @@ fun OrbitAshtakootView(
     modifier: Modifier = Modifier,
     centerContent: (@Composable () -> Unit)? = null,
 ) {
-    val maxOrbitRadius = 155.dp
+    val maxOrbitRadius = 128.dp
     val bubbleSize = 64.dp
     val density = LocalDensity.current
 
@@ -494,14 +494,14 @@ internal fun PlanetBubble(
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
                 color = if (kuta.doshaCancelled) successColor else GoldLight,
-                fontSize = 9.sp,
-                lineHeight = 11.sp,
+                fontSize = 11.sp,
+                lineHeight = 13.sp,
             )
             Text(
                 text = bubbleLabel.uppercase(),
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.White.copy(alpha = 0.9f),
-                fontSize = 6.sp,
+                fontSize = 10.sp,
                 maxLines = 1,
             )
         }
