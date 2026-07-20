@@ -38,6 +38,8 @@ import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
+import com.destinyai.astrology.ui.theme.Spacing
+import com.destinyai.astrology.ui.theme.TouchMin
 
 private const val MAX_CHARS = 200
 
@@ -306,6 +308,7 @@ fun AddEditAlertSheet(
                                         text = suggestion
                                     }
                                     .testTag("alert_suggestion_$index")
+                                    .heightIn(min = TouchMin)
                                     .padding(horizontal = 16.dp, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -375,30 +378,36 @@ private fun WeekdayChipPicker(
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag("weekday_picker"),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
         ) {
             labels.forEachIndexed { index, labelRes ->
                 val isSelected = selected == index
                 Box(
                     modifier = Modifier
-                        .size(38.dp)
-                        .clip(CircleShape)
-                        .background(if (isSelected) Gold else NavySurface)
-                        .border(
-                            0.5.dp,
-                            if (isSelected) Gold else Gold.copy(alpha = 0.3f),
-                            CircleShape,
-                        )
+                        .size(TouchMin)
                         .clickable { onSelect(index) }
                         .testTag("weekday_$index"),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(
-                        text = stringResource(labelRes),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isSelected) Color(0xFF0D0D1A) else CreamText,
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(if (isSelected) Gold else NavySurface)
+                            .border(
+                                0.5.dp,
+                                if (isSelected) Gold else Gold.copy(alpha = 0.3f),
+                                CircleShape,
+                            ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = stringResource(labelRes),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (isSelected) Color(0xFF0D0D1A) else CreamText,
+                        )
+                    }
                 }
             }
         }

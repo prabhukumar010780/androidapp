@@ -31,10 +31,12 @@ import androidx.compose.ui.unit.sp
 import com.destinyai.astrology.R
 import com.destinyai.astrology.services.SoundManager
 import com.destinyai.astrology.services.motionParallax
+import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavyDeep
+import com.destinyai.astrology.ui.theme.Spacing
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
@@ -164,11 +166,12 @@ fun SplashScreen(soundManager: SoundManager? = null) {
                     .blur(radius = titleBlur.value.dp),
             )
 
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(Spacing.sm))
 
             Text(
                 text = stringResource(R.string.ai_astrology_subtitle),
-                fontSize = 16.sp,
+                fontSize = AppType.body,
+                lineHeight = AppType.bodyLh,
                 fontWeight = FontWeight.Medium,
                 letterSpacing = 4.sp,
                 color = Gold.copy(alpha = 0.85f),
@@ -176,11 +179,12 @@ fun SplashScreen(soundManager: SoundManager? = null) {
                 modifier = Modifier.alpha(subtitleAlpha.value),
             )
 
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(Spacing.sm))
 
             Text(
                 text = stringResource(R.string.worlds_advanced_ai),
-                fontSize = 11.sp,
+                fontSize = AppType.caption,
+                lineHeight = AppType.captionLh,
                 color = CreamText.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center,
                 modifier = Modifier.alpha(subtitleAlpha.value),

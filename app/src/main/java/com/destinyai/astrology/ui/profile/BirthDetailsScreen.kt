@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.destinyai.astrology.ui.theme.AppTheme
+import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
@@ -48,6 +49,7 @@ import com.destinyai.astrology.ui.theme.DarkNavyContrast
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.PremiumSelectionSheet
+import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.TextTertiary
 import java.time.LocalDate
 import java.time.LocalTime
@@ -162,7 +164,8 @@ fun BirthDetailsScreen(
                     .fillMaxSize()
                     .padding(innerPadding)
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp),
+                    .imePadding()
+                    .padding(horizontal = Spacing.screenH),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Spacer(Modifier.height(4.dp))
@@ -416,7 +419,8 @@ private fun BirthDetailsHeader() {
 private fun SectionHeaderLabel(text: String) {
     Text(
         text = text,
-        fontSize = 11.sp,
+        fontSize = AppType.caption,
+        lineHeight = AppType.captionLh,
         fontWeight = FontWeight.SemiBold,
         color = TextTertiary,
         letterSpacing = 1.2.sp,

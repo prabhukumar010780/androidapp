@@ -43,10 +43,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
+import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.TextTertiary
 
 /**
@@ -112,7 +114,7 @@ fun PremiumMenuRow(
                         strokeWidth = 1.5.dp.toPx(),
                     )
                 }
-                .padding(bottom = 6.dp),
+                .padding(bottom = Spacing.xs),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -270,7 +272,8 @@ fun PremiumListItem(
                     Text(
                         text = premiumBadgeText,
                         color = premiumBadgeColor,
-                        fontSize = 10.sp,
+                        fontSize = AppType.caption,
+                        lineHeight = AppType.captionLh,
                         fontWeight = FontWeight.Medium,
                     )
                 }

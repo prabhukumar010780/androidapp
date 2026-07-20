@@ -21,11 +21,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.res.stringResource
 import com.destinyai.astrology.R
+import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
+import com.destinyai.astrology.ui.theme.Radius
 import kotlinx.coroutines.launch
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -137,7 +139,7 @@ fun WaitlistPendingScreen(
                         customTabsIntent.launchUrl(context, Uri.parse(tallyUrl))
                     },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(Radius.authButton),
                     border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(width = 1.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold),
                 ) {
@@ -152,7 +154,8 @@ fun WaitlistPendingScreen(
 
                 Text(
                     text = stringResource(R.string.waitlist_already_filled),
-                    fontSize = 13.sp,
+                    fontSize = AppType.secondary,
+                    lineHeight = AppType.secondaryLh,
                     color = CreamDim,
                     textAlign = TextAlign.Center,
                 )
@@ -161,7 +164,8 @@ fun WaitlistPendingScreen(
 
                 Text(
                     text = stringResource(R.string.waitlist_support_prefix),
-                    fontSize = 13.sp,
+                    fontSize = AppType.secondary,
+                    lineHeight = AppType.secondaryLh,
                     color = CreamDim,
                     textAlign = TextAlign.Center,
                 )
@@ -177,7 +181,8 @@ fun WaitlistPendingScreen(
                 ) {
                     Text(
                         text = supportEmail,
-                        fontSize = 13.sp,
+                        fontSize = AppType.secondary,
+                        lineHeight = AppType.secondaryLh,
                         color = Gold,
                         textAlign = TextAlign.Center,
                     )

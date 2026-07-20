@@ -16,8 +16,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
@@ -64,6 +66,7 @@ import com.destinyai.astrology.ui.theme.Features
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
+import com.destinyai.astrology.ui.theme.Radius
 import com.destinyai.astrology.ui.theme.TextTertiary
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
@@ -366,6 +369,10 @@ fun AuthScreen(
                 .fillMaxSize()
                 // Edge-to-edge: keep the footer (Terms/Privacy) above the gesture pill.
                 .navigationBarsPadding()
+                // Degrade gracefully on short screens / large font scale: the stack
+                // scrolls instead of clipping the logo or footer. fillMaxSize supplies
+                // the min-height so Arrangement.Center still centers when content fits.
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
@@ -412,7 +419,7 @@ fun AuthScreen(
                     .fillMaxWidth()
                     .height(54.dp)
                     .testTag("auth_google_button"),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(Radius.authButton),
                 enabled = !state.isLoading,
                 border = ButtonDefaults.outlinedButtonBorder(enabled = !state.isLoading).copy(width = 1.dp),
                 colors = ButtonDefaults.outlinedButtonColors(

@@ -21,9 +21,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -1036,7 +1038,7 @@ fun PremiumSelectionSheet(
                 )
 
                 LazyColumn(modifier = Modifier.fillMaxWidth()) {
-                    items(options) { entry ->
+                    items(options, key = { it.first }) { entry ->
                         val (value, label) = entry
                         Row(
                             modifier = Modifier
@@ -1314,6 +1316,8 @@ fun DatePickerSheet(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(end = 20.dp, top = 20.dp)
+                    .heightIn(min = TouchMin)
+                    .widthIn(min = TouchMin)
                     .semantics { contentDescription = "date_picker_done_button" },
             ) {
                 Text(

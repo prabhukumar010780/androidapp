@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.destinyai.astrology.R
 import com.destinyai.astrology.ui.theme.AppTheme
+import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.GoldLight
 
@@ -234,7 +235,8 @@ fun CelestialOrb(
                 text = title.uppercase(),
                 color = GoldLight,
                 fontWeight = FontWeight.Medium,
-                fontSize = 11.sp,
+                fontSize = AppType.caption,
+                lineHeight = AppType.captionLh,
                 letterSpacing = 1.sp,
                 textAlign = TextAlign.Center,
             )

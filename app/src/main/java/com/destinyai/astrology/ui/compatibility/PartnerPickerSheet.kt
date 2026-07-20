@@ -36,6 +36,7 @@ import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
+import com.destinyai.astrology.ui.theme.Spacing
 
 /**
  * Mirrors iOS PartnerPickerSheet.swift — filters saved partners by gender,
@@ -83,7 +84,8 @@ fun PartnerPickerSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp)
+                .imePadding()
+                .padding(horizontal = 20.dp)
                 .padding(bottom = 40.dp),
         ) {
             Text(
@@ -169,7 +171,7 @@ fun PartnerPickerSheet(
                                     viewModel.selectSavedPartner(partner)
                                     onDismiss()
                                 }
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                                .padding(horizontal = 16.dp, vertical = Spacing.md),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             // iOS parity (PartnerPickerSheet.swift:210-268): gold avatar circle

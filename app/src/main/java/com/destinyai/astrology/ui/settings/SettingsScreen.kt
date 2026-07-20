@@ -23,12 +23,15 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.destinyai.astrology.R
+import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
+import com.destinyai.astrology.ui.theme.Radius
+import com.destinyai.astrology.ui.theme.Spacing
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,18 +77,18 @@ fun SettingsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp),
+                    .padding(horizontal = Spacing.xl)
+                    .navigationBarsPadding()
+                    .padding(top = Spacing.xs, bottom = Spacing.xl),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Spacer(Modifier.height(4.dp))
-
                 // Astrology Settings link
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
+                        .clip(RoundedCornerShape(Radius.card))
                         .background(NavySurface)
-                        .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(14.dp))
+                        .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(Radius.card))
                         .clickable(onClick = onNavigateToAstrologySettings)
                         .padding(horizontal = 16.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -93,7 +96,8 @@ fun SettingsScreen(
                 ) {
                     Text(
                         text = stringResource(R.string.astrology_settings),
-                        fontSize = 15.sp,
+                        fontSize = AppType.body,
+                        lineHeight = AppType.bodyLh,
                         fontWeight = FontWeight.SemiBold,
                         color = CreamText,
                     )
@@ -144,9 +148,9 @@ fun SettingsScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
+                        .clip(RoundedCornerShape(Radius.card))
                         .background(NavySurface)
-                        .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(14.dp))
+                        .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(Radius.card))
                         .clickable { showLanguageSheet = true }
                         .padding(horizontal = 16.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -154,7 +158,8 @@ fun SettingsScreen(
                 ) {
                     Text(
                         text = stringResource(R.string.settings_language_section),
-                        fontSize = 15.sp,
+                        fontSize = AppType.body,
+                        lineHeight = AppType.bodyLh,
                         fontWeight = FontWeight.SemiBold,
                         color = CreamText,
                     )
@@ -186,9 +191,9 @@ fun SettingsScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
+                        .clip(RoundedCornerShape(Radius.card))
                         .background(NavySurface)
-                        .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(14.dp))
+                        .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(Radius.card))
                         .clickable(onClick = onNavigateToNotificationPrefs)
                         .padding(horizontal = 16.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -197,7 +202,8 @@ fun SettingsScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = stringResource(R.string.personalized_alerts_title),
-                            fontSize = 15.sp,
+                            fontSize = AppType.body,
+                            lineHeight = AppType.bodyLh,
                             fontWeight = FontWeight.SemiBold,
                             color = CreamText,
                         )
@@ -215,8 +221,6 @@ fun SettingsScreen(
                         modifier = Modifier.size(16.dp),
                     )
                 }
-
-                Spacer(Modifier.height(32.dp))
             }
         }
 
@@ -234,9 +238,9 @@ private fun CosmicSettingsSection(title: String, content: @Composable ColumnScop
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(Radius.card))
             .background(NavySurface)
-            .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(14.dp))
+            .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(Radius.card))
             .padding(16.dp),
     ) {
         Text(text = title, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Gold.copy(alpha = 0.7f))
@@ -252,7 +256,7 @@ private fun SettingsToggleRow(label: String, checked: Boolean, onCheckedChange: 
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text = label, fontSize = 15.sp, color = CreamText)
+        Text(text = label, fontSize = AppType.body, lineHeight = AppType.bodyLh, color = CreamText)
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,

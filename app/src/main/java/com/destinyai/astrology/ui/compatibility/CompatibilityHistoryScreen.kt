@@ -47,6 +47,8 @@ import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
+import com.destinyai.astrology.ui.theme.Radius
+import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.TextTertiary
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -213,12 +215,12 @@ fun CompatibilityHistoryScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 4.dp)
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(Radius.chip))
                         .background(Color.White.copy(alpha = 0.08f))
                         .padding(horizontal = 12.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Filled.Search, contentDescription = null, tint = CreamDim, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Filled.Search, contentDescription = null, tint = CreamDim, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(8.dp))
                     BasicTextField(
                         value = searchText,
@@ -234,7 +236,7 @@ fun CompatibilityHistoryScreen(
                         },
                     )
                     if (searchText.isNotEmpty()) {
-                        IconButton(onClick = { searchText = "" }, modifier = Modifier.size(20.dp)) {
+                        IconButton(onClick = { searchText = "" }, modifier = Modifier.size(48.dp)) {
                             Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.cd_clear_search), tint = CreamDim, modifier = Modifier.size(16.dp))
                         }
                     }
@@ -254,7 +256,13 @@ fun CompatibilityHistoryScreen(
                 } else {
                     LazyColumn(
                         modifier = Modifier.weight(1f).fillMaxWidth(),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 8.dp,
+                            bottom = 8.dp + WindowInsets.navigationBars.asPaddingValues()
+                                .calculateBottomPadding(),
+                        ),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         items(groups, key = { it.id }) { group ->
@@ -294,7 +302,6 @@ fun CompatibilityHistoryScreen(
                                 )
                             }
                         }
-                        item { Spacer(Modifier.height(32.dp)) }
                     }
                 }
             }
@@ -439,7 +446,7 @@ private fun HistoryItemRow(
                 onClick = onTap,
                 onLongClick = { showContextMenu = true },
             )
-            .padding(horizontal = 14.dp, vertical = 12.dp)
+            .padding(horizontal = Spacing.md, vertical = Spacing.md)
             .semantics { contentDescription = "history_item_row" },
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -451,12 +458,13 @@ private fun HistoryItemRow(
                 tint = Gold,
                 modifier = Modifier.size(10.dp),
             )
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(Spacing.md))
         }
         // Score badge
         Box(
             modifier = Modifier
-                .size(50.dp)
+                .sizeIn(minWidth = 50.dp, minHeight = 50.dp)
+                .aspectRatio(1f)
                 .clip(CircleShape)
                 .background(scoreColor.copy(alpha = 0.15f)),
             contentAlignment = Alignment.Center,
@@ -641,7 +649,7 @@ private fun GroupHistoryRow(
                 onClick = onTap,
                 onLongClick = { showContextMenu = true },
             )
-            .padding(horizontal = 14.dp, vertical = 12.dp)
+            .padding(horizontal = Spacing.md, vertical = Spacing.md)
             .semantics { contentDescription = "history_group_row" },
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -670,7 +678,8 @@ private fun GroupHistoryRow(
         // iOS parity: 3-person icon with stacked count inside the circle (no badge overlay).
         Box(
             modifier = Modifier
-                .size(50.dp)
+                .sizeIn(minWidth = 50.dp, minHeight = 50.dp)
+                .aspectRatio(1f)
                 .clip(CircleShape)
                 .background(accentPurple.copy(alpha = 0.15f)),
             contentAlignment = Alignment.Center,
@@ -687,8 +696,8 @@ private fun GroupHistoryRow(
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = accentPurple,
-                    fontSize = 10.sp,
-                    lineHeight = 12.sp,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
                 )
             }
         }

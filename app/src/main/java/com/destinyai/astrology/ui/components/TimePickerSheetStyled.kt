@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,6 +34,9 @@ import com.destinyai.astrology.R
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavyDeep
+import com.destinyai.astrology.ui.theme.Radius
+import com.destinyai.astrology.ui.theme.Spacing
+import com.destinyai.astrology.ui.theme.TouchMin
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
@@ -94,13 +98,17 @@ fun TimePickerSheetStyled(
                     color = Gold,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.clickable {
-                        scope.launch {
-                            val outHour = if (is24Hour) selectedHour else selectedHour
-                            onTimeSelected(outHour, selectedMinute)
-                            sheetState.hide()
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(Radius.button))
+                        .clickable {
+                            scope.launch {
+                                val outHour = if (is24Hour) selectedHour else selectedHour
+                                onTimeSelected(outHour, selectedMinute)
+                                sheetState.hide()
+                            }
                         }
-                    },
+                        .heightIn(min = TouchMin)
+                        .padding(horizontal = Spacing.md),
                 )
             }
 

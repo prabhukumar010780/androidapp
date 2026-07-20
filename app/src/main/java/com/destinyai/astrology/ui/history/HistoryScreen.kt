@@ -55,6 +55,8 @@ import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
+import com.destinyai.astrology.ui.theme.Radius
+import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.WarningOrange
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -300,7 +302,7 @@ private fun HistoryDisabledState(onOpenSettings: () -> Unit) {
             tint = CreamDim.copy(alpha = 0.4f),
             modifier = Modifier.size(48.dp).testTag("history_disabled_icon"),
         )
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(Spacing.xl))
         Text(
             text = stringResource(R.string.history_turned_off),
             fontSize = 20.sp,
@@ -314,7 +316,7 @@ private fun HistoryDisabledState(onOpenSettings: () -> Unit) {
             color = CreamDim,
             modifier = Modifier.padding(horizontal = 16.dp),
         )
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(Spacing.xl))
         Button(
             onClick = onOpenSettings,
             colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Color.Black),
@@ -350,7 +352,7 @@ private fun UnifiedHistoryList(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(Radius.chip))
             .background(Color.White.copy(alpha = 0.08f))
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -746,7 +748,8 @@ private fun ChatThreadRow(
                     )
                     Text(
                         text = stringResource(R.string.messages_label),
-                        fontSize = 11.sp,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
                         color = CreamDim,
                     )
                 }
@@ -922,7 +925,8 @@ private fun CompatibilityHistoryItemRow(
 
             Box(
                 modifier = Modifier
-                    .size(50.dp)
+                    .sizeIn(minWidth = 50.dp, minHeight = 50.dp)
+                    .aspectRatio(1f)
                     .clip(CircleShape)
                     .background(scoreColor.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center,
@@ -936,7 +940,8 @@ private fun CompatibilityHistoryItemRow(
                     )
                     Text(
                         text = "/${item.maxScore}",
-                        fontSize = 10.sp,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
                         color = CreamDim,
                     )
                 }

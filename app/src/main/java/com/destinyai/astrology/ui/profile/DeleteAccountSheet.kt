@@ -39,6 +39,7 @@ import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavyDeep
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
+import com.destinyai.astrology.ui.theme.Spacing
 
 private const val DELETE_CONFIRM_WORD = "DELETE"
 
@@ -99,8 +100,9 @@ fun DeleteAccountSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(scrollState)
-                    .padding(horizontal = 24.dp)
-                    .padding(bottom = 40.dp)
+                    .imePadding()
+                    .padding(horizontal = Spacing.xl)
+                    .navigationBarsPadding()
                     .testTag("delete_account_sheet")
                     .semantics { contentDescription = "delete_account_sheet" },
                 horizontalAlignment = Alignment.CenterHorizontally,

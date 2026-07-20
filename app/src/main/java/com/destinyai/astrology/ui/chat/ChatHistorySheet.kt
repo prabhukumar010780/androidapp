@@ -68,7 +68,7 @@ fun ChatHistorySheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .statusBarsPadding()
-                        .padding(horizontal = 8.dp, vertical = 8.dp),
+                        .padding(horizontal = Spacing.screenH, vertical = Spacing.sm),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     IconButton(
@@ -121,7 +121,7 @@ fun ChatHistorySheet(
                         )
                     }
                     if (searchText.isNotEmpty()) {
-                        IconButton(onClick = { searchText = "" }, modifier = Modifier.size(20.dp)) {
+                        IconButton(onClick = { searchText = "" }, modifier = Modifier.size(TouchMin)) {
                             Icon(Icons.Default.Cancel, contentDescription = null, tint = CreamDim, modifier = Modifier.size(16.dp))
                         }
                     }
@@ -234,16 +234,20 @@ fun ChatHistorySheet(
                     LazyColumn(
                         state = listStateForHistory,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = 24.dp),
+                        contentPadding = PaddingValues(
+                            bottom = 24.dp +
+                                WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+                        ),
                     ) {
                         grouped.forEach { (label, threads) ->
                             item(key = "header_$label") {
                                 Text(
                                     label.uppercase(),
-                                    fontSize = 11.sp,
+                                    fontSize = AppType.caption,
+                                    lineHeight = AppType.captionLh,
                                     fontWeight = FontWeight.SemiBold,
                                     color = CreamDim.copy(alpha = 0.6f),
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    modifier = Modifier.padding(horizontal = Spacing.screenH, vertical = Spacing.sm),
                                 )
                             }
                             items(threads, key = { it.id }) { thread ->

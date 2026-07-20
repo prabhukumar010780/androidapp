@@ -13,10 +13,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.LocationOff
@@ -102,7 +102,7 @@ fun LocationSearchSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp)
+                .padding(horizontal = 16.dp)
                 .padding(bottom = 40.dp),
         ) {
             Box(
@@ -191,17 +191,17 @@ fun LocationSearchSheet(
                     }
                 }
                 else -> {
-                    Column(
+                    LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 320.dp)
-                            .verticalScroll(rememberScrollState()),
+                            .heightIn(max = 320.dp),
                     ) {
-                        results.forEach { result ->
+                        items(results, key = { it.placeId ?: it.displayName }) { result ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable { onSelect(result.displayName, result.latitude, result.longitude, result.placeId) }
+                                    .heightIn(min = 48.dp)
                                     .padding(vertical = 12.dp, horizontal = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {

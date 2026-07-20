@@ -65,7 +65,9 @@ import com.destinyai.astrology.R
 import com.destinyai.astrology.ui.auth.AuthViewModel
 import com.destinyai.astrology.ui.components.ShimmerButton
 import com.destinyai.astrology.ui.settings.ChartStylePickerSheet
+import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
+import com.destinyai.astrology.ui.theme.Radius
 import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
@@ -362,7 +364,7 @@ fun ProfileScreen(
                             // Scaffold innerPadding (applied at the Box above) already
                             // insets the status bar; a second statusBarsPadding() here
                             // double-counted it and pushed the header too far down.
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                            .padding(horizontal = Spacing.screenH, vertical = Spacing.sm),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Spacer(Modifier.weight(1f))
@@ -400,7 +402,7 @@ fun ProfileScreen(
                                 // 16dp edge margin to match the header + rest of the app
                                 // (was 24dp, wider than everything else).
                                 .padding(horizontal = Spacing.screenH),
-                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(Spacing.lg),
                         ) {
                             Spacer(Modifier.height(8.dp))
 
@@ -469,11 +471,12 @@ fun ProfileScreen(
                                                     if (isPaid) Gold else CreamDim.copy(alpha = 0.3f),
                                                     RoundedCornerShape(8.dp),
                                                 )
-                                                .padding(horizontal = 10.dp, vertical = 3.dp),
+                                                .padding(horizontal = Spacing.sm, vertical = Spacing.xs),
                                         ) {
                                             Text(
                                                 text = if (isPaid) stringResource(R.string.profile_plan_plus) else stringResource(R.string.profile_plan_free),
-                                                fontSize = 11.sp,
+                                                fontSize = AppType.caption,
+                                                lineHeight = AppType.captionLh,
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = if (isPaid) Gold else CreamDim,
                                             )
@@ -505,7 +508,7 @@ fun ProfileScreen(
                                     tint = Gold.copy(alpha = 0.8f),
                                     modifier = Modifier.size(18.dp),
                                 )
-                                Spacer(Modifier.width(10.dp))
+                                Spacer(Modifier.width(Spacing.md))
                                 Text(
                                     text = if (state.activeProfileName.isNotEmpty()) {
                                         stringResource(R.string.profile_viewing_birth_chart, state.activeProfileName)
@@ -605,7 +608,7 @@ fun ProfileScreen(
                                             }
                                         },
                                         modifier = Modifier.fillMaxWidth().height(52.dp),
-                                        shape = RoundedCornerShape(14.dp),
+                                        shape = RoundedCornerShape(Radius.button),
                                         border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(width = 1.dp),
                                         colors = ButtonDefaults.outlinedButtonColors(
                                             contentColor = Gold,
@@ -627,7 +630,7 @@ fun ProfileScreen(
                                             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                                         },
                                         modifier = Modifier.fillMaxWidth().height(52.dp),
-                                        shape = RoundedCornerShape(14.dp),
+                                        shape = RoundedCornerShape(Radius.button),
                                         border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(width = 1.dp),
                                         colors = ButtonDefaults.outlinedButtonColors(
                                             contentColor = Gold,
@@ -654,7 +657,6 @@ fun ProfileScreen(
                             // gold "Profile" header followed by Birth Details, Manage
                             // Birth Charts, Switch Profile (in that order — Manage
                             // BEFORE Switch).
-                            Spacer(Modifier.height(4.dp))
                             Text(
                                 text = stringResource(R.string.profile_title),
                                 fontSize = 18.sp,
@@ -665,14 +667,13 @@ fun ProfileScreen(
                                     .fillMaxWidth()
                                     .padding(start = 4.dp),
                             )
-                            Spacer(Modifier.height(4.dp))
 
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(14.dp))
+                                    .clip(RoundedCornerShape(Radius.card))
                                     .background(NavySurface)
-                                    .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(14.dp)),
+                                    .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(Radius.card)),
                             ) {
                                 Column {
                                     // Birth Details — mirrors iOS PremiumListItem('birth_details').
@@ -743,7 +744,6 @@ fun ProfileScreen(
                             // ── History section ───────────────────────────────────────
                             // iOS parity (ProfileView.swift:483-578 historySection):
                             // gold "History" header, save-toggle row, clear-history row.
-                            Spacer(Modifier.height(4.dp))
                             Text(
                                 text = stringResource(R.string.history_section),
                                 fontSize = 18.sp,
@@ -754,14 +754,13 @@ fun ProfileScreen(
                                     .fillMaxWidth()
                                     .padding(start = 4.dp),
                             )
-                            Spacer(Modifier.height(4.dp))
 
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(14.dp))
+                                    .clip(RoundedCornerShape(Radius.card))
                                     .background(NavySurface)
-                                    .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(14.dp)),
+                                    .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(Radius.card)),
                             ) {
                                 Column {
                                     PreferenceToggleRow(
@@ -797,7 +796,6 @@ fun ProfileScreen(
                             // Language → Response Style → Astrology Settings → Chart
                             // Style → Notifications (inline toggle) → Personalized
                             // Alerts → Share Analytics.
-                            Spacer(Modifier.height(4.dp))
                             Text(
                                 text = stringResource(R.string.profile_preferences_section),
                                 fontSize = 18.sp,
@@ -808,14 +806,13 @@ fun ProfileScreen(
                                     .fillMaxWidth()
                                     .padding(start = 4.dp),
                             )
-                            Spacer(Modifier.height(4.dp))
 
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(14.dp))
+                                    .clip(RoundedCornerShape(Radius.card))
                                     .background(NavySurface)
-                                    .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(14.dp)),
+                                    .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(Radius.card)),
                             ) {
                                 Column {
                                     PreferenceArrowRow(
@@ -946,7 +943,6 @@ fun ProfileScreen(
                             // R2-P11 Support links — iOS parity (ProfileView.swift:721-772
                             // supportSection): gold "Support" heading above the card,
                             // matches the Preferences heading style.
-                            Spacer(Modifier.height(4.dp))
                             Text(
                                 text = stringResource(R.string.support_menu),
                                 fontSize = 18.sp,
@@ -957,7 +953,6 @@ fun ProfileScreen(
                                     .fillMaxWidth()
                                     .padding(start = 4.dp),
                             )
-                            Spacer(Modifier.height(4.dp))
                             SupportLinksSection(
                                 context = context,
                                 onNavigateToFaq = onNavigateToFaq,
@@ -1114,7 +1109,7 @@ private fun GuestSignInPromptSheet(
             Button(
                 onClick = onSignIn,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(Radius.button),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Gold,
                     contentColor = Color(0xFF0D0D1A),
@@ -1461,7 +1456,8 @@ private fun PreferenceArrowRow(
                 )
                 Text(
                     text = premiumBadgeText,
-                    fontSize = 10.sp,
+                    fontSize = AppType.caption,
+                    lineHeight = AppType.captionLh,
                     fontWeight = FontWeight.SemiBold,
                     color = badgeColor,
                 )

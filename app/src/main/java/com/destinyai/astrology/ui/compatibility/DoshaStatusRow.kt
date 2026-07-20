@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
+import com.destinyai.astrology.ui.theme.AppType
 
 @Composable
 fun DoshaStatusRow(
@@ -102,7 +103,8 @@ fun DoshaStatusRow(
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = statusColor,
-                    fontSize = 10.sp,
+                    fontSize = AppType.caption, // 12.sp
+                    lineHeight = AppType.captionLh,
                 )
             }
         }
@@ -175,7 +177,8 @@ fun DoshaStatusRowLabel(
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = statusColor,
-                    fontSize = 10.sp,
+                    fontSize = AppType.caption, // 12.sp
+                    lineHeight = AppType.captionLh,
                 )
             }
         }

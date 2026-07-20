@@ -50,6 +50,7 @@ import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
+import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.TextTertiary
 import kotlin.random.Random
 
@@ -210,7 +211,7 @@ private fun KalsarpaLoadingView() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(50.dp)
+            .padding(horizontal = Spacing.xl, vertical = Spacing.xxl)
             .semantics { contentDescription = "kalsarpa_loading_view" },
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -230,7 +231,7 @@ private fun KalsarpaErrorView(message: String) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(50.dp)
+            .padding(horizontal = Spacing.xl, vertical = Spacing.xxl)
             .semantics { contentDescription = "kalsarpa_error_view" },
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -267,7 +268,7 @@ private fun KalsarpaNoDataView() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(50.dp)
+            .padding(horizontal = Spacing.xl, vertical = Spacing.xxl)
             .semantics { contentDescription = "kalsarpa_no_data_view" },
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -582,7 +583,7 @@ private fun MutualDoshaView(
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color = Gold,
-                            modifier = Modifier.width(20.dp),
+                            modifier = Modifier.widthIn(min = 20.dp),
                         )
                         Text(remedy, fontSize = 13.sp, color = CreamDim, lineHeight = 20.sp, modifier = Modifier.weight(1f))
                     }
@@ -723,25 +724,23 @@ private fun DoshaDetailsCard(data: KalaSarpaModel) {
                 )
             }
             Spacer(Modifier.height(8.dp))
-            // Wrap chips in rows of 3
-            data.lifeAreas.chunked(3).forEach { rowAreas ->
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(bottom = 6.dp),
-                ) {
-                    rowAreas.forEach { area ->
-                        Row(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(50))
-                                .background(Color.Black.copy(alpha = 0.35f))
-                                .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(50))
-                                .padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            Text(areaIcon(area), fontSize = 11.sp)
-                            Text(area, fontSize = 11.sp, color = CreamText)
-                        }
+            // Wrap chips by measured width (parity with planetsInvolved FlowRow at :842)
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+            ) {
+                data.lifeAreas.forEach { area ->
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(Color.Black.copy(alpha = 0.35f))
+                            .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(50))
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(areaIcon(area), fontSize = 11.sp)
+                        Text(area, fontSize = 11.sp, color = CreamText)
                     }
                 }
             }
@@ -915,7 +914,7 @@ private fun DoshaRemediesCard(data: KalaSarpaModel) {
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     color = Gold,
-                    modifier = Modifier.width(20.dp),
+                    modifier = Modifier.widthIn(min = 20.dp),
                 )
                 Text(remedy, fontSize = 13.sp, color = CreamDim, lineHeight = 20.sp, modifier = Modifier.weight(1f))
             }

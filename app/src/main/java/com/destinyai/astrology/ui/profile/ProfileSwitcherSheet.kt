@@ -35,6 +35,7 @@ import com.destinyai.astrology.R
 import com.destinyai.astrology.services.HapticManager
 import com.destinyai.astrology.ui.partners.PartnerFormSheet
 import com.destinyai.astrology.ui.partners.PartnersViewModel
+import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
@@ -274,7 +275,8 @@ fun ProfileSwitcherSheet(
                                 ) {
                                     Text(
                                         text = stringResource(R.string.profile_you_badge),
-                                        fontSize = 10.sp,
+                                        fontSize = AppType.caption,
+                                        lineHeight = AppType.captionLh,
                                         color = Gold,
                                         fontWeight = FontWeight.SemiBold,
                                     )
@@ -373,7 +375,7 @@ fun ProfileSwitcherSheet(
                                                 .background(Gold.copy(alpha = 0.15f))
                                                 .padding(horizontal = 6.dp, vertical = 2.dp),
                                         ) {
-                                            Text(text = stringResource(R.string.profile_you_badge), fontSize = 10.sp, color = Gold, fontWeight = FontWeight.SemiBold)
+                                            Text(text = stringResource(R.string.profile_you_badge), fontSize = AppType.caption, lineHeight = AppType.captionLh, color = Gold, fontWeight = FontWeight.SemiBold)
                                         }
                                     }
                                 }
@@ -619,7 +621,8 @@ private fun ActiveProfileCard(profile: ProfileEntry) {
                 ) {
                     Text(
                         text = stringResource(R.string.profile_you_badge),
-                        fontSize = 9.sp,
+                        fontSize = AppType.caption,
+                        lineHeight = AppType.captionLh,
                         fontWeight = FontWeight.Bold,
                         color = Gold,
                     )

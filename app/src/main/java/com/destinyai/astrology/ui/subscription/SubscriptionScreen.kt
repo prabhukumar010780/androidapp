@@ -42,6 +42,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.destinyai.astrology.R
 import com.destinyai.astrology.data.billing.RestoreResult
 import com.destinyai.astrology.services.HapticManager
+import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
@@ -49,6 +50,7 @@ import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.Radius
 import com.destinyai.astrology.ui.theme.Spacing
+import com.destinyai.astrology.ui.theme.TouchMin
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
 import java.text.DateFormat
@@ -177,7 +179,7 @@ fun SubscriptionScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                    .padding(horizontal = Spacing.xs, vertical = Spacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(
@@ -225,7 +227,9 @@ fun SubscriptionScreen(
                         haptic.light()
                         onBack()
                     },
-                    modifier = Modifier.semantics { testTag = "subscription_done_button" },
+                    modifier = Modifier
+                        .heightIn(min = TouchMin)
+                        .semantics { testTag = "subscription_done_button" },
                 ) {
                     Text(
                         text = stringResource(R.string.done_action),
@@ -286,7 +290,8 @@ fun SubscriptionScreen(
                         Text(
                             text = stringResource(R.string.upgrade_to_keep_going),
                             style = MaterialTheme.typography.bodyMedium,
-                            fontSize = 16.sp,
+                            fontSize = AppType.body,
+                            lineHeight = AppType.bodyLh,
                             color = CreamDim,
                             textAlign = TextAlign.Center,
                             modifier = Modifier
@@ -305,9 +310,9 @@ fun SubscriptionScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(10.dp))
+                                    .clip(RoundedCornerShape(Radius.chip))
                                     .background(Color(0x1AFF9800)) // orange 10% alpha
-                                    .border(1.dp, Color(0xFFFF9800).copy(alpha = 0.55f), RoundedCornerShape(10.dp))
+                                    .border(1.dp, Color(0xFFFF9800).copy(alpha = 0.55f), RoundedCornerShape(Radius.chip))
                                     .padding(12.dp)
                                     .semantics { testTag = "subscription_conflict_banner" },
                                 verticalAlignment = Alignment.Top,
@@ -318,7 +323,7 @@ fun SubscriptionScreen(
                                     tint = Color(0xFFFF9800),
                                     modifier = Modifier.padding(top = 1.dp),
                                 )
-                                Spacer(Modifier.width(10.dp))
+                                Spacer(Modifier.width(Spacing.sm))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = stringResource(R.string.conflict_banner_title),
@@ -346,9 +351,9 @@ fun SubscriptionScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(10.dp))
+                                    .clip(RoundedCornerShape(Radius.chip))
                                     .background(NavySurface)
-                                    .border(1.dp, Gold.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                                    .border(1.dp, Gold.copy(alpha = 0.4f), RoundedCornerShape(Radius.chip))
                                     .padding(12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
@@ -357,7 +362,7 @@ fun SubscriptionScreen(
                                     color = Gold,
                                     strokeWidth = 2.dp,
                                 )
-                                Spacer(Modifier.width(10.dp))
+                                Spacer(Modifier.width(Spacing.sm))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = stringResource(R.string.subscription_activating_title),
@@ -390,7 +395,7 @@ fun SubscriptionScreen(
                     val corePlanRef = displayPlans.firstOrNull {
                         it.tier == "core" && it.period == "monthly"
                     }?.source
-                    items(displayPlans) { displayPlan ->
+                    items(displayPlans, key = { "${it.tier}_${it.period}" }) { displayPlan ->
                             val plan = displayPlan.source
                             val isYearly = displayPlan.isYearly
                             val isPlus = displayPlan.isPlus
@@ -464,12 +469,12 @@ fun SubscriptionScreen(
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(16.dp))
+                                    .clip(RoundedCornerShape(Radius.card))
                                     .background(NavySurface)
                                     .border(
                                         width = if (isCurrentPlan) 2.dp else if (isYearly) 1.dp else 0.5.dp,
                                         color = if (isCurrentPlan) Gold else if (isYearly) Gold else Gold.copy(alpha = 0.3f),
-                                        shape = RoundedCornerShape(16.dp),
+                                        shape = RoundedCornerShape(Radius.card),
                                     )
                                     .padding(16.dp)
                                     .semantics { testTag = "subscription_plan_card" },
@@ -484,7 +489,8 @@ fun SubscriptionScreen(
                                             Row(verticalAlignment = Alignment.CenterVertically) {
                                                 Text(
                                                     text = plan.displayName,
-                                                    fontSize = 17.sp,
+                                                    fontSize = AppType.cardTitle,
+                                                    lineHeight = AppType.cardTitleLh,
                                                     fontWeight = FontWeight.Bold,
                                                     fontFamily = CanelaFontFamily,
                                                     color = CreamText,
@@ -499,7 +505,8 @@ fun SubscriptionScreen(
                                                     ) {
                                                         Text(
                                                             text = stringResource(R.string.current_plan),
-                                                            fontSize = 10.sp,
+                                                            fontSize = AppType.caption,
+                                                            lineHeight = AppType.captionLh,
                                                             fontWeight = FontWeight.ExtraBold,
                                                             color = Color(0xFF0D0D1A),
                                                         )
@@ -522,7 +529,8 @@ fun SubscriptionScreen(
                                                     ) {
                                                         Text(
                                                             text = stringResource(R.string.scheduled_plan),
-                                                            fontSize = 10.sp,
+                                                            fontSize = AppType.caption,
+                                                            lineHeight = AppType.captionLh,
                                                             fontWeight = FontWeight.ExtraBold,
                                                             color = Gold,
                                                         )
@@ -535,7 +543,8 @@ fun SubscriptionScreen(
                                                 Spacer(Modifier.height(2.dp))
                                                 Text(
                                                     text = desc,
-                                                    fontSize = 14.sp,
+                                                    fontSize = AppType.secondary,
+                                                    lineHeight = AppType.secondaryLh,
                                                     color = CreamDim,
                                                 )
                                             }
@@ -543,7 +552,8 @@ fun SubscriptionScreen(
                                                 Spacer(Modifier.height(2.dp))
                                                 Text(
                                                     text = stringResource(R.string.billing_free_trial),
-                                                    fontSize = 11.sp,
+                                                    fontSize = AppType.caption,
+                                                    lineHeight = AppType.captionLh,
                                                     color = Gold,
                                                     fontWeight = FontWeight.SemiBold,
                                                 )
@@ -556,14 +566,15 @@ fun SubscriptionScreen(
                                                 Spacer(Modifier.height(4.dp))
                                                 Box(
                                                     modifier = Modifier
-                                                        .clip(RoundedCornerShape(6.dp))
+                                                        .clip(RoundedCornerShape(Radius.chip))
                                                         .background(Gold.copy(alpha = 0.15f))
-                                                        .border(0.5.dp, Gold.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                                                        .border(0.5.dp, Gold.copy(alpha = 0.5f), RoundedCornerShape(Radius.chip))
                                                         .padding(horizontal = 8.dp, vertical = 2.dp),
                                                 ) {
                                                     Text(
                                                         text = stringResource(R.string.subscription_free_trial_available),
-                                                        fontSize = 11.sp,
+                                                        fontSize = AppType.caption,
+                                                        lineHeight = AppType.captionLh,
                                                         fontWeight = FontWeight.SemiBold,
                                                         color = Gold,
                                                     )
@@ -580,7 +591,8 @@ fun SubscriptionScreen(
                                             if (isYearly) {
                                                 Text(
                                                     text = stringResource(R.string.billing_best_value),
-                                                    fontSize = 11.sp,
+                                                    fontSize = AppType.caption,
+                                                    lineHeight = AppType.captionLh,
                                                     color = Gold.copy(alpha = 0.8f),
                                                 )
                                             }
@@ -661,7 +673,8 @@ fun SubscriptionScreen(
                                                             Spacer(Modifier.width(4.dp))
                                                             Text(
                                                                 text = stringResource(R.string.coming_soon),
-                                                                fontSize = 10.sp,
+                                                                fontSize = AppType.caption,
+                                                                lineHeight = AppType.captionLh,
                                                                 color = CreamDim.copy(alpha = 0.7f),
                                                             )
                                                         }
@@ -671,7 +684,8 @@ fun SubscriptionScreen(
                                                     if (!sub.isNullOrBlank()) {
                                                         Text(
                                                             text = sub,
-                                                            fontSize = 11.sp,
+                                                            fontSize = AppType.caption,
+                                                            lineHeight = AppType.captionLh,
                                                             color = CreamDim,
                                                         )
                                                     }
@@ -761,7 +775,8 @@ fun SubscriptionScreen(
                                                         R.string.trial_then_price_format,
                                                         "$formattedPrice$periodSuffix",
                                                     ),
-                                                    fontSize = 11.sp,
+                                                    fontSize = AppType.caption,
+                                                    lineHeight = AppType.captionLh,
                                                     color = Color(0xFF0D0D1A).copy(alpha = 0.85f),
                                                 )
                                             }
@@ -811,6 +826,7 @@ fun SubscriptionScreen(
                             enabled = !isRestoring,
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .heightIn(min = TouchMin)
                                 .semantics { testTag = "subscription_restore_button" },
                         ) {
                             // iOS parity (SubscriptionView.swift:415-424) —
@@ -857,6 +873,7 @@ fun SubscriptionScreen(
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .heightIn(min = TouchMin)
                                     .semantics { testTag = "subscription_manage_button" },
                             ) {
                                 Text(
@@ -872,7 +889,8 @@ fun SubscriptionScreen(
                         item {
                             Text(
                                 text = stringResource(R.string.subscription_terms),
-                                fontSize = 11.sp,
+                                fontSize = AppType.caption,
+                                lineHeight = AppType.captionLh,
                                 color = CreamDim.copy(alpha = 0.6f),
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier
@@ -886,7 +904,8 @@ fun SubscriptionScreen(
                         item {
                             Text(
                                 text = stringResource(R.string.fair_use_notice),
-                                fontSize = 11.sp,
+                                fontSize = AppType.caption,
+                                lineHeight = AppType.captionLh,
                                 fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
                                 color = CreamDim.copy(alpha = 0.6f),
                                 textAlign = TextAlign.Center,
@@ -904,7 +923,8 @@ fun SubscriptionScreen(
                     item {
                         Text(
                             text = stringResource(R.string.play_subscription_notice),
-                            fontSize = 11.sp,
+                            fontSize = AppType.caption,
+                            lineHeight = AppType.captionLh,
                             color = CreamDim.copy(alpha = 0.6f),
                             textAlign = TextAlign.Center,
                             modifier = Modifier
@@ -931,6 +951,7 @@ fun SubscriptionScreen(
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .heightIn(min = TouchMin)
                                     .semantics { testTag = "subscription_destiny_matching_expander" },
                             ) {
                                 Icon(
@@ -943,7 +964,8 @@ fun SubscriptionScreen(
                                 Spacer(Modifier.width(8.dp))
                                 Text(
                                     text = stringResource(R.string.what_is_destiny_matching),
-                                    fontSize = 16.sp,
+                                    fontSize = AppType.body,
+                                    lineHeight = AppType.bodyLh,
                                     fontFamily = CanelaFontFamily,
                                     color = CreamDim,
                                     modifier = Modifier.weight(1f),

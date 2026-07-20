@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -34,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import com.destinyai.astrology.ui.theme.AppTheme
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
+import com.destinyai.astrology.ui.theme.TouchMin
 
 /**
  * Segmented control with an animated gold-tinted glass background and a
@@ -134,7 +136,9 @@ private fun SegmentItem(
     onClick: () -> Unit,
 ) {
     Box(
-        modifier = modifier.clickable(onClick = onClick),
+        modifier = modifier
+            .clickable(onClick = onClick)
+            .heightIn(min = TouchMin),
         contentAlignment = Alignment.Center,
     ) {
         Text(

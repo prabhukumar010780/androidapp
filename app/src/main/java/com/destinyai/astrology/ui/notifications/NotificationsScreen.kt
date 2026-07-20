@@ -58,6 +58,8 @@ import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.GoldDim
 import com.destinyai.astrology.ui.theme.Radius
 import com.destinyai.astrology.ui.theme.NavySurface
+import com.destinyai.astrology.ui.theme.Spacing
+import com.destinyai.astrology.ui.theme.TouchMin
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -252,27 +254,33 @@ fun NotificationsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                    .padding(horizontal = Spacing.screenH, vertical = Spacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 // Close button (circle)
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(NavySurface),
+                        .size(TouchMin),
                     contentAlignment = Alignment.Center,
                 ) {
                     IconButton(onClick = {
                         haptic.light()
                         onBack()
-                    }, modifier = Modifier.size(48.dp).testTag("notif_inbox_close")) {
-                        Icon(
-                            Icons.Filled.Close,
-                            contentDescription = stringResource(R.string.a11y_close),
-                            tint = CreamDim,
-                            modifier = Modifier.size(18.dp),
-                        )
+                    }, modifier = Modifier.size(TouchMin).testTag("notif_inbox_close")) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(NavySurface),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                Icons.Filled.Close,
+                                contentDescription = stringResource(R.string.a11y_close),
+                                tint = CreamDim,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
                     }
                 }
 
@@ -301,9 +309,7 @@ fun NotificationsScreen(
                 // Mark all read (circle)
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(NavySurface),
+                        .size(TouchMin),
                     contentAlignment = Alignment.Center,
                 ) {
                     IconButton(
@@ -313,14 +319,22 @@ fun NotificationsScreen(
                                 viewModel.markAllRead()
                             }
                         },
-                        modifier = Modifier.size(48.dp),
+                        modifier = Modifier.size(TouchMin),
                     ) {
-                        Icon(
-                            Icons.Filled.DoneAll,
-                            contentDescription = stringResource(R.string.a11y_mark_all_read),
-                            tint = if (state.unreadCount > 0) Gold else CreamDim,
-                            modifier = Modifier.size(18.dp),
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(NavySurface),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                Icons.Filled.DoneAll,
+                                contentDescription = stringResource(R.string.a11y_mark_all_read),
+                                tint = if (state.unreadCount > 0) Gold else CreamDim,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
                     }
                 }
             }
@@ -547,12 +561,13 @@ private fun NotificationRowItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .height(IntrinsicSize.Min)
+            .clip(RoundedCornerShape(Radius.card))
             .background(NavySurface)
             .border(
                 1.dp,
                 if (!notif.isRead) accent.copy(alpha = 0.25f) else Color.Transparent,
-                RoundedCornerShape(16.dp),
+                RoundedCornerShape(Radius.card),
             )
             .clickable { onClick() }
             .semantics { testTagsAsResourceId = true }
@@ -563,8 +578,8 @@ private fun NotificationRowItem(
         Box(
             modifier = Modifier
                 .width(4.dp)
-                .height(72.dp)
-                .padding(vertical = 12.dp)
+                .fillMaxHeight()
+                .padding(vertical = Spacing.md)
                 .clip(RoundedCornerShape(2.dp))
                 .background(accent),
         )
@@ -768,7 +783,7 @@ private fun NotificationDetailSheetContent(
                             .height(50.dp)
                             .semantics { testTagsAsResourceId = true }
                             .testTag("notification_action_button"),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(Radius.button),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Gold,
                             contentColor = Color(0xFF0D0D1A),
@@ -790,7 +805,7 @@ private fun NotificationDetailSheetContent(
                             .height(50.dp)
                             .semantics { testTagsAsResourceId = true }
                             .testTag("notification_action_button"),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(Radius.button),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Gold,
                             contentColor = Color(0xFF0D0D1A),
@@ -811,7 +826,7 @@ private fun NotificationDetailSheetContent(
                             .height(50.dp)
                             .semantics { testTagsAsResourceId = true }
                             .testTag("notification_action_button"),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(Radius.button),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Gold,
                             contentColor = Color(0xFF0D0D1A),
@@ -829,7 +844,7 @@ private fun NotificationDetailSheetContent(
             OutlinedButton(
                 onClick = onDone,
                 modifier = Modifier.fillMaxWidth().height(50.dp),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(Radius.button),
                 border = androidx.compose.foundation.BorderStroke(1.dp, Gold.copy(alpha = 0.5f)),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold),
             ) {

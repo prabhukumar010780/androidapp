@@ -47,6 +47,7 @@ import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
+import com.destinyai.astrology.ui.theme.Spacing
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -174,7 +175,8 @@ fun PartnerPickerSheet(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
+                    .imePadding()
+                    .padding(horizontal = 20.dp)
                     .padding(bottom = 40.dp)
                     .semantics { contentDescription = "partner_picker_sheet" },
             ) {
@@ -322,7 +324,7 @@ fun PartnerPickerSheet(
                                     onSelect(partner)
                                     onDismiss()
                                 }
-                                .padding(horizontal = 14.dp, vertical = 12.dp)
+                                .padding(horizontal = Spacing.md, vertical = 12.dp)
                                 .testTag("partner_picker_row_${partner.id}")
                                 .semantics {
                                     contentDescription = "partner_picker_row"

@@ -65,6 +65,8 @@ import com.destinyai.astrology.ui.theme.GoldLight
 import com.destinyai.astrology.ui.theme.NavyDeep
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.SuccessGreen
+import com.destinyai.astrology.ui.theme.AppType
+import com.destinyai.astrology.ui.theme.TouchMin
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -673,8 +675,10 @@ private fun OrbitTooltipCard(
                     text = subtitle,
                     style = MaterialTheme.typography.labelSmall,
                     color = CreamDim,
-                    fontSize = 10.sp,
+                    fontSize = AppType.caption, // 12.sp
+                    lineHeight = AppType.captionLh,
                     maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
             }
             ScoreBadge(kuta = kuta)
@@ -682,7 +686,7 @@ private fun OrbitTooltipCard(
             IconButton(
                 onClick = onDismiss,
                 modifier = Modifier
-                    .size(28.dp)
+                    .size(TouchMin) // 48.dp — compliant tap target; glyph stays 16.dp below
                     .semantics { contentDescription = "orbit_tooltip_close" },
             ) {
                 Icon(
@@ -791,7 +795,8 @@ internal fun ScoreBadge(kuta: KutaDetail) {
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.SemiBold,
             color = color,
-            fontSize = 9.sp,
+            fontSize = AppType.caption, // 12.sp
+            lineHeight = AppType.captionLh,
         )
     }
 }

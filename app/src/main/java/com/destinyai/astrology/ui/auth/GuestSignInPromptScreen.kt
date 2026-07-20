@@ -42,6 +42,7 @@ import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
+import com.destinyai.astrology.ui.theme.Radius
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -270,7 +271,7 @@ fun GuestSignInPromptScreen(
                     }
                     .testTag("guest_prompt_google_button")
                     .semantics { contentDescription = "guest_prompt_google_button" },
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(Radius.authButton),
                 enabled = !isSigningIn,
                 border = ButtonDefaults.outlinedButtonBorder(enabled = !isSigningIn).copy(
                     width = 1.dp,
@@ -331,7 +332,7 @@ fun GuestSignInPromptScreen(
                         }
                         .testTag("guest_prompt_apple_support_button")
                         .semantics { contentDescription = "guest_prompt_apple_support_button" },
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(Radius.authButton),
                     enabled = !isSigningIn,
                     border = ButtonDefaults.outlinedButtonBorder(enabled = !isSigningIn).copy(
                         width = 1.dp,

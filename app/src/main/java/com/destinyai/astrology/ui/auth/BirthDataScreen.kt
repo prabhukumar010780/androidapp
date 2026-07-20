@@ -69,6 +69,7 @@ import com.destinyai.astrology.services.HapticManager
 import com.destinyai.astrology.ui.components.GoldGradientText
 import com.destinyai.astrology.ui.components.ShimmerButton
 import com.destinyai.astrology.ui.onboarding.ResponseStyleOnboardingScreen
+import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.BirthDataDimens
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
@@ -78,7 +79,9 @@ import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavyInput
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
+import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.TextTertiary
+import com.destinyai.astrology.ui.theme.TouchMin
 import java.util.Calendar
 import java.util.Locale
 
@@ -261,7 +264,8 @@ fun BirthDataScreen(
                     Text(
                         text = stringResource(R.string.backend_data_refreshed_banner),
                         color = Gold,
-                        fontSize = 13.sp,
+                        fontSize = AppType.secondary,
+                        lineHeight = AppType.secondaryLh,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -278,14 +282,14 @@ fun BirthDataScreen(
                     // last fields stay reachable.
                     .imePadding()
                     .navigationBarsPadding()
-                    .padding(horizontal = 24.dp),
+                    .padding(horizontal = 32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
 
                 // ── Header (matches iOS BirthDataView.headerSection) ──────────
                 BirthDataHeader()
 
-                Spacer(Modifier.height(28.dp))
+                Spacer(Modifier.height(Spacing.xxl))
 
                 // ── Name field ────────────────────────────────────────────────
                 val nameFocus = remember { FocusRequester() }
@@ -348,6 +352,7 @@ fun BirthDataScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .heightIn(min = TouchMin)
                             .clickable {
                                 // iOS parity (BirthDataView.swift:369-374):
                                 // light haptic on toggle of timeUnknown.
@@ -429,12 +434,13 @@ fun BirthDataScreen(
                     Text(
                         text = state.error ?: "",
                         color = MaterialTheme.colorScheme.error,
-                        fontSize = 13.sp,
+                        fontSize = AppType.secondary,
+                        lineHeight = AppType.secondaryLh,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
 
-                Spacer(Modifier.height(28.dp))
+                Spacer(Modifier.height(Spacing.xxl))
 
                 // R2-A5: Analytics consent checkbox — iOS parity
                 // (BirthDataView.swift:33,426): only show the consent toggle for
@@ -788,7 +794,7 @@ private fun PremiumFieldButton(
             tint = if (enabled) Gold.copy(alpha = 0.8f) else TextTertiary,
             modifier = Modifier.size(16.dp),
         )
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(Spacing.sm))
         Text(
             text = text,
             fontSize = 14.sp,
@@ -1078,6 +1084,7 @@ private fun LocationSearchSheet(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .heightIn(min = TouchMin)
                                     .clickable {
                                         onSelect(result.displayName, result.latitude, result.longitude, result.placeId)
                                     }

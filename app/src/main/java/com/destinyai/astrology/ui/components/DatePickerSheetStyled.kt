@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -43,6 +44,9 @@ import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavyDeep
+import com.destinyai.astrology.ui.theme.Radius
+import com.destinyai.astrology.ui.theme.Spacing
+import com.destinyai.astrology.ui.theme.TouchMin
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.text.DateFormatSymbols
@@ -129,12 +133,16 @@ fun DatePickerSheetStyled(
                     color = Gold,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.clickable {
-                        scope.launch {
-                            onDateSelected(selectedYear, selectedMonth, selectedDay)
-                            sheetState.hide()
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(Radius.button))
+                        .clickable {
+                            scope.launch {
+                                onDateSelected(selectedYear, selectedMonth, selectedDay)
+                                sheetState.hide()
+                            }
                         }
-                    },
+                        .heightIn(min = TouchMin)
+                        .padding(horizontal = Spacing.md),
                 )
             }
 

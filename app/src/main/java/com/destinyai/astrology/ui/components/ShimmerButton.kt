@@ -14,12 +14,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.destinyai.astrology.ui.theme.AuthDimens
@@ -62,6 +66,11 @@ fun ShimmerButton(
     val softColor = if (destructive) Color(0xFFD64545) else GoldSoft
     val lightColor = if (destructive) Color(0xFFFF7373) else GoldLight
 
+    // Measured button width in px — drives the shimmer gradient so the highlight
+    // always spans the full button regardless of density/screen size (tablets,
+    // foldables). A hardcoded endX clamps to flat gold past its bound.
+    var widthPx by remember { mutableFloatStateOf(0f) }
+
     // Build a brush that places the bright highlight at `shimmerProgress`
     // along the horizontal axis. The highlight band is ~20% of total width.
     val shimmerBrush = Brush.linearGradient(
@@ -74,13 +83,14 @@ fun ShimmerButton(
             1.00f to baseColor,
         ),
         start = Offset(0f, 0f),
-        end = Offset(900f, 0f),
+        end = Offset(widthPx.coerceAtLeast(1f), 0f),
     )
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(AuthDimens.buttonHeight)
+            .onSizeChanged { widthPx = it.width.toFloat() }
             .clip(RoundedCornerShape(AuthDimens.buttonCornerRadius))
             .background(if (enabled) shimmerBrush else Brush.horizontalGradient(listOf(baseColor.copy(alpha = 0.4f), baseColor.copy(alpha = 0.4f))))
             .clickable(enabled = enabled, onClick = onClick)

@@ -37,6 +37,8 @@ import com.destinyai.astrology.domain.model.KutaDetail
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.NavySurface
+import com.destinyai.astrology.ui.theme.Spacing
+import com.destinyai.astrology.ui.theme.TouchMin
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -211,6 +213,7 @@ fun GlassPill(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .heightIn(min = TouchMin) // 48.dp — meet interactive touch-target floor
             .clip(RoundedCornerShape(12.dp))
             // iOS uses .ultraThinMaterial (frosted glass). Compose has no true backdrop-blur,
             // so this APPROXIMATES it: a faint translucent white overlay over the navy surface
@@ -222,7 +225,7 @@ fun GlassPill(
                 haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onClick()
             }
-            .padding(horizontal = 10.dp, vertical = 10.dp)
+            .padding(horizontal = 10.dp, vertical = Spacing.sm)
             .semantics { contentDescription = "kuta_pill_${kuta.key}" },
         verticalAlignment = Alignment.CenterVertically,
     ) {

@@ -31,6 +31,8 @@ import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
+import com.destinyai.astrology.ui.theme.Radius
+import com.destinyai.astrology.ui.theme.Spacing
 
 private val ayanamsaOptions = listOf(
     "lahiri" to R.string.ayanamsa_lahiri_default,
@@ -112,11 +114,11 @@ fun AstrologySettingsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp),
+                    .padding(horizontal = Spacing.xl)
+                    .navigationBarsPadding()
+                    .padding(top = Spacing.xs, bottom = Spacing.xl),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Spacer(Modifier.height(4.dp))
-
                 AstroPickerSection(
                     title = stringResource(R.string.ayanamsa),
                     options = ayanamsaOptions,
@@ -147,8 +149,6 @@ fun AstrologySettingsScreen(
                 // iOS parity (AstrologySettingsSheet.swift:8-10): @AppStorage auto-persists on every
                 // tap — no Save button. Android setters already write to DataStore inside
                 // setAyanamsa/setHouseSystem/setChartStyle, so a redundant Save button was removed.
-
-                Spacer(Modifier.height(32.dp))
             }
         }
     }
@@ -169,9 +169,9 @@ private fun AstroPickerSection(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
+                .clip(RoundedCornerShape(Radius.card))
                 .background(NavySurface)
-                .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(14.dp)),
+                .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(Radius.card)),
         ) {
             Text(
                 text = title,

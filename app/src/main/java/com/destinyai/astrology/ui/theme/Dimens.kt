@@ -52,6 +52,9 @@ object Radius {
     val hero = 20.dp
     val button = 12.dp
     val chip = 12.dp
+
+    /** Deliberate auth-button radius (Google / guest / support / waitlist CTAs). */
+    val authButton = 14.dp
 }
 
 /** Minimum tappable size. Keep the glyph/visual small; expand the hit area to this. */

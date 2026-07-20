@@ -131,7 +131,6 @@ private fun SafeScenarioView(boyName: String, girlName: String) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.padding(vertical = 20.dp),
         ) {
             Box(
                 modifier = Modifier

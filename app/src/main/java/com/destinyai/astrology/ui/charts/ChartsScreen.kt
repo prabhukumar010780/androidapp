@@ -26,18 +26,22 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.destinyai.astrology.R
 import com.destinyai.astrology.services.HapticManager
+import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
+import com.destinyai.astrology.ui.theme.Radius
+import com.destinyai.astrology.ui.theme.Spacing
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -93,7 +97,8 @@ fun ChartsScreen(
                 }
                 Text(
                     text = stringResource(R.string.birth_chart),
-                    fontSize = 18.sp,
+                    fontSize = AppType.sectionHeader,
+                    lineHeight = AppType.sectionHeaderLh,
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = CanelaFontFamily,
                     color = Gold,
@@ -174,9 +179,9 @@ fun ChartsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(24.dp)
-                            .clip(RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(Radius.card))
                             .background(NavySurface)
-                            .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+                            .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(Radius.card))
                             .padding(24.dp),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -204,9 +209,10 @@ fun ChartsScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
+                            .navigationBarsPadding()
                             .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 20.dp),
-                        verticalArrangement = Arrangement.spacedBy(20.dp),
+                            .padding(horizontal = Spacing.screenH),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.sectionGap),
                     ) {
                         Spacer(Modifier.height(4.dp))
 
@@ -242,7 +248,8 @@ fun ChartsScreen(
                             Text(
                                 stringResource(R.string.planetary_positions),
                                 fontFamily = CanelaFontFamily,
-                                fontSize = 18.sp,
+                                fontSize = AppType.sectionHeader,
+                                lineHeight = AppType.sectionHeaderLh,
                                 color = CreamText,
                                 modifier = Modifier.semantics { contentDescription = "chart_tab_planets" },
                             )
@@ -266,7 +273,7 @@ fun ChartsScreen(
                         // chartVisualSection + planetaryGrid + badgeLegend). Dasha and Transits
                         // are surfaced on Home (HomeScreen) where iOS also surfaces them.
 
-                        Spacer(Modifier.height(32.dp))
+                        Spacer(Modifier.height(Spacing.lg))
                     }
                 }
             }
@@ -289,18 +296,18 @@ private fun MinimalBirthInfo(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Text(formatBirthDate(dob), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = CreamText)
+        Text(formatBirthDate(dob), fontSize = AppType.secondary, lineHeight = AppType.secondaryLh, fontWeight = FontWeight.SemiBold, color = CreamText)
         if (!timeUnknown) {
             Text("•", color = Gold.copy(alpha = 0.6f))
-            Text(formatBirthTime(time), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = CreamText)
+            Text(formatBirthTime(time), fontSize = AppType.secondary, lineHeight = AppType.secondaryLh, fontWeight = FontWeight.SemiBold, color = CreamText)
         }
         if (city.isNotEmpty()) {
             Text("•", color = Gold.copy(alpha = 0.6f))
-            Text(city, fontSize = 14.sp, color = CreamDim, maxLines = 1)
+            Text(city, fontSize = AppType.secondary, lineHeight = AppType.secondaryLh, color = CreamDim, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         }
         if (ascendantSign != null) {
             Text("•", color = Gold.copy(alpha = 0.6f))
-            Text(stringResource(R.string.ascendant_short_fmt, ascendantSign), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Gold)
+            Text(stringResource(R.string.ascendant_short_fmt, ascendantSign), fontSize = AppType.secondary, lineHeight = AppType.secondaryLh, fontWeight = FontWeight.SemiBold, color = Gold)
         }
     }
 }
@@ -331,7 +338,7 @@ fun PremiumPlanetRow(
         modifier = Modifier
             .fillMaxWidth()
             .semantics { contentDescription = "planet_position_row" }
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(Radius.card))
             .background(
                 androidx.compose.ui.graphics.Brush.linearGradient(
                     listOf(
@@ -345,9 +352,9 @@ fun PremiumPlanetRow(
                 androidx.compose.ui.graphics.Brush.linearGradient(
                     listOf(Gold.copy(alpha = 0.3f), Gold.copy(alpha = 0.05f), Color.White.copy(alpha = 0.05f))
                 ),
-                RoundedCornerShape(16.dp),
+                RoundedCornerShape(Radius.card),
             )
-            .padding(16.dp),
+            .padding(Spacing.cardPadding),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -366,7 +373,7 @@ fun PremiumPlanetRow(
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                 val localizedName = premiumPlanetNameResMap[name]?.let { stringResource(it) } ?: name
-                Text(localizedName, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = CreamText)
+                Text(localizedName, fontSize = AppType.body, lineHeight = AppType.bodyLh, fontWeight = FontWeight.SemiBold, color = CreamText)
                 if (data.isRetrograde == true) ChartBadge("R", Color.Red)
                 if (data.isCombust == true) ChartBadge("C", Color(0xFFFF8C00))
                 if (data.vargottama == true) ChartBadge("V", Color(0xFF9C27B0))
@@ -390,8 +397,8 @@ fun PremiumPlanetRow(
                 Text(stringResource(R.string.house_short_fmt, data.house), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Gold)
             }
             if (nakshatra != null) {
-                Text(nakshatra.nakshatra, fontSize = 11.sp, color = CreamDim)
-                Text(stringResource(R.string.pada_num_fmt, nakshatra.pada), fontSize = 10.sp, color = CreamDim.copy(alpha = 0.7f))
+                Text(nakshatra.nakshatra, fontSize = AppType.caption, lineHeight = AppType.captionLh, color = CreamDim)
+                Text(stringResource(R.string.pada_num_fmt, nakshatra.pada), fontSize = AppType.caption, lineHeight = AppType.captionLh, color = CreamDim.copy(alpha = 0.7f))
             }
         }
     }
@@ -408,7 +415,7 @@ fun ChartBadge(text: String, color: Color) {
             .border(0.5.dp, color.copy(alpha = 0.4f), RoundedCornerShape(50))
             .padding(horizontal = 6.dp, vertical = 2.dp),
     ) {
-        Text(text, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = color.copy(alpha = 0.9f))
+        Text(text, fontSize = AppType.caption, lineHeight = AppType.captionLh, fontWeight = FontWeight.Bold, color = color.copy(alpha = 0.9f))
     }
 }
 

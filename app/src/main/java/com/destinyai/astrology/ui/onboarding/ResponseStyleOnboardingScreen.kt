@@ -45,6 +45,8 @@ import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
+import com.destinyai.astrology.ui.theme.Radius
+import com.destinyai.astrology.ui.theme.Spacing
 
 private data class ResponseStyleOption(
     val key: String,
@@ -159,7 +161,7 @@ fun ResponseStyleOnboardingScreen(
                     .verticalScroll(rememberScrollState())
                     // Edge-to-edge: keep the Continue/Save button clear of the gesture pill.
                     .navigationBarsPadding()
-                    .padding(horizontal = 20.dp),
+                    .padding(horizontal = Spacing.xl),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Spacer(Modifier.height(8.dp))
@@ -210,7 +212,7 @@ fun ResponseStyleOnboardingScreen(
                             viewModel.select(option.key)
                         },
                     )
-                    Spacer(Modifier.height(14.dp))
+                    Spacer(Modifier.height(Spacing.cardGap))
                 }
 
                 Spacer(Modifier.height(12.dp))
@@ -337,9 +339,9 @@ private fun ResponseStyleCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(RoundedCornerShape(Radius.chip))
                     .background(Color.Black.copy(alpha = 0.25f))
-                    .border(0.5.dp, Color.White.copy(alpha = 0.04f), RoundedCornerShape(10.dp))
+                    .border(0.5.dp, Color.White.copy(alpha = 0.04f), RoundedCornerShape(Radius.chip))
                     .padding(14.dp),
             ) {
                 Column {

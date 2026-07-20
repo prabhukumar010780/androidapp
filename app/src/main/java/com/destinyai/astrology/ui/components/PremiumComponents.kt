@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.destinyai.astrology.services.HapticManager
+import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
@@ -264,7 +265,8 @@ fun BentoGridFeaturesView(
                     Text(
                         text = item.subtitle,
                         color = CreamDim,
-                        fontSize = 11.sp,
+                        fontSize = AppType.caption,
+                        lineHeight = AppType.captionLh,
                         textAlign = TextAlign.Center,
                     )
                 }

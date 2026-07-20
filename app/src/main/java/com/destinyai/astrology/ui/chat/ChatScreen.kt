@@ -247,12 +247,12 @@ fun ChatScreen(
                 state = listState,
                 modifier = Modifier
                     .weight(1f)
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = Spacing.screenH)
                     .nestedScroll(keyboardDismissNestedScroll)
                     .alpha(chatAlphaAnim)
                     .testTag("chat_messages_list"),
-                verticalArrangement = Arrangement.spacedBy(20.dp),
-                contentPadding = PaddingValues(vertical = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(Spacing.xl),
+                contentPadding = PaddingValues(vertical = Spacing.xl),
             ) {
                 if (isNewChat && !state.isLoading && !state.isStreaming) {
                     item(key = "starters") {
@@ -506,7 +506,8 @@ private fun ChatHeader(
                 )
                 Text(
                     text = stringResource(R.string.viewing_as_label, activeProfileName),
-                    fontSize = 11.sp,
+                    fontSize = AppType.caption,
+                    lineHeight = AppType.captionLh,
                     color = Gold,
                 )
             }
@@ -631,7 +632,9 @@ private fun StarterQuestionsView(questions: List<String>, onQuestionTap: (String
                         .background(Gold.copy(alpha = 0.1f))
                         .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
                         .clickable { onQuestionTap(q) }
+                        .heightIn(min = TouchMin)
                         .padding(horizontal = 20.dp, vertical = 10.dp),
+                    contentAlignment = Alignment.Center,
                 ) {
                     Text(q, fontSize = 13.sp, color = Gold, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 }
@@ -754,12 +757,15 @@ fun MessageBubbleView(
                                     onCopy()
                                     showCopied = true
                                 },
-                                modifier = Modifier.semantics { contentDescription = "copy_button" },
-                                contentPadding = PaddingValues(0.dp),
+                                modifier = Modifier
+                                    .semantics { contentDescription = "copy_button" }
+                                    .defaultMinSize(minHeight = TouchMin),
+                                contentPadding = PaddingValues(horizontal = Spacing.sm, vertical = Spacing.xs),
                             ) {
                                 Text(
                                     if (showCopied) stringResource(R.string.chat_copied) else stringResource(R.string.chat_copy_action),
-                                    fontSize = 11.sp,
+                                    fontSize = AppType.caption,
+                                    lineHeight = AppType.captionLh,
                                     color = if (showCopied) Gold else Color.White.copy(alpha = 0.3f),
                                 )
                             }
@@ -769,13 +775,15 @@ fun MessageBubbleView(
                         if (message.executionTimeMs > 0.0) {
                             Text(
                                 "• ${formatExecutionTime(message.executionTimeMs)}",
-                                fontSize = 11.sp,
+                                fontSize = AppType.caption,
+                                lineHeight = AppType.captionLh,
                                 color = Color.White.copy(alpha = 0.3f),
                             )
                         }
                         Text(
                             formatMessageTime(message.createdAtMs),
-                            fontSize = 11.sp,
+                            fontSize = AppType.caption,
+                            lineHeight = AppType.captionLh,
                             color = Color.White.copy(alpha = 0.2f),
                         )
                         // Inline rating (Gap 2) — only on substantial assistant messages,
@@ -933,7 +941,8 @@ private fun ToolCallsChips(tools: List<String>) {
         tools.forEach { tool ->
             Text(
                 tool,
-                fontSize = 11.sp,
+                fontSize = AppType.caption,
+                lineHeight = AppType.captionLh,
                 color = CreamDim,
             )
         }
@@ -958,7 +967,8 @@ private fun SourcesChips(sources: List<String>) {
         sources.forEach { source ->
             Text(
                 source,
-                fontSize = 11.sp,
+                fontSize = AppType.caption,
+                lineHeight = AppType.captionLh,
                 color = CreamDim,
             )
         }
@@ -1026,7 +1036,8 @@ private fun DepthLayerRow(
             .fillMaxWidth()
             .clickable { onToggle() }
             .semantics { contentDescription = rowTag }
-            .padding(vertical = 11.dp),
+            .heightIn(min = TouchMin)
+            .padding(vertical = Spacing.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -1106,7 +1117,8 @@ private fun MessageRatingRow(rating: Int, onRate: (Int) -> Unit) {
                 // Issue 49/61 — render localized "Rated" / "Thanks for your feedback" text.
                 Text(
                     text = stringResource(R.string.rated_status),
-                    fontSize = 10.sp,
+                    fontSize = AppType.caption,
+                    lineHeight = AppType.captionLh,
                     color = CreamDim,
                 )
                 Spacer(Modifier.width(4.dp))
@@ -1121,7 +1133,8 @@ private fun MessageRatingRow(rating: Int, onRate: (Int) -> Unit) {
             } else {
                 Text(
                     text = stringResource(R.string.rate_action),
-                    fontSize = 10.sp,
+                    fontSize = AppType.caption,
+                    lineHeight = AppType.captionLh,
                     color = CreamDim,
                 )
                 Spacer(Modifier.width(2.dp))
@@ -1140,7 +1153,7 @@ private fun MessageRatingRow(rating: Int, onRate: (Int) -> Unit) {
                         // Issue 48 — disable stars while submitting to avoid duplicate taps.
                         enabled = !isSubmitting,
                         modifier = Modifier
-                            .size(18.dp)
+                            .size(TouchMin)
                             .alpha(if (isSubmitting) 0.5f else 1f)
                             .semantics { contentDescription = starA11y },
                     ) {
@@ -1315,6 +1328,7 @@ private fun FollowUpSuggestionsView(questions: List<String>, onTap: (String) -> 
                     .clip(RoundedCornerShape(12.dp))
                     .background(NavySurface)
                     .border(0.5.dp, Gold.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
+                    .heightIn(min = TouchMin)
                     .clickable { onTap(q) }
                     .padding(horizontal = 14.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -1443,7 +1457,7 @@ private fun ChatInputBar(
                 IconButton(
                     onClick = onStyleTap,
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(TouchMin)
                         .semantics { contentDescription = "style_selector_button" },
                 ) {
                     Icon(Icons.Default.Tune, contentDescription = null, tint = Gold, modifier = Modifier.size(18.dp))
@@ -1490,7 +1504,7 @@ private fun ChatInputBar(
             // the user can cancel instead of waiting on a non-interactive spinner.
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(TouchMin)
                     .semantics { contentDescription = if (isLoading) "chat_stop_button" else "send_button" },
                 contentAlignment = Alignment.Center,
             ) {

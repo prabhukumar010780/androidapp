@@ -35,6 +35,7 @@ import com.destinyai.astrology.R
 import com.destinyai.astrology.domain.model.DestinyTileType
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.Gold
+import com.destinyai.astrology.ui.theme.AppType
 
 /**
  * Weighted-Row tab bar — mirrors iOS Compatibility/Components/MagicTabbar.swift.
@@ -114,11 +115,14 @@ internal fun MagicTabbar(
                 )
                 Text(
                     text = stringResource(id = tab.labelResource()).uppercase(),
-                    fontSize = 9.sp,
+                    fontSize = AppType.caption, // 12.sp
+                    lineHeight = AppType.captionLh,
                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                     letterSpacing = 0.5.sp,
                     color = labelColor,
                     textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    softWrap = false,
                 )
                 // Animated active indicator dot — uses per-tile accent color, mirrors iOS
                 Box(

@@ -87,6 +87,7 @@ import com.destinyai.astrology.services.HapticManager
 import com.destinyai.astrology.services.SoundManager
 import com.destinyai.astrology.ui.components.GoldGradientText
 import com.destinyai.astrology.ui.profile.ProfileSwitcherViewModel
+import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.Features
 import com.destinyai.astrology.ui.theme.Gold
@@ -463,10 +464,11 @@ fun HomeScreen(
                             tint = Gold.copy(alpha = 0.6f),
                             modifier = Modifier.size(12.dp),
                         )
-                        Spacer(Modifier.width(5.dp))
+                        Spacer(Modifier.width(Spacing.xs))
                         Text(
                             text = stringResource(R.string.home_tap_to_explore_day),
-                            fontSize = 11.sp,
+                            fontSize = AppType.caption,
+                            lineHeight = AppType.captionLh,
                             fontStyle = FontStyle.Italic,
                             color = CreamDim.copy(alpha = 0.8f),
                             textAlign = TextAlign.Center,
@@ -777,7 +779,7 @@ private fun LifeAreaOrbs(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        items(areas) { area ->
+        items(areas, key = { it.name }) { area ->
             StoryOrb(
                 area = area,
                 onTap = { onAreaTap(area) },
@@ -1016,7 +1018,8 @@ private fun StoryOrb(
         // 9. Uppercase label below — goldLight, 11sp semibold, letter-spacing 0.3
         Text(
             text = area.name.uppercase(),
-            fontSize = 11.sp,
+            fontSize = AppType.caption,
+            lineHeight = AppType.captionLh,
             fontWeight = FontWeight.SemiBold,
             color = GoldLight,
             letterSpacing = 0.3.sp,
@@ -1073,13 +1076,13 @@ private fun DashaInsightCard(dashaInfo: HomeDashaInfo, onClick: () -> Unit = {})
             .padding(horizontal = 16.dp)
             .shadow(
                 elevation = 8.dp,
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(Radius.card),
                 ambientColor = Gold.copy(alpha = 0.08f),
                 spotColor = Gold.copy(alpha = 0.08f),
             )
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(Radius.card))
             .background(NavySurface)
-            .border(2.dp, Gold.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+            .border(2.dp, Gold.copy(alpha = 0.5f), RoundedCornerShape(Radius.card))
             .clickable(onClick = onClick)
             .heightIn(min = 120.dp),
     ) {
@@ -1126,14 +1129,27 @@ private fun DashaInsightCard(dashaInfo: HomeDashaInfo, onClick: () -> Unit = {})
                     fontWeight = FontWeight.SemiBold,
                     color = Color.White,
                     modifier = Modifier.weight(1f),
-                    // Leave room for the quality pill that floats top-right.
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                // Reserve horizontal space so the period name doesn't run under
-                // the absolute-positioned quality pill.
+                // Quality pill laid out in normal flow so it measures its own width
+                // (a longer localized label no longer overlaps the period title).
                 if (qLabel.isNotEmpty()) {
-                    Spacer(Modifier.width(72.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(qColor)
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                    ) {
+                        Text(
+                            text = qLabel,
+                            fontSize = AppType.caption,
+                            lineHeight = AppType.captionLh,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                        )
+                    }
                 }
             }
             // Theme row — parity with iOS DashaInsightCard.theatermasks.fill row.
@@ -1161,24 +1177,6 @@ private fun DashaInsightCard(dashaInfo: HomeDashaInfo, onClick: () -> Unit = {})
                     fontSize = 13.sp,
                     color = Color.White.copy(alpha = 0.7f),
                     lineHeight = 18.sp,
-                )
-            }
-        }
-        // Top-right overlay: quality pill (Capsule).
-        if (qLabel.isNotEmpty()) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 16.dp, end = 16.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(qColor)
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-            ) {
-                Text(
-                    text = qLabel,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
                 )
             }
         }
@@ -1258,7 +1256,7 @@ private fun TransitAlertsRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        items(transits) { transit ->
+        items(transits, key = { it.planet }) { transit ->
             TransitAlertCard(transit = transit, onClick = { onTransitTap(transit) })
         }
     }
@@ -1474,7 +1472,7 @@ private fun YogaHighlightRow(
             // the overlay never eats taps on the rightmost yoga card.
             Box {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(filteredYogas.size) { index ->
+                    items(count = filteredYogas.size, key = { i -> filteredYogas[i].name }) { index ->
                         val yoga = filteredYogas[index]
                         PremiumYogaCard(
                             yoga = yoga,
@@ -1547,23 +1545,7 @@ private fun YogaFilterChip(
     )
     Box(
         modifier = Modifier
-            .graphicsLayer {
-                scaleX = pressScale
-                scaleY = pressScale
-                alpha = pressAlpha
-            }
-            // iOS parity: Capsule chip; unselected = transparent fill + gray border;
-            // selected = gold 0.1 fill + gold 0.5 border (was RoundedCornerShape(14) +
-            // opaque NavySurface unselected + gold border).
-            .clip(CircleShape)
-            .background(
-                if (selected) Gold.copy(alpha = bgAlpha) else Color.Transparent,
-            )
-            .border(
-                1.dp,
-                if (selected) Gold.copy(alpha = borderAlpha) else CreamDim.copy(alpha = 0.2f),
-                CircleShape,
-            )
+            .sizeIn(minWidth = TouchMin, minHeight = TouchMin)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -1575,15 +1557,38 @@ private fun YogaFilterChip(
             )
             .testTag("home_yoga_filter_${filter.name.lowercase()}")
             // Issue P2-10: .isSelected accessibility trait parity with iOS.
-            .semantics { this.selected = selected }
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+            .semantics { this.selected = selected },
+        contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = stringResource(labelRes),
-            fontSize = 11.sp,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-            color = if (selected) Gold else CreamDim,
-        )
+        Box(
+            modifier = Modifier
+                .graphicsLayer {
+                    scaleX = pressScale
+                    scaleY = pressScale
+                    alpha = pressAlpha
+                }
+                // iOS parity: Capsule chip; unselected = transparent fill + gray border;
+                // selected = gold 0.1 fill + gold 0.5 border (was RoundedCornerShape(14) +
+                // opaque NavySurface unselected + gold border).
+                .clip(CircleShape)
+                .background(
+                    if (selected) Gold.copy(alpha = bgAlpha) else Color.Transparent,
+                )
+                .border(
+                    1.dp,
+                    if (selected) Gold.copy(alpha = borderAlpha) else CreamDim.copy(alpha = 0.2f),
+                    CircleShape,
+                )
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+        ) {
+            Text(
+                text = stringResource(labelRes),
+                fontSize = AppType.caption,
+                lineHeight = AppType.captionLh,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                color = if (selected) Gold else CreamDim,
+            )
+        }
     }
 }
 
@@ -1618,12 +1623,12 @@ private fun PremiumYogaCard(
             // iOS parity: fixed 170×170 so every card is identical and detail rows align
             // across the row (was heightIn(min) → variable height broke cross-card alignment).
             .size(170.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(Radius.card))
             .background(NavySurface)
             .border(
                 width = if (yoga.isDosha) 1.5.dp else 2.dp,
                 color = if (yoga.isDosha) baseColor.copy(alpha = 0.4f) else Gold.copy(alpha = 0.5f),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(Radius.card),
             )
             .clickable(onClick = onClick)
             .testTag("yoga_card_$index")
@@ -1656,7 +1661,8 @@ private fun PremiumYogaCard(
                 ) {
                     Text(
                         text = statusLabel,
-                        fontSize = 10.sp,
+                        fontSize = AppType.caption,
+                        lineHeight = AppType.captionLh,
                         color = statusColor,
                         fontWeight = FontWeight.Bold,
                     )
@@ -1673,7 +1679,7 @@ private fun PremiumYogaCard(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 lineHeight = 18.sp,
-                modifier = Modifier.height(36.dp),
+                modifier = Modifier.heightIn(min = 36.dp),
             )
             Spacer(Modifier.height(8.dp))
             // Divider directly below the name (iOS order), gradient from baseColor → clear.
@@ -1692,14 +1698,16 @@ private fun PremiumYogaCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = stringResource(R.string.planets_label),
-                        fontSize = 9.sp,
+                        fontSize = AppType.caption,
+                        lineHeight = AppType.captionLh,
                         color = CreamDim.copy(alpha = 0.7f),
                         letterSpacing = 1.sp,
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
                         text = yoga.planets.ifBlank { stringResource(R.string.yoga_label_unknown) },
-                        fontSize = 11.sp,
+                        fontSize = AppType.caption,
+                        lineHeight = AppType.captionLh,
                         color = CreamDim,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -1715,14 +1723,16 @@ private fun PremiumYogaCard(
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
                             text = stringResource(R.string.houses_label),
-                            fontSize = 9.sp,
+                            fontSize = AppType.caption,
+                            lineHeight = AppType.captionLh,
                             color = CreamDim.copy(alpha = 0.7f),
                             letterSpacing = 1.sp,
                         )
                         Spacer(Modifier.height(2.dp))
                         Text(
                             text = housesDisplay,
-                            fontSize = 11.sp,
+                            fontSize = AppType.caption,
+                            lineHeight = AppType.captionLh,
                             color = CreamDim,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -2033,13 +2043,13 @@ private fun ErrorBanner(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(Radius.button),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF3D1F1F)),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(0.5.dp, Color(0xFFFC8181).copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                .border(0.5.dp, Color(0xFFFC8181).copy(alpha = 0.4f), RoundedCornerShape(Radius.button))
                 .padding(14.dp),
         ) {
             Text(
@@ -2058,16 +2068,19 @@ private fun ErrorBanner(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(
                     modifier = Modifier
+                        .heightIn(min = TouchMin)
                         .clip(RoundedCornerShape(8.dp))
                         .background(Gold.copy(alpha = 0.18f))
                         .border(0.5.dp, Gold.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
                         .clickable(onClick = onRetry)
                         .padding(horizontal = 12.dp, vertical = 6.dp),
+                    contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = stringResource(R.string.home_error_retry),
                         color = Gold,
-                        fontSize = 12.sp,
+                        fontSize = AppType.caption,
+                        lineHeight = AppType.captionLh,
                         fontWeight = FontWeight.SemiBold,
                     )
                 }
@@ -2653,21 +2666,27 @@ private fun ProfileSwitcherSheet(
                 )
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.1f))
+                        .sizeIn(minWidth = TouchMin, minHeight = TouchMin)
                         .clickable {
                             haptic.light()
                             onDismiss()
                         },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.Close,
-                        contentDescription = stringResource(R.string.home_profile_switcher_close_cd),
-                        tint = CreamDim,
-                        modifier = Modifier.size(16.dp),
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.1f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = stringResource(R.string.home_profile_switcher_close_cd),
+                            tint = CreamDim,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
                 }
             }
             Spacer(Modifier.height(16.dp))

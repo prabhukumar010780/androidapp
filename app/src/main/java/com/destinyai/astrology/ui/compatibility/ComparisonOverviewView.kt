@@ -59,6 +59,10 @@ import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
+import com.destinyai.astrology.ui.theme.AppType
+import com.destinyai.astrology.ui.theme.Radius
+import com.destinyai.astrology.ui.theme.Spacing
+import com.destinyai.astrology.ui.theme.TouchMin
 import java.io.File
 import java.io.FileOutputStream
 import java.util.Locale
@@ -241,6 +245,7 @@ fun ComparisonOverviewView(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
                 .semantics { contentDescription = "comparison_overview_screen" },
         ) {
             // Header
@@ -251,14 +256,14 @@ fun ComparisonOverviewView(
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
                     .padding(top = 12.dp, bottom = 100.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp),
+                verticalArrangement = Arrangement.spacedBy(Spacing.sectionGap),
             ) {
                 // Section 1: Partner cards row
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = if (sortedResults.size > 2) 2.dp else 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(if (sortedResults.size > 2) 4.dp else 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(if (sortedResults.size > 2) 4.dp else Spacing.sm),
                 ) {
                     sortedResults.forEachIndexed { index, result ->
                         CompactPartnerCard(
@@ -282,17 +287,23 @@ fun ComparisonOverviewView(
                 }
 
                 if (hasDosha) {
-                    Text(
-                        stringResource(R.string.after_dosha_cancellation),
-                        fontSize = 11.sp,
-                        color = Gold,
-                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                            .clickable { showCancellationAlert = true },
-                        textAlign = TextAlign.Center,
-                    )
+                            .heightIn(min = TouchMin)
+                            .clickable { showCancellationAlert = true }
+                            .padding(horizontal = 16.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            stringResource(R.string.after_dosha_cancellation),
+                            fontSize = AppType.caption,
+                            lineHeight = AppType.captionLh,
+                            color = Gold,
+                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
                 }
 
                 // Section 1.5: Recommendation footer
@@ -477,11 +488,11 @@ private fun CompactPartnerCard(
     Column(
         modifier = modifier
             .semantics { contentDescription = "partner_card_${result.partner.name.take(10)}" }
-            .divineGlassCard(14.dp)
+            .divineGlassCard(Radius.card)
             .then(
                 when {
-                    isBest -> Modifier.border(2.dp, Gold.copy(alpha = 0.6f), RoundedCornerShape(14.dp))
-                    !result.isRecommended -> Modifier.border(1.dp, ErrorColor.copy(alpha = 0.3f), RoundedCornerShape(14.dp))
+                    isBest -> Modifier.border(2.dp, Gold.copy(alpha = 0.6f), RoundedCornerShape(Radius.card))
+                    !result.isRecommended -> Modifier.border(1.dp, ErrorColor.copy(alpha = 0.3f), RoundedCornerShape(Radius.card))
                     else -> Modifier
                 },
             )
@@ -520,7 +531,8 @@ private fun CompactPartnerCard(
                 )
                 Text(
                     "${result.overallScore}/36 actual",
-                    fontSize = 9.sp,
+                    fontSize = AppType.caption,
+                    lineHeight = AppType.captionLh,
                     color = CreamDim.copy(alpha = 0.6f),
                     textAlign = TextAlign.Center,
                 )
@@ -545,7 +557,8 @@ private fun CompactPartnerCard(
 
         Text(
             badgeText,
-            fontSize = 10.sp,
+            fontSize = AppType.caption,
+            lineHeight = AppType.captionLh,
             color = statusColor,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
@@ -557,7 +570,8 @@ private fun CompactPartnerCard(
         ) {
             Text(
                 viewDetailsLabel,
-                fontSize = 10.sp,
+                fontSize = AppType.caption,
+                lineHeight = AppType.captionLh,
                 fontWeight = FontWeight.SemiBold,
                 color = Gold,
             )
@@ -591,8 +605,8 @@ private fun RecommendationFooter(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .divineGlassCard(14.dp)
-            .border(1.5.dp, borderColor, RoundedCornerShape(14.dp))
+            .divineGlassCard(Radius.card)
+            .border(1.5.dp, borderColor, RoundedCornerShape(Radius.card))
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -720,7 +734,7 @@ private fun KootaBreakdownTable(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .divineGlassCard(14.dp)
+                .divineGlassCard(Radius.card)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
@@ -809,7 +823,7 @@ private fun KootaBreakdownTable(
                         modifier = Modifier
                             .weight(1f)
                             .let { m ->
-                                if (cellClickable != null) m.clickable(onClick = cellClickable) else m
+                                if (cellClickable != null) m.heightIn(min = TouchMin).clickable(onClick = cellClickable) else m
                             }
                             .semantics {
                                 contentDescription = if (cellClickable != null) "kuta_cell_clickable" else "kuta_cell"
@@ -1065,6 +1079,7 @@ private fun CancellationOverlay(
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
                 .widthIn(max = 340.dp)
+                .heightIn(max = 560.dp)
                 .clickable(enabled = false, onClick = {})
                 .clip(RoundedCornerShape(20.dp))
                 .drawBehind {
@@ -1117,15 +1132,18 @@ private fun CancellationOverlay(
                         )
                     }
                 }
-                IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
-                    Text("✕", fontSize = 14.sp, color = CreamDim)
+                IconButton(onClick = onDismiss, modifier = Modifier.size(TouchMin)) {
+                    Text("✕", fontSize = 16.sp, color = CreamDim)
                 }
             }
 
             HorizontalDivider(color = Gold.copy(alpha = 0.3f))
 
             // Kuta entries
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 kutas.forEach { (partnerName, kutaName, reason) ->
                     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text(

@@ -53,12 +53,14 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.destinyai.astrology.R
 import com.destinyai.astrology.domain.model.CompatibilityResult
+import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
+import com.destinyai.astrology.ui.theme.Radius
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -257,9 +259,9 @@ fun FullReportScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(Radius.button))
                             .background(NavySurface)
-                            .border(1.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+                            .border(1.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(Radius.button))
                             .clickable(onClick = { shareWithImage() })
                             .semantics { contentDescription = "compat_share_report_row" }
                             .padding(horizontal = 16.dp, vertical = 14.dp),
@@ -267,7 +269,7 @@ fun FullReportScreen(
                     ) {
                         Icon(Icons.Filled.SaveAlt, contentDescription = null, tint = CreamText, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(12.dp))
-                        Text(stringResource(R.string.full_report_share), fontSize = 16.sp, color = CreamText, modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.full_report_share), fontSize = AppType.body, lineHeight = AppType.bodyLh, color = CreamText, modifier = Modifier.weight(1f))
                         Icon(Icons.Filled.IosShare, contentDescription = null, tint = CreamDim, modifier = Modifier.size(14.dp))
                     }
 
@@ -275,9 +277,9 @@ fun FullReportScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(Radius.button))
                             .background(NavySurface)
-                            .border(1.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+                            .border(1.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(Radius.button))
                             .clickable(onClick = { savePdfToFiles() })
                             .semantics { contentDescription = "compat_save_pdf_row" }
                             .padding(horizontal = 16.dp, vertical = 14.dp),
@@ -285,7 +287,7 @@ fun FullReportScreen(
                     ) {
                         Icon(Icons.Filled.PictureAsPdf, contentDescription = null, tint = CreamText, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(12.dp))
-                        Text(stringResource(R.string.full_report_save_pdf), fontSize = 16.sp, color = CreamText, modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.full_report_save_pdf), fontSize = AppType.body, lineHeight = AppType.bodyLh, color = CreamText, modifier = Modifier.weight(1f))
                         Icon(Icons.Filled.SaveAlt, contentDescription = null, tint = CreamDim, modifier = Modifier.size(14.dp))
                     }
 
@@ -314,6 +316,7 @@ fun FullReportScreen(
                 onClick = { showAskDestiny = true },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
+                    .navigationBarsPadding()
                     .padding(20.dp),
             )
         }
@@ -351,14 +354,14 @@ private fun BrandedHeaderCard(result: CompatibilityResult) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(Radius.card))
             .background(NavySurface)
             .border(
                 width = 1.dp,
                 brush = Brush.linearGradient(
                     colors = listOf(Gold.copy(alpha = 0.3f), Gold.copy(alpha = 0.1f), Gold.copy(alpha = 0.3f)),
                 ),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(Radius.card),
             )
             .padding(vertical = 24.dp, horizontal = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -402,8 +405,6 @@ private fun BrandedHeaderCard(result: CompatibilityResult) {
                 color = CreamDim,
             )
         }
-
-        Spacer(Modifier.height(4.dp))
 
         // Score ring
         Box(modifier = Modifier.size(100.dp), contentAlignment = Alignment.Center) {
@@ -477,7 +478,6 @@ private fun BrandedHeaderCard(result: CompatibilityResult) {
 
         // Rejection reasons
         if (!result.isRecommended && result.rejectionReasons.isNotEmpty()) {
-            Spacer(Modifier.height(2.dp))
             Text(
                 text = stringResource(R.string.full_report_not_recommended_label),
                 fontSize = 10.sp,
@@ -490,12 +490,12 @@ private fun BrandedHeaderCard(result: CompatibilityResult) {
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.Top,
                 ) {
-                    Text("✕ ", fontSize = 9.sp, color = errorColor.copy(alpha = 0.7f))
+                    Text("✕ ", fontSize = AppType.caption, color = errorColor.copy(alpha = 0.7f))
                     Text(
                         text = displayReason,
-                        fontSize = 10.sp,
+                        fontSize = AppType.caption,
                         color = CreamDim.copy(alpha = 0.8f),
-                        lineHeight = 14.sp,
+                        lineHeight = AppType.captionLh,
                     )
                 }
             }
@@ -517,9 +517,9 @@ private fun SectionCard(emoji: String, title: String, content: String) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(Radius.card))
             .background(NavySurface.copy(alpha = 0.8f))
-            .border(1.dp, Gold.copy(alpha = 0.12f), RoundedCornerShape(14.dp))
+            .border(1.dp, Gold.copy(alpha = 0.12f), RoundedCornerShape(Radius.card))
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -766,7 +766,7 @@ private fun ReportMarkdownContent(content: String) {
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             Text("${idx + 1}.", fontSize = 13.sp, color = Gold.copy(alpha = 0.8f),
-                                modifier = Modifier.width(20.dp))
+                                modifier = Modifier.widthIn(min = 20.dp))
                             Text(
                                 text = inlineAnnotated(item),
                                 style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,

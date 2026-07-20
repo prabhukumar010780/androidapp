@@ -60,6 +60,8 @@ import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
+import com.destinyai.astrology.ui.theme.Spacing
+import com.destinyai.astrology.ui.theme.TouchMin
 import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.EntryPoint
@@ -273,7 +275,7 @@ fun NotificationPreferencesScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .statusBarsPadding()
-                        .padding(horizontal = 8.dp, vertical = 8.dp),
+                        .padding(horizontal = Spacing.xl, vertical = Spacing.sm),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     IconButton(onClick = {
@@ -355,6 +357,7 @@ fun NotificationPreferencesScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
+                            .navigationBarsPadding()
                             .padding(horizontal = 24.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
@@ -627,6 +630,7 @@ fun NotificationPreferencesScreen(
                 hostState = snackbarHostState,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
                     .padding(bottom = 24.dp)
                     .testTag("notif_saved_toast"),
             ) { data ->
@@ -776,10 +780,10 @@ private fun AlertItemRow(
                 )
             }
         }
-        IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
+        IconButton(onClick = onEdit, modifier = Modifier.size(TouchMin)) {
             Icon(Icons.Filled.Edit, contentDescription = "Edit", tint = CreamDim, modifier = Modifier.size(18.dp))
         }
-        IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+        IconButton(onClick = onDelete, modifier = Modifier.size(TouchMin)) {
             Icon(Icons.Filled.Delete, contentDescription = "Delete", tint = Color(0xFFFF8A80), modifier = Modifier.size(18.dp))
         }
     }

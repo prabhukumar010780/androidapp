@@ -48,6 +48,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -68,6 +69,8 @@ import com.destinyai.astrology.ui.subscription.SubscriptionScreen
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.Spacing
+import com.destinyai.astrology.ui.theme.Radius
+import com.destinyai.astrology.ui.theme.TouchMin
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.CreamDim
@@ -319,6 +322,7 @@ fun CompatibilityScreen(
                     // bottom-most surface. Under edge-to-edge, add the gesture-nav inset
                     // so the trailing Analyze CTA is not hidden behind the gesture pill.
                     .navigationBarsPadding()
+                    .imePadding()
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
@@ -536,7 +540,7 @@ fun CompatibilityScreen(
                     OutlinedButton(
                         onClick = viewModel::retryFailedPartners,
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(26.dp),
+                        shape = RoundedCornerShape(Radius.button),
                         border = BorderStroke(1.dp, Gold.copy(alpha = 0.5f)),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold),
                     ) {
@@ -858,7 +862,7 @@ private fun CompatibilityHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = Spacing.screenH, vertical = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -1163,7 +1167,7 @@ private fun PartnerTabStrip(
                 IconButton(
                     onClick = onAddPartner,
                     enabled = isPlus || !isPlus, // always clickable to surface paywall when not Plus
-                    modifier = Modifier.size(32.dp),
+                    modifier = Modifier.size(TouchMin),
                 ) {
                     Icon(
                         Icons.Filled.Add,
@@ -1194,7 +1198,7 @@ private fun PartnerTabStrip(
         if (partners.size > 1) {
             IconButton(
                 onClick = { onRemovePartner(activeIndex) },
-                modifier = Modifier.size(32.dp),
+                modifier = Modifier.size(TouchMin),
             ) {
                 Icon(Icons.Filled.Delete, contentDescription = "Remove partner", tint = Color(0xFFFC8181).copy(alpha = 0.7f), modifier = Modifier.size(16.dp))
             }
@@ -1294,13 +1298,13 @@ private fun HeroPulsingMatchIcon() {
     val scale by infiniteTransition.animateFloat(
         initialValue = 1f,
         targetValue = 1.15f,
-        animationSpec = infiniteRepeatable(animation = tween(1400)),
+        animationSpec = infiniteRepeatable(animation = tween(1400), repeatMode = RepeatMode.Reverse),
         label = "hero_pulse_scale",
     )
     val glowAlpha by infiniteTransition.animateFloat(
         initialValue = 0.18f,
         targetValue = 0.36f,
-        animationSpec = infiniteRepeatable(animation = tween(1400)),
+        animationSpec = infiniteRepeatable(animation = tween(1400), repeatMode = RepeatMode.Reverse),
         label = "hero_pulse_alpha",
     )
 

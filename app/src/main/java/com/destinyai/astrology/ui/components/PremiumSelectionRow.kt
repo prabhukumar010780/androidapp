@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
+import com.destinyai.astrology.ui.theme.Spacing
 
 /**
  * iOS parity (SharedThemeComponents.swift:396-440 PremiumSelectionRow).
@@ -79,7 +80,7 @@ fun PremiumSelectionRow(
                         strokeWidth = 1.5.dp.toPx(),
                     )
                 }
-                .padding(bottom = 6.dp),
+                .padding(bottom = Spacing.xs),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),

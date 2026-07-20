@@ -64,6 +64,7 @@ import com.destinyai.astrology.R
 import com.destinyai.astrology.data.remote.LocationResult
 import com.destinyai.astrology.services.HapticManager
 import com.destinyai.astrology.services.SoundManager
+import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
@@ -71,6 +72,8 @@ import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
+import com.destinyai.astrology.ui.theme.Spacing
+import com.destinyai.astrology.ui.theme.TouchMin
 import com.destinyai.astrology.data.remote.PartnerDto
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -201,7 +204,7 @@ fun PartnersScreen(
                         contentColor = Color(0xFF0D0D1A),
                     ),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                    modifier = Modifier.height(36.dp),
+                    modifier = Modifier.heightIn(min = TouchMin),
                 ) {
                     Text(
                         stringResource(R.string.partner_form_add_button),
@@ -227,7 +230,8 @@ fun PartnersScreen(
                         Text(
                             text = stringResource(R.string.loading_birth_charts),
                             color = CreamDim,
-                            fontSize = 13.sp,
+                            fontSize = AppType.secondary,
+                            lineHeight = AppType.secondaryLh,
                         )
                     }
                 }
@@ -292,7 +296,9 @@ fun PartnersScreen(
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     LazyColumn(
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        contentPadding = WindowInsets.navigationBars.add(
+                            WindowInsets(left = 16.dp, right = 16.dp, top = 8.dp, bottom = 8.dp),
+                        ).asPaddingValues(),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                         modifier = Modifier.fillMaxSize(),
                     ) {
@@ -631,7 +637,7 @@ private fun PickerRow(
             .background(NavySurface)
             .border(0.5.dp, Gold.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
             .clickable { onClick() }
-            .padding(horizontal = 14.dp, vertical = 14.dp),
+            .padding(horizontal = Spacing.md, vertical = Spacing.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -639,7 +645,8 @@ private fun PickerRow(
             Text(
                 text = value,
                 color = if (isPlaceholder) CreamDim.copy(alpha = 0.6f) else CreamText,
-                fontSize = 15.sp,
+                fontSize = AppType.secondary,
+                lineHeight = AppType.secondaryLh,
                 fontWeight = FontWeight.SemiBold,
             )
         }
@@ -700,6 +707,7 @@ private fun LocationSearchSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .imePadding()
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 32.dp),
         ) {
@@ -745,7 +753,7 @@ private fun LocationSearchSheet(
                             .clip(RoundedCornerShape(10.dp))
                             .background(NavyVariant)
                             .clickable { onSelect(result) }
-                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                            .padding(horizontal = Spacing.md, vertical = Spacing.md),
                     ) {
                         Text(
                             text = result.displayName,
@@ -879,7 +887,7 @@ private fun BadgeChip(
             .clip(RoundedCornerShape(8.dp))
             .background(tint.copy(alpha = 0.14f))
             .border(0.5.dp, tint.copy(alpha = 0.45f), RoundedCornerShape(8.dp))
-            .padding(horizontal = 6.dp, vertical = 2.dp),
+            .padding(horizontal = Spacing.xs, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
@@ -888,11 +896,12 @@ private fun BadgeChip(
             tint = tint,
             modifier = Modifier.size(11.dp),
         )
-        Spacer(Modifier.width(3.dp))
+        Spacer(Modifier.width(Spacing.xs))
         Text(
             text = label,
             color = tint,
-            fontSize = 10.sp,
+            fontSize = AppType.caption,
+            lineHeight = AppType.captionLh,
             fontWeight = FontWeight.SemiBold,
         )
     }
@@ -1054,7 +1063,8 @@ internal fun PartnerFormSheet(
                 Text(
                     text = stringResource(R.string.birth_time_warning),
                     color = Color(0xFFFFB74D),
-                    fontSize = 11.sp,
+                    fontSize = AppType.caption,
+                    lineHeight = AppType.captionLh,
                     modifier = Modifier
                         .padding(start = 4.dp)
                         .testTag("partner_form_birth_time_warning"),
@@ -1124,7 +1134,7 @@ internal fun PartnerFormSheet(
                     },
                     modifier = Modifier
                         .weight(1f)
-                        .height(44.dp)
+                        .heightIn(min = TouchMin)
                         .testTag("partner_form_cancel_footer"),
                     shape = RoundedCornerShape(10.dp),
                     border = ButtonDefaults.outlinedButtonBorder(enabled = true),
@@ -1138,7 +1148,7 @@ internal fun PartnerFormSheet(
                     enabled = state.isFormValid && !state.isSaving,
                     modifier = Modifier
                         .weight(1f)
-                        .height(44.dp)
+                        .heightIn(min = TouchMin)
                         .testTag("partner_form_save")
                         .semantics { contentDescription = "partner_form_save_button" },
                     shape = RoundedCornerShape(10.dp),
@@ -1239,7 +1249,8 @@ private fun PartnerMetaRow(partner: PartnerDto) {
         if (symbol.isNotEmpty()) {
             Text(
                 text = symbol,
-                fontSize = 13.sp,
+                fontSize = AppType.secondary,
+                lineHeight = AppType.secondaryLh,
                 style = androidx.compose.ui.text.TextStyle(
                     brush = Brush.linearGradient(listOf(Gold, Color(0xFFF5D060))),
                 ),
@@ -1247,18 +1258,39 @@ private fun PartnerMetaRow(partner: PartnerDto) {
             )
         }
         if (genderLabel != null) {
-            Text(text = genderLabel, color = CreamDim, fontSize = 13.sp)
+            Text(
+                text = genderLabel,
+                color = CreamDim,
+                fontSize = AppType.secondary,
+                lineHeight = AppType.secondaryLh,
+            )
         }
         if (!dob.isNullOrEmpty()) {
-            Text(text = "·", color = CreamDim, fontSize = 13.sp)
-            Text(text = dob, color = CreamDim, fontSize = 13.sp)
+            Text(
+                text = "·",
+                color = CreamDim,
+                fontSize = AppType.secondary,
+                lineHeight = AppType.secondaryLh,
+            )
+            Text(
+                text = dob,
+                color = CreamDim,
+                fontSize = AppType.secondary,
+                lineHeight = AppType.secondaryLh,
+            )
         }
         if (city != null) {
-            Text(text = "·", color = CreamDim, fontSize = 13.sp)
+            Text(
+                text = "·",
+                color = CreamDim,
+                fontSize = AppType.secondary,
+                lineHeight = AppType.secondaryLh,
+            )
             Text(
                 text = city,
                 color = CreamDim,
-                fontSize = 13.sp,
+                fontSize = AppType.secondary,
+                lineHeight = AppType.secondaryLh,
                 maxLines = 1,
             )
         }

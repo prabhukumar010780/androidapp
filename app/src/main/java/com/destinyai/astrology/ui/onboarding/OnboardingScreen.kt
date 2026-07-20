@@ -68,6 +68,9 @@ import com.destinyai.astrology.ui.theme.NavyVariant
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
+import com.destinyai.astrology.ui.theme.AppType
+import com.destinyai.astrology.ui.theme.Radius
+import com.destinyai.astrology.ui.theme.Spacing
 
 @Composable
 fun OnboardingScreen(
@@ -162,7 +165,7 @@ fun OnboardingScreen(
 
                 // Capsule page indicators
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(bottom = 16.dp),
                 ) {
@@ -305,7 +308,7 @@ private fun StatsCard() {
     // iOS parity (OnboardingSlideView.swift:219-287): glassmorphism with dark
     // gradient base, glossy top sheen, inner light stroke, gold gradient outer
     // stroke, plus dual drop shadows (black + gold).
-    val cornerRadius = 24.dp
+    val cornerRadius = Radius.hero
     val outerStrokeBrush = Brush.linearGradient(
         colors = listOf(
             Gold.copy(alpha = 0.5f),
@@ -444,7 +447,8 @@ private fun StatsCard() {
                     )
                     Text(
                         text = stringResource(R.string.rating_label),
-                        fontSize = 11.sp,
+                        fontSize = AppType.caption,
+                        lineHeight = AppType.captionLh,
                         color = CreamDim,
                     )
                 }
@@ -473,7 +477,7 @@ private fun FeaturesListView() {
         features.forEach { feature ->
             Row(
                 verticalAlignment = Alignment.Top,
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
             ) {
                 Box(
                     modifier = Modifier

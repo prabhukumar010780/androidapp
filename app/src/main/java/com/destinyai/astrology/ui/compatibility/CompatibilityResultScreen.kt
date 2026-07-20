@@ -17,7 +17,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.layout.ContentScale
@@ -85,6 +85,7 @@ import com.destinyai.astrology.R
 import com.destinyai.astrology.domain.model.CompatibilityResult
 import com.destinyai.astrology.domain.model.KutaDetail
 import com.destinyai.astrology.services.AppEvents
+import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
@@ -93,6 +94,9 @@ import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavyDeep
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
+import com.destinyai.astrology.ui.theme.Radius
+import com.destinyai.astrology.ui.theme.Spacing
+import com.destinyai.astrology.ui.theme.TouchMin
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -618,14 +622,15 @@ private fun OrbitTooltipView(
                     text = kutaScoreSubtitle(kuta),
                     style = MaterialTheme.typography.labelSmall,
                     color = CreamDim,
-                    fontSize = 10.sp,
+                    fontSize = AppType.caption,
+                    lineHeight = AppType.captionLh,
                 )
             }
             ScoreBadge(kuta = kuta)
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(Spacing.xs))
             IconButton(
                 onClick = onDismiss,
-                modifier = Modifier.size(28.dp),
+                modifier = Modifier.size(TouchMin),
             ) {
                 Icon(
                     imageVector = Icons.Filled.Close,
@@ -643,7 +648,7 @@ private fun OrbitTooltipView(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(doshaColor.copy(alpha = 0.06f))
-                    .padding(horizontal = 16.dp, vertical = 7.dp),
+                    .padding(horizontal = 16.dp, vertical = Spacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
@@ -776,7 +781,7 @@ fun RecommendationBanner(
                                 modifier = Modifier.padding(bottom = 6.dp),
                                 verticalAlignment = Alignment.Top,
                             ) {
-                                Text("⚠ ", color = errorColor, fontSize = 11.sp)
+                                Text("⚠ ", color = errorColor, fontSize = AppType.caption)
                                 val prefix = rejectionReasonPrefix(reason)
                                 val scoreHighlight = rejectionReasonScoreHighlight(reason)
                                 if (prefix != null) {
@@ -868,7 +873,7 @@ fun ShimmerButton(
     Button(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier.height(52.dp),
+        modifier = modifier.heightIn(min = 52.dp),
         shape = RoundedCornerShape(26.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = Color.Transparent,
@@ -893,7 +898,8 @@ fun ShimmerButton(
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = if (enabled) Color(0xFF0D0D1A) else Color(0xFF718096),
-                fontSize = 16.sp,
+                fontSize = AppType.body,
+                lineHeight = AppType.bodyLh,
             )
         }
     }
@@ -1041,27 +1047,29 @@ fun AskDestinyDialog(
         // ModalBottomSheet passes infinite height — we must bound it explicitly.
         // fillMaxHeight() resolves against the window, giving LazyColumn a finite constraint.
         CosmicBackground(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
-            Column(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
+            Column(modifier = Modifier.fillMaxWidth().fillMaxHeight().imePadding()) {
                 // Header — mirrors iOS AskDestinySheet header: centered title + trailing Done
-                Row(
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .statusBarsPadding()
                         .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    contentAlignment = Alignment.Center,
                 ) {
-                    // Leading spacer to balance trailing Done button
-                    Spacer(Modifier.width(64.dp))
+                    // Centered title — centering is layout-driven, not dependent on
+                    // the (locale-varying) Done button width.
                     Text(
                         text = stringResource(R.string.ask_destiny_title),
                         fontFamily = CanelaFontFamily,
                         fontSize = 17.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = CreamText,
-                        modifier = Modifier.weight(1f),
                         textAlign = TextAlign.Center,
                     )
-                    TextButton(onClick = onDismiss) {
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.align(Alignment.CenterEnd),
+                    ) {
                         Text(stringResource(R.string.done_action), color = Gold, fontWeight = FontWeight.SemiBold)
                     }
                 }
@@ -1160,11 +1168,10 @@ fun AskDestinyDialog(
                         }
                     }
                 } else {
-                    items(vmMessages) { msg ->
+                    itemsIndexed(vmMessages, key = { _, m -> m.timestampMs }) { index, msg ->
                         // For AI replies, find the most recent user message above this one to pair as the "query".
                         val lastQuery = if (!msg.isUser) {
-                            val idx = vmMessages.indexOf(msg)
-                            vmMessages.subList(0, idx).lastOrNull { it.isUser }?.text.orEmpty()
+                            vmMessages.subList(0, index).lastOrNull { it.isUser }?.text.orEmpty()
                         } else ""
                         AskChatBubble(
                             isUser = msg.isUser,
@@ -1286,7 +1293,7 @@ fun AskDestinyDialog(
                     onClick = { showStyleSelector = true },
                     enabled = !isLoading,
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(TouchMin)
                         .semantics { contentDescription = "compat_response_length_button" },
                 ) {
                     Icon(
@@ -1330,7 +1337,7 @@ fun AskDestinyDialog(
                     },
                     enabled = inputText.isNotBlank() && !isLoading,
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(TouchMin)
                         .clip(CircleShape)
                         .background(if (inputText.isNotBlank() && !isLoading) Gold else NavyVariant)
                         .semantics { contentDescription = "compat_send_button" },
@@ -1648,7 +1655,7 @@ private fun AskChatBubble(
                             copied = true
                         },
                         modifier = Modifier
-                            .size(28.dp)
+                            .size(TouchMin)
                             .semantics { contentDescription = "compat_copy_button" },
                     ) {
                         Icon(
@@ -1676,7 +1683,7 @@ private fun AskChatBubble(
                                     }
                                 },
                                 enabled = ratedStars == 0,
-                                modifier = Modifier.size(24.dp),
+                                modifier = Modifier.sizeIn(minWidth = 44.dp, minHeight = 48.dp),
                             ) {
                                 Icon(
                                     imageVector = if (star <= ratedStars) Icons.Filled.Star else Icons.Filled.StarBorder,

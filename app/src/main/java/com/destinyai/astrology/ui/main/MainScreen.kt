@@ -40,7 +40,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.destinyai.astrology.R
@@ -54,11 +53,13 @@ import com.destinyai.astrology.ui.compatibility.CompatibilityScreen
 import com.destinyai.astrology.ui.history.HistoryScreen
 import com.destinyai.astrology.ui.home.HomeScreen
 import com.destinyai.astrology.ui.profile.ProfileScreen
+import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.DarkNavyContrast
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.GoldChampagne
 import com.destinyai.astrology.ui.theme.NavyDeep
+import com.destinyai.astrology.ui.theme.Spacing
 import java.text.SimpleDateFormat
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -630,7 +631,7 @@ private fun TabBarItem(
                 },
             )
             .semantics { contentDescription = label }
-            .padding(vertical = 6.dp),
+            .padding(vertical = Spacing.sm),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -645,10 +646,11 @@ private fun TabBarItem(
                     scaleY = animatedBounce
                 },
         )
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(Spacing.xs))
         Text(
             text = label,
-            fontSize = 11.sp,
+            fontSize = AppType.caption,
+            lineHeight = AppType.captionLh,
             fontWeight = FontWeight.Medium,
             color = if (selected) CreamText else Gold,
             textAlign = TextAlign.Center,
@@ -736,7 +738,8 @@ private fun AskFabButton(
         // Pull label up since the FAB is offset upward.
         Text(
             text = label,
-            fontSize = 11.sp,
+            fontSize = AppType.caption,
+            lineHeight = AppType.captionLh,
             fontWeight = FontWeight.Medium,
             color = if (isSelected) CreamText else Gold,
             modifier = Modifier.offset(y = (-10).dp),

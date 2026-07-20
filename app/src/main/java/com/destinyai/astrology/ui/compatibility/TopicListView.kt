@@ -38,6 +38,7 @@ import com.destinyai.astrology.domain.model.DestinyTileType
 import com.destinyai.astrology.domain.model.VariantCounter
 import com.destinyai.astrology.domain.model.YogaItem
 import com.destinyai.astrology.ui.theme.AppTheme
+import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
@@ -267,7 +268,8 @@ private fun SectionHeader(
         )
         Text(
             title.uppercase(),
-            fontSize = 11.sp,
+            fontSize = AppType.caption, // 12.sp
+            lineHeight = AppType.captionLh,
             fontWeight = FontWeight.Bold,
             color = AppTheme.colors.textSecondary,
             letterSpacing = 1.sp,
@@ -283,7 +285,8 @@ private fun SectionHeader(
         ) {
             Text(
                 count.toString(),
-                fontSize = 10.sp,
+                fontSize = AppType.caption, // 12.sp
+                lineHeight = AppType.captionLh,
                 fontWeight = FontWeight.Bold,
                 color = color,
             )
@@ -306,7 +309,8 @@ private fun StatusCapsule(
     ) {
         Text(
             text.uppercase(),
-            fontSize = 10.sp,
+            fontSize = AppType.caption, // 12.sp
+            lineHeight = AppType.captionLh,
             fontWeight = FontWeight.Bold,
             color = color,
             letterSpacing = 0.5.sp,

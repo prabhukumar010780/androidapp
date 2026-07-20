@@ -64,7 +64,7 @@ fun AdditionalYogasScreen(
     val allTiles = DestinyTileType.topicTiles + listOf(DestinyTileType.DOSHA)
 
     CosmicBackground {
-        Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
+        Column(modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

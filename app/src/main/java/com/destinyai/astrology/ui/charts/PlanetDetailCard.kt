@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
@@ -62,7 +63,7 @@ fun PlanetDetailCard(planet: PlanetDisplayInfo, signAbbrev: String?, modifier: M
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(symbol, fontSize = 14.sp, color = color)
             Spacer(Modifier.width(4.dp))
-            Text(planet.code, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Gold)
+            Text(planet.code, fontSize = AppType.caption, fontWeight = FontWeight.Bold, color = Gold)
             Spacer(Modifier.weight(1f))
             Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                 if (planet.isRetrograde) StatusDot("R", Color.Red)
@@ -77,7 +78,7 @@ fun PlanetDetailCard(planet: PlanetDisplayInfo, signAbbrev: String?, modifier: M
         if (signAbbrev != null) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Icon(Icons.Default.Home, contentDescription = null, modifier = Modifier.size(8.dp), tint = Gold.copy(alpha = 0.8f))
-                Text(ChartConstants.signFullNames[signAbbrev] ?: signAbbrev, fontSize = 9.sp, color = CreamText, maxLines = 1)
+                Text(ChartConstants.signFullNames[signAbbrev] ?: signAbbrev, fontSize = AppType.caption, lineHeight = AppType.captionLh, color = CreamText, maxLines = 1)
             }
         }
 
@@ -90,7 +91,8 @@ fun PlanetDetailCard(planet: PlanetDisplayInfo, signAbbrev: String?, modifier: M
                         append(planet.nakshatra)
                         if (planet.pada != null) append(" - ${planet.pada}")
                     },
-                    fontSize = 9.sp,
+                    fontSize = AppType.caption,
+                    lineHeight = AppType.captionLh,
                     color = CreamText.copy(alpha = 0.8f),
                     maxLines = 1,
                 )
@@ -109,7 +111,7 @@ private fun StatusDot(text: String, color: Color) {
             .border(0.5.dp, color.copy(alpha = 0.5f), CircleShape),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = color.copy(alpha = 0.9f))
+        Text(text, fontSize = AppType.caption, lineHeight = AppType.captionLh, fontWeight = FontWeight.Bold, color = color.copy(alpha = 0.9f))
     }
 }
 

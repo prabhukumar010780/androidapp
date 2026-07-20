@@ -54,6 +54,9 @@ import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
+import com.destinyai.astrology.ui.theme.AppType
+import com.destinyai.astrology.ui.theme.Spacing
+import com.destinyai.astrology.ui.theme.TouchMin
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -97,27 +100,35 @@ fun LanguageSelectionScreen(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.10f))
+                                // Expand the tappable area to the 48dp touch floor while
+                                // keeping the 36dp visual circle centered inside.
+                                .sizeIn(minWidth = TouchMin, minHeight = TouchMin)
                                 .clickable {
                                     haptic.light()
                                     viewModel.toggleSound()
                                 },
                             contentAlignment = Alignment.Center,
                         ) {
-                            Icon(
-                                imageVector = if (soundEnabled) {
-                                    Icons.Filled.VolumeUp
-                                } else {
-                                    Icons.Filled.VolumeOff
-                                },
-                                contentDescription = stringResource(
-                                    if (soundEnabled) R.string.sound_on_a11y else R.string.sound_off_a11y,
-                                ),
-                                tint = CreamDim,
-                                modifier = Modifier.size(18.dp),
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.10f)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = if (soundEnabled) {
+                                        Icons.Filled.VolumeUp
+                                    } else {
+                                        Icons.Filled.VolumeOff
+                                    },
+                                    contentDescription = stringResource(
+                                        if (soundEnabled) R.string.sound_on_a11y else R.string.sound_off_a11y,
+                                    ),
+                                    tint = CreamDim,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
                         }
                     }
                 }
@@ -159,8 +170,8 @@ fun LanguageSelectionScreen(
                     // Bottom padding so the last row always clears the pinned CTA on short
                     // screens (mirrors iOS Spacer(minLength:8) between grid and button).
                     contentPadding = PaddingValues(bottom = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.cardGap),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.cardGap),
                 ) {
                     itemsIndexed(viewModel.languages) { index, lang ->
                         val isSelected = lang.code == selectedCode
@@ -481,7 +492,8 @@ private fun LanguageCard(
             Spacer(Modifier.height(2.dp))
             Text(
                 text = lang.name,
-                fontSize = 11.sp,
+                fontSize = AppType.caption,
+                lineHeight = AppType.captionLh,
                 color = if (isSelected) Gold else CreamDim,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
