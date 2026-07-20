@@ -471,6 +471,10 @@ data class PredictResponse(
     // ChatRepositoryImpl sees a blank body and throws "Empty prediction".
     @SerializedName("answer") val answer: String? = null,
     @SerializedName("prediction_id") val predictionId: String? = null,
+    // Non-streaming follow-up chips — the backend PredictionResponse carries these
+    // just like the streaming terminal event; without mapping them the sync path
+    // dropped follow-up suggestions entirely.
+    @SerializedName("follow_up_suggestions") val followUpSuggestions: List<String>? = null,
 ) {
     val text: String get() = content.ifBlank { answer ?: prediction ?: response ?: "" }
 }
@@ -481,6 +485,29 @@ data class ChatThreadDto(
     @SerializedName("created_at") val createdAt: String,
     @SerializedName("updated_at") val updatedAt: String,
     @SerializedName("is_pinned") val isPinned: Boolean = false,
+)
+
+// GET /chat-history/threads/{userId} returns an OBJECT: { threads:[...], total_count,
+// today, yesterday, ... }. Each thread item keys its id as "id" (NOT "thread_id"),
+// so it needs its own DTO — reusing ChatThreadDto would null the id.
+data class ChatThreadSummaryDto(
+    @SerializedName("id") val id: String,
+    @SerializedName("title") val title: String? = null,
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("updated_at") val updatedAt: String? = null,
+    @SerializedName("is_pinned") val isPinned: Boolean = false,
+    @SerializedName("primary_area") val primaryArea: String? = null,
+)
+
+data class ChatThreadListResponse(
+    @SerializedName("threads") val threads: List<ChatThreadSummaryDto> = emptyList(),
+    @SerializedName("total_count") val totalCount: Int = 0,
+)
+
+// GET /chat-history/threads/{userId}/{threadId} returns { id, title, messages:[...], ... }.
+data class ChatThreadDetailResponse(
+    @SerializedName("id") val id: String? = null,
+    @SerializedName("messages") val messages: List<ChatMessageDto> = emptyList(),
 )
 
 data class ChatHistorySettingsDto(
@@ -863,14 +890,19 @@ interface AstroApiService {
     ): okhttp3.ResponseBody
 
     // Chat History
+    // Backend returns an OBJECT ({"threads":[...], "total_count":..., "today":[...]}),
+    // NOT a bare array — typing these as List<...> made Gson throw
+    // "Expected BEGIN_ARRAY but was BEGIN_OBJECT", which syncThreadsFromApi silently
+    // swallowed, so server threads never synced to local Room (empty history on a
+    // fresh device / after reinstall). Decode the wrapper and read .threads/.messages.
     @GET("chat-history/threads/{userId}")
-    suspend fun listChatThreads(@Path("userId") userId: String): List<ChatThreadDto>
+    suspend fun listChatThreads(@Path("userId") userId: String): ChatThreadListResponse
 
     @GET("chat-history/threads/{userId}/{threadId}")
     suspend fun getChatThread(
         @Path("userId") userId: String,
         @Path("threadId") threadId: String,
-    ): List<ChatMessageDto>
+    ): ChatThreadDetailResponse
 
     // iOS parity (CompatibilityHistoryService.syncFromServer): raw thread detail so the
     // compat-history sync can read the `metadata` (full analysis) blob the typed

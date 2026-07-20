@@ -228,7 +228,7 @@ class AstroApiServiceTest {
     @Test
     fun `listChatThreads sends GET with user id in path`() = runTest {
         server.enqueue(MockResponse()
-            .setBody("[]")
+            .setBody("{\"threads\":[]}")
             .addHeader("Content-Type", "application/json"))
 
         service.listChatThreads(userId = "u@x.com")

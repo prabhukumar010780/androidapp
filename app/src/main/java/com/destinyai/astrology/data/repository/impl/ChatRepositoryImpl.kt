@@ -371,6 +371,36 @@ class ChatRepositoryImpl @Inject constructor(
         val responseLength = runCatching { prefs.getResponseLength() }.getOrNull()
         val language = runCatching { prefs.getSelectedLanguage() }.getOrDefault("en")
         val historyEnabled = runCatching { prefs.isHistoryEnabled() }.getOrDefault(true)
+        // Persist the thread + user message up-front, exactly like the streaming
+        // sendMessage path. Previously sendMessageSync only saved the ASSISTANT
+        // reply with no thread row or user message, so loadHistory() surfaced
+        // nothing → "chat history not saved" on the non-streaming path.
+        if (historyEnabled) {
+            runCatching {
+                val nowIso = java.time.Instant.now().toString()
+                threadDao.insertIfAbsent(
+                    LocalChatThreadEntity(
+                        id = sessionId,
+                        ownerEmail = email,
+                        title = text.take(60),
+                        createdAt = nowIso,
+                        updatedAt = nowIso,
+                        isPinned = false,
+                        profileId = prefs.getActiveProfileId()?.takeIf { it.isNotBlank() && it != email },
+                    ),
+                )
+                threadDao.touch(sessionId, nowIso)
+                messageDao.insert(
+                    LocalChatMessageEntity(
+                        id = java.util.UUID.randomUUID().toString(),
+                        threadId = sessionId,
+                        role = "user",
+                        content = capPersistedContent(text),
+                        createdAt = nowIso,
+                    ),
+                )
+            }
+        }
         val resp = api.predict(
             idempotencyKey,
             PredictRequest(
@@ -408,6 +438,12 @@ class ChatRepositoryImpl @Inject constructor(
                     ),
                 )
             }
+        }
+        // Emit follow-up chips on the non-streaming path too (parity with the
+        // streaming terminal `answer` event) so suggestions appear regardless of
+        // which path served the response.
+        resp.followUpSuggestions?.takeIf { it.isNotEmpty() }?.let {
+            _progressEvents.emit(ChatStreamEvent.FollowUpSuggestions(it))
         }
         answer
     }
@@ -619,26 +655,27 @@ class ChatRepositoryImpl @Inject constructor(
 
     override suspend fun syncThreadsFromApi() {
         val email = prefs.getUserEmail() ?: return
-        val apiThreads = runCatching { api.listChatThreads(email) }.getOrElse { return }
+        // getOrNull (not getOrElse{return}) so we can DISTINGUISH a failed fetch from
+        // an empty one: a parse/network failure must NOT trigger the destructive prune
+        // below (that would wipe all local history on any transient error).
+        val response = runCatching { api.listChatThreads(email) }.getOrNull() ?: return
+        val apiThreads = response.threads
         apiThreads.forEach { dto ->
             threadDao.insert(
                 LocalChatThreadEntity(
-                    id = dto.threadId,
+                    id = dto.id,
                     ownerEmail = email,
-                    title = dto.title,
-                    createdAt = dto.createdAt,
-                    updatedAt = dto.updatedAt,
+                    title = dto.title.orEmpty(),
+                    createdAt = dto.createdAt.orEmpty(),
+                    updatedAt = dto.updatedAt.orEmpty(),
                     isPinned = dto.isPinned,
                 ),
             )
         }
-        // iOS parity (ChatHistorySyncService clears+repopulates): the server is
-        // authoritative, so drop any local thread it no longer lists — a thread
-        // deleted elsewhere, or whose local-delete server call failed, otherwise
-        // lingers forever and resurfaces (D8). Reached only after a SUCCESSFUL fetch
-        // (the getOrElse above returns on network error), so an empty server list
-        // means the account genuinely has no threads.
-        val keepIds = apiThreads.map { it.threadId }
+        // Server is authoritative — drop local threads it no longer lists. Reached
+        // only after a SUCCESSFUL parse (the null-guard above returns on failure), so
+        // an empty server list genuinely means the account has no threads.
+        val keepIds = apiThreads.map { it.id }
         runCatching {
             if (keepIds.isEmpty()) threadDao.deleteAllForUser(email)
             else threadDao.pruneNotIn(email, keepIds)
@@ -647,7 +684,8 @@ class ChatRepositoryImpl @Inject constructor(
 
     suspend fun syncThreadMessagesFromApi(threadId: String) {
         val email = prefs.getUserEmail() ?: return
-        val messages = runCatching { api.getChatThread(email, threadId) }.getOrElse { return }
+        val detail = runCatching { api.getChatThread(email, threadId) }.getOrNull() ?: return
+        val messages = detail.messages
         val entities = messages.map { dto ->
             LocalChatMessageEntity(
                 id = dto.messageId,

@@ -3,7 +3,8 @@ package com.destinyai.astrology.services
 import com.destinyai.astrology.data.local.db.ChatThreadDao
 import com.destinyai.astrology.data.local.db.PartnerDao
 import com.destinyai.astrology.data.remote.AstroApiService
-import com.destinyai.astrology.data.remote.ChatThreadDto
+import com.destinyai.astrology.data.remote.ChatThreadListResponse
+import com.destinyai.astrology.data.remote.ChatThreadSummaryDto
 import com.destinyai.astrology.data.repository.AuthRepository
 import com.destinyai.astrology.data.repository.ChatRepository
 import com.destinyai.astrology.data.repository.HomeRepository
@@ -45,7 +46,7 @@ class LoginSyncCoordinatorTest {
 
     @Test
     fun `syncAfterLogin calls listChatThreads exactly once`() = runTest {
-        coEvery { api.listChatThreads(any()) } returns emptyList()
+        coEvery { api.listChatThreads(any()) } returns ChatThreadListResponse()
 
         coordinator.syncAfterLogin("u@x.com")
 
@@ -58,18 +59,20 @@ class LoginSyncCoordinatorTest {
 
         // Should not rethrow — best-effort sync
         val result = coordinator.syncAfterLogin("u@x.com")
-        assertEquals(emptyList<ChatThreadDto>(), result)
+        assertEquals(emptyList<ChatThreadSummaryDto>(), result)
     }
 
     @Test
     fun `syncAfterLogin returns thread list`() = runTest {
-        val threads = listOf(
-            ChatThreadDto(
-                threadId = "t1",
-                title = "Thread 1",
-                createdAt = "2024-01-01",
-                updatedAt = "2024-01-01",
-                isPinned = false,
+        val threads = ChatThreadListResponse(
+            threads = listOf(
+                ChatThreadSummaryDto(
+                    id = "t1",
+                    title = "Thread 1",
+                    createdAt = "2024-01-01",
+                    updatedAt = "2024-01-01",
+                    isPinned = false,
+                ),
             ),
         )
         coEvery { api.listChatThreads(any()) } returns threads
@@ -77,6 +80,6 @@ class LoginSyncCoordinatorTest {
         val result = coordinator.syncAfterLogin("u@x.com")
 
         assertEquals(1, result.size)
-        assertEquals("t1", result.first().threadId)
+        assertEquals("t1", result.first().id)
     }
 }

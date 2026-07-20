@@ -5,7 +5,7 @@ import com.destinyai.astrology.data.local.db.ChatThreadDao
 import com.destinyai.astrology.data.local.db.PartnerDao
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AstroApiService
-import com.destinyai.astrology.data.remote.ChatThreadDto
+import com.destinyai.astrology.data.remote.ChatThreadSummaryDto
 import com.destinyai.astrology.data.repository.AuthRepository
 import com.destinyai.astrology.data.repository.ChatRepository
 import com.destinyai.astrology.data.repository.HomeRepository
@@ -64,8 +64,8 @@ class LoginSyncCoordinator @Inject constructor(
      * list (mirrors the original Android stub). New call sites should prefer
      * [syncAll] which performs the full iOS-parity post-sign-in flow.
      */
-    suspend fun syncAfterLogin(userId: String): List<ChatThreadDto> = try {
-        api.listChatThreads(userId)
+    suspend fun syncAfterLogin(userId: String): List<ChatThreadSummaryDto> = try {
+        api.listChatThreads(userId).threads
     } catch (e: Exception) {
         Log.w(TAG, "syncAfterLogin: thread fetch failed — ${e.message}")
         emptyList()
@@ -183,15 +183,15 @@ class LoginSyncCoordinator @Inject constructor(
      * a broken, un-openable match row.
      */
     private suspend fun syncCompatibilityFromApi(email: String) {
-        val threads = runCatching { api.listChatThreads(email) }.getOrElse { return }
+        val threads = runCatching { api.listChatThreads(email).threads }.getOrElse { return }
         val gson = com.google.gson.Gson()
         threads.forEach { dto ->
-            val id = dto.threadId.lowercase()
+            val id = dto.id.lowercase()
             val looksCompat = id.startsWith("compat_sess_") || id.startsWith("compat_grp_") ||
-                id.startsWith("compat_") || dto.title.startsWith("match:", ignoreCase = true)
+                id.startsWith("compat_") || (dto.title?.startsWith("match:", ignoreCase = true) == true)
             if (!looksCompat) return@forEach
             runCatching {
-                val body = api.getChatThreadRaw(email, dto.threadId).string()
+                val body = api.getChatThreadRaw(email, dto.id).string()
                 val root = com.google.gson.JsonParser.parseString(body).asJsonObject
                 val metadata = root.get("metadata")?.takeIf { it.isJsonObject }?.asJsonObject
                     ?: return@runCatching
@@ -213,9 +213,9 @@ class LoginSyncCoordinator @Inject constructor(
                     ?.takeIf { !it.isJsonNull }?.let { runCatching { it.asInt }.getOrNull() }
                 compatibilityHistoryDao.upsert(
                     com.destinyai.astrology.data.local.db.CompatibilityHistoryEntity(
-                        sessionId = dto.threadId,
+                        sessionId = dto.id,
                         ownerEmail = email,
-                        timestampMs = runCatching { java.time.Instant.parse(dto.updatedAt).toEpochMilli() }.getOrDefault(0L),
+                        timestampMs = runCatching { java.time.Instant.parse(dto.updatedAt ?: "").toEpochMilli() }.getOrDefault(0L),
                         boyName = result.boyName,
                         boyDob = result.boyDob ?: "",
                         boyCity = result.boyCity ?: "",

@@ -1654,6 +1654,13 @@ class CompatibilityViewModel @Inject constructor(
                                 runCatching {
                                     saveComparisonToHistory(result, email, profile, partner, groupId, index)
                                 }
+                                // BUG-5 fix — iOS parity (analyzeAction saves each partner
+                                // when savePartnerForFuture is set): honor the "Save partner
+                                // to my birth charts" checkbox in the multi-partner flow too
+                                // (previously only the single-partner analyze() saved).
+                                if (_uiState.value.savePartnerToBirthCharts) {
+                                    runCatching { savePartnerDataToBirthCharts(email, partner) }
+                                }
                             }
                             is SseEvent.Error -> newFailed.add(index)
                         }
@@ -1753,6 +1760,13 @@ class CompatibilityViewModel @Inject constructor(
                                 // iOS parity (retryFailedPartners saveToHistory per partner).
                                 runCatching {
                                     saveComparisonToHistory(result, email, profile, partner, groupId, index)
+                                }
+                                // BUG-5 fix — iOS parity (analyzeAction saves each partner
+                                // when savePartnerForFuture is set): honor the "Save partner
+                                // to my birth charts" checkbox in the multi-partner flow too
+                                // (previously only the single-partner analyze() saved).
+                                if (_uiState.value.savePartnerToBirthCharts) {
+                                    runCatching { savePartnerDataToBirthCharts(email, partner) }
                                 }
                             }
                             is SseEvent.Error -> newFailed.add(index)
@@ -1885,6 +1899,37 @@ class CompatibilityViewModel @Inject constructor(
             api.addPartner(req)
         } catch (_: Exception) {
             // Silently swallow — partner save is best-effort and must not break analysis flow.
+        }
+    }
+
+    /**
+     * Per-partner overload for the multi-partner flow — persists one PartnerData
+     * to the user's birth charts (iOS parity: analyzeAction saves each partner when
+     * savePartnerForFuture is set). Best-effort; skips partners already sourced from
+     * a saved chart.
+     */
+    private suspend fun savePartnerDataToBirthCharts(email: String, p: PartnerData) {
+        if (p.savedProfileId != null) return
+        try {
+            api.addPartner(
+                CreatePartnerRequest(
+                    userEmail = email,
+                    profile = PartnerRequest(
+                        name = p.name,
+                        gender = p.gender,
+                        dateOfBirth = p.dob,
+                        timeOfBirth = if (p.timeUnknown) null else p.time,
+                        cityOfBirth = p.city,
+                        latitude = p.latitude,
+                        longitude = p.longitude,
+                        birthTimeUnknown = p.timeUnknown,
+                        forCompatibility = true,
+                    ),
+                    consentGiven = true,
+                ),
+            )
+        } catch (_: Exception) {
+            // best-effort
         }
     }
 
