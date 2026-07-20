@@ -85,6 +85,20 @@ enum class YogaFilter {
     Special,
     Raja,
     Dhana,
+    ;
+
+    companion object {
+        /**
+         * The 11 filter chips shown in the UI — matches iOS FilterType exactly.
+         * Excludes the legacy Raja/Dhana values (kept on the enum only for
+         * backward-compat with existing tests): both fell through to the "All"
+         * label, so iterating YogaFilter.values() rendered THREE "All" chips.
+         */
+        val displayFilters: List<YogaFilter> = listOf(
+            All, Wealth, Career, Love, Health, Family,
+            Education, Spiritual, Foundation, Personality, Special,
+        )
+    }
 }
 
 @HiltViewModel

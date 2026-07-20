@@ -1445,7 +1445,7 @@ private fun YogaHighlightRow(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier.testTag("home_yoga_filter_row"),
         ) {
-            items(YogaFilter.values().toList()) { filter ->
+            items(YogaFilter.displayFilters) { filter ->
                 YogaFilterChip(
                     filter = filter,
                     selected = filter == selectedFilter,
