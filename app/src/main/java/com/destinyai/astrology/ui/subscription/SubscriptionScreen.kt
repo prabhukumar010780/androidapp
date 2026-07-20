@@ -47,6 +47,8 @@ import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
+import com.destinyai.astrology.ui.theme.Radius
+import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
 import java.text.DateFormat
@@ -730,9 +732,9 @@ fun SubscriptionScreen(
                                             purchasingProductId == null,
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .height(if (showTrialCta) 56.dp else 44.dp)
+                                            .height(if (showTrialCta) 56.dp else 48.dp)
                                             .semantics { testTag = "subscription_cta_button" },
-                                        shape = RoundedCornerShape(10.dp),
+                                        shape = RoundedCornerShape(Radius.button),
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = Gold,
                                             contentColor = Color(0xFF0D0D1A),
@@ -1035,7 +1037,9 @@ fun SubscriptionScreen(
                         )
                     }
 
-                    item { Spacer(Modifier.height(32.dp)) }
+                    // Small trailing buffer only; the LazyColumn contentPadding already
+                    // reserves the nav-bar inset, so a 32dp spacer here was dead space.
+                    item { Spacer(Modifier.height(Spacing.sm)) }
                 }
                 }
             }
