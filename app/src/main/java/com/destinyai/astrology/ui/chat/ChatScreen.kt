@@ -256,17 +256,25 @@ fun ChatScreen(
             ) {
                 if (isNewChat && !state.isLoading && !state.isStreaming) {
                     item(key = "starters") {
-                        StarterQuestionsView(
-                            questions = activeStarters,
-                            onQuestionTap = { q ->
-                                // iOS parity (ChatView.swift:262): light haptic on starter tap.
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                keyboardController?.hide()
-                                focusManager.clearFocus()
-                                viewModel.updateInput(q)
-                                viewModel.sendMessage()
-                            },
-                        )
+                        // Center the empty/new-chat state on the FULL list viewport
+                        // instead of letting it jam under the header with a tall void
+                        // below (premium empty-state pattern).
+                        Box(
+                            modifier = Modifier.fillParentMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            StarterQuestionsView(
+                                questions = activeStarters,
+                                onQuestionTap = { q ->
+                                    // iOS parity (ChatView.swift:262): light haptic on starter tap.
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    keyboardController?.hide()
+                                    focusManager.clearFocus()
+                                    viewModel.updateInput(q)
+                                    viewModel.sendMessage()
+                                },
+                            )
+                        }
                     }
                 } else {
                     // Mirrors iOS ChatView (344-353): when older messages exist for the
@@ -325,7 +333,9 @@ fun ChatScreen(
                     // non-disruptive layout pass, avoiding a re-anchor jump to the bottom.
                     item(key = "tailSpacer") {
                         val screenHeightDp = LocalConfiguration.current.screenHeightDp.dp
-                        val target = if (state.isLoading || state.isStreaming) screenHeightDp * 0.7f else 0.dp
+                        // ~45% reserve is enough headroom to pin the just-sent question to
+                        // the top; 70% left a large dead void at rest on tall screens.
+                        val target = if (state.isLoading || state.isStreaming) screenHeightDp * 0.45f else 0.dp
                         val h by animateDpAsState(
                             targetValue = target,
                             animationSpec = tween(350),
@@ -466,7 +476,8 @@ private fun ChatHeader(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(horizontal = 4.dp, vertical = 8.dp),
+            // 16dp edge margin to match the message list + rest of the app (was 4dp).
+            .padding(horizontal = Spacing.screenH, vertical = Spacing.sm),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // Profile-context capsule — parity with iOS AppHeader.swift:118-138.
@@ -583,8 +594,6 @@ private fun StarterQuestionsView(questions: List<String>, onQuestionTap: (String
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Spacer(Modifier.height(24.dp))
-
         // Sparkle circle
         Box(
             modifier = Modifier
