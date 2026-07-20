@@ -66,6 +66,7 @@ import com.destinyai.astrology.ui.auth.AuthViewModel
 import com.destinyai.astrology.ui.components.ShimmerButton
 import com.destinyai.astrology.ui.settings.ChartStylePickerSheet
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
+import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
@@ -396,7 +397,9 @@ fun ProfileScreen(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .verticalScroll(rememberScrollState())
-                                .padding(horizontal = 24.dp),
+                                // 16dp edge margin to match the header + rest of the app
+                                // (was 24dp, wider than everything else).
+                                .padding(horizontal = Spacing.screenH),
                             verticalArrangement = Arrangement.spacedBy(16.dp),
                         ) {
                             Spacer(Modifier.height(8.dp))
@@ -931,7 +934,10 @@ fun ProfileScreen(
                                 }
                             }
 
-                            Spacer(Modifier.weight(1f))
+                            // (removed Spacer(weight(1f)): in a verticalScroll column it
+                            // just inflated height and flung the footer down, leaving a
+                            // mid-screen void. Content now flows naturally with the 16dp
+                            // rhythm.)
 
                             if (state.error != null) {
                                 Text(text = state.error ?: "", color = Color(0xFFFF8A80), fontSize = 13.sp)
