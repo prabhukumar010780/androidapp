@@ -125,7 +125,7 @@ fun OnboardingScreen(
                 // iOS parity (OnboardingView.swift:58-60 reserves ~50pt for the top
                 // Skip bar): was 120dp, pushing slide content ~70dp too low and
                 // contributing to overflow on short screens.
-                Spacer(Modifier.height(50.dp))
+                Spacer(Modifier.height(24.dp))
 
                 // RTL polish: explicitly force LTR pager direction for parity with iOS,
                 // which does not invert horizontal carousel scroll for RTL locales.

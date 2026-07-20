@@ -161,7 +161,7 @@ fun ProfileSetupLoadingScreen(
                 }
             }
 
-            Spacer(Modifier.height(40.dp))
+            Spacer(Modifier.height(24.dp))
 
             // iOS parity (ProfileSetupLoadingView.swift:75-77): "Setting Up Your Profile"
             // header above the phase title block.
@@ -193,7 +193,7 @@ fun ProfileSetupLoadingScreen(
                 lineHeight = 22.sp,
             )
 
-            Spacer(Modifier.height(48.dp))
+            Spacer(Modifier.height(24.dp))
 
             // Gold progress bar — iOS parity (GoldProgressStyle in
             // ProfileSetupLoadingView.swift:175-198): fixed 220pt × 8pt with a

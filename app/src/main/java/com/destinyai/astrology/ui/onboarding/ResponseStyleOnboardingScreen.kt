@@ -197,7 +197,7 @@ fun ResponseStyleOnboardingScreen(
                     textAlign = TextAlign.Center,
                 )
 
-                Spacer(Modifier.height(28.dp))
+                Spacer(Modifier.height(16.dp))
 
                 styleOptions.forEach { option ->
                     ResponseStyleCard(
@@ -230,7 +230,7 @@ fun ResponseStyleOnboardingScreen(
                     },
                 )
 
-                Spacer(Modifier.height(40.dp))
+                Spacer(Modifier.height(24.dp))
             }
         }
         }
@@ -345,7 +345,7 @@ private fun ResponseStyleCard(
                 Column {
                     Text(
                         text = stringResource(R.string.example_label),
-                        fontSize = 9.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = CreamDim.copy(alpha = 0.5f),
                         letterSpacing = 1.2.sp,
@@ -353,16 +353,16 @@ private fun ResponseStyleCard(
                     Spacer(Modifier.height(4.dp))
                     Text(
                         text = stringResource(R.string.example_question_career),
-                        fontSize = 11.sp,
+                        fontSize = 14.sp,
                         fontStyle = FontStyle.Italic,
                         color = CreamDim.copy(alpha = 0.6f),
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(
                         text = stringResource(option.exampleResponseRes),
-                        fontSize = 12.sp,
+                        fontSize = 14.sp,
                         color = CreamText.copy(alpha = 0.75f),
-                        lineHeight = 17.sp,
+                        lineHeight = 20.sp,
                     )
                 }
             }

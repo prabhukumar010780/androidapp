@@ -397,7 +397,7 @@ fun AuthScreen(
                 textAlign = TextAlign.Center,
             )
 
-            Spacer(Modifier.height(48.dp))
+            Spacer(Modifier.height(24.dp))
 
             // Continue with Google (glass/outlined style)
             OutlinedButton(

@@ -504,7 +504,7 @@ fun BirthDataScreen(
                         .semantics { contentDescription = "Continue" },
                 )
 
-                Spacer(Modifier.height(40.dp))
+                Spacer(Modifier.height(24.dp))
             }
         }
 
