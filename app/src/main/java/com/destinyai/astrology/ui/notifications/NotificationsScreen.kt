@@ -1,6 +1,7 @@
 package com.destinyai.astrology.ui.notifications
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -55,6 +56,7 @@ import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.GoldDim
+import com.destinyai.astrology.ui.theme.Radius
 import com.destinyai.astrology.ui.theme.NavySurface
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -264,7 +266,7 @@ fun NotificationsScreen(
                     IconButton(onClick = {
                         haptic.light()
                         onBack()
-                    }, modifier = Modifier.size(36.dp).testTag("notif_inbox_close")) {
+                    }, modifier = Modifier.size(48.dp).testTag("notif_inbox_close")) {
                         Icon(
                             Icons.Filled.Close,
                             contentDescription = stringResource(R.string.a11y_close),
@@ -279,7 +281,7 @@ fun NotificationsScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = stringResource(R.string.notifications_title),
-                        fontSize = 18.sp,
+                        fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = CanelaFontFamily,
                         color = CreamText,
@@ -311,7 +313,7 @@ fun NotificationsScreen(
                                 viewModel.markAllRead()
                             }
                         },
-                        modifier = Modifier.size(36.dp),
+                        modifier = Modifier.size(48.dp),
                     ) {
                         Icon(
                             Icons.Filled.DoneAll,
@@ -323,8 +325,10 @@ fun NotificationsScreen(
                 }
             }
 
-            // Personalize alerts button (gold CTA) — gated by guest + alerts entitlement
-            Button(
+            // Personalize alerts — demoted to an OUTLINED button so it doesn't
+            // dominate an empty inbox as a bright full-width gold slab. The empty
+            // state is the focus; this is a secondary action.
+            OutlinedButton(
                 onClick = {
                     haptic.light()
                     when {
@@ -337,11 +341,10 @@ fun NotificationsScreen(
                     .fillMaxWidth()
                     .height(48.dp)
                     .padding(horizontal = 16.dp),
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(
-                    // iOS parity (NotificationInboxView.swift:147-153) — flip to muted when guest.
-                    containerColor = if (state.isGuest) CreamDim else Gold,
-                    contentColor = Color(0xFF0D0D1A),
+                shape = RoundedCornerShape(Radius.button),
+                border = BorderStroke(1.dp, Gold.copy(alpha = 0.5f)),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Gold,
                 ),
             ) {
                 Row(

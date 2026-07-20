@@ -143,7 +143,7 @@ fun HistoryScreen(
                 }
                 Text(
                     text = stringResource(R.string.history_screen_title),
-                    fontSize = 20.sp,
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = CanelaFontFamily,
                     color = Gold,
@@ -380,7 +380,7 @@ private fun UnifiedHistoryList(
                     haptic.light()
                     viewModel.setSearchText("")
                 },
-                modifier = Modifier.size(24.dp).testTag("history_search_clear"),
+                modifier = Modifier.size(48.dp).testTag("history_search_clear"),
             ) {
                 Icon(
                     Icons.Filled.Close,
