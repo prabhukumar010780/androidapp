@@ -90,6 +90,9 @@ import com.destinyai.astrology.ui.profile.ProfileSwitcherViewModel
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.Features
 import com.destinyai.astrology.ui.theme.Gold
+import com.destinyai.astrology.ui.theme.Radius
+import com.destinyai.astrology.ui.theme.Spacing
+import com.destinyai.astrology.ui.theme.TouchMin
 import com.destinyai.astrology.ui.theme.GoldLight
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.CreamDim
@@ -383,7 +386,10 @@ fun HomeScreen(
                         .fillMaxSize()
                         .testTag("home_scroll_view"),
                     contentPadding = PaddingValues(bottom = tabBarReserve),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    // Single source of inter-section rhythm (24dp on the 8dp grid).
+                    // Per-section leading Spacers were removed so this no longer
+                    // double-counts into ~36dp dead gaps.
+                    verticalArrangement = Arrangement.spacedBy(Spacing.sectionGap),
                 ) {
                 // Offline banner — first list item so it scrolls with content
                 // (iOS HomeView.swift:96-97 parity).
@@ -427,7 +433,7 @@ fun HomeScreen(
                                     R.string.home_ascendant_subtitle,
                                     localizedSignName(state.ascendantSign),
                                 ),
-                                fontSize = 13.sp,
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = CreamDim,
                             )
@@ -474,7 +480,6 @@ fun HomeScreen(
                 // empty so the section never disappears (iOS HomeView.swift:834-836
                 // parity).
                 item {
-                    Spacer(Modifier.height(20.dp))
                     val fallback = listOf(
                         stringResource(R.string.home_default_q_career),
                         stringResource(R.string.home_default_q_love),
@@ -499,7 +504,6 @@ fun HomeScreen(
                 // Dasha insight card
                 if (state.dashaInfo != null) {
                     item {
-                        Spacer(Modifier.height(20.dp))
                         GoldGradientText(
                             text = stringResource(R.string.home_current_dasha),
                             modifier = Modifier.padding(horizontal = 16.dp),
@@ -523,7 +527,6 @@ fun HomeScreen(
                 // Transit alerts (horizontal scroll)
                 if (state.transits.isNotEmpty()) {
                     item {
-                        Spacer(Modifier.height(20.dp))
                         GoldGradientText(
                             text = stringResource(R.string.home_current_transits),
                             modifier = Modifier.padding(horizontal = 16.dp),
@@ -547,7 +550,6 @@ fun HomeScreen(
                 // Previously gated on yogas.isNotEmpty() which hid the entire
                 // section + filter chips during loading.
                 item {
-                    Spacer(Modifier.height(20.dp))
                     YogaHighlightRow(
                         yogas = state.yogas,
                         selectedFilter = state.yogaFilter,
@@ -593,7 +595,8 @@ private fun HomeHeader(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            // 16dp edge margin — matches all content below (was 12dp, misaligned).
+            .padding(horizontal = Spacing.screenH, vertical = Spacing.sm),
     ) {
         // Centered logo
         Image(
@@ -612,7 +615,7 @@ private fun HomeHeader(
             // History button (left)
             Box(
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(TouchMin)
                     .clip(CircleShape)
                     .border(1.dp, Gold.copy(alpha = 0.3f), CircleShape)
                     .clickable(onClick = onHistoryTap),
@@ -637,7 +640,7 @@ private fun HomeHeader(
                 Box(contentAlignment = Alignment.TopEnd) {
                     Box(
                         modifier = Modifier
-                            .size(44.dp)
+                            .size(TouchMin)
                             .clip(CircleShape)
                             .border(1.dp, Gold.copy(alpha = 0.3f), CircleShape)
                             .clickable(onClick = onNotificationsTap),
@@ -685,7 +688,7 @@ private fun HomeHeader(
                 if (Features.showSoundToggle) {
                     Box(
                         modifier = Modifier
-                            .size(44.dp)
+                            .size(TouchMin)
                             .clip(CircleShape)
                             .border(1.dp, Gold.copy(alpha = 0.3f), CircleShape)
                             .clickable(onClick = onSoundToggle)
@@ -717,7 +720,7 @@ private fun HomeHeader(
                     .ifEmpty { "?" }
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(TouchMin)
                         .clip(CircleShape)
                         .background(Gold)
                         .combinedClickable(
@@ -2499,15 +2502,15 @@ private fun QuickQuestionCard(
             .heightIn(min = 70.dp)
             .shadow(
                 elevation = 8.dp,
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(Radius.card),
                 ambientColor = Gold.copy(alpha = 0.08f),
                 spotColor = Gold.copy(alpha = 0.08f),
             )
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(Radius.card))
             .background(NavySurface)
-            .border(2.dp, Gold.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+            .border(1.dp, Gold.copy(alpha = 0.35f), RoundedCornerShape(Radius.card))
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .padding(Spacing.cardPadding),
     ) {
         Row(
             verticalAlignment = Alignment.Top,
@@ -2515,10 +2518,10 @@ private fun QuickQuestionCard(
         ) {
             Text(
                 text = question,
-                fontSize = 13.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = CreamText,
-                lineHeight = 18.sp,
+                lineHeight = 20.sp,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
