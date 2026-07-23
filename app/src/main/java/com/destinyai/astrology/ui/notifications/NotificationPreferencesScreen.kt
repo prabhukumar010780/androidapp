@@ -62,6 +62,7 @@ import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.TouchMin
+import com.destinyai.astrology.ui.theme.adaptiveContentWidth
 import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.EntryPoint
@@ -269,7 +270,10 @@ fun NotificationPreferencesScreen(
 
     CosmicBackground {
         Box(modifier = Modifier.fillMaxSize()) {
-            Column(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
                 // Header — iOS parity adds an explicit "Cancel" text button alongside the back arrow.
                 Row(
                     modifier = Modifier
@@ -355,7 +359,8 @@ fun NotificationPreferencesScreen(
                 } else {
                     Column(
                         modifier = Modifier
-                            .fillMaxSize()
+                            .fillMaxHeight()
+                            .adaptiveContentWidth()
                             .verticalScroll(rememberScrollState())
                             .navigationBarsPadding()
                             .padding(horizontal = 24.dp),

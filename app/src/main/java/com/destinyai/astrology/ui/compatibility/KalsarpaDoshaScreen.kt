@@ -52,6 +52,7 @@ import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.TextTertiary
+import com.destinyai.astrology.ui.theme.adaptiveContentWidth
 import kotlin.random.Random
 
 private enum class KalsarpaScenario { NONE, ONE_BOY, ONE_GIRL, BOTH }
@@ -94,6 +95,7 @@ fun KalsarpaDoshaScreen(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .semantics { contentDescription = "kalsarpa_dosha_screen" },
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // Issue 2: render localized title alongside the back arrow (iOS navigationTitle parity).
             Row(
@@ -132,6 +134,7 @@ fun KalsarpaDoshaScreen(
                 else -> Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        .adaptiveContentWidth()
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),

@@ -201,7 +201,8 @@ fun SplashScreen(soundManager: SoundManager? = null) {
 
             Text(
                 text = stringResource(R.string.aligning_stars),
-                fontSize = 13.sp,
+                fontSize = AppType.secondary,
+                lineHeight = AppType.secondaryLh,
                 fontStyle = FontStyle.Italic,
                 color = CreamText.copy(alpha = 0.6f),
                 textAlign = TextAlign.Center,

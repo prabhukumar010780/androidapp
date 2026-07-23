@@ -50,6 +50,7 @@ import com.destinyai.astrology.R
 import com.destinyai.astrology.data.remote.NotificationDto
 import com.destinyai.astrology.services.HapticManager
 import com.destinyai.astrology.services.NotificationRouter
+import com.destinyai.astrology.ui.theme.adaptiveContentWidth
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
@@ -437,6 +438,10 @@ fun NotificationsScreen(
                     }
                 } else {
                     LazyColumn(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .fillMaxHeight()
+                            .adaptiveContentWidth(),
                         state = listState,
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),

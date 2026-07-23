@@ -57,6 +57,7 @@ import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.TouchMin
+import com.destinyai.astrology.ui.theme.adaptiveContentWidth
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -163,10 +164,13 @@ fun LanguageSelectionScreen(
 
                 Spacer(Modifier.height(32.dp))
 
-                // 3-column grid with staggered entrance animation per card.
+                // Adaptive grid: 3 columns on phones, more on tablets/foldables. Width is
+                // capped + centered on large screens so cards keep phone proportions.
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
-                    modifier = Modifier.weight(1f),
+                    columns = GridCells.Adaptive(minSize = 110.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .adaptiveContentWidth(),
                     // Bottom padding so the last row always clears the pinned CTA on short
                     // screens (mirrors iOS Spacer(minLength:8) between grid and button).
                     contentPadding = PaddingValues(bottom = 8.dp),

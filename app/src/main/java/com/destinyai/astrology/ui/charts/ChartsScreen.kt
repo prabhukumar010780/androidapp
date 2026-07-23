@@ -42,6 +42,7 @@ import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.Radius
 import com.destinyai.astrology.ui.theme.Spacing
+import com.destinyai.astrology.ui.theme.adaptiveContentWidth
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -73,7 +74,10 @@ fun ChartsScreen(
     }
 
     CosmicBackground {
-        Column(modifier = Modifier.fillMaxSize().semantics { contentDescription = "chart_screen" }) {
+        Column(
+            modifier = Modifier.fillMaxSize().semantics { contentDescription = "chart_screen" },
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
             // Navigation bar
             Row(
                 modifier = Modifier
@@ -208,7 +212,8 @@ fun ChartsScreen(
                     val chart = state.chartApiData ?: return@Column
                     Column(
                         modifier = Modifier
-                            .fillMaxSize()
+                            .fillMaxHeight()
+                            .adaptiveContentWidth()
                             .navigationBarsPadding()
                             .verticalScroll(rememberScrollState())
                             .padding(horizontal = Spacing.screenH),

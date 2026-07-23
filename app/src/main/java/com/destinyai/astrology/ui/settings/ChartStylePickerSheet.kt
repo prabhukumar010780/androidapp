@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.destinyai.astrology.R
 import com.destinyai.astrology.services.HapticManager
+import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
@@ -97,7 +98,8 @@ fun ChartStylePickerSheet(
             // iOS parity (ChartStylePickerSheet.swift:67): section header above the picker list.
             Text(
                 text = stringResource(R.string.select_chart_style),
-                fontSize = 13.sp,
+                fontSize = AppType.secondary,
+                lineHeight = AppType.secondaryLh,
                 fontWeight = FontWeight.SemiBold,
                 color = Gold,
                 modifier = Modifier
@@ -153,7 +155,8 @@ fun ChartStylePickerSheet(
             // iOS parity (ChartStylePickerSheet.swift:71): footer caption below the chart style list.
             Text(
                 text = stringResource(R.string.chart_style_note),
-                fontSize = 13.sp,
+                fontSize = AppType.caption,
+                lineHeight = AppType.captionLh,
                 color = TextTertiary,
                 modifier = Modifier
                     .padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 4.dp),

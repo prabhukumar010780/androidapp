@@ -40,6 +40,7 @@ import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
+import com.destinyai.astrology.ui.theme.adaptiveContentWidth
 import com.destinyai.astrology.util.DoshaDescriptions
 
 private enum class MarsScenario { SAFE, CANCELLED, EFFECTIVE }
@@ -64,7 +65,10 @@ fun MangalDoshaScreen(
     }
 
     CosmicBackground {
-        Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
+        Column(
+            modifier = Modifier.fillMaxSize().statusBarsPadding(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -90,6 +94,7 @@ fun MangalDoshaScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .adaptiveContentWidth()
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),

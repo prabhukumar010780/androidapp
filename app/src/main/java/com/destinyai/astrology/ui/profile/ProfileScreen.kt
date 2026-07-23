@@ -66,6 +66,7 @@ import com.destinyai.astrology.ui.auth.AuthViewModel
 import com.destinyai.astrology.ui.components.ShimmerButton
 import com.destinyai.astrology.ui.settings.ChartStylePickerSheet
 import com.destinyai.astrology.ui.theme.AppType
+import com.destinyai.astrology.ui.theme.adaptiveContentWidth
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.Radius
 import com.destinyai.astrology.ui.theme.Spacing
@@ -351,7 +352,11 @@ fun ProfileScreen(
                     .padding(innerPadding)
                     .pullRefresh(pullRefreshState),
             ) {
-                Column(modifier = Modifier.fillMaxSize()) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    // Center the capped content on tablets/foldables; no-op on phones.
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
                     // Header — iOS parity (ProfileView.swift:129-138):
                     // navigationTitle + topBarTrailing "Done" button (sheet style).
                     // No back arrow; Profile is presented as a modal sheet on iOS,
@@ -397,7 +402,11 @@ fun ProfileScreen(
                     } else {
                         Column(
                             modifier = Modifier
-                                .fillMaxSize()
+                                .fillMaxHeight()
+                                // Cap + center the scrolling content on large screens
+                                // (tablets/foldables) so cards keep phone proportions;
+                                // no-op on phones (widthIn only caps the upper bound).
+                                .adaptiveContentWidth()
                                 .verticalScroll(rememberScrollState())
                                 // 16dp edge margin to match the header + rest of the app
                                 // (was 24dp, wider than everything else).

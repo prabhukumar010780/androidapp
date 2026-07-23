@@ -139,13 +139,12 @@ fun ResponseStyleOnboardingScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp, vertical = 16.dp),
-                    horizontalArrangement = Arrangement.Center,
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.xs, Alignment.CenterHorizontally),
                 ) {
                     repeat(4) { i ->
                         val isActive = i == 2
                         Box(
                             modifier = Modifier
-                                .padding(horizontal = 3.dp)
                                 .height(8.dp)
                                 .width(if (isActive) 24.dp else 8.dp)
                                 .clip(RoundedCornerShape(4.dp))

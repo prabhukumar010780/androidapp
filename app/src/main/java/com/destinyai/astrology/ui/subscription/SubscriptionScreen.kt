@@ -53,6 +53,7 @@ import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.TouchMin
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
+import com.destinyai.astrology.ui.theme.adaptiveContentWidth
 import java.text.DateFormat
 import java.util.Date
 
@@ -272,6 +273,14 @@ fun SubscriptionScreen(
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     LazyColumn(
+                    // Large-screen cap: keep phone proportions on tablets/foldables
+                    // so plan cards don't stretch to unreadable widths. No-op on
+                    // phones (widthIn only caps the upper bound). Centered via
+                    // align(TopCenter) inside the fillMaxSize PullToRefreshBox.
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .align(Alignment.TopCenter)
+                        .adaptiveContentWidth(),
                     contentPadding = PaddingValues(
                         start = 16.dp,
                         end = 16.dp,

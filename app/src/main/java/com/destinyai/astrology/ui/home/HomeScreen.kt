@@ -88,6 +88,7 @@ import com.destinyai.astrology.services.SoundManager
 import com.destinyai.astrology.ui.components.GoldGradientText
 import com.destinyai.astrology.ui.profile.ProfileSwitcherViewModel
 import com.destinyai.astrology.ui.theme.AppType
+import com.destinyai.astrology.ui.theme.adaptiveContentWidth
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.Features
 import com.destinyai.astrology.ui.theme.Gold
@@ -384,7 +385,13 @@ fun HomeScreen(
                 LazyColumn(
                     state = listState,
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxHeight()
+                        // Cap + center the feed on tablets/foldables (>=600dp) so cards
+                        // keep phone proportions instead of stretching full-bleed. No-op
+                        // on phones (widthIn only caps the upper bound). The starfield
+                        // CosmicBackground still fills the screen behind this.
+                        .align(Alignment.TopCenter)
+                        .adaptiveContentWidth()
                         .testTag("home_scroll_view"),
                     contentPadding = PaddingValues(bottom = tabBarReserve),
                     // Single source of inter-section rhythm (24dp on the 8dp grid).

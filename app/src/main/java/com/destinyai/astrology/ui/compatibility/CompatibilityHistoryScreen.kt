@@ -50,6 +50,7 @@ import com.destinyai.astrology.ui.theme.NavyVariant
 import com.destinyai.astrology.ui.theme.Radius
 import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.TextTertiary
+import com.destinyai.astrology.ui.theme.adaptiveContentWidth
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -146,6 +147,7 @@ fun CompatibilityHistoryScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .semantics(mergeDescendants = true) { contentDescription = "history_screen" },
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // Delete confirmation dialog
             if (pendingDeleteId != null) {
@@ -255,7 +257,7 @@ fun CompatibilityHistoryScreen(
                     }
                 } else {
                     LazyColumn(
-                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        modifier = Modifier.weight(1f).fillMaxWidth().adaptiveContentWidth(),
                         contentPadding = PaddingValues(
                             start = 16.dp,
                             end = 16.dp,

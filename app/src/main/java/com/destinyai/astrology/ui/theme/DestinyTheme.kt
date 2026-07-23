@@ -357,9 +357,9 @@ object AppTheme {
      * Issue 19: shared dimensional + stroke tokens.
      */
     object styles {
-        val cornerRadius = 12.dp
+        val cornerRadius = Radius.button
         val inputHeight = 54.dp
-        val cardCornerRadius = 16.dp
+        val cardCornerRadius = Radius.card
 
         data class Shadow(val elevation: Dp, val color: Color)
         data class BorderStroke(val width: Dp, val stroke: Color)

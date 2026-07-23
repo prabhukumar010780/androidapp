@@ -58,6 +58,7 @@ import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.Radius
 import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.WarningOrange
+import com.destinyai.astrology.ui.theme.adaptiveContentWidth
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -124,7 +125,10 @@ fun HistoryScreen(
     }
 
     CosmicBackground {
-        Column(modifier = Modifier.fillMaxSize().testTag("history_screen")) {
+        Column(
+            modifier = Modifier.fillMaxSize().testTag("history_screen"),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
             // Header
             Row(
                 modifier = Modifier
@@ -450,7 +454,7 @@ private fun UnifiedHistoryList(
                 .calculateBottomPadding(),
         ),
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.testTag("history_unified_list"),
+        modifier = Modifier.adaptiveContentWidth().testTag("history_unified_list"),
     ) {
         sections.forEach { (key, items) ->
             item(key = "header_${sectionId(key)}") { UnifiedSectionHeader(key) }

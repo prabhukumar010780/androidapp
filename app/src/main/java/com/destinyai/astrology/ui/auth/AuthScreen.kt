@@ -59,6 +59,8 @@ import com.destinyai.astrology.ui.components.auth.AuthLogo
 import com.destinyai.astrology.ui.components.auth.AuthOrbitalRings
 import com.destinyai.astrology.ui.theme.AuthDimens
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
+import com.destinyai.astrology.ui.theme.adaptiveContentWidth
+import com.destinyai.astrology.ui.theme.ContentWidth
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.CreamDim
@@ -366,11 +368,17 @@ fun AuthScreen(
         }
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                // Cap + center the sign-in column on large screens (tablets/foldables)
+                // so it keeps phone proportions instead of stretching edge-to-edge.
+                // NO-OP on phones — widthIn only caps the upper bound. Background
+                // (CosmicBackground + orbital rings) still fills the full screen.
+                .align(Alignment.TopCenter)
+                .fillMaxHeight()
+                .adaptiveContentWidth(ContentWidth.narrow)
                 // Edge-to-edge: keep the footer (Terms/Privacy) above the gesture pill.
                 .navigationBarsPadding()
                 // Degrade gracefully on short screens / large font scale: the stack
-                // scrolls instead of clipping the logo or footer. fillMaxSize supplies
+                // scrolls instead of clipping the logo or footer. fillMaxHeight supplies
                 // the min-height so Arrangement.Center still centers when content fits.
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 32.dp),

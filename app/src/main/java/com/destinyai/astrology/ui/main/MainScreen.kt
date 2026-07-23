@@ -60,6 +60,8 @@ import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.GoldChampagne
 import com.destinyai.astrology.ui.theme.NavyDeep
 import com.destinyai.astrology.ui.theme.Spacing
+import com.destinyai.astrology.ui.theme.WidthClass
+import com.destinyai.astrology.ui.theme.currentWidthClass
 import java.text.SimpleDateFormat
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -229,7 +231,38 @@ fun MainScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize().background(NavyDeep)) {
-        when {
+        // Navigation visibility (shared by bottom bar AND rail) — hidden on chat tab
+        // (index 1), when the soft keyboard is visible (iOS MainTabView.swift:116),
+        // when a match result is showing, or when an overlay screen is pushed.
+        val isImeVisible = WindowInsets.isImeVisible
+        val navVisible = selectedTab != 1 &&
+            !isImeVisible &&
+            !showMatchResult &&
+            !showHistory &&
+            !showProfile
+        // On Expanded-width screens (tablets/large foldables) use a left NavigationRail
+        // instead of the bottom bar, per Material 3 large-screen guidance. Compact and
+        // Medium widths keep the iOS-parity bottom bar.
+        val useRail = currentWidthClass() == WidthClass.Expanded
+        val railVisible = useRail && navVisible
+        // Inset co-resident tab content by the rail so it doesn't sit under it.
+        val contentStartInset = if (railVisible) NavRailWidth else 0.dp
+
+        // Re-tapping the active Home tab triggers a scroll-to-top in HomeScreen
+        // (parity with iOS UITabBar double-tap). Shared by bar and rail.
+        val onTabSelected: (Int) -> Unit = { newTab ->
+            if (newTab == 0 && selectedTab == 0) {
+                homeScrollTopTick += 1
+            }
+            selectedTab = newTab
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = contentStartInset),
+        ) {
+            when {
             showHistory -> HistoryScreen(
                 onBack = { showHistory = false },
                 // Mirrors iOS HomeView.onChatHistorySelected — dismiss History,
@@ -419,27 +452,13 @@ fun MainScreen(
                 }
             }
         }
+        } // end tab-content wrapper Box (rail inset)
 
-        // Tab bar — hidden on chat tab (index 1), when soft keyboard is visible
-        // (mirrors iOS MainTabView.swift:116 isKeyboardVisible check), when a
-        // match result is showing, or when an overlay screen is pushed.
-        val isImeVisible = WindowInsets.isImeVisible
-        val tabBarVisible = selectedTab != 1 &&
-            !isImeVisible &&
-            !showMatchResult &&
-            !showHistory &&
-            !showProfile
-        if (tabBarVisible) {
+        // Bottom bar — Compact/Medium widths only. Docked flush to the bottom edge.
+        if (navVisible && !useRail) {
             DestinyTabBar(
                 selectedTab = selectedTab,
-                onTabSelected = { newTab ->
-                    // Re-tapping the active Home tab triggers a scroll-to-top in
-                    // HomeScreen (parity with iOS UITabBar double-tap behavior).
-                    if (newTab == 0 && selectedTab == 0) {
-                        homeScrollTopTick += 1
-                    }
-                    selectedTab = newTab
-                },
+                onTabSelected = onTabSelected,
                 // iOS parity (MainTabView:117-119: "No horizontal padding for full
                 // width" + .padding(.bottom, 0) docked to bottom; the bar itself is a
                 // full-width Rectangle with .frame(maxWidth: .infinity)). The bar's own
@@ -449,6 +468,15 @@ fun MainScreen(
                 // width and docks flush to the bottom like iOS.
                 modifier = Modifier
                     .align(Alignment.BottomCenter),
+            )
+        }
+
+        // Navigation rail — Expanded width only. Anchored to the leading edge.
+        if (railVisible) {
+            DestinyNavigationRail(
+                selectedTab = selectedTab,
+                onTabSelected = onTabSelected,
+                modifier = Modifier.align(Alignment.CenterStart),
             )
         }
     }
@@ -486,6 +514,73 @@ private fun formatExpiryDate(iso: String): String {
         display.format(java.util.Date.from(parsed.toInstant()))
     } catch (e: Exception) {
         iso
+    }
+}
+
+/** Width of the left NavigationRail shown on Expanded (tablet/large) screens. */
+private val NavRailWidth = 88.dp
+
+/**
+ * Left navigation rail for Expanded-width screens (tablets, large foldables). Mirrors
+ * the three primary destinations of [DestinyTabBar] (Home / Ask / Match) but laid out
+ * vertically on the leading edge, per Material 3 large-screen guidance. The bottom bar
+ * is hidden when this is shown; both are gated by the same visibility rules so a tablet
+ * never shows two navigation surfaces at once.
+ */
+@Composable
+private fun DestinyNavigationRail(
+    selectedTab: Int,
+    onTabSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxHeight()
+            .width(NavRailWidth)
+            .background(NavyDeep)
+            .windowInsetsPadding(WindowInsets.systemBars),
+    ) {
+        // Gold trailing border (1dp vertical gradient) — mirrors the bar's top border.
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .width(1.dp)
+                .align(Alignment.CenterEnd)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color.Transparent, Gold.copy(alpha = 0.5f), Color.Transparent),
+                    ),
+                ),
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxHeight()
+                .align(Alignment.Center)
+                .padding(vertical = Spacing.xl),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(Spacing.xl, Alignment.CenterVertically),
+        ) {
+            TabBarItem(
+                vectorIcon = Icons.Filled.Home,
+                label = stringResource(R.string.home),
+                selected = selectedTab == 0,
+                onClick = { onTabSelected(0) },
+                modifier = Modifier.testTag("rail_home"),
+            )
+            AskFabButton(
+                isSelected = selectedTab == 1,
+                label = stringResource(R.string.ask),
+                onClick = { onTabSelected(1) },
+                modifier = Modifier.testTag("rail_chat"),
+            )
+            TabBarItem(
+                vectorIcon = Icons.Filled.Favorite,
+                label = stringResource(R.string.match),
+                selected = selectedTab == 2,
+                onClick = { onTabSelected(2) },
+                modifier = Modifier.testTag("rail_match"),
+            )
+        }
     }
 }
 

@@ -32,6 +32,7 @@ import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.Radius
 import com.destinyai.astrology.ui.theme.Spacing
+import com.destinyai.astrology.ui.theme.adaptiveContentWidth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,7 +48,10 @@ fun SettingsScreen(
     LaunchedEffect(Unit) { viewModel.loadSettings() }
 
     CosmicBackground {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
             // Header
             Row(
                 modifier = Modifier
@@ -75,7 +79,8 @@ fun SettingsScreen(
 
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxHeight()
+                    .adaptiveContentWidth()
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = Spacing.xl)
                     .navigationBarsPadding()

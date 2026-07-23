@@ -143,14 +143,20 @@ fun GuestSignInPromptScreen(
     )
 
     CosmicBackground {
-        // Ambient orbital rings overlay (0.25 opacity like iOS)
+        // Ambient orbital rings overlay (0.25 opacity like iOS). The ring arc is
+        // top-anchored and nudged up so it frames the logo. The upward nudge lives on
+        // the fixed-size rings element rather than on a full-bleed container, so the
+        // overlay Box no longer has its whole bounds shifted off-screen.
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .offset(y = (-60).dp),
+            modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.TopCenter,
         ) {
-            AuthOrbitalRings(rotation = orbitRotation, modifier = Modifier.size(400.dp))
+            AuthOrbitalRings(
+                rotation = orbitRotation,
+                modifier = Modifier
+                    .size(400.dp)
+                    .offset(y = (-60).dp),
+            )
         }
 
         Column(

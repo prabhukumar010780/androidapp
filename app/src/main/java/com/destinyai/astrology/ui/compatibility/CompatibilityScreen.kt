@@ -68,6 +68,7 @@ import com.destinyai.astrology.ui.charts.ChartComparisonSheet
 import com.destinyai.astrology.ui.subscription.SubscriptionScreen
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
+import com.destinyai.astrology.ui.theme.adaptiveContentWidth
 import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.Radius
 import com.destinyai.astrology.ui.theme.TouchMin
@@ -304,7 +305,8 @@ fun CompatibilityScreen(
             Column(modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .semantics(mergeDescendants = true) { contentDescription = "compat_screen" }) {
+                .semantics(mergeDescendants = true) { contentDescription = "compat_screen" },
+                horizontalAlignment = Alignment.CenterHorizontally) {
             CompatibilityHeader(
                 onNavigateToPartners = onNavigateToPartners,
                 onHistory = {
@@ -317,6 +319,7 @@ fun CompatibilityScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .adaptiveContentWidth()
                     .verticalScroll(rememberScrollState())
                     // Match tab hides the global tab bar, so this scroll content is the
                     // bottom-most surface. Under edge-to-edge, add the gesture-nav inset
