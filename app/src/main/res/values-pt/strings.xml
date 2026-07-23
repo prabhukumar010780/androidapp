@@ -2692,4 +2692,11 @@ Until then: Use this period for strategic positioning.</string>
     <string name="waitlist_support_prefix">Dúvidas ou precisa de ajuda? Fale conosco a qualquer hora em</string>
     <string name="waitlist_title">Você está quase lá</string>
     <string name="partner_default_name">Parceiro</string>
+    <string name="yoga_token_auspicious">auspicioso</string>
+    <string name="yoga_token_inauspicious">desfavorável</string>
+    <string name="yoga_token_weak">fraco</string>
+    <string name="yoga_token_strong">forte</string>
+    <string name="yoga_token_moderate">moderado</string>
+    <string name="yoga_token_yoga_reduced">yoga reduzido</string>
+    <string name="yoga_token_yoga_cancelled">yoga cancelado</string>
 </resources>

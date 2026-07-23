@@ -2692,4 +2692,11 @@ Until then: Use this period for strategic positioning.</string>
     <string name="waitlist_support_prefix">ご質問やサポートが必要な場合は、いつでもこちらまでご連絡ください</string>
     <string name="waitlist_title">もうすぐ入れます</string>
     <string name="partner_default_name">パートナー</string>
+    <string name="yoga_token_auspicious">吉</string>
+    <string name="yoga_token_inauspicious">凶</string>
+    <string name="yoga_token_weak">弱い</string>
+    <string name="yoga_token_strong">強い</string>
+    <string name="yoga_token_moderate">中程度</string>
+    <string name="yoga_token_yoga_reduced">ヨガ減弱</string>
+    <string name="yoga_token_yoga_cancelled">ヨガ無効</string>
 </resources>

@@ -85,6 +85,7 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import com.destinyai.astrology.R
 import com.destinyai.astrology.services.HapticManager
 import com.destinyai.astrology.services.SoundManager
+import com.destinyai.astrology.util.DoshaDescriptions
 import com.destinyai.astrology.ui.components.GoldGradientText
 import com.destinyai.astrology.ui.profile.ProfileSwitcherViewModel
 import com.destinyai.astrology.ui.theme.AppType
@@ -1678,7 +1679,7 @@ private fun PremiumYogaCard(
             Spacer(Modifier.height(8.dp))
             // Yoga name — reserved 2-line height so dividers align across cards (iOS frame(36)).
             Text(
-                text = yoga.name,
+                text = DoshaDescriptions.localizedYogaName(LocalContext.current, yoga.yogaKey, yoga.name),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
@@ -1712,7 +1713,9 @@ private fun PremiumYogaCard(
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        text = yoga.planets.ifBlank { stringResource(R.string.yoga_label_unknown) },
+                        text = yoga.planets.ifBlank { null }?.let {
+                            DoshaDescriptions.localizedPlanets(LocalContext.current, it)
+                        } ?: stringResource(R.string.yoga_label_unknown),
                         fontSize = AppType.caption,
                         lineHeight = AppType.captionLh,
                         color = CreamDim,
@@ -2328,9 +2331,10 @@ private fun YogaDetailPopup(
                 .padding(20.dp),
         ) {
             Column {
+                val ctx = LocalContext.current
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = yoga.name,
+                        text = DoshaDescriptions.localizedYogaName(ctx, yoga.yogaKey, yoga.name),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = CanelaFontFamily,
@@ -2361,7 +2365,7 @@ private fun YogaDetailPopup(
                             .padding(horizontal = 8.dp, vertical = 3.dp),
                     ) {
                         Text(
-                            text = yoga.category,
+                            text = DoshaDescriptions.localizedYogaCategory(ctx, yoga.category),
                             fontSize = 11.sp,
                             color = Gold,
                             fontWeight = FontWeight.SemiBold,
@@ -2384,7 +2388,7 @@ private fun YogaDetailPopup(
                 if (yoga.description.isNotBlank()) {
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        text = yoga.description,
+                        text = DoshaDescriptions.localizedYogaOutcome(ctx, yoga.yogaKey, yoga.description),
                         fontSize = 13.sp,
                         color = CreamText,
                         lineHeight = 19.sp,
@@ -2395,7 +2399,7 @@ private fun YogaDetailPopup(
                 if (yoga.planets.isNotBlank()) {
                     YogaDetailRow(
                         label = stringResource(R.string.planets_label),
-                        value = yoga.planets,
+                        value = DoshaDescriptions.localizedPlanets(ctx, yoga.planets),
                     )
                 }
                 if (yoga.houses.isNotBlank()) {
@@ -2407,7 +2411,7 @@ private fun YogaDetailPopup(
                 if (yoga.formation.isNotBlank()) {
                     YogaDetailRow(
                         label = stringResource(R.string.home_yoga_formation),
-                        value = yoga.formation,
+                        value = DoshaDescriptions.localizedYogaFormation(ctx, yoga.yogaKey, yoga.formation),
                     )
                 }
                 if (yoga.strength > 0) {
@@ -2419,13 +2423,13 @@ private fun YogaDetailPopup(
                 if (yoga.outcome.isNotBlank()) {
                     YogaDetailRow(
                         label = stringResource(R.string.home_yoga_outcome),
-                        value = yoga.outcome,
+                        value = DoshaDescriptions.localizedYogaOutcome(ctx, yoga.yogaKey, yoga.outcome),
                     )
                 }
                 if (yoga.reductionReason.isNotBlank()) {
                     YogaDetailRow(
                         label = stringResource(R.string.home_yoga_reduction_reason),
-                        value = yoga.reductionReason,
+                        value = DoshaDescriptions.localizeExceptionKeys(ctx, yoga.reductionReason),
                     )
                 }
                 Spacer(Modifier.height(18.dp))

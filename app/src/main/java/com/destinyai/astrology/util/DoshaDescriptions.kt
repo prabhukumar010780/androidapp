@@ -70,6 +70,97 @@ object DoshaDescriptions {
                 }
             }
         }
+        // Also localize the backend's composed yoga-reason prose, e.g.
+        // "Mars is AUSPICIOUS + WEAK (yoga reduced)" — fixed English enum tokens
+        // the backend emits as free-form text (not lookup keys). Mirrors iOS
+        // DoshaDescriptions.localizeReasonTokens.
+        return localizeReasonTokens(context, result)
+    }
+
+    // Backend reason-prose token → string-resource key. Whole-word replacement.
+    private val REASON_TOKENS: List<Pair<String, String>> = listOf(
+        "AUSPICIOUS" to "yoga_token_auspicious",
+        "INAUSPICIOUS" to "yoga_token_inauspicious",
+        "WEAK" to "yoga_token_weak",
+        "STRONG" to "yoga_token_strong",
+        "MODERATE" to "yoga_token_moderate",
+        "yoga reduced" to "yoga_token_yoga_reduced",
+        "yoga cancelled" to "yoga_token_yoga_cancelled",
+        "Mars" to "planet_mars", "Moon" to "planet_moon", "Sun" to "planet_sun",
+        "Mercury" to "planet_mercury", "Jupiter" to "planet_jupiter",
+        "Venus" to "planet_venus", "Saturn" to "planet_saturn",
+        "Rahu" to "planet_rahu", "Ketu" to "planet_ketu",
+    )
+
+    private fun localizeReasonTokens(context: Context, text: String): String {
+        var result = text
+        for ((token, key) in REASON_TOKENS) {
+            val resId = context.resources.getIdentifier(key, "string", context.packageName)
+            if (resId == 0) continue
+            val localized = context.getString(resId)
+            if (localized.isEmpty() || localized == key) continue
+            val regex = Regex("\\b" + Regex.escape(token) + "\\b", RegexOption.IGNORE_CASE)
+            result = result.replace(regex, localized)
+        }
         return result
+    }
+
+    // MARK: - Yoga name / outcome / formation / category / planets localization
+    // Mirrors iOS YogaDetail.localizedName/localizedOutcome/localizedFormation/
+    // localizedCategory/localizedPlanets. The backend emits NUMBERED variant keys
+    // (e.g. "bhagya_yoga_241") but string resources hold only the base key.
+
+    private fun keyCandidates(yogaKey: String): List<String> {
+        val base = yogaKey.replace(Regex("_\\d+$"), "")
+        return if (base == yogaKey) listOf(yogaKey) else listOf(yogaKey, base)
+    }
+
+    /** Look up "<prefix>_<key>" trying the exact key then the number-stripped base. */
+    private fun localizedForKey(context: Context, prefix: String, yogaKey: String?): String? {
+        if (yogaKey.isNullOrEmpty()) return null
+        for (candidate in keyCandidates(yogaKey)) {
+            val resName = "${prefix}_$candidate"
+            val resId = context.resources.getIdentifier(resName, "string", context.packageName)
+            if (resId != 0) {
+                val localized = context.getString(resId)
+                if (localized.isNotEmpty() && localized != resName) return localized
+            }
+        }
+        return null
+    }
+
+    fun localizedYogaName(context: Context, yogaKey: String?, fallback: String): String =
+        localizedForKey(context, "yoga_name", yogaKey) ?: fallback
+
+    fun localizedYogaOutcome(context: Context, yogaKey: String?, fallback: String): String =
+        localizedForKey(context, "yoga_outcome", yogaKey) ?: fallback
+
+    fun localizedYogaFormation(context: Context, yogaKey: String?, fallback: String): String =
+        localizedForKey(context, "yoga_formation", yogaKey) ?: fallback
+
+    /** Localized category tag (e.g. "Relationship" → "人間関係"), raw fallback. */
+    fun localizedYogaCategory(context: Context, category: String?): String {
+        if (category.isNullOrEmpty()) return category ?: ""
+        val resName = "yoga_cat_" + category.lowercase().replace(" ", "_")
+        val resId = context.resources.getIdentifier(resName, "string", context.packageName)
+        if (resId != 0) {
+            val localized = context.getString(resId)
+            if (localized.isNotEmpty() && localized != resName) return localized
+        }
+        return category
+    }
+
+    /** Localized, comma-joined planet list; unknown tokens pass through. */
+    fun localizedPlanets(context: Context, planets: String): String {
+        if (planets.isEmpty()) return planets
+        return planets.split(",").map { it.trim() }.joinToString(", ") { p ->
+            val resName = "planet_" + p.lowercase()
+            val resId = context.resources.getIdentifier(resName, "string", context.packageName)
+            if (resId != 0) {
+                val localized = context.getString(resId)
+                if (localized.isNotEmpty() && localized != resName) return@joinToString localized
+            }
+            p
+        }
     }
 }

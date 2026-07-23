@@ -340,6 +340,7 @@ class HomeRepositoryImpl @Inject constructor(
                         outcome = y.outcome ?: "",
                         reductionReason = y.reason ?: "",
                         isDosha = y.isDosha ?: false,
+                        yogaKey = y.yogaKey,
                     )
                 }
                 serverYogas?.doshas?.forEach { d ->
@@ -357,6 +358,7 @@ class HomeRepositoryImpl @Inject constructor(
                         outcome = d.outcome ?: "",
                         reductionReason = d.reason ?: "",
                         isDosha = d.isDosha ?: true,
+                        yogaKey = d.yogaKey,
                     )
                 }
                 if (combined.isNotEmpty()) {

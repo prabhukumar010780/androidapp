@@ -2692,4 +2692,11 @@ Until then: Use this period for strategic positioning.</string>
     <string name="waitlist_support_prefix">ചോദ്യങ്ങൾ അല്ലെങ്കിൽ സഹായത്തിന് ആവശ്യമുണ്ടോ? ഏതെങ്കിലും സമയത്ത് ഞങ്ങളുമായി ബന്ധപ്പെടുക</string>
     <string name="waitlist_title">നിങ്ങൾ ഏതാണ്ട് ഇൻ ആണ്</string>
     <string name="partner_default_name">പങ്കാളി</string>
+    <string name="yoga_token_auspicious">ശുഭം</string>
+    <string name="yoga_token_inauspicious">അശുഭം</string>
+    <string name="yoga_token_weak">ദുർബലം</string>
+    <string name="yoga_token_strong">ശക്തം</string>
+    <string name="yoga_token_moderate">മിതം</string>
+    <string name="yoga_token_yoga_reduced">യോഗം കുറഞ്ഞു</string>
+    <string name="yoga_token_yoga_cancelled">യോഗം റദ്ദാക്കി</string>
 </resources>

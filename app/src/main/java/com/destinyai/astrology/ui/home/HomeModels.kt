@@ -48,6 +48,10 @@ data class HomeYoga(
     val outcome: String = "",
     val reductionReason: String = "",
     val isDosha: Boolean = false,
+    // i18n: backend yoga_key used to look up localized name/outcome/formation
+    // (mirrors iOS YogaDetail.yogaKey). May carry a numbered suffix (e.g.
+    // "bhagya_yoga_241") which the localizer strips before lookup.
+    val yogaKey: String? = null,
 )
 
 data class HomeDoshaStatus(

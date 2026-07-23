@@ -2865,4 +2865,11 @@ Until then: Use this period for strategic positioning.</string>
     <!-- History screen — generic error fallback shown in Snackbar when load/mutation fails -->
     <string name="history_load_error">Something went wrong. Please try again.</string>
     <string name="partner_default_name">Partner</string>
+    <string name="yoga_token_auspicious">auspicious</string>
+    <string name="yoga_token_inauspicious">inauspicious</string>
+    <string name="yoga_token_weak">weak</string>
+    <string name="yoga_token_strong">strong</string>
+    <string name="yoga_token_moderate">moderate</string>
+    <string name="yoga_token_yoga_reduced">yoga reduced</string>
+    <string name="yoga_token_yoga_cancelled">yoga cancelled</string>
 </resources>

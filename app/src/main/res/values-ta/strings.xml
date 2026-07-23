@@ -2693,4 +2693,11 @@ Until then: Use this period for strategic positioning.</string>
     <string name="waitlist_title">நீங்கள் கிட்டத்தட்ட உள்ளே இருக்கிறீர்கள்</string>
 
     <string name="partner_default_name">துணை</string>
+    <string name="yoga_token_auspicious">நல்ல</string>
+    <string name="yoga_token_inauspicious">தீய</string>
+    <string name="yoga_token_weak">பலவீனம்</string>
+    <string name="yoga_token_strong">வலிமை</string>
+    <string name="yoga_token_moderate">மிதமான</string>
+    <string name="yoga_token_yoga_reduced">யோகம் குறைந்தது</string>
+    <string name="yoga_token_yoga_cancelled">யோகம் ரத்து</string>
 </resources>
