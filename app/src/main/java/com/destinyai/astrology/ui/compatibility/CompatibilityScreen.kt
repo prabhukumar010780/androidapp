@@ -321,10 +321,14 @@ fun CompatibilityScreen(
                     .fillMaxSize()
                     .adaptiveContentWidth()
                     .verticalScroll(rememberScrollState())
-                    // Match tab hides the global tab bar, so this scroll content is the
-                    // bottom-most surface. Under edge-to-edge, add the gesture-nav inset
-                    // so the trailing Analyze CTA is not hidden behind the gesture pill.
-                    .navigationBarsPadding()
+                    // The Match tab keeps the global bottom tab bar VISIBLE (MainScreen
+                    // only hides it on the Chat tab, index 1). So this scroll content is
+                    // NOT the bottom-most surface — the ~76dp tab bar sits on top of it.
+                    // navigationBarsPadding() alone only clears the gesture-nav inset, which
+                    // left the trailing Analyze CTA hidden BEHIND the tab bar. The bottom
+                    // reserve is applied as a trailing Spacer below (tab bar + nav inset),
+                    // mirroring HomeScreen's tabBarReserve. Keep imePadding() so the keyboard
+                    // still lifts the form.
                     .imePadding()
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -681,9 +685,17 @@ fun CompatibilityScreen(
                     )
                 }
 
-                // Small trailing buffer; the scroll Column already adds
-                // navigationBarsPadding(), so a large spacer here was dead space.
-                Spacer(Modifier.height(Spacing.sm))
+                // Bottom reserve so the Analyze CTA clears the global tab bar (visible on
+                // the Match tab) + the gesture-nav inset. Mirrors HomeScreen.tabBarReserve
+                // (76dp bar + navigationBars inset + 16dp breathing room). Without this the
+                // button sat behind the tab bar with no way to scroll it into view.
+                Spacer(
+                    Modifier.height(
+                        76.dp +
+                            WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
+                            16.dp,
+                    ),
+                )
             }
         }
 
