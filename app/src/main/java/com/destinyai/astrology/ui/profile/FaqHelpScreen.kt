@@ -91,6 +91,9 @@ fun FaqHelpScreen(onBack: () -> Unit) {
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
+                    // Pushed full-screen route (no tab bar); reserve the gesture-nav
+                    // inset so the last expandable FAQ row isn't clipped by the nav bar.
+                    .navigationBarsPadding()
                     .padding(horizontal = Spacing.screenH),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {

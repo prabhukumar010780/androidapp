@@ -136,6 +136,9 @@ fun KalsarpaDoshaScreen(
                         .fillMaxSize()
                         .adaptiveContentWidth()
                         .verticalScroll(rememberScrollState())
+                        // Full-screen overlay (no tab bar); reserve the real gesture-nav
+                        // inset so trailing remedies / mutual-dosha content isn't occluded.
+                        .navigationBarsPadding()
                         .padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {

@@ -176,6 +176,7 @@ fun PartnerPickerSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .imePadding()
+                    .navigationBarsPadding()
                     .padding(horizontal = 20.dp)
                     .padding(bottom = 40.dp)
                     .semantics { contentDescription = "partner_picker_sheet" },

@@ -708,6 +708,7 @@ private fun LocationSearchSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .imePadding()
+                .navigationBarsPadding()
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 32.dp),
         ) {
@@ -965,6 +966,7 @@ internal fun PartnerFormSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .imePadding()
+                .navigationBarsPadding()
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -1387,6 +1389,7 @@ private fun GenderModalSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .navigationBarsPadding()
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 32.dp)
                 .semantics { contentDescription = "partner_form_gender_sheet" },

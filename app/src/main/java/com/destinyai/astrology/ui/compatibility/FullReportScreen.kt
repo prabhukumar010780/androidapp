@@ -307,7 +307,13 @@ fun FullReportScreen(
                     // 4. AI Disclaimer Footer
                     DisclaimerFooter()
 
-                    Spacer(Modifier.height(80.dp))
+                    // Inset-aware bottom reserve so the footer clears the corner
+                    // FloatingContextButton + gesture-nav bar (mirrors CompatibilityResult).
+                    Spacer(
+                        Modifier.height(
+                            56.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+                        ),
+                    )
                 }
             }
 

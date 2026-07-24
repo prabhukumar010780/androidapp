@@ -96,6 +96,10 @@ fun MangalDoshaScreen(
                     .fillMaxSize()
                     .adaptiveContentWidth()
                     .verticalScroll(rememberScrollState())
+                    // Full-screen overlay (no tab bar), but the trailing remedies/
+                    // exception cards were occluded behind the gesture-nav bar because
+                    // only a flat 32dp spacer was reserved. Clear the actual nav inset.
+                    .navigationBarsPadding()
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {

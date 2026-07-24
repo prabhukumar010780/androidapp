@@ -1872,7 +1872,8 @@ private fun LifeAreaQuestionsSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
-                .padding(bottom = 36.dp),
+                .navigationBarsPadding()
+                .padding(bottom = 12.dp),
         ) {
             // Top row: emoji + name on left, X close button on right.
             // Adds an explicit dismiss affordance alongside the drag-handle —
@@ -2661,7 +2662,8 @@ private fun ProfileSwitcherSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
-                .padding(bottom = 36.dp),
+                .navigationBarsPadding()
+                .padding(bottom = 12.dp),
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,

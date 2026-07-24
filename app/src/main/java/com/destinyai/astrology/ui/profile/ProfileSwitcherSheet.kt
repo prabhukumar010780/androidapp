@@ -139,7 +139,11 @@ fun ProfileSwitcherSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 40.dp)
+                // Clear the real gesture-nav inset (Material3 ModalBottomSheet does not
+                // inset content at the bottom by default) so the 'Manage birth charts'
+                // row isn't occluded on 3-button nav. Matches DeleteAccountSheet.
+                .navigationBarsPadding()
+                .padding(bottom = 8.dp)
                 .testTag("profile_switcher_sheet"),
         ) {
             // Header — title + (X close button OR ProgressView while switching) + Add chart button.

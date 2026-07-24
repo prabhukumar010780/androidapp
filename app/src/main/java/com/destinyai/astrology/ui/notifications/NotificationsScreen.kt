@@ -443,7 +443,15 @@ fun NotificationsScreen(
                             .fillMaxHeight()
                             .adaptiveContentWidth(),
                         state = listState,
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        // Pushed full-screen route (no tab bar). Add the gesture-nav
+                        // inset to the bottom so the last inbox row isn't hidden behind
+                        // the system nav bar on 3-button navigation.
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 8.dp,
+                            bottom = 8.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+                        ),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         // iOS parity (NotificationInboxView groupedNotifications): section the
