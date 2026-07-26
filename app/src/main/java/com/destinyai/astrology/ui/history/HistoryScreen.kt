@@ -501,12 +501,22 @@ private fun UnifiedHistoryList(
                                     onRequestDeleteChat(item.thread.id, title)
                                 }
                                 is UnifiedHistoryItem.Match -> {
-                                    val title = "${item.item.boyName} ♥ ${item.item.girlName}"
+                                    val b = item.item.boyName.trim()
+                                    val g = item.item.girlName.trim()
+                                    val title = when {
+                                        b.isNotEmpty() && g.isNotEmpty() -> "$b ♥ $g"
+                                        b.isNotEmpty() -> b
+                                        g.isNotEmpty() -> g
+                                        else -> "Saved match"
+                                    }
                                     onRequestDeleteMatch(item.item.sessionId, title)
                                 }
                                 is UnifiedHistoryItem.MatchGroup -> {
-                                    val partners = item.group.items.joinToString(", ") { it.girlName }
-                                    val title = "${item.group.userName} + $partners"
+                                    val partners = item.group.items
+                                        .map { it.girlName.trim() }.filter { it.isNotEmpty() }
+                                        .joinToString(", ")
+                                    val owner = item.group.userName.trim().ifEmpty { "Match" }
+                                    val title = if (partners.isNotEmpty()) "$owner + $partners" else owner
                                     onRequestDeleteGroup(item.group.id, title)
                                 }
                             }
@@ -542,9 +552,16 @@ private fun UnifiedSectionHeader(key: HistorySectionKey) {
         HistorySectionKey.Today -> stringResource(R.string.history_section_today)
         HistorySectionKey.Yesterday -> stringResource(R.string.history_section_yesterday)
         HistorySectionKey.ThisWeek -> stringResource(R.string.history_section_this_week)
-        is HistorySectionKey.Day -> remember(key.startOfDayMs) {
-            SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()).format(Date(key.startOfDayMs))
-        }
+        is HistorySectionKey.Day ->
+            // DES-161: the 0L bucket (pre-fix rows with no timestamp) would render as
+            // "January 1, 1970". Use the existing localized "Earlier" label instead.
+            if (key.startOfDayMs <= 0L) {
+                stringResource(R.string.history_section_earlier)
+            } else {
+                remember(key.startOfDayMs) {
+                    SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()).format(Date(key.startOfDayMs))
+                }
+            }
     }
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
@@ -958,8 +975,17 @@ private fun CompatibilityHistoryItemRow(
             Spacer(Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
+                // DES-161: guard empty pre-fix names so the row doesn't render as " ♥ ".
+                val boy = item.boyName.trim()
+                val girl = item.girlName.trim()
+                val rowTitle = when {
+                    boy.isNotEmpty() && girl.isNotEmpty() -> "$boy ♥ $girl"
+                    boy.isNotEmpty() -> boy
+                    girl.isNotEmpty() -> girl
+                    else -> "Saved match"
+                }
                 Text(
-                    text = "${item.boyName} ♥ ${item.girlName}",
+                    text = rowTitle,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = CreamText,
@@ -1046,8 +1072,15 @@ private fun CompatibilityGroupRow(
     onPin: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    val partnerNames = group.items.joinToString(", ") { it.girlName }
-    val title = stringResource(R.string.history_group_title_format, group.userName, partnerNames)
+    // DES-161: filter blank names so pre-fix synced rows don't render as ", ,".
+    val knownPartners = group.items.map { it.girlName.trim() }.filter { it.isNotEmpty() }
+    val partnerNames = if (knownPartners.isNotEmpty()) {
+        knownPartners.joinToString(", ")
+    } else {
+        "${group.items.size} partners"
+    }
+    val ownerName = group.userName.trim().ifEmpty { "Match" }
+    val title = stringResource(R.string.history_group_title_format, ownerName, partnerNames)
     val best = group.bestItem
     var showContextMenu by remember { mutableStateOf(false) }
 

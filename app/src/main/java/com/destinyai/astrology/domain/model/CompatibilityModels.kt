@@ -244,9 +244,24 @@ data class CompatibilityHistoryItem(
     val chatMessages: List<CompatChatMessageData> = emptyList(),
     val result: CompatibilityResult? = null,
 ) {
-    val displayTitle: String get() = "$boyName & $girlName"
+    val displayTitle: String get() {
+        // DES-161: pre-fix rows synced from the server persisted empty boy/girl
+        // names, which rendered as a bare "&" (single) or "+ , ," (group). Guard so
+        // a row with missing names shows a readable label instead of punctuation.
+        val boy = boyName.trim()
+        val girl = girlName.trim()
+        return when {
+            boy.isNotEmpty() && girl.isNotEmpty() -> "$boy & $girl"
+            boy.isNotEmpty() -> boy
+            girl.isNotEmpty() -> girl
+            else -> "Saved match"
+        }
+    }
 
     val displayDate: String get() {
+        // DES-161: pre-fix rows persisted a 0L timestamp, rendering as "Jan 1, 1970".
+        // Suppress the epoch-zero sentinel rather than show an obviously wrong date.
+        if (timestampMs <= 0L) return ""
         val sdf = SimpleDateFormat("MMM d, yyyy 'at' h:mm a", Locale.getDefault())
         return sdf.format(Date(timestampMs))
     }
@@ -277,10 +292,16 @@ data class ComparisonGroup(
 
     val displayTitle: String get() = when {
         items.size == 1 -> items.first().displayTitle
+        // DES-161: pre-fix rows had an empty userName, rendering as " & 3 partners".
+        // Fall back to a neutral label when the owner name is missing.
+        userName.isBlank() -> "${items.size} partners"
         else -> "$userName & ${items.size} partners"
     }
 
     val displayDate: String get() {
+        // DES-161: suppress the 0L epoch sentinel (rendered "Jan 1, 1970") on
+        // pre-fix rows synced before timestamps were populated.
+        if (timestamp <= 0L) return ""
         val sdf = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
         return sdf.format(Date(timestamp))
     }

@@ -557,6 +557,9 @@ class HistoryViewModel @Inject constructor(
     private val gson = Gson()
 
     private fun formatTimestamp(ms: Long): String {
+        // DES-161: suppress the 0L epoch sentinel (rendered "Jan 1, 1970") on pre-fix
+        // rows synced before timestamps were populated.
+        if (ms <= 0L) return ""
         val sdf = java.text.SimpleDateFormat("MMM d, yyyy", java.util.Locale.ENGLISH)
         return sdf.format(java.util.Date(ms))
     }

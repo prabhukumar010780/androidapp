@@ -711,13 +711,26 @@ private fun GroupHistoryRow(
         Spacer(Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             // iOS parity: full partner list joined by commas — "User + Partner1, Partner2".
-            val partnerNames = group.items.joinToString(", ") { it.girlName }
+            // DES-161: filter blank names so pre-fix rows (empty girlName) don't render
+            // as ", ," — fall back to a count when none are known.
+            val knownPartners = group.items.map { it.girlName.trim() }.filter { it.isNotEmpty() }
+            val partnerNames = if (knownPartners.isNotEmpty()) {
+                knownPartners.joinToString(", ")
+            } else {
+                "${group.items.size} partners"
+            }
             Text(
-                text = stringResource(
-                    R.string.compat_history_group_title_format,
-                    group.userName,
-                    partnerNames,
-                ),
+                text = if (group.userName.isBlank()) {
+                    // DES-161: no owner name (pre-fix row) — drop the leading "+ " that
+                    // the "%1$s + %2$s" format would otherwise produce.
+                    partnerNames
+                } else {
+                    stringResource(
+                        R.string.compat_history_group_title_format,
+                        group.userName,
+                        partnerNames,
+                    )
+                },
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = CreamText,
