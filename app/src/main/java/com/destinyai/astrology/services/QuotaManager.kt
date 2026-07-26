@@ -412,7 +412,20 @@ class QuotaManager @Inject constructor(
                 return
             }
         }
-        val status = api.getStatus(email)
+        val status = try {
+            api.getStatus(email)
+        } catch (e: retrofit2.HttpException) {
+            // Soft-deleted account read → propagate so the caller signs out (iOS parity).
+            if (e.code() == 403) {
+                val raw = e.response()?.errorBody()?.string().orEmpty()
+                if (parseDetailField(raw, "error") == "account_deleted") {
+                    throw com.destinyai.astrology.ui.auth.AccountDeletedError(
+                        serverMessage = parseDetailField(raw, "message"),
+                    )
+                }
+            }
+            throw e
+        }
 
         // SUBSCRIPTION-GAP-4 (iOS QuotaManager.swift:617-639): detect
         // webhook-driven external plan flips. If the plan id transitions to a

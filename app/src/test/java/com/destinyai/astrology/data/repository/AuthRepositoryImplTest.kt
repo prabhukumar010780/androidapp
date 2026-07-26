@@ -78,7 +78,39 @@ class AuthRepositoryImplTest {
         assertThrows<AccountDeletedException> { repo.getSavedUser() }
     }
 
-    // ── registerGuest ─────────────────────────────────────────────────────────
+    @Test
+    fun `getSavedUser throws AccountDeletedException when api returns 403 account_deleted`() = runTest {
+        // Soft-delete on the read path (GDPR erasure). A stale local session must
+        // NOT survive — force logout, not the transient-403 keep-session fallback.
+        every { secure.getEmail() } returns "deleted@x.com"
+        coEvery { prefs.isGuestUser() } returns false
+        coEvery { api.getStatus("deleted@x.com") } throws retrofit2.HttpException(
+            okhttp3.ResponseBody.create(
+                null, """{"detail":{"error":"account_deleted","message":"deleted"}}""",
+            ).let { retrofit2.Response.error<Any>(403, it) }
+        )
+        assertThrows<AccountDeletedException> { repo.getSavedUser() }
+    }
+
+    @Test
+    fun `getSavedUser keeps session on transient 403 (not account_deleted)`() = runTest {
+        // A non-account_deleted 403 (rate-limit / expired token) is transient — an
+        // authenticated user must stay in via local restore, not be bounced out.
+        every { secure.getEmail() } returns "u@x.com"
+        coEvery { prefs.isGuestUser() } returns false
+        coEvery { prefs.getUserName() } returns "U"
+        coEvery { prefs.getGoogleUserId() } returns null
+        coEvery { prefs.isPremium() } returns false
+        coEvery { prefs.getAccessState() } returns "granted"
+        coEvery { api.getStatus("u@x.com") } throws retrofit2.HttpException(
+            okhttp3.ResponseBody.create(
+                null, """{"detail":"rate limited"}""",
+            ).let { retrofit2.Response.error<Any>(403, it) }
+        )
+        val user = repo.getSavedUser()
+        assertNotNull(user)
+        assertEquals("u@x.com", user!!.email)
+    }
 
     @Test
     fun `registerGuest generates guest email and saves to secure storage`() = runTest {

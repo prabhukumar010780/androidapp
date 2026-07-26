@@ -39,6 +39,11 @@ class ProfileRepositoryImpl @Inject constructor(
     override suspend fun fetchProfile(email: String): ProfileResponse? = try {
         api.getProfile(email)
     } catch (e: HttpException) {
+        // Soft-deleted account read → propagate so the caller signs out (iOS parity).
+        if (e.code() == 403 && parseDetailErrorIs(e, "account_deleted")) {
+            val msg = parseDetailField(e.response()?.errorBody()?.string().orEmpty(), "message")
+            throw AccountDeletedError(serverMessage = msg)
+        }
         // 404 = no profile saved yet; other HTTP errors treated as transient.
         null
     } catch (e: Exception) {
@@ -176,7 +181,16 @@ class ProfileRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getUserStatus(email: String): StatusResponse {
-        return api.getStatus(email)
+        return try {
+            api.getStatus(email)
+        } catch (e: HttpException) {
+            // Soft-deleted account read → propagate so the caller signs out (iOS parity).
+            if (e.code() == 403 && parseDetailErrorIs(e, "account_deleted")) {
+                val msg = parseDetailField(e.response()?.errorBody()?.string().orEmpty(), "message")
+                throw AccountDeletedError(serverMessage = msg)
+            }
+            throw e
+        }
     }
 
     override suspend fun updateAnalyticsConsent(email: String, consent: Boolean): SuccessResponse {

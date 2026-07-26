@@ -60,8 +60,12 @@ class AuthRepositoryImpl @Inject constructor(
                 // false positive (the deferred backend register may simply not have run
                 // yet, e.g. offline) — do NOT nuke a valid local guest session (DL-5).
                 404 -> if (isGuest) localUser else throw AccountDeletedException()
-                // Transient (403 rate-limit / expired token, etc.) — keep the session:
+                // 403 detail.error == "account_deleted": authoritative soft-delete on the
+                // read path (GDPR erasure). Force logout — a stale local session must NOT
+                // keep working. Other 403s (rate-limit / expired token) are transient →
                 // restore from local so an authenticated user stays in (G2).
+                403 -> if (parseAccountDeletedError(e)) throw AccountDeletedException() else localUser
+                // Transient — keep the session: restore from local.
                 else -> localUser
             }
         } catch (e: Exception) {
