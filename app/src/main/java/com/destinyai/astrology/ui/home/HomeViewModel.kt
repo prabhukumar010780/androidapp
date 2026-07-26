@@ -217,6 +217,11 @@ class HomeViewModel @Inject constructor(
         // new profile's birth data instead of short-circuiting on the same-day
         // cache gate. lastLoadDate MUST be cleared for the same reason.
         lastLoadDate = null
+        // DES-161 D4b: clear the in-flight guard so the loadHomeData() call that
+        // follows a profile switch actually runs. If a previous load was still
+        // in flight, loadHomeData()'s `if (loadInFlight) return` would silently
+        // drop the re-fetch, leaving yogas (just cleared below) permanently empty.
+        loadInFlight = false
         _uiState.update {
             it.copy(
                 dailyInsight = null,
@@ -455,20 +460,24 @@ class HomeViewModel @Inject constructor(
                 ?: prefs.getActiveProfileId()?.takeIf { it.isNotBlank() }
                 ?: email
             _uiState.update { it.copy(isRichDataLoading = true) }
-            val richData = repository.getRichHomeData(email, birth, cacheKey)
-            if (richData != null) {
-                _uiState.update {
-                    it.copy(
-                        isRichDataLoading = false,
-                        transits = richData.transits,
-                        dashaInfo = richData.dashaInfo,
-                        yogas = richData.yogas,
-                        doshas = richData.doshas,
-                        lifeAreas = richData.lifeAreas,
-                        ascendantSign = richData.ascendantSign,
-                    )
+            // DES-161 D2: guarantee the loading flag clears even if getRichHomeData
+            // throws — otherwise isRichDataLoading stays true forever and the
+            // pull-to-refresh spinner gets stuck (PullToRefreshBox keys on it).
+            try {
+                val richData = repository.getRichHomeData(email, birth, cacheKey)
+                if (richData != null) {
+                    _uiState.update {
+                        it.copy(
+                            transits = richData.transits,
+                            dashaInfo = richData.dashaInfo,
+                            yogas = richData.yogas,
+                            doshas = richData.doshas,
+                            lifeAreas = richData.lifeAreas,
+                            ascendantSign = richData.ascendantSign,
+                        )
+                    }
                 }
-            } else {
+            } finally {
                 _uiState.update { it.copy(isRichDataLoading = false) }
             }
         }

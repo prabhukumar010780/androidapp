@@ -73,6 +73,20 @@ import java.util.Locale
 
 private data class ReportSection(val emoji: String, val title: String, val content: String)
 
+/**
+ * DES-161 C3: build the share-sheet body text. The score fraction and the
+ * percentage MUST derive from the same score — the adjusted score when present
+ * (dosha-cancelled charts), else the raw total. Previously the fraction used the
+ * raw total while the percentage used the adjusted score, producing inconsistent
+ * text like "16/36 (80%)". Extracted as a pure function so it is unit-testable.
+ */
+internal fun buildCompatibilityShareText(result: CompatibilityResult): String {
+    val score = result.adjustedScore ?: result.totalScore
+    val pct = if (result.maxScore > 0) (score.toDouble() / result.maxScore * 100).toInt() else 0
+    return "✨ ${result.boyName} & ${result.girlName} — Compatibility score: " +
+        "$score/${result.maxScore} ($pct%)\n\nAnalyzed with Destiny AI Astrology\n🔗 destinyaiastrology.com"
+}
+
 @Composable
 fun FullReportScreen(
     result: CompatibilityResult,
@@ -83,11 +97,7 @@ fun FullReportScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    val shareText = remember(result) {
-        val score = result.adjustedScore ?: result.totalScore
-        val pct = (score.toDouble() / result.maxScore * 100).toInt()
-        "✨ ${result.boyName} & ${result.girlName} — Compatibility score: ${result.totalScore}/${result.maxScore} ($pct%)\n\nAnalyzed with Destiny AI Astrology\n🔗 destinyaiastrology.com"
-    }
+    val shareText = remember(result) { buildCompatibilityShareText(result) }
 
     // iOS parity (CompatibilityResultSheets.swift:107-152): render branded
     // ShareCardView to a 1080x1080 PNG and attach to the share intent.

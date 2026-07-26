@@ -162,6 +162,11 @@ fun AppNav() {
         val link = pendingDeepLink ?: return@LaunchedEffect
         when (link) {
             NotificationDeepLink.Settings -> {
+                // DES-161 D5: push SETTINGS under NOTIFICATION_PREFS so Back from the
+                // alerts screen returns to Settings (matching the in-app Settings →
+                // Alerts path), not Home. Previously NOTIFICATION_PREFS was pushed
+                // directly onto MAIN, so popBackStack() landed on Home.
+                navController.navigate(Routes.SETTINGS) { launchSingleTop = true }
                 navController.navigate(Routes.NOTIFICATION_PREFS) { launchSingleTop = true }
                 NotificationRouter.consume()
             }

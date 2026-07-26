@@ -622,4 +622,45 @@ class CompatibilityViewModelTest {
 
         assertEquals(listOf("compat_sess_123"), deletedThreadIds)
     }
+
+    // ── DES-161 C5: "Use Saved" on the duplicate-partner alert loads the saved
+    //    analysis (dismiss + hydrate), not just closes the dialog. ─────────────
+    @Test
+    fun `useSavedFromDuplicateAlert loads the matched history item and dismisses`() = runTest {
+        val item = groupEntity("sess_saved_1", "grp_saved", 7)
+        every { historyDao.observeAll(any()) } returns flowOf(listOf(item))
+        coEvery { prefs.getUserEmail() } returns "u@x.com"
+
+        vm.loadUserData()
+        vm.loadHistory()
+        // Simulate reaching the duplicate-partner alert for that saved session.
+        vm.showDuplicateAlert("sess_saved_1")
+        vm.useSavedFromDuplicateAlert()
+
+        vm.uiState.test {
+            val s = awaitItem()
+            // Dialog is gone…
+            assertFalse(s.showDuplicateAlert)
+            assertEquals(null, s.duplicateSessionId)
+            // …and the saved partner was hydrated into the form (loadFromHistory ran)
+            // instead of the click being a no-op dismiss.
+            assertEquals("Partner7", s.partnerName)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `useSavedFromDuplicateAlert with unknown session still dismisses safely`() = runTest {
+        every { historyDao.observeAll(any()) } returns flowOf(emptyList())
+        vm.loadUserData()
+        vm.loadHistory()
+        vm.showDuplicateAlert("does_not_exist")
+        vm.useSavedFromDuplicateAlert()
+
+        vm.uiState.test {
+            val s = awaitItem()
+            assertFalse(s.showDuplicateAlert)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 }

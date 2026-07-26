@@ -560,10 +560,11 @@ private fun ChatHeader(
                 onClick = onChartTap,
                 modifier = Modifier.semantics { contentDescription = "chat_chart_button" },
             ) {
-                // iOS uses globe.asia.australia — Material Public is the closest
-                // globe-with-meridians glyph (vs PieChart which doesn't match).
+                // DES-161 D3b: use a chart glyph, not a globe. Icons.Default.Public
+                // (a globe) was a poor stand-in for the birth-chart button; PieChart
+                // reads clearly as "chart".
                 Icon(
-                    Icons.Default.Public,
+                    Icons.Outlined.PieChart,
                     contentDescription = null,
                     tint = Gold,
                     modifier = Modifier.size(22.dp),
@@ -746,7 +747,7 @@ fun MessageBubbleView(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        if (message.content.length > 50) {
+                        if (!isWelcome && message.content.length > 50) {
                             TextButton(
                                 onClick = {
                                     // Issue 41/63 — haptic feedback on copy tap matches iOS .light impact.
@@ -836,7 +837,16 @@ internal fun buildMarkdownAnnotated(raw: String): androidx.compose.ui.text.Annot
         if (isHeading) {
             line = line.trimStart().trimStart('#').trimStart()
         }
-        appendInlineMarkdown(builder, line, headingBold = isHeading)
+        // DES-161 B6b: blockquote closing statement (`> **_..._**`). The backend ends
+        // each reading with a `>`-prefixed closing summary BEFORE the follow-up block.
+        // The parser previously left the literal "> " prefix and gave it no emphasis,
+        // so the summary read as broken/"missing". Strip the marker and render the
+        // line in gold italic (parity with iOS blockquote closing statement).
+        val isQuote = line.trimStart().startsWith(">")
+        if (isQuote) {
+            line = line.trimStart().removePrefix(">").trimStart()
+        }
+        appendInlineMarkdown(builder, line, headingBold = isHeading, quote = isQuote)
         if (idx != lines.lastIndex) builder.append("\n")
     }
     return builder.toAnnotatedString()
@@ -846,10 +856,25 @@ private fun appendInlineMarkdown(
     builder: androidx.compose.ui.text.AnnotatedString.Builder,
     rawText: String,
     headingBold: Boolean = false,
+    quote: Boolean = false,
 ) {
     // Issue 32 — sanitize unclosed bold/italic markers and replace pipe chars with middle-dots
     // so the lightweight inline parser doesn't render dangling formatting symbols.
     val text = sanitizeForInlineParsing(rawText)
+    // DES-161 B6b: a blockquote closing statement renders in gold italic across the
+    // whole line, regardless of inner **/_ markers.
+    if (quote) {
+        builder.pushStyle(
+            androidx.compose.ui.text.SpanStyle(
+                color = Gold,
+                fontStyle = FontStyle.Italic,
+                fontWeight = FontWeight.Medium,
+            ),
+        )
+        builder.append(text.replace("*", "").replace("_", "").trim())
+        builder.pop()
+        return
+    }
     var i = 0
     while (i < text.length) {
         // **bold**
@@ -895,7 +920,10 @@ private fun appendInlineMarkdown(
             }
         }
         if (headingBold) {
-            builder.pushStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold))
+            // DES-161 B6a: render headings in Gold (parity with iOS gold heading
+            // text), not just bold white — the MarkdownText Text() applies white to
+            // everything, so a bold-only span left headings indistinguishable.
+            builder.pushStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold, color = Gold))
             builder.append(text[i])
             builder.pop()
         } else {
@@ -1491,10 +1519,16 @@ private fun ChatInputBar(
                         }
                         .semantics { contentDescription = "chat_input" },
                     decorationBox = { inner ->
-                        if (text.isEmpty()) {
-                            Text(stringResource(R.string.chat_ask_anything_placeholder), color = Color(0xFF718096), fontSize = 16.sp)
+                        // DES-161 B1: overlay placeholder and input in a Box so the
+                        // decoration height stays constant. Previously they stacked
+                        // sequentially, doubling the box height when empty and making
+                        // the text jump/shift out of the pill on send + stream-start.
+                        Box(contentAlignment = Alignment.CenterStart) {
+                            if (text.isEmpty()) {
+                                Text(stringResource(R.string.chat_ask_anything_placeholder), color = Color(0xFF718096), fontSize = 16.sp)
+                            }
+                            inner()
                         }
-                        inner()
                     },
                 )
             }

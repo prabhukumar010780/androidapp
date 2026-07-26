@@ -410,6 +410,21 @@ class CompatibilityViewModel @Inject constructor(
     fun dismissDuplicateAlert() = _uiState.update { it.copy(showDuplicateAlert = false, duplicateSessionId = null) }
     fun showDuplicateAlert(sessionId: String) = _uiState.update { it.copy(showDuplicateAlert = true, duplicateSessionId = sessionId) }
 
+    /**
+     * DES-161 C5: "Use Saved" on the duplicate-partner dialog must OPEN the saved
+     * analysis, not just close the dialog. Resolve the matched session's history
+     * item and hydrate the result screen from it, then dismiss the alert. Falls
+     * back to a plain dismiss if the item can't be found.
+     */
+    fun useSavedFromDuplicateAlert() {
+        val sessionId = _uiState.value.duplicateSessionId
+        val item = sessionId?.let { sid -> _historyItems.value.firstOrNull { it.sessionId == sid } }
+        if (item != null) {
+            loadFromHistory(item)
+        }
+        dismissDuplicateAlert()
+    }
+
     /** Reset the partner form back to its blank state. */
     fun resetPartnerForm() {
         _compatibilityResult.value = null  // clear result so a re-analysis always hits fresh API

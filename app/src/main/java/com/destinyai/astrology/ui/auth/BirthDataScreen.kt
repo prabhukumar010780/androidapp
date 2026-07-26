@@ -75,6 +75,7 @@ import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
+import com.destinyai.astrology.ui.theme.Features
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavyInput
 import com.destinyai.astrology.ui.theme.NavySurface
@@ -224,22 +225,27 @@ fun BirthDataScreen(
                     }
                 }
                 Spacer(Modifier.weight(1f))
-                // R2-A4: Sound toggle
-                IconToggleButton(
-                    checked = state.isSoundEnabled,
-                    onCheckedChange = {
-                        // iOS parity (BirthDataView.swift:115-117): light haptic
-                        // before toggling so the user feels the tap.
-                        haptic.light()
-                        viewModel.toggleSound()
-                    },
-                    modifier = Modifier.testTag("birth_data_sound_toggle"),
-                ) {
-                    Icon(
-                        imageVector = if (state.isSoundEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
-                        contentDescription = if (state.isSoundEnabled) stringResource(R.string.sound_on_a11y) else stringResource(R.string.sound_off_a11y),
-                        tint = Gold.copy(alpha = 0.8f),
-                    )
+                // R2-A4: Sound toggle — DES-161 A1: gate behind Features.showSoundToggle
+                // (iOS parity: AppTheme.Features.showSoundToggle = false). AuthScreen and
+                // HomeScreen already gate this; BirthDataScreen was missing the guard, so
+                // the toggle showed unconditionally on the birth-details screen.
+                if (Features.showSoundToggle) {
+                    IconToggleButton(
+                        checked = state.isSoundEnabled,
+                        onCheckedChange = {
+                            // iOS parity (BirthDataView.swift:115-117): light haptic
+                            // before toggling so the user feels the tap.
+                            haptic.light()
+                            viewModel.toggleSound()
+                        },
+                        modifier = Modifier.testTag("birth_data_sound_toggle"),
+                    ) {
+                        Icon(
+                            imageVector = if (state.isSoundEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
+                            contentDescription = if (state.isSoundEnabled) stringResource(R.string.sound_on_a11y) else stringResource(R.string.sound_off_a11y),
+                            tint = Gold.copy(alpha = 0.8f),
+                        )
+                    }
                 }
             }
 

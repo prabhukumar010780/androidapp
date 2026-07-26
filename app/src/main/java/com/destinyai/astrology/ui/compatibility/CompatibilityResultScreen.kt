@@ -1136,9 +1136,10 @@ fun AskDestinyDialog(
                             Spacer(Modifier.height(24.dp))
 
                             // Suggestion pills — mirrors iOS quickQuestionButton: gold pill, gold text
+                            // DES-161 C6a: left-align (Start), matching iOS. Was CenterHorizontally.
                             Column(
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
+                                horizontalAlignment = Alignment.Start,
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
                                 displaySuggestions.forEach { suggestion ->
@@ -1203,9 +1204,10 @@ fun AskDestinyDialog(
                 // Follow-up suggestion chips after last AI reply
                 if (vmMessages.isNotEmpty() && !isLoading) {
                     item {
+                        // DES-161 C6a: left-align (Start), matching iOS. Was CenterHorizontally.
                         Column(
                             verticalArrangement = Arrangement.spacedBy(6.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
+                            horizontalAlignment = Alignment.Start,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(top = 8.dp),

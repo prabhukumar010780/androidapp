@@ -913,7 +913,11 @@ class ChatViewModel @Inject constructor(
     }
 
     fun dismissPaywall() {
-        _uiState.update { it.copy(showPaywall = false) }
+        // DES-161 B3: closing the sign-up sheet must NOT leave the send button
+        // permanently disabled. canAskQuestion is set false right before the paywall
+        // is shown; restore it on dismiss so the input re-enables (the real quota
+        // gate re-fires on the next send attempt).
+        _uiState.update { it.copy(showPaywall = false, canAskQuestion = true) }
     }
 
     /** Mirrors iOS QuotaExhaustedView dismiss for the account-user (non-guest) path. */
@@ -1010,6 +1014,10 @@ class ChatViewModel @Inject constructor(
                 s.copy(
                     isStreaming = false,
                     interruptedQuestion = q,
+                    // DES-161 D1: clear any errorMessage the cancelled stream may have
+                    // emitted (e.g. the R8-minified "Z2 was cancelled" CancellationException
+                    // surfaced by the SSE flow). Backgrounding is not a user-facing error.
+                    errorMessage = null,
                     messages = s.messages.filterNot { it.isStreaming },
                 )
             }

@@ -618,7 +618,7 @@ fun CompatibilityScreen(
                             }
                         },
                         dismissButton = {
-                            TextButton(onClick = { viewModel.dismissDuplicateAlert() }) {
+                            TextButton(onClick = { viewModel.useSavedFromDuplicateAlert() }) {
                                 Text(stringResource(com.destinyai.astrology.R.string.compat_use_saved), color = CreamDim)
                             }
                         },

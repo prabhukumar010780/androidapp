@@ -228,12 +228,6 @@ fun ProfileSetupLoadingScreen(
                             ),
                     )
                 }
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = "Step ${phaseIndex + 1} of ${phaseStrings.size}",
-                    fontSize = 12.sp,
-                    color = CreamDim,
-                )
             }
 
             Spacer(Modifier.weight(1f))

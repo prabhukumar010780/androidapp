@@ -343,4 +343,20 @@ class ChatViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    // --- DES-161 B3: dismissing the paywall must re-enable the send button ---
+
+    @Test
+    fun `dismissPaywall clears paywall flag and restores canAskQuestion`() = runTest {
+        viewModel.dismissPaywall()
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertFalse(state.showPaywall)
+            // The fix guarantees canAskQuestion is set true on dismiss so the input
+            // re-enables instead of staying permanently disabled after the guest
+            // closes the sign-up sheet.
+            assertTrue(state.canAskQuestion)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 }
