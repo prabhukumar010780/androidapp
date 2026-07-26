@@ -718,8 +718,10 @@ fun RecommendationBanner(
             .shadow(
                 elevation = 8.dp,
                 shape = RoundedCornerShape(14.dp),
-                ambientColor = borderColor,
-                spotColor = borderColor,
+                // DES-161 R4d: full-alpha colored shadow produced an aggressive red
+                // glow halo ("red UI over red UI"). iOS uses borderColor at 15%.
+                ambientColor = borderColor.copy(alpha = 0.15f),
+                spotColor = borderColor.copy(alpha = 0.15f),
             )
             .clip(RoundedCornerShape(14.dp))
             .border(1.dp, borderColor.copy(alpha = 0.3f), RoundedCornerShape(14.dp)),

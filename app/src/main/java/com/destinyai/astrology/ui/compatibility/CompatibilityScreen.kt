@@ -331,7 +331,9 @@ fun CompatibilityScreen(
                     // still lifts the form.
                     .imePadding()
                     .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                // DES-161 R4a: widen section spacing to match iOS (outer VStack
+                // spacing: 24) — was 16dp, which read as cramped vs iOS.
+                verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
                 Spacer(Modifier.height(8.dp))
 

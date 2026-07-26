@@ -1,7 +1,7 @@
 package com.destinyai.astrology.ui.auth
 
-import android.app.DatePickerDialog
-import android.app.TimePickerDialog
+import com.destinyai.astrology.ui.components.DatePickerSheetStyled
+import com.destinyai.astrology.ui.components.TimePickerSheetStyled
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -130,50 +130,13 @@ fun BirthDataScreen(
         }
     }
 
-    // Date picker dialog
+    // DES-161 R1: styled wheel-picker sheets (iOS parity — white cells, gold Done)
+    // replace the system DatePickerDialog/TimePickerDialog, whose theme rendered
+    // dates/buttons too light. Visibility is driven by these flags; the sheets are
+    // declared near the end of this composable.
     val calendar = Calendar.getInstance()
-    val datePickerDialog = remember {
-        DatePickerDialog(
-            context,
-            R.style.DestinyDatePickerTheme,
-            { _, year, month, day ->
-                viewModel.setDateOfBirth("%04d-%02d-%02d".format(year, month + 1, day))
-            },
-            calendar.get(Calendar.YEAR) - 30,
-            calendar.get(Calendar.MONTH),
-            calendar.get(Calendar.DAY_OF_MONTH),
-        ).apply {
-            datePicker.maxDate = System.currentTimeMillis()
-            // iOS parity (BirthDataView.swift:148-158 sheet onDismiss): mark
-            // date as selected on ANY dismissal (OK, cancel, back) and play a
-            // light haptic. The OnDateSetListener already updates the date
-            // value when the user confirms; this listener handles the "selected
-            // semantic" so the UI shows the chosen date even after a cancel.
-            setOnDismissListener {
-                viewModel.markDateSelected()
-                haptic.light()
-            }
-        }
-    }
-
-    // Time picker dialog
-    val timePickerDialog = remember {
-        TimePickerDialog(
-            context,
-            R.style.DestinyDatePickerTheme,
-            { _, hour, minute ->
-                viewModel.setTimeOfBirth("%02d:%02d".format(hour, minute))
-            },
-            12, 0, true,
-        ).apply {
-            // iOS parity (BirthDataView.swift:159-169 sheet onDismiss): mark
-            // time as selected on ANY dismissal + light haptic.
-            setOnDismissListener {
-                viewModel.markTimeSelected()
-                haptic.light()
-            }
-        }
-    }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
 
     // Gender bottom sheet
     var showGenderSheet by remember { mutableStateOf(false) }
@@ -323,7 +286,7 @@ fun BirthDataScreen(
                         isPlaceholder = !state.isDateSelected,
                         contentDescription = "Date of birth",
                         modifier = Modifier.weight(1f),
-                        onClick = { datePickerDialog.show() },
+                        onClick = { showDatePicker = true },
                     )
                     // Time button
                     PremiumFieldButton(
@@ -335,7 +298,7 @@ fun BirthDataScreen(
                         enabled = !state.timeUnknown,
                         contentDescription = "Time of birth",
                         modifier = Modifier.weight(1f),
-                        onClick = { if (!state.timeUnknown) timePickerDialog.show() },
+                        onClick = { if (!state.timeUnknown) showTimePicker = true },
                     )
                 }
 
@@ -554,6 +517,57 @@ fun BirthDataScreen(
                 showGenderSheet = false
             },
             onDismiss = { showGenderSheet = false },
+        )
+    }
+
+    // ── Date picker (styled wheel — DES-161 R1, iOS parity) ────────────────────
+    if (showDatePicker) {
+        // Parse initial y/m/d from state.dateOfBirth ("yyyy-MM-dd"); default to
+        // age-30 so the wheel opens somewhere sensible for a new birth entry.
+        val dobParts = state.dateOfBirth.split("-").mapNotNull { it.toIntOrNull() }
+        val initYear = dobParts.getOrNull(0) ?: (calendar.get(Calendar.YEAR) - 30)
+        val initMonth = (dobParts.getOrNull(1)?.minus(1)) ?: calendar.get(Calendar.MONTH)
+        val initDay = dobParts.getOrNull(2) ?: calendar.get(Calendar.DAY_OF_MONTH)
+        DatePickerSheetStyled(
+            initialYear = initYear,
+            initialMonth = initMonth,
+            initialDay = initDay,
+            onDateSelected = { year, month, day ->
+                viewModel.setDateOfBirth("%04d-%02d-%02d".format(year, month + 1, day))
+                viewModel.markDateSelected()
+                haptic.light()
+                showDatePicker = false
+            },
+            // iOS parity (BirthDataView.swift:148-158): mark selected + haptic on
+            // any dismissal, matching the old dialog's setOnDismissListener.
+            onDismiss = {
+                viewModel.markDateSelected()
+                haptic.light()
+                showDatePicker = false
+            },
+        )
+    }
+
+    // ── Time picker (styled wheel — DES-161 R1, iOS parity) ────────────────────
+    if (showTimePicker) {
+        val timeParts = state.timeOfBirth.split(":").mapNotNull { it.toIntOrNull() }
+        val initHour = timeParts.getOrNull(0) ?: 12
+        val initMinute = timeParts.getOrNull(1) ?: 0
+        TimePickerSheetStyled(
+            initialHour = initHour,
+            initialMinute = initMinute,
+            is24Hour = true,
+            onTimeSelected = { hour, minute ->
+                viewModel.setTimeOfBirth("%02d:%02d".format(hour, minute))
+                viewModel.markTimeSelected()
+                haptic.light()
+                showTimePicker = false
+            },
+            onDismiss = {
+                viewModel.markTimeSelected()
+                haptic.light()
+                showTimePicker = false
+            },
         )
     }
 

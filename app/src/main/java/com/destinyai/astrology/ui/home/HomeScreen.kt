@@ -1788,10 +1788,18 @@ private fun HomeYoga.matchesFilter(filter: YogaFilter): Boolean {
         YogaFilter.Family -> cat.contains("family")
         YogaFilter.Education -> cat.contains("education")
         YogaFilter.Spiritual -> cat.contains("spiritual")
-        YogaFilter.Foundation -> cat.contains("foundation") || cat.contains("basic")
+        YogaFilter.Foundation -> cat.contains("foundation") || cat.contains("basic") || cat.contains("kendra")
         YogaFilter.Personality -> cat.contains("personality")
-        YogaFilter.Special -> cat.contains("special")
-        else -> true // legacy Raja/Dhana = treat as no-filter
+        // DES-161 R3: map the backend's advanced categories (Pancha Mahapurusha,
+        // Power, Planetary) into Special so they land on a real tab. Kendra →
+        // Foundation (above). Previously these hit the `else` catch-all.
+        YogaFilter.Special -> cat.contains("special") || cat.contains("pancha mahapurusha") ||
+            cat.contains("power") || cat.contains("planetary")
+        // DES-161 R3: was `else -> true`, which leaked unmapped-category yogas onto
+        // EVERY filter tab (e.g. legacy Raja/Dhana showed under Career, Love, …).
+        // A specific filter must exclude anything it doesn't match. `All` is handled
+        // above, so `else` here only covers legacy values → exclude them.
+        else -> false
     }
 }
 

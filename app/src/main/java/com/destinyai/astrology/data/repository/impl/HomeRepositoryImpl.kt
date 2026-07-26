@@ -363,10 +363,14 @@ class HomeRepositoryImpl @Inject constructor(
                 }
                 if (combined.isNotEmpty()) {
                     // Sort by status (active first) then strength desc, like iOS
+                    // (HomeViewModel.swift:383-387). DES-161 R3: the strength
+                    // secondary key was missing, so within the active tier Android
+                    // showed yogas in insertion order (weaker before stronger),
+                    // diverging from iOS which shows highest-strength first.
                     combined.sortedWith(
                         compareByDescending<HomeYoga> {
                             it.status.equals("active", ignoreCase = true) || it.status.equals("a", ignoreCase = true)
-                        }
+                        }.thenByDescending { it.strength }
                     )
                 } else {
                     // Fallback heuristic — kept only for offline/legacy responses
