@@ -59,6 +59,34 @@ class ChatRepositoryImpl @Inject constructor(
         return String(bytes.copyOf(maxBytes), Charsets.UTF_8)
     }
 
+    /**
+     * DES-161: render the backend PredictionTiming object ({period, dasha?, transit?,
+     * confidence}) as readable prose for the "Timing window" depth row, instead of
+     * dumping raw JSON. Blank/"unknown" fields are skipped; confidence is title-cased.
+     */
+    private fun formatTimingObject(obj: com.google.gson.JsonObject): String {
+        fun str(key: String): String? = obj.get(key)
+            ?.takeIf { !it.isJsonNull && it.isJsonPrimitive }
+            ?.asString?.trim()
+            ?.takeIf { it.isNotEmpty() && !it.equals("unknown", ignoreCase = true) }
+
+        val parts = mutableListOf<String>()
+        str("period")?.let {
+            // Backend sometimes emits a repeated period ("2027, 2027, 2027"); collapse
+            // consecutive duplicate comma-separated tokens so it reads cleanly.
+            val cleaned = it.split(",").map { p -> p.trim() }.filter { p -> p.isNotEmpty() }
+                .distinct().joinToString(", ")
+            parts += cleaned.ifEmpty { it }
+        }
+        str("dasha")?.let { parts += "Dasha: $it" }
+        str("transit")?.let { parts += "Transit: $it" }
+        str("confidence")?.let {
+            val label = it.lowercase().replaceFirstChar { c -> c.uppercase() }
+            parts += "Confidence: $label"
+        }
+        return parts.joinToString("\n")
+    }
+
     override suspend fun sendMessage(sessionId: String, text: String, idempotencyKey: String?): Flow<Result<String>> = flow {
         val email = prefs.getUserEmail() ?: run {
             emit(Result.failure(IllegalStateException("No user email")))
@@ -247,14 +275,20 @@ class ChatRepositoryImpl @Inject constructor(
                                     val sources = sourcesArr?.mapNotNull { e -> runCatching { e.asString }.getOrNull() } ?: emptyList()
                                     val advice = json?.get("advice")?.takeIf { !it.isJsonNull }?.asString
                                     // `timing` is a structured PredictionTiming OBJECT on the backend
-                                    // (predict.py PredictionResponse.timing), not a string. Calling
-                                    // .asString on a JsonObject throws UnsupportedOperationException,
-                                    // which aborted the stream at the terminal event ("JsonObject" error
-                                    // + spurious "Chat was interrupted"). Accept either shape: a plain
-                                    // string, or serialize the object back to JSON for the metadata row.
+                                    // (predict.py PredictionResponse.timing: {period, dasha?, transit?,
+                                    // confidence}), not a string. Calling .asString on a JsonObject throws
+                                    // UnsupportedOperationException. Accept a plain string OR format the
+                                    // object into readable prose — never dump raw JSON to the UI
+                                    // (DES-161: "{\"period\":...,\"confidence\":\"MEDIUM\"}" leaked through).
                                     val timing = json?.get("timing")?.takeIf { !it.isJsonNull }?.let { el ->
-                                        runCatching { if (el.isJsonPrimitive) el.asString else el.toString() }.getOrNull()
-                                    }
+                                        runCatching {
+                                            when {
+                                                el.isJsonPrimitive -> el.asString
+                                                el.isJsonObject -> formatTimingObject(el.asJsonObject)
+                                                else -> null
+                                            }
+                                        }.getOrNull()
+                                    }?.takeIf { it.isNotBlank() }
                                     val execMs = json?.get("execution_time_ms")?.takeIf { !it.isJsonNull }
                                         ?.let { runCatching { it.asDouble }.getOrNull() } ?: 0.0
                                     val traceId = json?.get("trace_id")?.takeIf { !it.isJsonNull }?.asString

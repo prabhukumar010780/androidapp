@@ -742,8 +742,15 @@ fun MessageBubbleView(
                 }
 
                 if (!message.isStreaming) {
-                    Row(
+                    // DES-161: footer split into two rows so the metadata line
+                    // (Copy · exec · time) and the rating row don't collide/crowd on
+                    // narrow screens (previously "…PMRate★★★★" ran together in one Row).
+                    Column(
                         modifier = Modifier.padding(top = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -787,13 +794,21 @@ fun MessageBubbleView(
                             lineHeight = AppType.captionLh,
                             color = Color.White.copy(alpha = 0.2f),
                         )
-                        // Inline rating (Gap 2) — only on substantial assistant messages,
-                        // skipped on the welcome bubble to mirror iOS isWelcomeMessage gate.
+                    }
+                        // Inline rating (Gap 2) — its own row so the stars never crowd
+                        // the timestamp. Only on substantial assistant messages; skipped
+                        // on the welcome bubble to mirror iOS isWelcomeMessage gate.
                         if (!isWelcome && message.content.length > 50) {
-                            MessageRatingRow(
-                                rating = message.rating,
-                                onRate = onRate,
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                MessageRatingRow(
+                                    rating = message.rating,
+                                    onRate = onRate,
+                                )
+                            }
                         }
                     }
                 }
