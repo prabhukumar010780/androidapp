@@ -465,8 +465,11 @@ private fun HistoryItemRow(
         // Score badge
         Box(
             modifier = Modifier
-                .sizeIn(minWidth = 50.dp, minHeight = 50.dp)
-                .aspectRatio(1f)
+                // DES-161 R4c: fixed 50dp circle (iOS parity: Circle().frame(50,50)).
+                // Was sizeIn(min 50)+aspectRatio(1f), which in an unbounded Row let
+                // the circle expand to fill the card and squeezed the text column to
+                // ~0 width (history showed only a giant circle, no names/score/date).
+                .size(50.dp)
                 .clip(CircleShape)
                 .background(scoreColor.copy(alpha = 0.15f)),
             contentAlignment = Alignment.Center,
@@ -680,8 +683,10 @@ private fun GroupHistoryRow(
         // iOS parity: 3-person icon with stacked count inside the circle (no badge overlay).
         Box(
             modifier = Modifier
-                .sizeIn(minWidth = 50.dp, minHeight = 50.dp)
-                .aspectRatio(1f)
+                // DES-161 R4c: fixed 50dp circle (iOS parity). Same bug as HistoryItemRow —
+                // sizeIn(min)+aspectRatio in an unbounded Row blew the circle up to fill
+                // the card, hiding the group's partner names/date text.
+                .size(50.dp)
                 .clip(CircleShape)
                 .background(accentPurple.copy(alpha = 0.15f)),
             contentAlignment = Alignment.Center,

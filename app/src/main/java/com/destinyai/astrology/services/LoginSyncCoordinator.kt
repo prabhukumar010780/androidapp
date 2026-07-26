@@ -195,9 +195,25 @@ class LoginSyncCoordinator @Inject constructor(
                 val root = com.google.gson.JsonParser.parseString(body).asJsonObject
                 val metadata = root.get("metadata")?.takeIf { it.isJsonObject }?.asJsonObject
                     ?: return@runCatching
+                // DES-161: recover partner names for the history row. The backend stores
+                // them at metadata.analysis_data.{boy,girl}.details.name (agent.py:355-361);
+                // the thread title "<Boy> & <Girl> compatibility" (agent.py:373) is a
+                // reliable fallback. Previously names were hardcoded "" here, so every
+                // synced row rendered as "&" / "+ , ," with no names.
+                fun detailName(who: String): String =
+                    metadata.get("analysis_data")?.takeIf { it.isJsonObject }?.asJsonObject
+                        ?.get(who)?.takeIf { it.isJsonObject }?.asJsonObject
+                        ?.get("details")?.takeIf { it.isJsonObject }?.asJsonObject
+                        ?.get("name")?.takeIf { !it.isJsonNull }?.asString
+                        .orEmpty()
+                val titleNames = (dto.title ?: "")
+                    .removeSuffix(" compatibility")
+                    .split(" & ", limit = 2)
+                val boyName = detailName("boy").ifBlank { titleNames.getOrNull(0)?.trim().orEmpty() }
+                val girlName = detailName("girl").ifBlank { titleNames.getOrNull(1)?.trim().orEmpty() }
                 val result = com.destinyai.astrology.data.remote.mapCompatibilityResponse(
                     json = gson.toJson(metadata),
-                    boyName = "", girlName = "", boyDob = null, girlDob = null,
+                    boyName = boyName, girlName = girlName, boyDob = null, girlDob = null,
                     boyCity = null, girlCity = null,
                 )
                 // Only persist a valid, openable match — never a zero/empty stub.
@@ -215,7 +231,11 @@ class LoginSyncCoordinator @Inject constructor(
                     com.destinyai.astrology.data.local.db.CompatibilityHistoryEntity(
                         sessionId = dto.id,
                         ownerEmail = email,
-                        timestampMs = runCatching { java.time.Instant.parse(dto.updatedAt ?: "").toEpochMilli() }.getOrDefault(0L),
+                        // DES-161: fall back updatedAt → createdAt → now, never 0L.
+                        // A 0L epoch rendered every synced row as "Jan 1, 1970".
+                        timestampMs = runCatching { java.time.Instant.parse(dto.updatedAt ?: "").toEpochMilli() }
+                            .recoverCatching { java.time.Instant.parse(dto.createdAt ?: "").toEpochMilli() }
+                            .getOrElse { System.currentTimeMillis() },
                         boyName = result.boyName,
                         boyDob = result.boyDob ?: "",
                         boyCity = result.boyCity ?: "",
