@@ -54,6 +54,12 @@ data class HomeUiState(
     val doshas: HomeDoshaStatus = HomeDoshaStatus(),
     val lifeAreas: List<HomeLifeArea> = defaultLifeAreas(),
     val isRichDataLoading: Boolean = false,
+    // DES-161: dedicated pull-to-refresh flag. isLoading/isRichDataLoading are NOT
+    // set on the 24h cache-hit early-return path, so a manual pull that lands on
+    // that path never sees a true->false transition and PullToRefreshBox leaves its
+    // indicator stuck over the rings. This flag is set true the instant a manual
+    // refresh starts and cleared in a finally, guaranteeing the retract animation.
+    val isRefreshing: Boolean = false,
     val selectedLifeArea: HomeLifeArea? = null,
     // R2-H3: notification badge unread count
     val unreadCount: Int = 0,
@@ -290,9 +296,13 @@ class HomeViewModel @Inject constructor(
         return nextMonthFirst.toString()
     }
 
-    fun loadHomeData() {
+    fun loadHomeData(manualRefresh: Boolean = false) {
         if (loadInFlight) return
         loadInFlight = true
+        // DES-161: drive the pull-to-refresh indicator off a dedicated flag so it
+        // always retracts — even on the fast 24h cache-hit path that never touches
+        // isLoading/isRichDataLoading. Set here, cleared in the finally below.
+        if (manualRefresh) _uiState.update { it.copy(isRefreshing = true) }
         viewModelScope.launch {
             try {
             // iOS parity (HomeViewModel.swift:159-177): detect a language change
@@ -324,6 +334,11 @@ class HomeViewModel @Inject constructor(
                 )
                 lastLoadDate = LocalDate.now().toString()
                 fetchUnreadCount()
+                // DES-161: a pull-to-refresh that lands on the 24h cache-hit path
+                // still expects isRefreshing to resolve false, or PullToRefreshBox
+                // leaves its spinner stuck over the life-area rings. Clear both
+                // loading flags explicitly before the early return.
+                _uiState.update { it.copy(isLoading = false, isRichDataLoading = false) }
                 return@launch
             }
 
@@ -396,6 +411,10 @@ class HomeViewModel @Inject constructor(
             loadRichHomeData(activeBirth, activeId)
             } finally {
                 loadInFlight = false
+                // DES-161: always clear the manual-refresh flag, on every exit path
+                // (cache-hit early return, null-birth return, success, or throw), so
+                // PullToRefreshBox never leaves its indicator stuck.
+                if (manualRefresh) _uiState.update { it.copy(isRefreshing = false) }
             }
         }
     }

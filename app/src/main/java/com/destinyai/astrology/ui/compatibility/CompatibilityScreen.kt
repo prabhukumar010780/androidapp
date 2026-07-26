@@ -320,15 +320,22 @@ fun CompatibilityScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .adaptiveContentWidth()
-                    .verticalScroll(rememberScrollState())
                     // The Match tab keeps the global bottom tab bar VISIBLE (MainScreen
                     // only hides it on the Chat tab, index 1). So this scroll content is
                     // NOT the bottom-most surface — the ~76dp tab bar sits on top of it.
-                    // navigationBarsPadding() alone only clears the gesture-nav inset, which
-                    // left the trailing Analyze CTA hidden BEHIND the tab bar. The bottom
-                    // reserve is applied as a trailing Spacer below (tab bar + nav inset),
-                    // mirroring HomeScreen's tabBarReserve. Keep imePadding() so the keyboard
-                    // still lifts the form.
+                    // DES-161 (button "half" clipped): a trailing in-scroll Spacer left the
+                    // Analyze CTA resting HALF-behind the tab bar (only fully visible after
+                    // an extra scroll). Instead, inset the scroll VIEWPORT's bottom by the
+                    // tab-bar reserve — applied BEFORE verticalScroll so it shrinks the
+                    // viewport rather than scrolling with content — so the scrollable area
+                    // ends ABOVE the tab bar and the CTA can never land behind it.
+                    .padding(
+                        bottom = 76.dp +
+                            WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
+                            16.dp,
+                    )
+                    .verticalScroll(rememberScrollState())
+                    // Keep imePadding() so the keyboard still lifts the form.
                     .imePadding()
                     .padding(horizontal = 16.dp),
                 // DES-161 R4a: widen section spacing to match iOS (outer VStack
@@ -686,18 +693,6 @@ fun CompatibilityScreen(
                         enabled = state.canAnalyze && ageWarning == null,
                     )
                 }
-
-                // Bottom reserve so the Analyze CTA clears the global tab bar (visible on
-                // the Match tab) + the gesture-nav inset. Mirrors HomeScreen.tabBarReserve
-                // (76dp bar + navigationBars inset + 16dp breathing room). Without this the
-                // button sat behind the tab bar with no way to scroll it into view.
-                Spacer(
-                    Modifier.height(
-                        76.dp +
-                            WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
-                            16.dp,
-                    ),
-                )
             }
         }
 

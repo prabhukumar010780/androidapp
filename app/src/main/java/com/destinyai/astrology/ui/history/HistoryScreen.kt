@@ -929,8 +929,12 @@ private fun CompatibilityHistoryItemRow(
 
             Box(
                 modifier = Modifier
-                    .sizeIn(minWidth = 50.dp, minHeight = 50.dp)
-                    .aspectRatio(1f)
+                    // DES-161 R4c: fixed 50dp circle (iOS parity: Circle().frame(50,50)).
+                    // Was sizeIn(min 50)+aspectRatio(1f), which in an unbounded Row let
+                    // the circle expand to fill the card and squeezed the text column to
+                    // ~0 width (history showed only a giant circle, no names/score/date).
+                    // Same fix as CompatibilityHistoryScreen.HistoryItemRow (commit bbec409).
+                    .size(50.dp)
                     .clip(CircleShape)
                     .background(scoreColor.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center,

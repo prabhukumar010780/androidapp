@@ -371,8 +371,12 @@ fun HomeScreen(
             val pullState = rememberPullToRefreshState()
             PullToRefreshBox(
                 state = pullState,
-                isRefreshing = state.isLoading || state.isRichDataLoading,
-                onRefresh = { viewModel.loadHomeData() },
+                // DES-161: key ONLY on the dedicated manual-refresh flag. Keying on
+                // isLoading/isRichDataLoading meant a pull landing on the 24h cache-hit
+                // path (which never sets those true) never got a true->false transition,
+                // so the indicator stayed stuck over the life-area rings.
+                isRefreshing = state.isRefreshing,
+                onRefresh = { viewModel.loadHomeData(manualRefresh = true) },
                 modifier = Modifier
                     .fillMaxSize()
                     .alpha(contentOpacity),

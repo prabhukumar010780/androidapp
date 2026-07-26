@@ -330,11 +330,14 @@ fun CompatibilityResultScreen(
                             .padding(horizontal = 16.dp),
                     )
 
-                    // Reserve just enough for the overlay FAB (~56dp) + gesture inset
-                    // instead of a flat 80dp void.
+                    // DES-161: reserve enough to clear the overlay FAB so it never
+                    // covers "View Full Report". The FAB is BottomEnd with 20dp padding +
+                    // navigationBarsPadding, and its glow/ring footprint is ~70dp (not just
+                    // the 56dp core) — a 56dp spacer left the FAB overlapping the button's
+                    // bottom-right. 20dp padding + 70dp glow + 16dp margin = 106dp + inset.
                     Spacer(
                         Modifier.height(
-                            56.dp + WindowInsets.navigationBars.asPaddingValues()
+                            106.dp + WindowInsets.navigationBars.asPaddingValues()
                                 .calculateBottomPadding(),
                         ),
                     )
