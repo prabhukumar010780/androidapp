@@ -742,44 +742,22 @@ fun MessageBubbleView(
                 }
 
                 if (!message.isStreaming) {
-                    // DES-161: footer split into two rows so the metadata line
-                    // (Copy · exec · time) and the rating row don't collide/crowd on
-                    // narrow screens (previously "…PMRate★★★★" ran together in one Row).
-                    Column(
-                        modifier = Modifier.padding(top = 4.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
+                    // DES-161: single-row footer matching iOS MessageBubble.metadataRowWithRating —
+                    // [time • exec] ←spacer→ [Copy] [Rating]. Compact, premium, no crowding.
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        if (!isWelcome && message.content.length > 50) {
-                            TextButton(
-                                onClick = {
-                                    // Issue 41/63 — haptic feedback on copy tap matches iOS .light impact.
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    val clip = ClipData.newPlainText("response", message.content)
-                                    (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
-                                        .setPrimaryClip(clip)
-                                    onCopy()
-                                    showCopied = true
-                                },
-                                modifier = Modifier
-                                    .semantics { contentDescription = "copy_button" }
-                                    .defaultMinSize(minHeight = TouchMin),
-                                contentPadding = PaddingValues(horizontal = Spacing.sm, vertical = Spacing.xs),
-                            ) {
-                                Text(
-                                    if (showCopied) stringResource(R.string.chat_copied) else stringResource(R.string.chat_copy_action),
-                                    fontSize = AppType.caption,
-                                    lineHeight = AppType.captionLh,
-                                    color = if (showCopied) Gold else Color.White.copy(alpha = 0.3f),
-                                )
-                            }
-                        }
-                        Spacer(Modifier.weight(1f))
-                        // Execution time pill (Gap 6) — "• 1.4s"
+                        // Leading: timestamp • exec time (iOS order).
+                        Text(
+                            formatMessageTime(message.createdAtMs),
+                            fontSize = AppType.caption,
+                            lineHeight = AppType.captionLh,
+                            color = Color.White.copy(alpha = 0.3f),
+                        )
                         if (message.executionTimeMs > 0.0) {
                             Text(
                                 "• ${formatExecutionTime(message.executionTimeMs)}",
@@ -788,27 +766,31 @@ fun MessageBubbleView(
                                 color = Color.White.copy(alpha = 0.3f),
                             )
                         }
-                        Text(
-                            formatMessageTime(message.createdAtMs),
-                            fontSize = AppType.caption,
-                            lineHeight = AppType.captionLh,
-                            color = Color.White.copy(alpha = 0.2f),
-                        )
-                    }
-                        // Inline rating (Gap 2) — its own row so the stars never crowd
-                        // the timestamp. Only on substantial assistant messages; skipped
-                        // on the welcome bubble to mirror iOS isWelcomeMessage gate.
+                        Spacer(Modifier.weight(1f))
+                        // Trailing: compact icon-only Copy, then the rating stars.
                         if (!isWelcome && message.content.length > 50) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                MessageRatingRow(
-                                    rating = message.rating,
-                                    onRate = onRate,
-                                )
-                            }
+                            Icon(
+                                imageVector = if (showCopied) Icons.Default.Check else Icons.Default.ContentCopy,
+                                contentDescription = stringResource(R.string.chat_copy_action),
+                                tint = if (showCopied) Gold else Color.White.copy(alpha = 0.35f),
+                                modifier = Modifier
+                                    .size(15.dp)
+                                    .clip(CircleShape)
+                                    .clickable {
+                                        // Issue 41/63 — haptic feedback on copy tap matches iOS .light impact.
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        val clip = ClipData.newPlainText("response", message.content)
+                                        (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
+                                            .setPrimaryClip(clip)
+                                        onCopy()
+                                        showCopied = true
+                                    }
+                                    .semantics { contentDescription = "copy_button" },
+                            )
+                            MessageRatingRow(
+                                rating = message.rating,
+                                onRate = onRate,
+                            )
                         }
                     }
                 }
@@ -1180,33 +1162,31 @@ private fun MessageRatingRow(rating: Int, onRate: (Int) -> Unit) {
                     lineHeight = AppType.captionLh,
                     color = CreamDim,
                 )
-                Spacer(Modifier.width(2.dp))
+                Spacer(Modifier.width(4.dp))
                 (1..5).forEach { star ->
                     // Issue 52 — localized accessibility label for each star.
                     val starA11y = stringResource(R.string.a11y_star_rating, star)
-                    IconButton(
-                        onClick = {
-                            // Issue 54 — light haptic on tap.
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            // Issue 46/57 — optimistic fill before VM round-trip.
-                            selectedRating = star
-                            isSubmitting = true
-                            onRate(star)
-                        },
-                        // Issue 48 — disable stars while submitting to avoid duplicate taps.
-                        enabled = !isSubmitting,
+                    // DES-161: compact tappable star (iOS InlineMessageRating HStack spacing:2,
+                    // 14pt stars — NOT a 48dp IconButton, which spread the stars wide/scattered).
+                    Icon(
+                        if (star <= selectedRating) Icons.Default.Star else Icons.Default.StarBorder,
+                        contentDescription = null,
+                        tint = if (star <= selectedRating) Gold else Color.White.copy(alpha = 0.6f),
                         modifier = Modifier
-                            .size(TouchMin)
+                            .size(18.dp)
+                            .clip(CircleShape)
                             .alpha(if (isSubmitting) 0.5f else 1f)
+                            .clickable(enabled = !isSubmitting) {
+                                // Issue 54 — light haptic on tap.
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                // Issue 46/57 — optimistic fill before VM round-trip.
+                                selectedRating = star
+                                isSubmitting = true
+                                onRate(star)
+                            }
+                            .padding(1.dp)
                             .semantics { contentDescription = starA11y },
-                    ) {
-                        Icon(
-                            if (star <= selectedRating) Icons.Default.Star else Icons.Default.StarBorder,
-                            contentDescription = null,
-                            tint = if (star <= selectedRating) Gold else Color.White.copy(alpha = 0.6f),
-                            modifier = Modifier.size(13.dp),
-                        )
-                    }
+                    )
                 }
                 if (isSubmitting) {
                     // Issue 47 — small inline spinner while persistence is in flight.
