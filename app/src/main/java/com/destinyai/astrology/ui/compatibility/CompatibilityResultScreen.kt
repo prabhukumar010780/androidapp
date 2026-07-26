@@ -878,7 +878,10 @@ fun ShimmerButton(
     Button(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier.heightIn(min = 52.dp),
+        // DES-161: fixed 56dp height for iOS parity (ShimmerButton .frame(height: 56)
+        // in PremiumComponents.swift:68). Was heightIn(min = 52.dp), which let the
+        // button collapse to the 52dp floor and read as a thin pill vs iOS.
+        modifier = modifier.height(56.dp),
         shape = RoundedCornerShape(26.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = Color.Transparent,
