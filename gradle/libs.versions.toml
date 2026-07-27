@@ -53,7 +53,7 @@ googleid = "1.1.1"
 firebaseBom = "33.14.0"
 
 # Google Play Billing
-billing = "7.1.1"
+billing = "8.0.0"
 
 # Coil (image loading for Compose)
 coil = "2.7.0"
