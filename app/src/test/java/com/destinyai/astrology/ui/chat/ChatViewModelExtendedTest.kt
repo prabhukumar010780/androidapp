@@ -68,6 +68,7 @@ class ChatViewModelExtendedTest {
             profileChangeBus = profileChangeBus,
             profileContextManager = mockk(relaxed = true),
             appStartupService = appStartup,
+            networkMonitor = mockk(relaxed = true),
             appContext = appContext,
         )
     }

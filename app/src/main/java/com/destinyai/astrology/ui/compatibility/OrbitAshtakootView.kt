@@ -591,8 +591,8 @@ fun OrbitTooltipView(
                     stiffness = Spring.StiffnessMedium,
                 ),
             ),
-        exit = fadeOut(animationSpec = tween(durationMillis = 120)) +
-            scaleOut(targetScale = 0.94f, animationSpec = tween(durationMillis = 120)),
+        exit = fadeOut(animationSpec = tween(durationMillis = 150, easing = FastOutLinearInEasing)) +
+            scaleOut(targetScale = 0.94f, animationSpec = tween(durationMillis = 150, easing = FastOutLinearInEasing)),
         modifier = modifier,
     ) {
         renderedKuta?.let { kuta ->

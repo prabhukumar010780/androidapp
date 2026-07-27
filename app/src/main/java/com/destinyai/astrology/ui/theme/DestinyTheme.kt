@@ -9,7 +9,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -30,22 +29,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Typography
@@ -62,17 +54,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -81,7 +68,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -270,6 +256,11 @@ fun DestinyTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = DarkColors,
         typography = DestinyTypography,
+        shapes = Shapes(
+            small = RoundedCornerShape(Radius.button),
+            medium = RoundedCornerShape(Radius.card),
+            large = RoundedCornerShape(Radius.hero),
+        ),
         content = content,
     )
 }
@@ -685,88 +676,6 @@ fun OrbitalRings(
     }
 }
 
-/**
- * Issue 2: PremiumInputField — labeled input with gold leading icon, custom placeholder,
- * focus binding, gold border. Mirrors iOS `PremiumInputField`.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun PremiumInputField(
-    label: String,
-    icon: @Composable () -> Unit,
-    placeholder: String,
-    value: String,
-    onValueChange: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    focusRequester: FocusRequester? = null,
-    onFocusChanged: ((Boolean) -> Unit)? = null,
-) {
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(BirthDataDimens.labelSpacing),
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(BirthDataDimens.labelSpacing),
-        ) {
-            Box(modifier = Modifier.size(AuthDimens.iconSize)) {
-                icon()
-            }
-            Text(
-                text = label,
-                color = AppTheme.colors.textSecondary,
-                fontSize = BirthDataDimens.labelFontSize,
-            )
-        }
-
-        val fieldModifier = Modifier
-            .fillMaxWidth()
-            .height(BirthDataDimens.inputHeight)
-            .semantics { contentDescription = "premium_input_field" }
-            .let { m -> if (focusRequester != null) m.focusRequester(focusRequester) else m }
-            .let { m ->
-                if (onFocusChanged != null) {
-                    m.onFocusChanged { state -> onFocusChanged(state.isFocused) }
-                } else {
-                    m
-                }
-            }
-
-        val focusManager = LocalFocusManager.current
-
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            placeholder = {
-                Text(
-                    text = placeholder,
-                    color = AppTheme.colors.textTertiary,
-                    fontSize = BirthDataDimens.inputFontSize,
-                )
-            },
-            singleLine = true,
-            // Issue 2: ImeAction.Done with focus clear
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(
-                onDone = { focusManager.clearFocus() },
-            ),
-            textStyle = TextStyle(
-                color = AppTheme.colors.textPrimary,
-                fontSize = BirthDataDimens.inputFontSize,
-            ),
-            shape = RoundedCornerShape(BirthDataDimens.inputCornerRadius),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = AppTheme.styles.inputBorder.stroke,
-                unfocusedBorderColor = AppTheme.styles.inputBorder.stroke,
-                focusedContainerColor = AppTheme.colors.inputBackground,
-                unfocusedContainerColor = AppTheme.colors.inputBackground,
-                cursorColor = AppTheme.colors.gold,
-            ),
-            modifier = fieldModifier,
-        )
-    }
-}
-
 @Composable
 private fun Modifier.clickableNoRipple(onClick: () -> Unit): Modifier {
     val interactionSource = remember { MutableInteractionSource() }
@@ -982,7 +891,9 @@ fun PremiumDatePicker(
 }
 
 /**
- * Issue 5 + 9: ModalBottomSheet selection sheet — option tap performs onSelect, light haptic, dismiss.
+ * Bridge: BirthDetailsScreen imports this from ui.theme with the Pair-based API.
+ * TODO (Agent D): migrate BirthDetailsScreen to ui/components/PremiumSelectionSheet
+ * (which uses selectedIndex / List<String>), then delete this bridge.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -995,8 +906,6 @@ fun PremiumSelectionSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     val haptics = LocalHapticFeedback.current
-
-    // Issue 9: dynamic content height = options.size*60 + 80, capped at "medium" (~480dp).
     val computedHeightDp = (options.size * 60 + 80).coerceAtMost(480).dp
 
     ModalBottomSheet(
@@ -1019,15 +928,9 @@ fun PremiumSelectionSheet(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(computedHeightDp)            // Issue 9
-                .semantics { contentDescription = "premium_selection_sheet" }
+                .height(computedHeightDp)
                 .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF0F1422),
-                            NavyDeep,
-                        ),
-                    ),
+                    Brush.verticalGradient(colors = listOf(Color(0xFF0F1422), NavyDeep)),
                 ),
         ) {
             Column(
@@ -1044,7 +947,6 @@ fun PremiumSelectionSheet(
                     color = AppTheme.colors.textPrimary,
                     fontFamily = CanelaFontFamily,
                 )
-
                 LazyColumn(modifier = Modifier.fillMaxWidth()) {
                     items(options, key = { it.first }) { entry ->
                         val (value, label) = entry
@@ -1052,7 +954,6 @@ fun PremiumSelectionSheet(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickableNoRipple {
-                                    // Issue 9: set value + light haptic + dismiss
                                     onSelect(value)
                                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                     onDismiss()
@@ -1079,7 +980,6 @@ fun PremiumSelectionSheet(
                                 )
                             }
                         }
-
                         if (value != options.last().first) {
                             HorizontalDivider(
                                 color = AppTheme.colors.separator,
@@ -1087,170 +987,6 @@ fun PremiumSelectionSheet(
                             )
                         }
                     }
-                }
-            }
-        }
-    }
-}
-
-/**
- * Issue 6: PremiumSelectionRow — icon + title + value + chevron-down.
- * Supports placeholder and disabled states with iOS-equivalent 0.6 alpha gating.
- */
-@Composable
-fun PremiumSelectionRow(
-    icon: @Composable () -> Unit,
-    title: String,
-    value: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    isDisabled: Boolean = false,
-    isPlaceholder: Boolean = false,
-) {
-    val haptics = LocalHapticFeedback.current
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .alpha(if (isDisabled) 0.6f else 1f)         // Issue 6: 0.6 disabled opacity
-            .semantics { contentDescription = "premium_selection_row" }
-            .clickableNoRipple {
-                if (!isDisabled) {
-                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onClick()
-                }
-            },
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Box(modifier = Modifier.size(14.dp)) { icon() }
-            Text(
-                text = title,
-                color = AppTheme.colors.textSecondary,
-                fontSize = 13.sp,
-            )
-        }
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    color = AppTheme.colors.inputBackground,
-                    shape = RoundedCornerShape(12.dp),
-                )
-                .border(
-                    width = AppTheme.styles.inputBorder.width,
-                    color = AppTheme.styles.inputBorder.stroke,
-                    shape = RoundedCornerShape(12.dp),
-                )
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = value,
-                color = if (isDisabled || isPlaceholder) {
-                    AppTheme.colors.textTertiary
-                } else {
-                    AppTheme.colors.textPrimary
-                },
-                fontSize = 16.sp,
-                modifier = Modifier.weight(1f),
-            )
-            Icon(
-                imageVector = Icons.Filled.KeyboardArrowDown,
-                contentDescription = null,
-                tint = AppTheme.colors.textTertiary,
-                modifier = Modifier.size(16.dp),
-            )
-        }
-    }
-}
-
-/**
- * Issue 7 + 10: PremiumMenuRow — exposed dropdown with placeholder + light haptic on select.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun PremiumMenuRow(
-    icon: @Composable () -> Unit,
-    title: String,
-    selection: String,
-    options: List<Pair<String, String>>,
-    onSelectionChange: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    placeholder: String = "Select",
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val haptics = LocalHapticFeedback.current
-
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Box(modifier = Modifier.size(14.dp)) { icon() }
-            Text(
-                text = title,
-                color = AppTheme.colors.textSecondary,
-                fontSize = 13.sp,
-            )
-        }
-
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = it },
-        ) {
-            val displayLabel = options.firstOrNull { it.first == selection }?.second
-                ?: placeholder
-
-            OutlinedTextField(
-                value = displayLabel,
-                onValueChange = {},
-                readOnly = true,
-                singleLine = true,
-                trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                },
-                textStyle = TextStyle(
-                    color = if (selection.isEmpty()) {
-                        AppTheme.colors.textTertiary
-                    } else {
-                        AppTheme.colors.textPrimary
-                    },
-                    fontSize = 16.sp,
-                ),
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = AppTheme.styles.inputBorder.stroke,
-                    unfocusedBorderColor = AppTheme.styles.inputBorder.stroke,
-                    focusedContainerColor = AppTheme.colors.inputBackground,
-                    unfocusedContainerColor = AppTheme.colors.inputBackground,
-                ),
-                modifier = Modifier
-                    .menuAnchor()
-                    .fillMaxWidth(),
-            )
-
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false },
-            ) {
-                options.forEach { entry ->
-                    val (value, label) = entry
-                    DropdownMenuItem(
-                        text = { Text(label) },
-                        onClick = {
-                            // Issue 10: set selection + light haptic
-                            onSelectionChange(value)
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                            expanded = false
-                        },
-                    )
                 }
             }
         }

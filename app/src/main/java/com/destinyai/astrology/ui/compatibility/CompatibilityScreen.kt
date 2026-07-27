@@ -68,6 +68,7 @@ import com.destinyai.astrology.ui.charts.ChartComparisonSheet
 import com.destinyai.astrology.ui.subscription.SubscriptionScreen
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
+import com.destinyai.astrology.ui.components.ShimmerButton
 import com.destinyai.astrology.ui.theme.adaptiveContentWidth
 import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.Radius
@@ -378,9 +379,9 @@ fun CompatibilityScreen(
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(Color(0xFFED8936).copy(alpha = 0.15f))
                                 .border(1.dp, Color(0xFFED8936).copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             Text("⚠️", fontSize = 18.sp)
                             Text(
@@ -420,7 +421,7 @@ fun CompatibilityScreen(
 
                     // Name + Gender row (with saved partner picker icon)
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         CosmicTextField(
@@ -455,7 +456,7 @@ fun CompatibilityScreen(
                     }
 
                     // Date + Time row
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         PickerField(
                             icon = Icons.Filled.CalendarMonth,
                             label = if (state.partnerDob.isEmpty()) stringResource(com.destinyai.astrology.R.string.compat_dob) else state.partnerDob,
@@ -644,7 +645,7 @@ fun CompatibilityScreen(
                 if (ageWarning != null) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Icon(
                             Icons.Filled.Warning,
@@ -714,7 +715,7 @@ fun CompatibilityScreen(
                         .clip(RoundedCornerShape(20.dp))
                         .background(NavySurface)
                         .border(1.dp, SuccessGreen.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
@@ -1030,7 +1031,7 @@ private fun PickerField(
             .background(NavySurface.copy(alpha = if (enabled) 1f else 0.5f))
             .border(1.dp, Gold.copy(alpha = if (enabled) 0.25f else 0.1f), RoundedCornerShape(12.dp))
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 14.dp),
+            .padding(horizontal = 16.dp, vertical = 16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Icon(
@@ -1283,7 +1284,7 @@ private fun GenderSelectionSheet(
                         .clip(RoundedCornerShape(10.dp))
                         .background(if (isSelected) Gold.copy(alpha = 0.15f) else Color.Transparent)
                         .clickable { onSelect(key) }
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(stringResource(labelRes), style = MaterialTheme.typography.bodyMedium, color = if (isSelected) Gold else CreamText, modifier = Modifier.weight(1f))
@@ -1364,7 +1365,7 @@ private fun HeroPulsingMatchIcon() {
 
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
                 text = stringResource(com.destinyai.astrology.R.string.ashtakoot_analysis_title),

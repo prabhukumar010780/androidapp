@@ -64,6 +64,7 @@ import com.destinyai.astrology.R
 import com.destinyai.astrology.data.remote.LocationResult
 import com.destinyai.astrology.services.HapticManager
 import com.destinyai.astrology.services.SoundManager
+import com.destinyai.astrology.ui.theme.adaptiveContentWidth
 import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
@@ -168,7 +169,10 @@ fun PartnersScreen(
 
     CosmicBackground {
         Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
             // Header
             Row(
                 modifier = Modifier
@@ -300,7 +304,9 @@ fun PartnersScreen(
                             WindowInsets(left = 16.dp, right = 16.dp, top = 8.dp, bottom = 8.dp),
                         ).asPaddingValues(),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .adaptiveContentWidth(),
                     ) {
                     items(state.partners, key = { it.id }) { partner ->
                         // iOS parity (PartnerManagerView.swift interpolatingSpring on insertion):

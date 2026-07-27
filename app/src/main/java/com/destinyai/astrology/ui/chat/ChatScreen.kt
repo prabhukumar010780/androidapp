@@ -60,6 +60,7 @@ import com.destinyai.astrology.domain.model.ChatMessage
 import com.destinyai.astrology.R
 import com.destinyai.astrology.ui.charts.ChartsViewModel
 import com.destinyai.astrology.ui.charts.PlanetaryPositionsSheet
+import com.destinyai.astrology.ui.components.OfflineBanner
 import com.destinyai.astrology.ui.theme.*
 import com.destinyai.astrology.ui.subscription.SubscriptionScreen
 import kotlinx.coroutines.delay
@@ -88,6 +89,8 @@ fun ChatScreen(
     viewModel: ChatViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    // Cat 10: connectivity for the offline banner (parity with Home).
+    val isOnline by viewModel.isOnline.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     var showHistory by remember { mutableStateOf(false) }
     var showResponseLengthSheet by remember { mutableStateOf(false) }
@@ -217,6 +220,10 @@ fun ChatScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .semantics { contentDescription = "chat_screen" },
+            // Cat 4 adaptability: center children so adaptiveContentWidth() caps the
+            // message list + input bar to a readable column on tablets/foldables
+            // instead of stretching full-bleed. No-op on phones.
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             ChatHeader(
                 onBack = onBack,
@@ -247,6 +254,7 @@ fun ChatScreen(
                 state = listState,
                 modifier = Modifier
                     .weight(1f)
+                    .adaptiveContentWidth()
                     .padding(horizontal = Spacing.screenH)
                     .nestedScroll(keyboardDismissNestedScroll)
                     .alpha(chatAlphaAnim)
@@ -367,22 +375,31 @@ fun ChatScreen(
                 )
             }
 
-            // Input bar
-            ChatInputBar(
-                text = state.inputText,
-                onTextChange = viewModel::updateInput,
-                onSend = viewModel::sendMessage,
-                canSend = state.canSend,
-                isLoading = state.isLoading || state.isStreaming,
-                onStop = viewModel::stopGeneration,
-                onStyleTap = { showResponseLengthSheet = true },
-                // Mirrors iOS ChatView.swift:407-409 — when the input bar gains focus, scroll
-                // to the latest message after a 300ms delay so the keyboard animation completes
-                // before the scroll fires.
-                onInputFocusChanged = { focused ->
-                    if (focused) inputJustFocused = true
-                },
-            )
+            // Cat 10: offline banner above the input bar so a user who loses
+            // connectivity mid-conversation gets clear feedback (parity with Home).
+            if (!isOnline) {
+                OfflineBanner(modifier = Modifier.adaptiveContentWidth())
+            }
+
+            // Input bar — capped to the same content width as the message list so
+            // the two align on tablets/foldables instead of the bar spanning full-bleed.
+            Box(modifier = Modifier.adaptiveContentWidth()) {
+                ChatInputBar(
+                    text = state.inputText,
+                    onTextChange = viewModel::updateInput,
+                    onSend = viewModel::sendMessage,
+                    canSend = state.canSend,
+                    isLoading = state.isLoading || state.isStreaming,
+                    onStop = viewModel::stopGeneration,
+                    onStyleTap = { showResponseLengthSheet = true },
+                    // Mirrors iOS ChatView.swift:407-409 — when the input bar gains focus, scroll
+                    // to the latest message after a 300ms delay so the keyboard animation completes
+                    // before the scroll fires.
+                    onInputFocusChanged = { focused ->
+                        if (focused) inputJustFocused = true
+                    },
+                )
+            }
         }
     }
 
@@ -756,25 +773,26 @@ fun MessageBubbleView(
                             formatMessageTime(message.createdAtMs),
                             fontSize = AppType.caption,
                             lineHeight = AppType.captionLh,
-                            color = Color.White.copy(alpha = 0.3f),
+                            // A11y: 0.55 alpha clears WCAG AA (~5:1) at caption size;
+                            // 0.3 was 2.65:1 and failed contrast.
+                            color = Color.White.copy(alpha = 0.55f),
                         )
                         if (message.executionTimeMs > 0.0) {
                             Text(
                                 "• ${formatExecutionTime(message.executionTimeMs)}",
                                 fontSize = AppType.caption,
                                 lineHeight = AppType.captionLh,
-                                color = Color.White.copy(alpha = 0.3f),
+                                color = Color.White.copy(alpha = 0.55f),
                             )
                         }
                         Spacer(Modifier.weight(1f))
                         // Trailing: compact icon-only Copy, then the rating stars.
                         if (!isWelcome && message.content.length > 50) {
-                            Icon(
-                                imageVector = if (showCopied) Icons.Default.Check else Icons.Default.ContentCopy,
-                                contentDescription = stringResource(R.string.chat_copy_action),
-                                tint = if (showCopied) Gold else Color.White.copy(alpha = 0.35f),
+                            // A11y: 48dp tap target (Material min) with a small 16dp visible
+                            // glyph — keeps the compact look without the sub-target hit area.
+                            Box(
                                 modifier = Modifier
-                                    .size(15.dp)
+                                    .size(TouchMin)
                                     .clip(CircleShape)
                                     .clickable {
                                         // Issue 41/63 — haptic feedback on copy tap matches iOS .light impact.
@@ -786,7 +804,15 @@ fun MessageBubbleView(
                                         showCopied = true
                                     }
                                     .semantics { contentDescription = "copy_button" },
-                            )
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = if (showCopied) Icons.Default.Check else Icons.Default.ContentCopy,
+                                    contentDescription = null,
+                                    tint = if (showCopied) Gold else Color.White.copy(alpha = 0.55f),
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            }
                             MessageRatingRow(
                                 rating = message.rating,
                                 onRate = onRate,
@@ -1166,15 +1192,12 @@ private fun MessageRatingRow(rating: Int, onRate: (Int) -> Unit) {
                 (1..5).forEach { star ->
                     // Issue 52 — localized accessibility label for each star.
                     val starA11y = stringResource(R.string.a11y_star_rating, star)
-                    // DES-161: compact tappable star (iOS InlineMessageRating HStack spacing:2,
-                    // 14pt stars — NOT a 48dp IconButton, which spread the stars wide/scattered).
-                    Icon(
-                        if (star <= selectedRating) Icons.Default.Star else Icons.Default.StarBorder,
-                        contentDescription = null,
-                        tint = if (star <= selectedRating) Gold else Color.White.copy(alpha = 0.6f),
+                    // A11y: each star sits in a 32×44dp centered tap target (clears the
+                    // WCAG 2.5.8 24dp min and gives a 44dp-tall row) while the visible
+                    // glyph stays a compact 18dp so the cluster reads tight, not scattered.
+                    Box(
                         modifier = Modifier
-                            .size(18.dp)
-                            .clip(CircleShape)
+                            .size(width = 32.dp, height = 44.dp)
                             .alpha(if (isSubmitting) 0.5f else 1f)
                             .clickable(enabled = !isSubmitting) {
                                 // Issue 54 — light haptic on tap.
@@ -1184,9 +1207,16 @@ private fun MessageRatingRow(rating: Int, onRate: (Int) -> Unit) {
                                 isSubmitting = true
                                 onRate(star)
                             }
-                            .padding(1.dp)
                             .semantics { contentDescription = starA11y },
-                    )
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            if (star <= selectedRating) Icons.Default.Star else Icons.Default.StarBorder,
+                            contentDescription = null,
+                            tint = if (star <= selectedRating) Gold else Color.White.copy(alpha = 0.6f),
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
                 }
                 if (isSubmitting) {
                     // Issue 47 — small inline spinner while persistence is in flight.

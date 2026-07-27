@@ -1,5 +1,13 @@
 package com.destinyai.astrology.ui.main
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import android.util.Log
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -123,6 +131,12 @@ fun MainScreen(
     // Mirrors iOS @State showMatchResult — toggled by CompatibilityScreen.
     var showMatchResult by remember { mutableStateOf(false) }
 
+    // System back gesture/button dismisses History/Profile overlays (Cat 3 dead-end fix).
+    // Mirrors BirthDataScreen.kt:106 BackHandler pattern. Enabled only when the overlay
+    // is showing so the back event falls through to the OS when neither is active.
+    BackHandler(enabled = showHistory) { showHistory = false }
+    BackHandler(enabled = showProfile) { showProfile = false }
+
     // Mirrors iOS @AppStorage("isGuest") — observe guest user state.
     val isGuestUser by viewModel.isGuestUser.collectAsState()
 
@@ -210,6 +224,76 @@ fun MainScreen(
             confirmButton = {
                 TextButton(onClick = { viewModel.clearExternalPlanChangeAlert() }) {
                     Text(stringResource(R.string.ok))
+                }
+            },
+        )
+    }
+
+    // Mirrors iOS PushNotificationService.requestPermission() timing — ask AFTER the
+    // user has successfully signed in and landed on the main app, not on cold onCreate.
+    // Approach: one-time rationale dialog ("Get daily guidance & reminders") shown on
+    // the FIRST ever MainScreen composition, gated by a SharedPreferences boolean
+    // (has_requested_notif_permission). The rationale dialog fires first; the user's
+    // "Enable" tap then triggers the OS system prompt. If they already granted or are
+    // below API 33, we skip silently. This matches iOS UNUserNotificationCenter timing
+    // where the system dialog appears after the user has completed onboarding/auth.
+    val notifContext = LocalContext.current
+    val notifPrefsFile = "destiny_notif_prefs"
+    val notifRequestedKey = "has_requested_notif_permission"
+    // Compose-idiomatic launcher — wraps the system dialog; result only logged because
+    // MainActivity.notificationPermissionLauncher remains the primary registered launcher.
+    val notifPermLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        Log.d("MainScreen", if (granted) "POST_NOTIFICATIONS granted" else "POST_NOTIFICATIONS denied")
+    }
+    // State: show rationale dialog before the OS system prompt (parity with iOS
+    // UNUserNotificationCenter requestAuthorization pre-prompt UX).
+    var showNotifRationale by remember { mutableStateOf(false) }
+    // One-shot: check on first composition whether we should ask.
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return@LaunchedEffect
+        val alreadyGranted = ContextCompat.checkSelfPermission(
+            notifContext, Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+        if (alreadyGranted) return@LaunchedEffect
+        // Only ask once per install — gate on the SharedPreferences flag.
+        val sp = notifContext.getSharedPreferences(notifPrefsFile, android.content.Context.MODE_PRIVATE)
+        val alreadyRequested = sp.getBoolean(notifRequestedKey, false)
+        if (!alreadyRequested) {
+            showNotifRationale = true
+        }
+    }
+    // Rationale dialog — shown before the OS system prompt so the user understands
+    // why push notifications are useful. Matches Android best-practice for
+    // in-context permission requests with a pre-prompt explanation.
+    if (showNotifRationale) {
+        AlertDialog(
+            onDismissRequest = {
+                showNotifRationale = false
+                // Mark as requested even on dismiss — don't nag again.
+                notifContext.getSharedPreferences(notifPrefsFile, android.content.Context.MODE_PRIVATE)
+                    .edit().putBoolean(notifRequestedKey, true).apply()
+            },
+            title = { Text(stringResource(R.string.notif_rationale_title)) },
+            text = { Text(stringResource(R.string.notif_rationale_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showNotifRationale = false
+                    notifContext.getSharedPreferences(notifPrefsFile, android.content.Context.MODE_PRIVATE)
+                        .edit().putBoolean(notifRequestedKey, true).apply()
+                    notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }) {
+                    Text(stringResource(R.string.notif_rationale_enable))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showNotifRationale = false
+                    notifContext.getSharedPreferences(notifPrefsFile, android.content.Context.MODE_PRIVATE)
+                        .edit().putBoolean(notifRequestedKey, true).apply()
+                }) {
+                    Text(stringResource(R.string.notif_rationale_not_now))
                 }
             },
         )

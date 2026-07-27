@@ -16,7 +16,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -40,10 +39,9 @@ import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.WorkspacePremium
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -106,7 +104,7 @@ private enum class GuestSignInFeature(
     ),
 }
 
-@OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     onBack: () -> Unit,
@@ -186,13 +184,7 @@ fun ProfileScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    val pullRefreshState = rememberPullRefreshState(
-        refreshing = isRefreshing,
-        onRefresh = {
-            isRefreshing = true
-            viewModel.refreshAll()
-        },
-    )
+    val pullToRefreshState = rememberPullToRefreshState()
 
     LaunchedEffect(Unit) { viewModel.loadProfile() }
     LaunchedEffect(state.isDeleted) { if (state.isDeleted) onDeletedAccount() }
@@ -346,11 +338,16 @@ fun ProfileScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         CosmicBackground {
-            Box(
+            PullToRefreshBox(
+                state = pullToRefreshState,
+                isRefreshing = isRefreshing,
+                onRefresh = {
+                    isRefreshing = true
+                    viewModel.refreshAll()
+                },
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
-                    .pullRefresh(pullRefreshState),
+                    .padding(innerPadding),
             ) {
                 Column(
                     modifier = Modifier.fillMaxSize(),
@@ -1031,14 +1028,6 @@ fun ProfileScreen(
                     }
                 }
 
-                // Pull-to-refresh indicator
-                PullRefreshIndicator(
-                    refreshing = isRefreshing,
-                    state = pullRefreshState,
-                    modifier = Modifier.align(Alignment.TopCenter),
-                    backgroundColor = NavySurface,
-                    contentColor = Gold,
-                )
             }
         }
     }

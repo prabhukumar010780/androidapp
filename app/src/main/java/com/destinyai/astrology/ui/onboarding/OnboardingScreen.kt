@@ -71,6 +71,7 @@ import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.Radius
 import com.destinyai.astrology.ui.theme.Spacing
+import com.destinyai.astrology.ui.theme.adaptiveContentWidth
 
 @Composable
 fun OnboardingScreen(
@@ -234,6 +235,9 @@ private fun OnboardingPage(slide: OnboardingSlide, modifier: Modifier = Modifier
             // allow scroll so the stats/features slides never render under the page dots or
             // Continue button on short screens.
             .verticalScroll(rememberScrollState())
+            // Cap content width on tablets/foldables so hero text and stats card don't
+            // stretch to unreadable line lengths; no-op on phones (widthIn upper bound).
+            .adaptiveContentWidth()
             // 24dp (was 32dp) so hero text/stats don't cramp on 320dp phones while
             // staying comfortable on standard widths.
             .padding(horizontal = 24.dp),

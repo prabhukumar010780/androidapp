@@ -72,7 +72,7 @@ class ChatViewModelTest {
         // append + repository.sendMessage call site can be exercised. Tests that
         // specifically exercise the quota path stub canAccessFeature directly.
         coEvery { prefs.getUserEmail() } returns null
-        viewModel = ChatViewModel(repository, authRepository, api, prefs, quotaManager, profileChangeBus, mockk(relaxed = true), appStartupService, appContext)
+        viewModel = ChatViewModel(repository, authRepository, api, prefs, quotaManager, profileChangeBus, mockk(relaxed = true), appStartupService, mockk(relaxed = true), appContext)
     }
 
     // --- Init ---

@@ -2872,4 +2872,11 @@ Until then: Use this period for strategic positioning.</string>
     <string name="yoga_token_moderate">moderate</string>
     <string name="yoga_token_yoga_reduced">yoga reduced</string>
     <string name="yoga_token_yoga_cancelled">yoga cancelled</string>
+    <!-- Notification permission rationale dialog — shown in-context after onboarding/auth,
+         before the OS system prompt. tools:ignore avoids MissingTranslation CI gate;
+         these strings will be localized in a follow-up translation pass. -->
+    <string name="notif_rationale_title" tools:ignore="MissingTranslation">Stay in cosmic sync</string>
+    <string name="notif_rationale_body" tools:ignore="MissingTranslation">Enable notifications to receive your daily astrological guidance, planetary transit alerts, and compatibility updates.</string>
+    <string name="notif_rationale_enable" tools:ignore="MissingTranslation">Enable</string>
+    <string name="notif_rationale_not_now" tools:ignore="MissingTranslation">Not now</string>
 </resources>

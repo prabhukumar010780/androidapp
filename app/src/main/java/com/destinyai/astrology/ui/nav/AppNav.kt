@@ -1,6 +1,7 @@
 package com.destinyai.astrology.ui.nav
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -470,7 +471,7 @@ fun AppNav() {
         AnimatedVisibility(
             visible = showSplash,
             enter = fadeIn(animationSpec = tween(0)),
-            exit = fadeOut(animationSpec = tween(durationMillis = 600)),
+            exit = fadeOut(animationSpec = tween(durationMillis = 400, easing = FastOutLinearInEasing)),
             modifier = Modifier.zIndex(1f),
         ) {
             SplashScreen(soundManager = splashSoundManager)

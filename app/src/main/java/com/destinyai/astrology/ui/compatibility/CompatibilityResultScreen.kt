@@ -87,6 +87,7 @@ import com.destinyai.astrology.domain.model.KutaDetail
 import com.destinyai.astrology.services.AppEvents
 import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
+import com.destinyai.astrology.ui.components.ShimmerButton
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
@@ -612,7 +613,7 @@ private fun OrbitTooltipView(
                     tint = statusColor,
                     modifier = Modifier.size(20.dp),
                 )
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(12.dp))
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -742,7 +743,7 @@ fun RecommendationBanner(
                 tint = borderColor,
                 modifier = Modifier.size(18.dp),
             )
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(12.dp))
             Text(
                 text = if (result.isRecommended) "Recommended" else "Not Recommended",
                 style = MaterialTheme.typography.titleSmall,
@@ -783,7 +784,7 @@ fun RecommendationBanner(
                         Spacer(Modifier.height(8.dp))
                         result.rejectionReasons.forEach { reason ->
                             Row(
-                                modifier = Modifier.padding(bottom = 6.dp),
+                                modifier = Modifier.padding(bottom = 8.dp),
                                 verticalAlignment = Alignment.Top,
                             ) {
                                 Text("⚠ ", color = errorColor, fontSize = AppType.caption)
@@ -865,53 +866,6 @@ fun RecommendationBanner(
 }
 
 // DoshaStatusRow and DoshaStatusRowLabel live in DoshaStatusRow.kt
-
-// ─── Shimmer Button ───────────────────────────────────────────────────────────
-
-@Composable
-fun ShimmerButton(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-) {
-    Button(
-        onClick = onClick,
-        enabled = enabled,
-        // DES-161: fixed 56dp height for iOS parity (ShimmerButton .frame(height: 56)
-        // in PremiumComponents.swift:68). Was heightIn(min = 52.dp), which let the
-        // button collapse to the 52dp floor and read as a thin pill vs iOS.
-        modifier = modifier.height(56.dp),
-        shape = RoundedCornerShape(26.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color.Transparent,
-            contentColor = Color(0xFF0D0D1A),
-            disabledContainerColor = NavyVariant,
-            disabledContentColor = Color(0xFF718096),
-        ),
-        contentPadding = PaddingValues(0.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    if (enabled) Brush.linearGradient(listOf(Gold, Color(0xFFF5D060), Gold))
-                    else Brush.linearGradient(listOf(NavyVariant, NavyVariant)),
-                    RoundedCornerShape(26.dp),
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = text,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = if (enabled) Color(0xFF0D0D1A) else Color(0xFF718096),
-                fontSize = AppType.body,
-                lineHeight = AppType.bodyLh,
-            )
-        }
-    }
-}
 
 // FloatingContextButton lives in FloatingContextButton.kt
 
@@ -1214,7 +1168,7 @@ fun AskDestinyDialog(
                     item {
                         // DES-161 C6a: left-align (Start), matching iOS. Was CenterHorizontally.
                         Column(
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                             horizontalAlignment = Alignment.Start,
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1257,7 +1211,7 @@ fun AskDestinyDialog(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color(0xFFC53030).copy(alpha = 0.85f))
                         .clickable { viewModel.dismissFollowUpError() }
@@ -1693,7 +1647,7 @@ private fun AskChatBubble(
                                     }
                                 },
                                 enabled = ratedStars == 0,
-                                modifier = Modifier.sizeIn(minWidth = 44.dp, minHeight = 48.dp),
+                                modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp),
                             ) {
                                 Icon(
                                     imageVector = if (star <= ratedStars) Icons.Filled.Star else Icons.Filled.StarBorder,

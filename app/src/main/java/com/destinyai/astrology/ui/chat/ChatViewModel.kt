@@ -21,6 +21,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
@@ -111,11 +112,17 @@ class ChatViewModel @Inject constructor(
     private val profileChangeBus: ProfileChangeBus,
     private val profileContextManager: com.destinyai.astrology.services.ProfileContextManager,
     private val appStartupService: com.destinyai.astrology.services.AppStartupService,
+    // Cat 10: connectivity for the Chat offline banner (parity with HomeViewModel).
+    private val networkMonitor: com.destinyai.astrology.services.NetworkMonitor,
     @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState
+
+    // Cat 10: connectivity for the Chat offline banner (parity with HomeViewModel.isOnline).
+    val isOnline: StateFlow<Boolean> = networkMonitor.isOnline
+        .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, true)
 
     // Mirrors iOS ChatViewModel.lastSentQuery / streamingTask — we cancel the active
     // stream when the app backgrounds and remember the question for the Retry banner.
@@ -575,7 +582,7 @@ class ChatViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isStreaming = false,
-                            errorMessage = e.message ?: "Unable to reach the prediction service. Please try again.",
+                            errorMessage = friendlyError(e),
                             interruptedQuestion = lastSentQuery,
                         )
                     }
@@ -647,7 +654,7 @@ class ChatViewModel @Inject constructor(
                                 _uiState.update {
                                     it.copy(
                                         isStreaming = false,
-                                        errorMessage = e.message,
+                                        errorMessage = e.message ?: friendlyError(e),
                                         interruptedQuestion = lastSentQuery,
                                         messages = it.messages.filterNot { m -> m.id == assistantId },
                                     )
@@ -656,8 +663,7 @@ class ChatViewModel @Inject constructor(
                                 _uiState.update {
                                     it.copy(
                                         isStreaming = false,
-                                        errorMessage = e.message
-                                            ?: "Unable to reach the prediction service. Please try again.",
+                                        errorMessage = friendlyError(e),
                                         interruptedQuestion = lastSentQuery,
                                         messages = it.messages.filterNot { m -> m.id == assistantId },
                                     )
@@ -1191,6 +1197,24 @@ class ChatViewModel @Inject constructor(
             } catch (_: Exception) {
                 // Backend unreachable or auth failed — preserve prior state.
             }
+        }
+    }
+
+    /**
+     * Cat 10: map exceptions to a user-readable sentence so raw Kotlin exception
+     * `.message` strings (server stack traces, HTTP body fragments, or a stringified
+     * "null") never reach the chat UI. Mirrors HomeViewModel.friendlyError.
+     */
+    private fun friendlyError(e: Throwable): String {
+        val msg = e.message?.lowercase().orEmpty()
+        return when {
+            e is java.net.SocketTimeoutException -> "Request timed out. Please try again."
+            e is java.io.IOException -> "Network unavailable. Check your connection."
+            msg.contains("401") || msg.contains("session") || msg.contains("unauthor") ->
+                "Session expired. Please sign in again."
+            msg.contains("timeout") || msg.contains("timed out") -> "Request timed out. Please try again."
+            msg.contains("cancel") -> "Request was interrupted. Please try again."
+            else -> "Unable to reach the prediction service. Please try again."
         }
     }
 }

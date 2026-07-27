@@ -88,7 +88,7 @@ fun DoshaStatusRow(
                     .clip(RoundedCornerShape(50))
                     .background(statusColor.copy(alpha = 0.15f))
                     .border(1.dp, statusColor.copy(alpha = 0.3f), RoundedCornerShape(50))
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(
@@ -97,7 +97,7 @@ fun DoshaStatusRow(
                         .clip(CircleShape)
                         .background(statusColor),
                 )
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(8.dp))
                 Text(
                     text = statusText.uppercase(),
                     style = MaterialTheme.typography.labelSmall,
@@ -162,7 +162,7 @@ fun DoshaStatusRowLabel(
                     .clip(RoundedCornerShape(50))
                     .background(statusColor.copy(alpha = 0.15f))
                     .border(1.dp, statusColor.copy(alpha = 0.3f), RoundedCornerShape(50))
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(
@@ -171,7 +171,7 @@ fun DoshaStatusRowLabel(
                         .clip(CircleShape)
                         .background(statusColor),
                 )
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(8.dp))
                 Text(
                     text = statusText.uppercase(),
                     style = MaterialTheme.typography.labelSmall,

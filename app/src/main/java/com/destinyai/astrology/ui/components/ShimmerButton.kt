@@ -25,8 +25,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.destinyai.astrology.ui.theme.AuthDimens
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.GoldLight
 import com.destinyai.astrology.ui.theme.GoldSoft
@@ -89,9 +89,9 @@ fun ShimmerButton(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(AuthDimens.buttonHeight)
+            .height(56.dp)
             .onSizeChanged { widthPx = it.width.toFloat() }
-            .clip(RoundedCornerShape(AuthDimens.buttonCornerRadius))
+            .clip(RoundedCornerShape(14.dp))
             .background(if (enabled) shimmerBrush else Brush.horizontalGradient(listOf(baseColor.copy(alpha = 0.4f), baseColor.copy(alpha = 0.4f))))
             .clickable(enabled = enabled, onClick = onClick)
             .alpha(if (enabled) 1f else 0.5f),

@@ -198,7 +198,7 @@ private fun StepRow(
             }
         }
 
-        Spacer(Modifier.width(14.dp))
+        Spacer(Modifier.width(16.dp))
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -254,7 +254,7 @@ private fun StreamingTextBox(text: String, modifier: Modifier = Modifier) {
                 tint = Gold,
                 modifier = Modifier.size(12.dp),
             )
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(8.dp))
             Text(
                 text = stringResource(R.string.ai_analysis_label),
                 fontSize = 11.sp,
@@ -262,7 +262,7 @@ private fun StreamingTextBox(text: String, modifier: Modifier = Modifier) {
                 fontWeight = FontWeight.SemiBold,
             )
         }
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.Bottom) {
             Text(
                 text = text,
