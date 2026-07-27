@@ -321,22 +321,14 @@ fun CompatibilityScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .adaptiveContentWidth()
-                    // The Match tab keeps the global bottom tab bar VISIBLE (MainScreen
-                    // only hides it on the Chat tab, index 1). So this scroll content is
-                    // NOT the bottom-most surface — the ~76dp tab bar sits on top of it.
-                    // DES-161 (button "half" clipped): a trailing in-scroll Spacer left the
-                    // Analyze CTA resting HALF-behind the tab bar (only fully visible after
-                    // an extra scroll). Instead, inset the scroll VIEWPORT's bottom by the
-                    // tab-bar reserve — applied BEFORE verticalScroll so it shrinks the
-                    // viewport rather than scrolling with content — so the scrollable area
-                    // ends ABOVE the tab bar and the CTA can never land behind it.
-                    .padding(
-                        bottom = 76.dp +
-                            WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
-                            16.dp,
-                    )
                     .verticalScroll(rememberScrollState())
-                    // Keep imePadding() so the keyboard still lifts the form.
+                    // The Match tab keeps the global bottom tab bar VISIBLE (MainScreen
+                    // only hides it on the Chat tab, index 1), so this scroll content is
+                    // NOT the bottom-most surface — the ~76dp tab bar overlays it. The
+                    // trailing Spacer below reserves tab-bar + nav-inset + breathing room
+                    // so the Analyze CTA clears the bar. (An earlier attempt to inset the
+                    // viewport BEFORE verticalScroll disabled scrolling — fillMaxSize +
+                    // pre-scroll padding pins the content to viewport height.)
                     .imePadding()
                     .padding(horizontal = 16.dp),
                 // DES-161 R4a: widen section spacing to match iOS (outer VStack
@@ -694,6 +686,16 @@ fun CompatibilityScreen(
                         enabled = state.canAnalyze && ageWarning == null,
                     )
                 }
+
+                // Bottom reserve so the Analyze CTA clears the global tab bar (visible on
+                // the Match tab) + gesture-nav inset. Mirrors HomeScreen.tabBarReserve.
+                Spacer(
+                    Modifier.height(
+                        76.dp +
+                            WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() +
+                            16.dp,
+                    ),
+                )
             }
         }
 
