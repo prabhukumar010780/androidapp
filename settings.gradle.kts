@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "android_app"
 include(":app")
+include(":baselineprofile")
