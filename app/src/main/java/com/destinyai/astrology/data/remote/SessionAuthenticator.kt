@@ -36,10 +36,15 @@ class SessionAuthenticator(
         // Only act if the failing request actually used the session JWT.
         if (sentBearer != "Bearer $staleJwt") return null
 
-        // Peek the 401 body's detail.code. Only `session_expired` is a refresh trigger;
-        // any REAUTH code (or an unreadable/other code) is NOT refreshable.
+        // Peek the 401 body's detail.code. A time-expired session JWT is
+        // refreshable; anything in REAUTH_CODES is not. The server historically
+        // returned `session_required` (generic) for an expired access token
+        // instead of `session_expired`, so we accept BOTH as refresh triggers —
+        // otherwise an expired token surfaces as session_required, the refresh
+        // never fires, and the app loops on 401 ("network error"). A REAUTH
+        // code (or an unreadable/other code) is still NOT refreshable.
         val code = parseDetailCode(response)
-        if (code != null && code != "session_expired") {
+        if (code != null && code !in REFRESHABLE_CODES) {
             if (code in REAUTH_CODES) clearForReauth()
             return null
         }
@@ -93,6 +98,12 @@ class SessionAuthenticator(
     private companion object {
         // Header set by the delete-account request so this authenticator skips it (SEC-3).
         const val SKIP_REAUTH_HEADER = "X-Skip-Reauth"
+        // 401 detail.code values that mean "the access token expired, refresh it".
+        // `session_required` is the generic code the server returns for an
+        // expired JWT when identity resolves to None; `session_expired` is the
+        // specific code (server now propagates it, but older builds/paths still
+        // emit session_required — accept both).
+        val REFRESHABLE_CODES = setOf("session_expired", "session_required")
         val REAUTH_CODES = setOf(
             "refresh_reused", "refresh_unknown", "refresh_expired",
             "session_revoked", "google_reattest_required",
