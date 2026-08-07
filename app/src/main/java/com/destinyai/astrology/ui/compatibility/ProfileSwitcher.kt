@@ -77,7 +77,7 @@ fun ProfileSwitcher(
                 Text(
                     text = firstName,
                     fontSize = 14.sp,
-                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                     color = if (isSelected) Color(0xFF0D0D1A) else CreamDim,
                     maxLines = 1,
                 )

@@ -81,7 +81,7 @@ fun MangalDoshaScreen(
                 Text(
                     text = stringResource(R.string.mars_compatibility_title),
                     fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     color = CreamText,
                     modifier = Modifier
                         .weight(1f)
@@ -176,7 +176,7 @@ private fun SafeScenarioView(boyName: String, girlName: String) {
 
         // Educational note card
         MarsGlassCard {
-            Text(stringResource(R.string.why_is_this_good), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = CreamText)
+            Text(stringResource(R.string.why_is_this_good), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = CreamText)
             Spacer(Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.non_manglik_explanation),
@@ -204,7 +204,7 @@ private fun SafePersonCard(name: String, modifier: Modifier = Modifier) {
             ) {
                 Icon(Icons.Filled.Person, contentDescription = null, tint = Gold, modifier = Modifier.size(24.dp))
             }
-            Text(name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = CreamText, maxLines = 1)
+            Text(name, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = CreamText, maxLines = 1)
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(50))
@@ -281,7 +281,7 @@ private fun CancelledScenarioView(
                         tint = Gold,
                         modifier = Modifier.size(16.dp),
                     )
-                    Text(stringResource(R.string.why_cancelled), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = CreamText)
+                    Text(stringResource(R.string.why_cancelled), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = CreamText)
                 }
                 Spacer(Modifier.height(10.dp))
 
@@ -396,7 +396,7 @@ private fun EffectiveScenarioView(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text("🛡️", fontSize = 16.sp)
-                    Text(stringResource(R.string.mitigating_exceptions_title), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = CreamText)
+                    Text(stringResource(R.string.mitigating_exceptions_title), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = CreamText)
                 }
                 Spacer(Modifier.height(6.dp))
                 Text(
@@ -426,7 +426,7 @@ private fun EffectiveScenarioView(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text("🔶", fontSize = 16.sp)
-                    Text(stringResource(R.string.suggested_remedies_title), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = CreamText)
+                    Text(stringResource(R.string.suggested_remedies_title), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = CreamText)
                 }
                 Spacer(Modifier.height(10.dp))
                 allRemedies.forEachIndexed { i, remedy ->
@@ -494,7 +494,7 @@ private fun MarsStatusPersonCard(name: String, data: MangalDoshaModel?, modifier
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Text(name, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CreamText, maxLines = 1)
+            Text(name, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = CreamText, maxLines = 1)
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(50))
@@ -553,7 +553,7 @@ private fun ExceptionPersonBlock(
             )
             Text(
                 text = if (impactSummary != null) "$name: $impactSummary" else name,
-                fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                fontSize = 12.sp, fontWeight = FontWeight.Bold,
                 color = if (impactSummary != null) accentColor else CreamDim,
             )
         }

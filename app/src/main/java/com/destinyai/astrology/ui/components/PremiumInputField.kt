@@ -93,7 +93,7 @@ fun PremiumInputField(
                 text = label,
                 color = CreamDim,
                 fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Normal,
             )
             Spacer(Modifier.height(8.dp))
         }

@@ -47,7 +47,7 @@ fun OfflineBanner(modifier: Modifier = Modifier) {
             text = stringResource(R.string.home_offline_message),
             color = Color.White,
             fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.Normal,
         )
     }
 }

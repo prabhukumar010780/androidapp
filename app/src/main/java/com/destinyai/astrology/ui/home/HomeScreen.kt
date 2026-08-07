@@ -348,7 +348,7 @@ fun HomeScreen(
                         Text(
                             text = stringResource(R.string.syncing_cosmic_data),
                             fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                             fontFamily = CanelaFontFamily,
                             color = Gold,
                         )
@@ -436,7 +436,7 @@ fun HomeScreen(
                             ),
                             style = MaterialTheme.typography.headlineSmall,
                             fontFamily = CanelaFontFamily,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                             color = Gold,
                         )
                         if (state.ascendantSign.isNotBlank()) {
@@ -447,7 +447,7 @@ fun HomeScreen(
                                     localizedSignName(state.ascendantSign),
                                 ),
                                 fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium,
+                                fontWeight = FontWeight.Normal,
                                 color = CreamDim,
                             )
                         }
@@ -522,7 +522,7 @@ fun HomeScreen(
                             text = stringResource(R.string.home_current_dasha),
                             modifier = Modifier.padding(horizontal = 16.dp),
                             fontSize = 18.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                             fontFamily = CanelaFontFamily,
                         )
                         Spacer(Modifier.height(8.dp))
@@ -545,7 +545,7 @@ fun HomeScreen(
                             text = stringResource(R.string.home_current_transits),
                             modifier = Modifier.padding(horizontal = 16.dp),
                             fontSize = 18.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                             fontFamily = CanelaFontFamily,
                         )
                         Spacer(Modifier.height(8.dp))
@@ -1032,7 +1032,7 @@ private fun StoryOrb(
             text = area.name.uppercase(),
             fontSize = AppType.caption,
             lineHeight = AppType.captionLh,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
             color = GoldLight,
             letterSpacing = 0.3.sp,
             textAlign = TextAlign.Center,
@@ -1138,7 +1138,7 @@ private fun DashaInsightCard(dashaInfo: HomeDashaInfo, onClick: () -> Unit = {})
                     text = periodText,
                     fontSize = 17.sp,
                     fontFamily = CanelaFontFamily,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     color = Color.White,
                     modifier = Modifier.weight(1f),
                     maxLines = 2,
@@ -1177,7 +1177,7 @@ private fun DashaInsightCard(dashaInfo: HomeDashaInfo, onClick: () -> Unit = {})
                     Text(
                         text = stringResource(R.string.home_dasha_theme_label) + ": " + dashaInfo.theme,
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.Normal,
                         color = GoldLight,
                     )
                 }
@@ -1360,7 +1360,7 @@ private fun TransitAlertCard(transit: HomeTransit, onClick: () -> Unit = {}) {
                 Text(
                     text = transit.planet,
                     fontSize = 9.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     color = Gold,
                 )
             }
@@ -1445,7 +1445,7 @@ private fun YogaHighlightRow(
         GoldGradientText(
             text = stringResource(R.string.yoga_positive_negative),
             fontSize = 18.sp,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
             fontFamily = CanelaFontFamily,
         )
         Spacer(Modifier.height(8.dp))
@@ -1597,7 +1597,7 @@ private fun YogaFilterChip(
                 text = stringResource(labelRes),
                 fontSize = AppType.caption,
                 lineHeight = AppType.captionLh,
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                 color = if (selected) Gold else CreamDim,
             )
         }
@@ -1814,7 +1814,7 @@ private fun DoshaStatusRow(doshas: HomeDoshaStatus) {
             text = stringResource(R.string.home_dosha_alerts),
             style = MaterialTheme.typography.labelLarge,
             color = Gold.copy(alpha = 0.7f),
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
         )
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1846,7 +1846,7 @@ private fun DoshaChip(label: String, severity: String, color: Color) {
             .padding(horizontal = 10.dp, vertical = 6.dp),
     ) {
         Column {
-            Text(text = label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = color)
+            Text(text = label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = color)
             if (severity.isNotEmpty()) {
                 // Issue 44: tracked uppercase caption to match iOS (e.g. 'MILD','SEVERE').
                 Text(
@@ -2104,7 +2104,7 @@ private fun ErrorBanner(
                         color = Gold,
                         fontSize = AppType.caption,
                         lineHeight = AppType.captionLh,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                     )
                 }
                 TextButton(onClick = onDismiss) {
@@ -2305,7 +2305,7 @@ private fun LifeAreaBriefPopup(
                                     text = stringResource(R.string.ask_more_ellipsis),
                                     color = Gold,
                                     fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
+                                    fontWeight = FontWeight.Bold,
                                 )
                             }
                         }
@@ -2381,7 +2381,7 @@ private fun YogaDetailPopup(
                             text = DoshaDescriptions.localizedYogaCategory(ctx, yoga.category),
                             fontSize = 11.sp,
                             color = Gold,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                         )
                     }
                     Box(
@@ -2394,7 +2394,7 @@ private fun YogaDetailPopup(
                             text = statusLabel,
                             fontSize = 11.sp,
                             color = CreamDim,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                         )
                     }
                 }
@@ -2466,7 +2466,7 @@ private fun YogaDetailPopup(
                             text = stringResource(R.string.home_ask_more),
                             color = Gold,
                             fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                         )
                     }
                 }
@@ -2494,7 +2494,7 @@ private fun WhatsInMyMindGrid(
         GoldGradientText(
             text = stringResource(R.string.home_what_in_my_mind),
             fontSize = 18.sp,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
             fontFamily = CanelaFontFamily,
         )
         Spacer(Modifier.height(8.dp))
@@ -2556,7 +2556,7 @@ private fun QuickQuestionCard(
             Text(
                 text = question,
                 fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Normal,
                 color = CreamText,
                 lineHeight = 20.sp,
                 maxLines = 3,
@@ -2633,7 +2633,7 @@ private fun OfflineBanner(modifier: Modifier = Modifier) {
             text = stringResource(R.string.home_offline_message),
             color = Color.White,
             fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.Normal,
         )
     }
 }
@@ -2758,7 +2758,7 @@ private fun ProfileSwitcherSheet(
                                 text = entry.name,
                                 color = CreamText,
                                 fontSize = 14.sp,
-                                fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
+                                fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
                                 modifier = Modifier.weight(1f),
                             )
                             if (isActive) {
@@ -2782,7 +2782,7 @@ private fun ProfileSwitcherSheet(
                     text = stringResource(R.string.profile_switch_profile),
                     color = Gold,
                     fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                 )
             }
         }
@@ -2810,7 +2810,7 @@ private fun YogaDetailRow(label: String, value: String) {
             text = label.uppercase(),
             fontSize = 10.sp,
             color = Gold.copy(alpha = 0.7f),
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
             letterSpacing = 1.sp,
         )
         Text(

@@ -628,7 +628,7 @@ private fun StarterQuestionsView(questions: List<String>, onQuestionTap: (String
             stringResource(R.string.ask_destiny),
             fontFamily = CanelaFontFamily,
             fontSize = 20.sp,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
             color = CreamText,
         )
         Text(
@@ -891,7 +891,7 @@ private fun appendInlineMarkdown(
             androidx.compose.ui.text.SpanStyle(
                 color = Gold,
                 fontStyle = FontStyle.Italic,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Normal,
             ),
         )
         builder.append(text.replace("*", "").replace("_", "").trim())
@@ -1094,7 +1094,7 @@ private fun DepthLayerRow(
         Text(
             text = title,
             fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.Normal,
             color = if (expanded) Gold.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.45f),
             modifier = Modifier.weight(1f),
         )
@@ -1689,7 +1689,7 @@ private fun ResponseLengthSheet(
                 Text(
                     stringResource(R.string.response_style_setting_title),
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     fontFamily = CanelaFontFamily,
                     color = Gold,
                     modifier = Modifier.weight(1f),
@@ -1743,7 +1743,7 @@ private fun ResponseLengthOption(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, fontSize = 15.sp, color = CreamText, fontWeight = FontWeight.Medium)
+            Text(title, fontSize = 15.sp, color = CreamText, fontWeight = FontWeight.Normal)
             Text(desc, fontSize = 12.sp, color = CreamDim)
         }
         if (isSelected) {
@@ -1776,7 +1776,7 @@ private fun QuotaExhaustedGuestSheet(
             Text(
                 stringResource(R.string.guest_question_limit_reached),
                 fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 fontFamily = CanelaFontFamily,
                 color = Gold,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -1852,7 +1852,7 @@ private fun QuotaExhaustedAccountSheet(
             Text(
                 stringResource(if (isFairUse) R.string.usage_restricted_title else R.string.quota_exhausted_title),
                 fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 fontFamily = CanelaFontFamily,
                 color = Gold,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,

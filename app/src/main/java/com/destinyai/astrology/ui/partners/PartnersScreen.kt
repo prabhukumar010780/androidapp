@@ -212,7 +212,7 @@ fun PartnersScreen(
                 ) {
                     Text(
                         stringResource(R.string.partner_form_add_button),
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         fontSize = 14.sp,
                     )
                 }
@@ -286,7 +286,7 @@ fun PartnersScreen(
                         ) {
                             Text(
                                 stringResource(R.string.add_birth_chart_action),
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
                             )
                         }
@@ -350,7 +350,7 @@ fun PartnersScreen(
                                     Text(
                                         text = partner.name,
                                         fontSize = 16.sp,
-                                        fontWeight = FontWeight.SemiBold,
+                                        fontWeight = FontWeight.Bold,
                                         color = CreamText,
                                     )
                                     // iOS parity (PartnerManagerView.swift:278-293): show
@@ -463,7 +463,7 @@ fun PartnersScreen(
                 Text(
                     text = stringResource(R.string.profile_protected_title),
                     color = CreamText,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                 )
             },
             text = {
@@ -476,7 +476,7 @@ fun PartnersScreen(
             },
             confirmButton = {
                 TextButton(onClick = { viewModel.dismissProtectionAlert() }) {
-                    Text(stringResource(R.string.ok), color = Gold, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.ok), color = Gold, fontWeight = FontWeight.Bold)
                 }
             },
         )
@@ -491,7 +491,7 @@ fun PartnersScreen(
                 Text(
                     text = stringResource(R.string.partner_quota_upgrade_title),
                     color = CreamText,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                 )
             },
             text = {
@@ -517,7 +517,7 @@ fun PartnersScreen(
                     Text(
                         stringResource(R.string.partner_quota_upgrade_action),
                         color = Gold,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                     )
                 }
             },
@@ -540,7 +540,7 @@ fun PartnersScreen(
                 Text(
                     text = stringResource(R.string.error),
                     color = CreamText,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                 )
             },
             text = { Text(text = msg, color = CreamDim) },
@@ -549,7 +549,7 @@ fun PartnersScreen(
                     Text(
                         stringResource(R.string.ok),
                         color = Gold,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                     )
                 }
             },
@@ -588,7 +588,7 @@ fun PartnersScreen(
                 Text(
                     text = stringResource(R.string.partner_delete_confirm_title),
                     color = CreamText,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                 )
             },
             text = {
@@ -605,7 +605,7 @@ fun PartnersScreen(
                     Text(
                         stringResource(R.string.delete),
                         color = Color(0xFFFF5252),
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                     )
                 }
             },
@@ -653,7 +653,7 @@ private fun PickerRow(
                 color = if (isPlaceholder) CreamDim.copy(alpha = 0.6f) else CreamText,
                 fontSize = AppType.secondary,
                 lineHeight = AppType.secondaryLh,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
             )
         }
     }
@@ -685,7 +685,7 @@ private fun GuardianConsentRow(
                 text = stringResource(R.string.partner_form_guardian_consent_title),
                 color = CreamText,
                 fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
             )
             Text(
                 text = stringResource(R.string.partner_form_guardian_consent_message),
@@ -909,7 +909,7 @@ private fun BadgeChip(
             color = tint,
             fontSize = AppType.caption,
             lineHeight = AppType.captionLh,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
         )
     }
 }
@@ -1007,7 +1007,7 @@ internal fun PartnerFormSheet(
                     },
                 ),
                 fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 color = Gold,
             )
             PartnerTextField(
@@ -1203,7 +1203,7 @@ internal fun PartnerFormSheet(
                                 )
                                 Text(
                                     stringResource(R.string.partner_form_save_button),
-                                    fontWeight = FontWeight.SemiBold,
+                                    fontWeight = FontWeight.Bold,
                                     color = Color(0xFF0D0D1A),
                                 )
                             }
@@ -1262,7 +1262,7 @@ private fun PartnerMetaRow(partner: PartnerDto) {
                 style = androidx.compose.ui.text.TextStyle(
                     brush = Brush.linearGradient(listOf(Gold, Color(0xFFF5D060))),
                 ),
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
             )
         }
         if (genderLabel != null) {
@@ -1404,7 +1404,7 @@ private fun GenderModalSheet(
             Text(
                 text = stringResource(R.string.partner_form_gender_label),
                 color = Gold,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
                 fontFamily = CanelaFontFamily,
                 modifier = Modifier.padding(vertical = 8.dp),

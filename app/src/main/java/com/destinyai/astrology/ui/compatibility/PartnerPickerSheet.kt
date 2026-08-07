@@ -91,7 +91,7 @@ fun PartnerPickerSheet(
             Text(
                 text = stringResource(R.string.partner_picker_title),
                 fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 color = Gold,
             )
             Spacer(Modifier.height(16.dp))
@@ -199,7 +199,7 @@ fun PartnerPickerSheet(
                                 Text(
                                     text = partner.name.ifEmpty { stringResource(R.string.partner_default_name) },
                                     fontSize = 16.sp,
-                                    fontWeight = FontWeight.SemiBold,
+                                    fontWeight = FontWeight.Bold,
                                     color = CreamText,
                                 )
                                 // Gender symbol + formatted DOB + city sub-row (iOS parity).
@@ -259,7 +259,7 @@ fun PartnerPickerSheet(
                         text = stringResource(R.string.partner_picker_add_new),
                         color = Gold,
                         fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                     )
                 }
             }

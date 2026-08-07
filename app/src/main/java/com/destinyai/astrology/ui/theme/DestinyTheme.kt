@@ -126,16 +126,6 @@ val CanelaFontFamily = FontFamily(
     Font(R.font.canela_light, FontWeight.Light),
 )
 
-// Issue 18: graceful serif fallback mirroring iOS .system(serif).
-// Compose has no API to chain a FontFamily after a custom one, so callers
-// can use CanelaFontFamilyWithFallback when the Canela asset may be missing.
-val CanelaFontFamilyWithFallback: FontFamily = runCatching { CanelaFontFamily }
-    .getOrDefault(FontFamily.Serif)
-
-val PlayfairFontFamily = FontFamily(
-    Font(R.font.playfair_display_regular, FontWeight.Normal),
-)
-
 /**
  * Auth screen dimensions — mirrors iOS `AppTheme.Auth` exactly.
  * All values match `ios_app/Design/AppTheme.swift` so the Android
@@ -230,7 +220,7 @@ private val DestinyTypography = Typography(
     bodyLarge = TextStyle(fontFamily = CanelaFontFamily, fontSize = 16.sp),
     bodyMedium = TextStyle(fontFamily = CanelaFontFamily, fontSize = 14.sp),
     bodySmall = TextStyle(fontFamily = CanelaFontFamily, fontSize = 12.sp),
-    labelLarge = TextStyle(fontFamily = CanelaFontFamily, fontSize = 14.sp, fontWeight = FontWeight.Medium),
+    labelLarge = TextStyle(fontFamily = CanelaFontFamily, fontSize = 14.sp, fontWeight = FontWeight.Normal),
     labelMedium = TextStyle(fontFamily = CanelaFontFamily, fontSize = 12.sp),
     labelSmall = TextStyle(fontFamily = CanelaFontFamily, fontSize = 11.sp),
 )
@@ -385,7 +375,7 @@ object AppTheme {
         )
         val premiumTitle = TextStyle(
             fontFamily = CanelaFontFamily,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
             fontSize = 22.sp,
         )
         val premiumBody = TextStyle(
@@ -768,8 +758,9 @@ fun PremiumWheelPicker(
                                 Text(
                                     text = label,
                                     color = Color.White,
+                                    fontFamily = CanelaFontFamily,
                                     fontSize = 20.sp,
-                                    fontWeight = FontWeight.Medium,
+                                    fontWeight = FontWeight.Normal,
                                     textAlign = TextAlign.Center,
                                 )
                             }
@@ -964,6 +955,7 @@ fun PremiumSelectionSheet(
                             Spacer(Modifier.weight(1f))
                             Text(
                                 text = label,
+                                fontFamily = CanelaFontFamily,
                                 fontSize = 18.sp,
                                 color = AppTheme.colors.textPrimary,
                                 textAlign = TextAlign.Center,
@@ -1067,7 +1059,8 @@ fun DatePickerSheet(
                 Text(
                     text = resolvedDoneLabel,
                     color = AppTheme.colors.gold,
-                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = CanelaFontFamily,
+                    fontWeight = FontWeight.Bold,
                     fontSize = 17.sp,
                 )
             }

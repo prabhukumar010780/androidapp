@@ -145,7 +145,7 @@ private fun SegmentItem(
             text = label,
             color = if (selected) Gold else CreamText.copy(alpha = 0.55f),
             fontSize = 15.sp,
-            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
+            fontWeight = if (selected) FontWeight.Normal else FontWeight.Normal,
         )
     }
 }

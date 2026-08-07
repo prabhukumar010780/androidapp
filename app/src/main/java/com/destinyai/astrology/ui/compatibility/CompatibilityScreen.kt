@@ -553,7 +553,7 @@ fun CompatibilityScreen(
                         border = BorderStroke(1.dp, Gold.copy(alpha = 0.5f)),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold),
                     ) {
-                        Text(stringResource(com.destinyai.astrology.R.string.compat_retry_failed), fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(com.destinyai.astrology.R.string.compat_retry_failed), fontWeight = FontWeight.Bold)
                     }
                 }
 
@@ -730,7 +730,7 @@ fun CompatibilityScreen(
                     Text(
                         text = stringResource(com.destinyai.astrology.R.string.loaded_from_history),
                         style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.Normal,
                         color = CreamText,
                     )
                 }
@@ -965,7 +965,7 @@ private fun YouCard(name: String, summary: String) {
                 Text(
                     text = name.ifEmpty { meFallback },
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     color = CreamText,
                 )
                 if (summary.isNotEmpty()) {
@@ -986,7 +986,7 @@ private fun SectionHeader(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.labelLarge,
-        fontWeight = FontWeight.SemiBold,
+        fontWeight = FontWeight.Bold,
         color = Gold.copy(alpha = 0.7f),
     )
 }
@@ -1143,7 +1143,7 @@ private fun PartnerTabStrip(
                         Text(
                             text = partnerTabLabelComposable(index),
                             style = MaterialTheme.typography.labelSmall,
-                            fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
+                            fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
                         )
                         if (partner.isComplete) {
                             Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(10.dp))
@@ -1276,7 +1276,7 @@ private fun GenderSelectionSheet(
     )
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = NavySurface) {
         Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(stringResource(R.string.compat_gender_identity_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = CreamText)
+            Text(stringResource(R.string.compat_gender_identity_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = CreamText)
             Spacer(Modifier.height(8.dp))
             options.forEach { (key, labelRes) ->
                 val isSelected = selected == key
@@ -1420,7 +1420,7 @@ fun QuotaExhaustedDialog(
                 text = stringResource(titleRes),
                 style = MaterialTheme.typography.titleMedium,
                 color = Gold,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
             )
         },
         text = {
@@ -1443,7 +1443,7 @@ fun QuotaExhaustedDialog(
                         },
                     ),
                     color = Gold,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                 )
             }
         },

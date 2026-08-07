@@ -169,7 +169,7 @@ fun HistoryScreen(
                     Text(
                         text = stringResource(R.string.done_action),
                         color = Gold,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                     )
                 }
             }
@@ -310,7 +310,7 @@ private fun HistoryDisabledState(onOpenSettings: () -> Unit) {
         Text(
             text = stringResource(R.string.history_turned_off),
             fontSize = 20.sp,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
             color = CreamText,
         )
         Spacer(Modifier.height(12.dp))
@@ -329,7 +329,7 @@ private fun HistoryDisabledState(onOpenSettings: () -> Unit) {
         ) {
             Icon(Icons.Filled.Settings, contentDescription = null, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.open_settings), fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.open_settings), fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -429,7 +429,7 @@ private fun UnifiedHistoryList(
                 else
                     stringResource(R.string.history_no_results),
                 fontSize = 22.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 color = CreamText,
             )
             Spacer(Modifier.height(8.dp))
@@ -570,7 +570,7 @@ private fun UnifiedSectionHeader(key: HistorySectionKey) {
         Text(
             text = label,
             fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
             color = CreamDim,
         )
     }
@@ -733,7 +733,7 @@ private fun ChatThreadRow(
                 Text(
                     text = resolvedTitle,
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     color = CreamText,
                     maxLines = 1,
                 )
@@ -764,7 +764,7 @@ private fun ChatThreadRow(
                     Text(
                         text = "${thread.messageCount}",
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         color = Gold,
                     )
                     Text(
@@ -987,7 +987,7 @@ private fun CompatibilityHistoryItemRow(
                 Text(
                     text = rowTitle,
                     fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     color = CreamText,
                 )
                 Spacer(Modifier.height(2.dp))
@@ -1018,7 +1018,7 @@ private fun CompatibilityHistoryItemRow(
                     Text(
                         text = "${item.userQuestionCount}",
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         color = Gold,
                     )
                 }
@@ -1189,7 +1189,7 @@ private fun CompatibilityGroupRow(
                 Text(
                     text = title,
                     fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     color = CreamText,
                     maxLines = 1,
                 )
@@ -1206,7 +1206,7 @@ private fun CompatibilityGroupRow(
                     Text(
                         text = stringResource(R.string.history_best_score_format, best.totalScore, best.maxScore),
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         color = GroupPurple,
                     )
                     Spacer(Modifier.height(2.dp))

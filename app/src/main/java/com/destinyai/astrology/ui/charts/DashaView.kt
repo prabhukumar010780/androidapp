@@ -58,7 +58,7 @@ fun DashaView(dashaResponse: DashaResponse?) {
             Text(
                 stringResource(R.string.vimshottari_dasha_year_fmt, dashaResponse?.year ?: 2024),
                 fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 color = Color(0xFF0B0F19),
             )
         }
@@ -96,7 +96,7 @@ private fun DashaRow(period: DashaPeriod) {
             Text(
                 "${localPlanetName(period.mahadasha)} - ${localPlanetName(period.antardasha)}",
                 fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 color = Color(0xFF0B0F19),
             )
             Text(

@@ -298,7 +298,7 @@ fun GuestSignInPromptScreen(
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = stringResource(R.string.continue_with_google),
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
                     )
                 }
@@ -351,7 +351,7 @@ fun GuestSignInPromptScreen(
                 ) {
                     Text(
                         text = supportLabel,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
                         color = Gold,
                     )
@@ -385,7 +385,7 @@ fun GuestSignInPromptScreen(
                     Text(
                         text = stringResource(R.string.action_back),
                         fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.Normal,
                         color = Gold,
                     )
                 }
@@ -416,7 +416,7 @@ fun GuestSignInPromptScreen(
                             text = stringResource(R.string.signing_in),
                             color = CreamText,
                             fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
+                            fontWeight = FontWeight.Normal,
                         )
                     }
                 }

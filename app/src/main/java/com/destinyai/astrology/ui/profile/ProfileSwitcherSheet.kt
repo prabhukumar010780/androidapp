@@ -282,7 +282,7 @@ fun ProfileSwitcherSheet(
                                         fontSize = AppType.caption,
                                         lineHeight = AppType.captionLh,
                                         color = Gold,
-                                        fontWeight = FontWeight.SemiBold,
+                                        fontWeight = FontWeight.Bold,
                                     )
                                 }
                             }
@@ -367,7 +367,7 @@ fun ProfileSwitcherSheet(
                                     Text(
                                         text = profile.name,
                                         fontSize = 16.sp,
-                                        fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
+                                        fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
                                         color = if (isActive) Gold else CreamText,
                                     )
                                     // R2-P19 "(You)" badge
@@ -379,7 +379,7 @@ fun ProfileSwitcherSheet(
                                                 .background(Gold.copy(alpha = 0.15f))
                                                 .padding(horizontal = 6.dp, vertical = 2.dp),
                                         ) {
-                                            Text(text = stringResource(R.string.profile_you_badge), fontSize = AppType.caption, lineHeight = AppType.captionLh, color = Gold, fontWeight = FontWeight.SemiBold)
+                                            Text(text = stringResource(R.string.profile_you_badge), fontSize = AppType.caption, lineHeight = AppType.captionLh, color = Gold, fontWeight = FontWeight.Bold)
                                         }
                                     }
                                 }
@@ -438,7 +438,7 @@ fun ProfileSwitcherSheet(
                         text = stringResource(R.string.profile_manage_birth_charts_link),
                         color = Gold,
                         fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.Normal,
                         modifier = Modifier.weight(1f),
                     )
                     Icon(
@@ -645,7 +645,7 @@ private fun ActiveProfileCard(profile: ProfileEntry) {
             Text(
                 text = stringResource(R.string.profile_active_badge),
                 fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 color = Gold,
             )
         }

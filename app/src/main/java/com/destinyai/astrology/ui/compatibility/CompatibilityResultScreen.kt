@@ -695,7 +695,7 @@ private fun OrbitTooltipView(
                 text = "See classical analysis →",
                 style = MaterialTheme.typography.labelMedium,
                 color = Gold,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Normal,
             )
         }
     }
@@ -1024,7 +1024,7 @@ fun AskDestinyDialog(
                         text = stringResource(R.string.ask_destiny_title),
                         fontFamily = CanelaFontFamily,
                         fontSize = 17.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         color = CreamText,
                         textAlign = TextAlign.Center,
                     )
@@ -1032,7 +1032,7 @@ fun AskDestinyDialog(
                         onClick = onDismiss,
                         modifier = Modifier.align(Alignment.CenterEnd),
                     ) {
-                        Text(stringResource(R.string.done_action), color = Gold, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.done_action), color = Gold, fontWeight = FontWeight.Bold)
                     }
                 }
 
@@ -1404,7 +1404,7 @@ private fun CompatResponseLengthSheet(
             Text(
                 stringResource(R.string.compat_response_style_title),
                 fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 color = Gold,
             )
             CompatLengthOption(
@@ -1449,7 +1449,7 @@ private fun CompatLengthOption(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, fontSize = 15.sp, color = CreamText, fontWeight = FontWeight.Medium)
+            Text(title, fontSize = 15.sp, color = CreamText, fontWeight = FontWeight.Normal)
             Text(desc, fontSize = 12.sp, color = CreamDim)
         }
         if (isSelected) {

@@ -172,7 +172,7 @@ fun SplashScreen(soundManager: SoundManager? = null) {
                 text = stringResource(R.string.ai_astrology_subtitle),
                 fontSize = AppType.body,
                 lineHeight = AppType.bodyLh,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Normal,
                 letterSpacing = 4.sp,
                 color = Gold.copy(alpha = 0.85f),
                 textAlign = TextAlign.Center,

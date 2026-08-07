@@ -111,7 +111,7 @@ fun PlanetaryPositionsSheet(
                     stringResource(R.string.planetary_positions),
                     fontFamily = CanelaFontFamily,
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     color = CreamText,
                     modifier = Modifier.weight(1f),
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -177,7 +177,7 @@ fun PlanetaryPositionsSheet(
                             Text(
                                 stringResource(R.string.failed_to_load_chart),
                                 color = CreamText,
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Bold,
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(
@@ -262,10 +262,10 @@ private fun MinimalBirthInfoRow(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Text(formatSheetBirthDate(dob), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = CreamText, maxLines = 1)
+        Text(formatSheetBirthDate(dob), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = CreamText, maxLines = 1)
         if (!timeUnknown) {
             Text("•", color = Gold.copy(alpha = 0.6f))
-            Text(formatSheetBirthTime(time), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = CreamText, maxLines = 1)
+            Text(formatSheetBirthTime(time), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = CreamText, maxLines = 1)
         }
         if (city.isNotEmpty()) {
             Text("•", color = Gold.copy(alpha = 0.6f))
@@ -286,7 +286,7 @@ private fun MinimalBirthInfoRow(
             Text(
                 stringResource(R.string.ascendant_short_fmt, ascendantSign),
                 fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 color = Gold,
                 maxLines = 1,
             )

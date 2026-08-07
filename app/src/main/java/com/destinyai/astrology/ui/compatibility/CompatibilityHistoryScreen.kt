@@ -497,7 +497,7 @@ private fun HistoryItemRow(
             Text(
                 text = item.displayTitle,
                 style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 color = CreamText,
             )
             Spacer(Modifier.height(3.dp))
@@ -575,7 +575,7 @@ private fun HistoryDisabledState(
             Text(
                 text = stringResource(R.string.compat_history_disabled_title),
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 color = CreamText,
             )
             Text(
@@ -613,7 +613,7 @@ private fun HistoryEmptyState(modifier: Modifier = Modifier) {
             Text(
                 text = stringResource(R.string.compat_history_empty_title),
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 color = CreamText,
             )
             Spacer(Modifier.height(8.dp))
@@ -732,7 +732,7 @@ private fun GroupHistoryRow(
                     )
                 },
                 style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 color = CreamText,
                 maxLines = 1,
             )

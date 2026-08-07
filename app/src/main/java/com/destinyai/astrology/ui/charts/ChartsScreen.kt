@@ -103,7 +103,7 @@ fun ChartsScreen(
                     text = stringResource(R.string.birth_chart),
                     fontSize = AppType.sectionHeader,
                     lineHeight = AppType.sectionHeaderLh,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     fontFamily = CanelaFontFamily,
                     color = Gold,
                     modifier = Modifier.weight(1f),
@@ -163,7 +163,7 @@ fun ChartsScreen(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(Icons.Default.Warning, contentDescription = null, tint = Color.Red.copy(alpha = 0.8f), modifier = Modifier.size(40.dp))
                             Spacer(Modifier.height(12.dp))
-                            Text(stringResource(R.string.failed_to_load_chart), color = CreamText, fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.failed_to_load_chart), color = CreamText, fontWeight = FontWeight.Bold)
                             Spacer(Modifier.height(4.dp))
                             Text(state.errorMessage.orEmpty(), color = CreamDim, fontSize = 12.sp)
                             Spacer(Modifier.height(16.dp))
@@ -301,10 +301,10 @@ private fun MinimalBirthInfo(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Text(formatBirthDate(dob), fontSize = AppType.secondary, lineHeight = AppType.secondaryLh, fontWeight = FontWeight.SemiBold, color = CreamText)
+        Text(formatBirthDate(dob), fontSize = AppType.secondary, lineHeight = AppType.secondaryLh, fontWeight = FontWeight.Bold, color = CreamText)
         if (!timeUnknown) {
             Text("•", color = Gold.copy(alpha = 0.6f))
-            Text(formatBirthTime(time), fontSize = AppType.secondary, lineHeight = AppType.secondaryLh, fontWeight = FontWeight.SemiBold, color = CreamText)
+            Text(formatBirthTime(time), fontSize = AppType.secondary, lineHeight = AppType.secondaryLh, fontWeight = FontWeight.Bold, color = CreamText)
         }
         if (city.isNotEmpty()) {
             Text("•", color = Gold.copy(alpha = 0.6f))
@@ -312,7 +312,7 @@ private fun MinimalBirthInfo(
         }
         if (ascendantSign != null) {
             Text("•", color = Gold.copy(alpha = 0.6f))
-            Text(stringResource(R.string.ascendant_short_fmt, ascendantSign), fontSize = AppType.secondary, lineHeight = AppType.secondaryLh, fontWeight = FontWeight.SemiBold, color = Gold)
+            Text(stringResource(R.string.ascendant_short_fmt, ascendantSign), fontSize = AppType.secondary, lineHeight = AppType.secondaryLh, fontWeight = FontWeight.Bold, color = Gold)
         }
     }
 }
@@ -378,7 +378,7 @@ fun PremiumPlanetRow(
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                 val localizedName = premiumPlanetNameResMap[name]?.let { stringResource(it) } ?: name
-                Text(localizedName, fontSize = AppType.body, lineHeight = AppType.bodyLh, fontWeight = FontWeight.SemiBold, color = CreamText)
+                Text(localizedName, fontSize = AppType.body, lineHeight = AppType.bodyLh, fontWeight = FontWeight.Bold, color = CreamText)
                 if (data.isRetrograde == true) ChartBadge("R", Color.Red)
                 if (data.isCombust == true) ChartBadge("C", Color(0xFFFF8C00))
                 if (data.vargottama == true) ChartBadge("V", Color(0xFF9C27B0))
@@ -399,7 +399,7 @@ fun PremiumPlanetRow(
                     .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(50))
                     .padding(horizontal = 8.dp, vertical = 2.dp),
             ) {
-                Text(stringResource(R.string.house_short_fmt, data.house), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Gold)
+                Text(stringResource(R.string.house_short_fmt, data.house), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Gold)
             }
             if (nakshatra != null) {
                 Text(nakshatra.nakshatra, fontSize = AppType.caption, lineHeight = AppType.captionLh, color = CreamDim)

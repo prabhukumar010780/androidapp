@@ -218,7 +218,7 @@ fun ProfileScreen(
                 TextButton(onClick = {
                     showClearHistoryDialog = false
                     viewModel.clearChatHistory()
-                }) { Text(stringResource(R.string.clear_action), color = Color(0xFFFF5252), fontWeight = FontWeight.SemiBold) }
+                }) { Text(stringResource(R.string.clear_action), color = Color(0xFFFF5252), fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
                 TextButton(onClick = { showClearHistoryDialog = false }) { Text(stringResource(R.string.cancel), color = CreamDim) }
@@ -245,7 +245,7 @@ fun ProfileScreen(
                 TextButton(onClick = {
                     showSignOutDialog = false
                     viewModel.signOut()
-                }) { Text(stringResource(R.string.sign_out), color = Color(0xFFFF5252), fontWeight = FontWeight.SemiBold) }
+                }) { Text(stringResource(R.string.sign_out), color = Color(0xFFFF5252), fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
                 TextButton(onClick = { showSignOutDialog = false }) { Text(stringResource(R.string.cancel), color = CreamDim) }
@@ -266,7 +266,7 @@ fun ProfileScreen(
                 TextButton(onClick = {
                     showTurnOffHistoryDialog = false
                     viewModel.toggleHistory(false)
-                }) { Text(stringResource(R.string.turn_off_action), color = Color(0xFFFF5252), fontWeight = FontWeight.SemiBold) }
+                }) { Text(stringResource(R.string.turn_off_action), color = Color(0xFFFF5252), fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
                 TextButton(onClick = { showTurnOffHistoryDialog = false }) { Text(stringResource(R.string.cancel), color = CreamDim) }
@@ -288,7 +288,7 @@ fun ProfileScreen(
             },
             confirmButton = {
                 TextButton(onClick = { viewModel.dismissClearedThreadAlert() }) {
-                    Text(stringResource(R.string.ok_action), color = Gold, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.ok_action), color = Gold, fontWeight = FontWeight.Bold)
                 }
             },
             containerColor = NavySurface,
@@ -386,7 +386,7 @@ fun ProfileScreen(
                                     stringResource(R.string.done),
                                     color = Gold,
                                     fontSize = 15.sp,
-                                    fontWeight = FontWeight.SemiBold,
+                                    fontWeight = FontWeight.Bold,
                                 )
                             }
                         }
@@ -483,7 +483,7 @@ fun ProfileScreen(
                                                 text = if (isPaid) stringResource(R.string.profile_plan_plus) else stringResource(R.string.profile_plan_free),
                                                 fontSize = AppType.caption,
                                                 lineHeight = AppType.captionLh,
-                                                fontWeight = FontWeight.SemiBold,
+                                                fontWeight = FontWeight.Bold,
                                                 color = if (isPaid) Gold else CreamDim,
                                             )
                                         }
@@ -621,7 +621,7 @@ fun ProfileScreen(
                                             containerColor = NavySurface,
                                         ),
                                     ) {
-                                        Text(cta, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                                        Text(cta, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                                     }
                                 }
                                 // Manage Subscription (Google Play) — shown for active payers;
@@ -643,7 +643,7 @@ fun ProfileScreen(
                                             containerColor = NavySurface,
                                         ),
                                     ) {
-                                        Text(stringResource(R.string.profile_manage_subscription), fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                                        Text(stringResource(R.string.profile_manage_subscription), fontWeight = FontWeight.Bold, fontSize = 15.sp)
                                     }
                                 }
                                 TextButton(
@@ -666,7 +666,7 @@ fun ProfileScreen(
                             Text(
                                 text = stringResource(R.string.profile_title),
                                 fontSize = 18.sp,
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Bold,
                                 fontFamily = CanelaFontFamily,
                                 color = Gold,
                                 modifier = Modifier
@@ -753,7 +753,7 @@ fun ProfileScreen(
                             Text(
                                 text = stringResource(R.string.history_section),
                                 fontSize = 18.sp,
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Bold,
                                 fontFamily = CanelaFontFamily,
                                 color = Gold,
                                 modifier = Modifier
@@ -805,7 +805,7 @@ fun ProfileScreen(
                             Text(
                                 text = stringResource(R.string.profile_preferences_section),
                                 fontSize = 18.sp,
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Bold,
                                 fontFamily = CanelaFontFamily,
                                 color = Gold,
                                 modifier = Modifier
@@ -952,7 +952,7 @@ fun ProfileScreen(
                             Text(
                                 text = stringResource(R.string.support_menu),
                                 fontSize = 18.sp,
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Bold,
                                 fontFamily = CanelaFontFamily,
                                 color = Gold,
                                 modifier = Modifier
@@ -977,7 +977,7 @@ fun ProfileScreen(
                             Text(
                                 text = stringResource(R.string.destiny_ai_brand_name),
                                 fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Bold,
                                 fontFamily = CanelaFontFamily,
                                 color = CreamText,
                                 modifier = Modifier.fillMaxWidth(),
@@ -1019,7 +1019,7 @@ fun ProfileScreen(
                                     onClick = { viewModel.showDeleteConfirmation() },
                                     modifier = Modifier.fillMaxWidth(),
                                 ) {
-                                    Text(stringResource(R.string.profile_delete_account), color = Color(0xFFFF5252), fontWeight = FontWeight.SemiBold)
+                                    Text(stringResource(R.string.profile_delete_account), color = Color(0xFFFF5252), fontWeight = FontWeight.Bold)
                                 }
                             }
 
@@ -1113,7 +1113,7 @@ private fun GuestSignInPromptSheet(
                     contentColor = Color(0xFF0D0D1A),
                 ),
             ) {
-                Text(stringResource(R.string.profile_sign_in_or_sign_up), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                Text(stringResource(R.string.profile_sign_in_or_sign_up), fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
             Spacer(Modifier.height(8.dp))
             TextButton(
@@ -1356,7 +1356,7 @@ private fun PaidSubscriptionHeroCard(
                 Text(
                     text = statusText ?: stringResource(R.string.profile_paid_active),
                     fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     color = Color(0xFF0D0D1A),
                 )
             }
@@ -1456,7 +1456,7 @@ private fun PreferenceArrowRow(
                     text = premiumBadgeText,
                     fontSize = AppType.caption,
                     lineHeight = AppType.captionLh,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     color = badgeColor,
                 )
             }

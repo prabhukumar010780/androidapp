@@ -114,7 +114,7 @@ fun TypewriterText(
                 text = "|",
                 color = Gold,
                 fontSize = fontSize,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Normal,
                 modifier = Modifier.alpha(cursorAlpha.value),
             )
         }
@@ -258,7 +258,7 @@ fun BentoGridFeaturesView(
                         text = item.title,
                         color = Gold,
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
                     )
                     Spacer(Modifier.height(4.dp))

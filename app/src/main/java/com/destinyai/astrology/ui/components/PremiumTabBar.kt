@@ -136,7 +136,7 @@ private fun PremiumTabPill(
             Text(
                 text = label,
                 fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Normal,
                 color = if (isSelected) Gold else Color.White.copy(alpha = 0.8f),
             )
         }

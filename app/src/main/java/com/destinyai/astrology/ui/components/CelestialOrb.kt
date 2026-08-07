@@ -234,7 +234,7 @@ fun CelestialOrb(
             Text(
                 text = title.uppercase(),
                 color = GoldLight,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Normal,
                 fontSize = AppType.caption,
                 lineHeight = AppType.captionLh,
                 letterSpacing = 1.sp,

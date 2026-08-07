@@ -117,7 +117,7 @@ fun OnboardingScreen(
                         text = stringResource(R.string.skip),
                         color = CreamDim,
                         fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.Normal,
                     )
                 }
             }
@@ -409,7 +409,7 @@ private fun StatsCard() {
                         Text(
                             text = stringResource(R.string.stat_questions_asked),
                             fontSize = 32.sp,
-                            fontWeight = FontWeight.ExtraBold,
+                            fontWeight = FontWeight.Bold,
                             color = CreamText,
                         )
                     }
@@ -501,7 +501,7 @@ private fun FeaturesListView() {
                     Text(
                         text = stringResource(feature.titleRes),
                         fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         color = CreamText,
                     )
                     Text(

@@ -101,7 +101,7 @@ fun FaqHelpScreen(onBack: () -> Unit) {
                 Text(
                     text = stringResource(R.string.common_questions),
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     color = Gold.copy(alpha = 0.7f),
                 )
                 Spacer(Modifier.height(4.dp))
@@ -137,7 +137,7 @@ private fun FaqRow(question: String, answer: String) {
             Text(
                 text = question,
                 fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 color = if (expanded) Gold else CreamText,
                 modifier = Modifier.weight(1f),
             )

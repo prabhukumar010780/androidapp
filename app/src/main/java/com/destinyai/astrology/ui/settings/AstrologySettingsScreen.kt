@@ -105,7 +105,7 @@ fun AstrologySettingsScreen(
                     Text(
                         text = stringResource(R.string.done_action),
                         color = Gold,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                     )
                 }
             }
@@ -176,7 +176,7 @@ private fun AstroPickerSection(
             Text(
                 text = title,
                 fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 color = Gold.copy(alpha = 0.7f),
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             )

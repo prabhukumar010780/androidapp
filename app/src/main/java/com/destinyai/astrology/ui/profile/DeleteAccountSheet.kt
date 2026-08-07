@@ -242,7 +242,7 @@ fun DeleteAccountSheet(
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Gold),
                 ) {
-                    Text(stringResource(R.string.sign_in_button), fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = NavyDeep)
+                    Text(stringResource(R.string.sign_in_button), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = NavyDeep)
                 }
                 Spacer(Modifier.height(8.dp))
                 TextButton(
@@ -285,7 +285,7 @@ fun DeleteAccountSheet(
                         modifier = Modifier.size(20.dp),
                     )
                 } else {
-                    Text(stringResource(R.string.delete_account_button), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                    Text(stringResource(R.string.delete_account_button), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 }
             }
 

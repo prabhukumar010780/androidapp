@@ -82,7 +82,7 @@ fun PremiumSelectionSheet(
                 text = title,
                 color = CreamText,
                 fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(vertical = 12.dp),
             )
 
@@ -108,7 +108,7 @@ fun PremiumSelectionSheet(
                             text = option,
                             color = if (isSelected) Gold else CreamText,
                             fontSize = 16.sp,
-                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                         )
                         if (isSelected) {
                             Icon(

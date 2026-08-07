@@ -137,7 +137,7 @@ fun TopicListView(
                         Text(
                             "${activeItems.size} ${stringResource(R.string.status_active)}",
                             fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                             color = tile.accentColor,
                         )
                         if (blockedItems.isNotEmpty()) {
@@ -149,7 +149,7 @@ fun TopicListView(
                             Text(
                                 "${blockedItems.size} ${stringResource(R.string.status_inactive)}",
                                 fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium,
+                                fontWeight = FontWeight.Normal,
                                 color = AppTheme.colors.textSecondary,
                             )
                         }
@@ -559,7 +559,7 @@ private fun BlockedYogaCard(
                 Text(
                     item.displayName,
                     fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.Normal,
                     color = AppTheme.colors.textSecondary,
                 )
                 // Skip category when it duplicates the current tile name
@@ -660,7 +660,7 @@ private fun BlockedYogaCard(
                     Text(
                         DoshaDescriptions.localizeExceptionKeys(reason),
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.Normal,
                         color = ErrorRed.copy(alpha = 0.9f),
                         lineHeight = 20.sp,
                     )
@@ -748,7 +748,7 @@ private fun DetailChip(
         Text(
             text,
             fontSize = 11.sp,
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.Normal,
             color = color,
         )
     }

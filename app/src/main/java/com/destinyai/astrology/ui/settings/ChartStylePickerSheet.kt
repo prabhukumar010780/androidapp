@@ -88,7 +88,7 @@ fun ChartStylePickerSheet(
                     Text(
                         text = stringResource(R.string.done_action),
                         color = Gold,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                     )
                 }
             }
@@ -100,7 +100,7 @@ fun ChartStylePickerSheet(
                 text = stringResource(R.string.select_chart_style),
                 fontSize = AppType.secondary,
                 lineHeight = AppType.secondaryLh,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 color = Gold,
                 modifier = Modifier
                     .padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 8.dp),
@@ -124,7 +124,7 @@ fun ChartStylePickerSheet(
                         Text(
                             text = stringResource(option.labelRes),
                             fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                             color = if (isSelected) Gold else CreamText,
                         )
                         Text(

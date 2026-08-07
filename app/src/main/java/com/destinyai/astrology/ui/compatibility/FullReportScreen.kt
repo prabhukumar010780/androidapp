@@ -387,7 +387,7 @@ private fun BrandedHeaderCard(result: CompatibilityResult) {
         Text(
             text = stringResource(R.string.full_report_brand_label),
             fontSize = 10.sp,
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.Normal,
             color = Gold.copy(alpha = 0.6f),
             letterSpacing = 4.sp,
         )
@@ -471,7 +471,7 @@ private fun BrandedHeaderCard(result: CompatibilityResult) {
         Text(
             text = rating.uppercase(),
             fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
             color = Gold,
             letterSpacing = 3.sp,
         )
@@ -601,7 +601,7 @@ private fun DisclaimerFooter() {
             Text(
                 text = stringResource(R.string.full_report_ai_label),
                 fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 color = Gold.copy(alpha = 0.6f),
             )
         }

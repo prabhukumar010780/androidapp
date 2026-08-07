@@ -236,7 +236,7 @@ fun SubscriptionScreen(
                         text = stringResource(R.string.done_action),
                         color = Gold,
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                     )
                 }
             }
@@ -516,7 +516,7 @@ fun SubscriptionScreen(
                                                             text = stringResource(R.string.current_plan),
                                                             fontSize = AppType.caption,
                                                             lineHeight = AppType.captionLh,
-                                                            fontWeight = FontWeight.ExtraBold,
+                                                            fontWeight = FontWeight.Bold,
                                                             color = Color(0xFF0D0D1A),
                                                         )
                                                     }
@@ -540,7 +540,7 @@ fun SubscriptionScreen(
                                                             text = stringResource(R.string.scheduled_plan),
                                                             fontSize = AppType.caption,
                                                             lineHeight = AppType.captionLh,
-                                                            fontWeight = FontWeight.ExtraBold,
+                                                            fontWeight = FontWeight.Bold,
                                                             color = Gold,
                                                         )
                                                     }
@@ -564,7 +564,7 @@ fun SubscriptionScreen(
                                                     fontSize = AppType.caption,
                                                     lineHeight = AppType.captionLh,
                                                     color = Gold,
-                                                    fontWeight = FontWeight.SemiBold,
+                                                    fontWeight = FontWeight.Bold,
                                                 )
                                             } else if (
                                                 isPlus &&
@@ -584,7 +584,7 @@ fun SubscriptionScreen(
                                                         text = stringResource(R.string.subscription_free_trial_available),
                                                         fontSize = AppType.caption,
                                                         lineHeight = AppType.captionLh,
-                                                        fontWeight = FontWeight.SemiBold,
+                                                        fontWeight = FontWeight.Bold,
                                                         color = Gold,
                                                     )
                                                 }
@@ -646,7 +646,7 @@ fun SubscriptionScreen(
                                                 text = stringResource(R.string.everything_in_core_plus),
                                                 fontSize = 12.sp,
                                                 color = Gold,
-                                                fontWeight = FontWeight.Medium,
+                                                fontWeight = FontWeight.Normal,
                                             )
                                         }
                                         Spacer(Modifier.height(8.dp))
@@ -676,7 +676,7 @@ fun SubscriptionScreen(
                                                             text = feature.displayName,
                                                             fontSize = 13.sp,
                                                             color = CreamText,
-                                                            fontWeight = FontWeight.SemiBold,
+                                                            fontWeight = FontWeight.Bold,
                                                         )
                                                         if (isComingSoon) {
                                                             Spacer(Modifier.width(4.dp))
@@ -792,7 +792,7 @@ fun SubscriptionScreen(
                                         } else {
                                             Text(
                                                 ctaText,
-                                                fontWeight = FontWeight.SemiBold,
+                                                fontWeight = FontWeight.Bold,
                                             )
                                         }
                                     }

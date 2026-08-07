@@ -449,7 +449,7 @@ fun BirthDataScreen(
                             text = stringResource(R.string.analytics_consent_label),
                             fontSize = 14.sp,
                             color = CreamText,
-                            fontWeight = FontWeight.Medium,
+                            fontWeight = FontWeight.Normal,
                         )
                         Text(
                             text = stringResource(R.string.analytics_consent_description),
@@ -887,7 +887,7 @@ private fun GenderSelectionSheet(
                     Text(
                         text = label,
                         fontSize = 16.sp,
-                        fontWeight = if (currentGender == value) FontWeight.SemiBold else FontWeight.Normal,
+                        fontWeight = if (currentGender == value) FontWeight.Bold else FontWeight.Normal,
                         color = if (currentGender == value) Gold else CreamText,
                         modifier = Modifier.weight(1f),
                     )
@@ -1081,7 +1081,7 @@ private fun LocationSearchSheet(
                         Text(
                             text = stringResource(R.string.no_cities_found),
                             fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium,
+                            fontWeight = FontWeight.Normal,
                             color = CreamText,
                             textAlign = TextAlign.Center,
                         )

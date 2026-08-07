@@ -76,7 +76,7 @@ fun LanguageSettingsSheet(
                     Text(
                         text = stringResource(R.string.done_action),
                         color = Gold,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                     )
                 }
             }
@@ -89,7 +89,7 @@ fun LanguageSettingsSheet(
                     Text(
                         text = stringResource(R.string.select_language),
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         fontFamily = CanelaFontFamily,
                         color = Gold,
                         modifier = Modifier.padding(
@@ -124,7 +124,7 @@ fun LanguageSettingsSheet(
                             Text(
                                 text = lang.nativeName,
                                 fontSize = 16.sp,
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Bold,
                                 // iOS parity (LanguageSettingsSheet.swift:42-43):
                                 // selection indicated by checkmark only, no gold tint.
                                 color = CreamText,

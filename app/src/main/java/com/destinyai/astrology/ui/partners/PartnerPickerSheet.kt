@@ -190,7 +190,7 @@ fun PartnerPickerSheet(
                 Text(
                     text = stringResource(R.string.partner_picker_title),
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     color = Gold,
                     modifier = Modifier.weight(1f),
                 )
@@ -359,7 +359,7 @@ fun PartnerPickerSheet(
                                 Text(
                                     text = partner.name,
                                     fontSize = 15.sp,
-                                    fontWeight = FontWeight.SemiBold,
+                                    fontWeight = FontWeight.Bold,
                                     color = CreamText,
                                 )
                                 // iOS parity (PartnerPickerSheet.swift:236-251):
@@ -416,7 +416,7 @@ fun PartnerPickerSheet(
                     text = stringResource(R.string.partner_picker_add_new),
                     color = Gold,
                     fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                 )
             }
             }
@@ -536,7 +536,7 @@ private fun PartnerPickerInfoRow(partner: PartnerDto) {
             Text(
                 text = symbol,
                 fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 style = TextStyle(
                     brush = Brush.linearGradient(listOf(Gold, Color(0xFFF5D060))),
                 ),

@@ -107,7 +107,7 @@ fun CompatibilityStreamingView(
                     Text(
                         text = stringResource(R.string.analyzing_match),
                         fontSize = 17.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         color = CreamText,
                         modifier = Modifier.weight(1f),
                     )
@@ -204,7 +204,7 @@ private fun StepRow(
             Text(
                 text = stringResource(step.titleRes),
                 fontSize = 14.sp,
-                fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
+                fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
                 color = if (isPending) CreamDim.copy(alpha = 0.4f) else CreamText,
             )
             if (isActive) {
@@ -259,7 +259,7 @@ private fun StreamingTextBox(text: String, modifier: Modifier = Modifier) {
                 text = stringResource(R.string.ai_analysis_label),
                 fontSize = 11.sp,
                 color = Gold,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
             )
         }
         Spacer(Modifier.height(8.dp))

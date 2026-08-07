@@ -117,7 +117,7 @@ internal fun MagicTabbar(
                     text = stringResource(id = tab.labelResource()).uppercase(),
                     fontSize = AppType.caption, // 12.sp
                     lineHeight = AppType.captionLh,
-                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                     letterSpacing = 0.5.sp,
                     color = labelColor,
                     textAlign = TextAlign.Center,
@@ -274,7 +274,7 @@ internal fun ProfileSwitcher(
                 Text(
                     text = firstName,
                     fontSize = 14.sp,
-                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                     color = labelColor,
                     textAlign = TextAlign.Center,
                     maxLines = 1,

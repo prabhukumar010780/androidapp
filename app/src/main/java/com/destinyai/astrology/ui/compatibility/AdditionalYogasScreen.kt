@@ -77,7 +77,7 @@ fun AdditionalYogasScreen(
                 Text(
                     stringResource(R.string.yogas_analysis),
                     fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     color = CreamText,
                 )
             }

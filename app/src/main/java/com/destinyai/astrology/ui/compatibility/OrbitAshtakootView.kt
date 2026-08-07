@@ -755,7 +755,7 @@ private fun OrbitTooltipCard(
                 text = stringResource(R.string.see_classical_analysis),
                 style = MaterialTheme.typography.labelMedium,
                 color = Gold,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Normal,
             )
         }
     }
@@ -793,7 +793,7 @@ internal fun ScoreBadge(kuta: KutaDetail) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
             color = color,
             fontSize = AppType.caption, // 12.sp
             lineHeight = AppType.captionLh,

@@ -830,7 +830,7 @@ private fun TabBarItem(
             text = label,
             fontSize = AppType.caption,
             lineHeight = AppType.captionLh,
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.Normal,
             color = if (selected) CreamText else Gold,
             textAlign = TextAlign.Center,
         )
@@ -919,7 +919,7 @@ private fun AskFabButton(
             text = label,
             fontSize = AppType.caption,
             lineHeight = AppType.captionLh,
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.Normal,
             color = if (isSelected) CreamText else Gold,
             modifier = Modifier.offset(y = (-10).dp),
         )

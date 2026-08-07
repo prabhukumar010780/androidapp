@@ -228,7 +228,7 @@ private fun MultiPartnerCard(
             Text(
                 text = partner.name.ifEmpty { stringResource(R.string.partner_index_label, index + 1) },
                 fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Normal,
                 color = if (isPending) CreamDim.copy(alpha = 0.5f) else CreamText,
             )
             when {

@@ -445,7 +445,7 @@ fun AuthScreen(
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = stringResource(R.string.continue_with_google),
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
                     )
                 }
@@ -535,7 +535,7 @@ fun AuthScreen(
                         Text(
                             text = stringResource(R.string.continue_as_guest),
                             color = Gold,
-                            fontWeight = FontWeight.Medium,
+                            fontWeight = FontWeight.Normal,
                             fontSize = 16.sp,
                         )
                     }
@@ -573,7 +573,7 @@ fun AuthScreen(
                         Text(
                             text = stringResource(R.string.terms_of_service),
                             color = Gold,
-                            fontWeight = FontWeight.Medium,
+                            fontWeight = FontWeight.Normal,
                             fontSize = 12.sp,
                         )
                     }
@@ -593,7 +593,7 @@ fun AuthScreen(
                         Text(
                             text = stringResource(R.string.privacy_policy),
                             color = Gold,
-                            fontWeight = FontWeight.Medium,
+                            fontWeight = FontWeight.Normal,
                             fontSize = 12.sp,
                         )
                     }

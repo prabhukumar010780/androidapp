@@ -70,7 +70,7 @@ fun TransitsView(transitResponse: TransitResponse?) {
             Text(
                 stringResource(R.string.transits_year_fmt, transitResponse?.year ?: 2024),
                 fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 color = Color(0xFF0B0F19),
             )
         }
@@ -102,7 +102,7 @@ private fun TransitPlanetSection(
         Text(
             planetLabel,
             fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
             color = Color(0xFF0B0F19),
         )
         // iOS parity: events always shown inline, no AnimatedVisibility wrapper

@@ -227,7 +227,7 @@ fun NotificationPreferencesScreen(
                     Text(
                         stringResource(R.string.delete_action),
                         color = Color(0xFFFF8A80),
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                     )
                 }
             },
@@ -261,7 +261,7 @@ fun NotificationPreferencesScreen(
                     Text(
                         stringResource(R.string.ok_action),
                         color = Gold,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                     )
                 }
             },
@@ -337,7 +337,7 @@ fun NotificationPreferencesScreen(
                             Text(
                                 text = stringResource(R.string.save_action),
                                 fontSize = 15.sp,
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Bold,
                                 color = Gold,
                             )
                         }
@@ -478,7 +478,7 @@ fun NotificationPreferencesScreen(
                                         }
                                 },
                             ) {
-                                Text(stringResource(R.string.notif_enable), color = Gold, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                Text(stringResource(R.string.notif_enable), color = Gold, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                             }
                         }
                     }
@@ -508,7 +508,7 @@ fun NotificationPreferencesScreen(
                                 Text(
                                     text = stringResource(R.string.no_alerts_yet),
                                     fontSize = 16.sp,
-                                    fontWeight = FontWeight.Medium,
+                                    fontWeight = FontWeight.Normal,
                                     color = CreamDim,
                                 )
                                 Text(
@@ -559,7 +559,7 @@ fun NotificationPreferencesScreen(
                         Spacer(Modifier.width(8.dp))
                         Text(
                             if (state.canAddMore) stringResource(R.string.notif_add_alert) else stringResource(R.string.notif_max_alerts_reached),
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                         )
                     }
 
@@ -575,7 +575,7 @@ fun NotificationPreferencesScreen(
                         Text(
                             text = stringResource(R.string.notif_suggestions),
                             fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                             color = Gold.copy(alpha = 0.5f),
                             modifier = Modifier.padding(top = 4.dp),
                         )
@@ -682,7 +682,7 @@ private fun NotifSectionCard(
                 Text(
                     text = title,
                     fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     color = Gold.copy(alpha = 0.5f),
                 )
                 if (description != null) {
@@ -720,7 +720,7 @@ private fun NotifChannelToggleRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text = label, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = CreamText)
+        Text(text = label, fontSize = 15.sp, fontWeight = FontWeight.Normal, color = CreamText)
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
@@ -780,7 +780,7 @@ private fun AlertItemRow(
                     text = item.frequency,
                     fontSize = 11.sp,
                     color = Gold,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                 )
             }

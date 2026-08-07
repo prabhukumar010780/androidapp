@@ -79,7 +79,7 @@ fun DoshaStatusRow(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Normal,
                 color = CreamText,
             )
             Spacer(Modifier.height(4.dp))
@@ -153,7 +153,7 @@ fun DoshaStatusRowLabel(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Normal,
                 color = CreamText,
             )
             Spacer(Modifier.height(4.dp))

@@ -91,13 +91,13 @@ fun TimePickerSheetStyled(
                     text = stringResource(R.string.select_time),
                     color = CreamText,
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                 )
                 Text(
                     text = stringResource(R.string.done),
                     color = Gold,
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier
                         .clip(RoundedCornerShape(Radius.button))
                         .clickable {

@@ -98,7 +98,7 @@ fun PremiumMenuRow(
                 text = label,
                 color = CreamDim,
                 fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Normal,
             )
         }
         Spacer(Modifier.size(4.dp))
@@ -146,7 +146,7 @@ fun PremiumMenuRow(
                             Text(
                                 text = option,
                                 color = if (index == selectedIndex) Gold else CreamText,
-                                fontWeight = if (index == selectedIndex) FontWeight.SemiBold else FontWeight.Normal,
+                                fontWeight = if (index == selectedIndex) FontWeight.Bold else FontWeight.Normal,
                             )
                         },
                         trailingIcon = {
@@ -274,7 +274,7 @@ fun PremiumListItem(
                         color = premiumBadgeColor,
                         fontSize = AppType.caption,
                         lineHeight = AppType.captionLh,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.Normal,
                     )
                 }
             }

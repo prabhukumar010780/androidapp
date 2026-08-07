@@ -113,7 +113,7 @@ fun BirthDetailsScreen(
                     Text(
                         text = stringResource(com.destinyai.astrology.R.string.birth_details),
                         fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         fontFamily = CanelaFontFamily,
                         color = Gold,
                     )
@@ -146,7 +146,7 @@ fun BirthDetailsScreen(
                         Text(
                             text = stringResource(com.destinyai.astrology.R.string.save),
                             color = saveColor,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
                         )
                     }
@@ -260,7 +260,7 @@ fun BirthDetailsScreen(
                             Text(
                                 text = stringResource(com.destinyai.astrology.R.string.need_update_birth_data),
                                 fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Bold,
                                 color = CreamText,
                             )
                         }
@@ -312,7 +312,7 @@ fun BirthDetailsScreen(
                             Text(
                                 text = supportEmail,
                                 fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium,
+                                fontWeight = FontWeight.Normal,
                             )
                         }
                     }
@@ -370,7 +370,7 @@ fun BirthDetailsScreen(
                     Text(
                         text = stringResource(com.destinyai.astrology.R.string.ok),
                         color = Gold,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                     )
                 }
             },
@@ -421,7 +421,7 @@ private fun SectionHeaderLabel(text: String) {
         text = text,
         fontSize = AppType.caption,
         lineHeight = AppType.captionLh,
-        fontWeight = FontWeight.SemiBold,
+        fontWeight = FontWeight.Bold,
         color = TextTertiary,
         letterSpacing = 1.2.sp,
         modifier = Modifier.fillMaxWidth(),
@@ -442,7 +442,7 @@ private fun BirthDetailsSection(title: String, content: @Composable ColumnScope.
         Text(
             text = title,
             fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
             color = Gold.copy(alpha = 0.7f),
         )
         content()
@@ -491,7 +491,7 @@ private fun BirthDetailRow(
             text = value,
             fontSize = 14.sp,
             color = CreamText,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
         )
     }
 }
@@ -530,7 +530,7 @@ private fun GenderSelectorRow(
             text = display,
             fontSize = 14.sp,
             color = CreamText,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
         )
     }
 }

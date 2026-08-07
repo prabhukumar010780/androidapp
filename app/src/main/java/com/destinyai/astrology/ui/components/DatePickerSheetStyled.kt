@@ -126,13 +126,13 @@ fun DatePickerSheetStyled(
                     text = stringResource(R.string.select_date),
                     color = CreamText,
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                 )
                 Text(
                     text = stringResource(R.string.done),
                     color = Gold,
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier
                         .clip(RoundedCornerShape(Radius.button))
                         .clickable {
@@ -231,7 +231,7 @@ internal fun WheelColumn(
                         text = item,
                         color = if (isSelected) Gold else CreamDim,
                         fontSize = if (isSelected) 18.sp else 15.sp,
-                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                         textAlign = TextAlign.Center,
                     )
                 }

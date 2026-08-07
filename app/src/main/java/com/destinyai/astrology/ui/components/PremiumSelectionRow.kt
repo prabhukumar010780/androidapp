@@ -64,7 +64,7 @@ fun PremiumSelectionRow(
                 text = label,
                 color = CreamDim,
                 fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Normal,
             )
         }
         Spacer(Modifier.size(4.dp))

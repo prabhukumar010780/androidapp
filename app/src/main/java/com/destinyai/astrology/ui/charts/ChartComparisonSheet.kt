@@ -109,7 +109,7 @@ fun ChartComparisonSheet(
                     Text(
                         stringResource(R.string.birth_charts),
                         fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         color = Gold,
                         modifier = Modifier.weight(1f),
                     )
@@ -190,13 +190,13 @@ private fun PersonChartSection(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Text(personName, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Gold)
+            Text(personName, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Gold)
             if (ascendant != null) {
                 val ascFull = ChartConstants.signFullNames[ascendant] ?: ascendant
                 Text(
                     stringResource(R.string.ascendant_label_fmt, ascFull),
                     fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     color = Gold,
                 )
             }
@@ -217,7 +217,7 @@ private fun PersonChartSection(
                 Text(
                     stringResource(R.string.planet_details),
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     color = Gold.copy(alpha = 0.9f),
                     modifier = Modifier.padding(horizontal = 4.dp),
                 )

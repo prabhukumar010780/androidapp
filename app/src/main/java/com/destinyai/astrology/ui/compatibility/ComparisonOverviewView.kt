@@ -404,7 +404,7 @@ fun ComparisonOverviewView(
                 ) {
                     Icon(Icons.Default.AddCircle, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.new_match), fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                    Text(stringResource(R.string.new_match), fontSize = 16.sp, fontWeight = FontWeight.Normal)
                 }
             }
         }
@@ -504,7 +504,7 @@ private fun CompactPartnerCard(
         Text(
             result.partner.name.uppercase(),
             fontSize = 15.sp,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
             color = CreamText,
             maxLines = 1,
             textAlign = TextAlign.Center,
@@ -525,7 +525,7 @@ private fun CompactPartnerCard(
                 Text(
                     "${result.adjustedScore}/36*",
                     fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     color = Gold,
                     textAlign = TextAlign.Center,
                 )
@@ -542,7 +542,7 @@ private fun CompactPartnerCard(
                 Text(
                     "${result.overallScore}/36 actual",
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     color = Gold,
                     textAlign = TextAlign.Center,
                 )
@@ -560,7 +560,7 @@ private fun CompactPartnerCard(
             fontSize = AppType.caption,
             lineHeight = AppType.captionLh,
             color = statusColor,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
         )
 
@@ -572,7 +572,7 @@ private fun CompactPartnerCard(
                 viewDetailsLabel,
                 fontSize = AppType.caption,
                 lineHeight = AppType.captionLh,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 color = Gold,
             )
             Text("→", fontSize = 11.sp, color = Gold)
@@ -649,7 +649,7 @@ private fun RecommendationFooter(
                             Text(
                                 reasonText,
                                 fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
+                                fontWeight = FontWeight.Normal,
                                 color = CreamText,
                                 lineHeight = 17.sp,
                             )
@@ -745,7 +745,7 @@ private fun KootaBreakdownTable(
                 Text(
                     r.partner.name.take(8),
                     fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     color = CreamDim,
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center,
@@ -859,13 +859,13 @@ private fun KootaBreakdownTable(
             modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(actualLabel, fontSize = 12.sp, color = CreamDim, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Text(actualLabel, fontSize = 12.sp, color = CreamDim, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
             results.forEach { r ->
                 Text(
                     "${r.totalScore}/${r.maxScore}",
                     fontSize = 12.sp,
                     color = CreamText,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center,
                 )
@@ -910,7 +910,7 @@ private fun MangalRow(
         Text(
             manglikLabel,
             fontSize = 16.sp,
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.Normal,
             color = CreamDim,
             modifier = Modifier.weight(1f),
         )
@@ -1002,7 +1002,7 @@ private fun PartnerAnalysisSection(
             Text(
                 analysisTitle,
                 fontSize = 10.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 letterSpacing = 1.2.sp,
                 color = Gold.copy(alpha = 0.8f),
             )
@@ -1041,7 +1041,7 @@ private fun PartnerAnalysisSection(
                 Text(
                     statusLabel,
                     fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.Normal,
                     color = statusColor,
                 )
             }
@@ -1149,7 +1149,7 @@ private fun CancellationOverlay(
                         Text(
                             "$kutaName — $partnerName",
                             fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                             color = Gold.copy(alpha = 0.9f),
                         )
                         Text(reason, fontSize = 12.sp, color = CreamDim, lineHeight = 17.sp)

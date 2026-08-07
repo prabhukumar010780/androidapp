@@ -148,7 +148,7 @@ private fun SouthIndianCanvas(
                 // Sign label — gradient brush for parity with iOS
                 val signStyle = TextStyle(
                     fontSize = 11.sp,
-                    fontWeight = if (isAsc) FontWeight.Bold else FontWeight.SemiBold,
+                    fontWeight = if (isAsc) FontWeight.Bold else FontWeight.Bold,
                     brush = if (isAsc) premiumGradient else nonAscendantGradient,
                 )
                 val signLayout = textMeasurer.measure(sign, signStyle)

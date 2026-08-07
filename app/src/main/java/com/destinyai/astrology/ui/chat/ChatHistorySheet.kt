@@ -80,7 +80,7 @@ fun ChatHistorySheet(
                     Text(
                         stringResource(R.string.chat_history_title),
                         fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         fontFamily = CanelaFontFamily,
                         color = Gold,
                         modifier = Modifier.weight(1f),
@@ -196,7 +196,7 @@ fun ChatHistorySheet(
                                     Text(
                                         stringResource(R.string.open_settings),
                                         fontSize = 14.sp,
-                                        fontWeight = FontWeight.SemiBold,
+                                        fontWeight = FontWeight.Bold,
                                     )
                                 }
                             }
@@ -245,7 +245,7 @@ fun ChatHistorySheet(
                                     label.uppercase(),
                                     fontSize = AppType.caption,
                                     lineHeight = AppType.captionLh,
-                                    fontWeight = FontWeight.SemiBold,
+                                    fontWeight = FontWeight.Bold,
                                     color = CreamDim.copy(alpha = 0.6f),
                                     modifier = Modifier.padding(horizontal = Spacing.screenH, vertical = Spacing.sm),
                                 )
@@ -365,7 +365,7 @@ fun HistoryThreadRow(
                                 text = if (thread.isPinned) stringResource(R.string.unpin) else stringResource(R.string.pin),
                                 color = Gold,
                                 fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Bold,
                             )
                         }
                     } else {
@@ -374,7 +374,7 @@ fun HistoryThreadRow(
                                 stringResource(R.string.delete),
                                 color = CreamText,
                                 fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Bold,
                             )
                             Spacer(Modifier.width(6.dp))
                             Icon(Icons.Default.Delete, contentDescription = null, tint = CreamText, modifier = Modifier.size(18.dp))
@@ -417,7 +417,7 @@ fun HistoryThreadRow(
                 Text(
                     thread.title,
                     fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.Normal,
                     color = CreamText,
                     maxLines = 1,
                 )

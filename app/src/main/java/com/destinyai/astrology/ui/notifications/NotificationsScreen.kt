@@ -299,7 +299,7 @@ fun NotificationsScreen(
                         Text(
                             text = stringResource(R.string.unread_count_format, state.unreadCount),
                             fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
+                            fontWeight = FontWeight.Normal,
                             color = Gold,
                         )
                     }
@@ -380,7 +380,7 @@ fun NotificationsScreen(
                             stringResource(R.string.sign_up_to_personalize_alerts)
                         else
                             stringResource(R.string.personalize_alerts_cta),
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
                     )
                     // iOS parity (NotificationInboxView.swift:138-141) — trailing crown.fill premium indicator.
@@ -628,7 +628,7 @@ private fun NotificationRowItem(
                 Text(
                     text = title,
                     fontSize = 15.sp,
-                    fontWeight = if (!notif.isRead) FontWeight.Bold else FontWeight.Medium,
+                    fontWeight = if (!notif.isRead) FontWeight.Bold else FontWeight.Normal,
                     color = CreamText,
                     maxLines = 1,
                     modifier = Modifier.weight(1f),
@@ -638,7 +638,7 @@ private fun NotificationRowItem(
                     Text(
                         text = timeAgo,
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.Normal,
                         color = CreamDim,
                     )
                 }
@@ -654,7 +654,7 @@ private fun NotificationRowItem(
                     Text(
                         text = chip,
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         color = accent,
                         modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
                     )
@@ -737,7 +737,7 @@ private fun NotificationDetailSheetContent(
                 Text(
                     text = title,
                     fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     fontFamily = CanelaFontFamily,
                     color = CreamText,
                 )
@@ -804,7 +804,7 @@ private fun NotificationDetailSheetContent(
                     ) {
                         Text(
                             text = notif.chatPrompt?.takeIf { it.isNotBlank() } ?: tellMoreFallback,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                             fontSize = 15.sp,
                             maxLines = 1,
                         )
@@ -826,7 +826,7 @@ private fun NotificationDetailSheetContent(
                     ) {
                         Text(
                             text = stringResource(R.string.notification_action_compat),
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
                         )
                     }
@@ -847,7 +847,7 @@ private fun NotificationDetailSheetContent(
                     ) {
                         Text(
                             text = stringResource(R.string.manage_subscription),
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
                         )
                     }
@@ -863,7 +863,7 @@ private fun NotificationDetailSheetContent(
             ) {
                 Text(
                     text = stringResource(R.string.done),
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
                 )
             }

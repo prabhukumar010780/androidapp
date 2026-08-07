@@ -160,7 +160,7 @@ fun AddEditAlertSheet(
                             if (existing == null) R.string.add_action else R.string.save_action,
                         ),
                         color = if (text.isNotBlank()) Gold else CreamDim,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         fontSize = 14.sp,
                     )
                 }
@@ -213,7 +213,7 @@ fun AddEditAlertSheet(
             Text(
                 text = stringResource(R.string.notif_frequency),
                 fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 color = Gold.copy(alpha = 0.7f),
             )
 
@@ -281,7 +281,7 @@ fun AddEditAlertSheet(
                         Text(
                             text = stringResource(R.string.suggestions_label),
                             fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
+                            fontWeight = FontWeight.Normal,
                             color = Gold,
                         )
                         Text(
@@ -371,7 +371,7 @@ private fun WeekdayChipPicker(
         Text(
             text = stringResource(R.string.notif_weekday_picker_label),
             fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
             color = Gold.copy(alpha = 0.7f),
         )
         Row(
@@ -404,7 +404,7 @@ private fun WeekdayChipPicker(
                         Text(
                             text = stringResource(labelRes),
                             fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                             color = if (isSelected) Color(0xFF0D0D1A) else CreamText,
                         )
                     }
@@ -428,7 +428,7 @@ private fun MonthDayDropdown(
         Text(
             text = stringResource(R.string.notif_monthly_picker_label),
             fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
             color = Gold.copy(alpha = 0.7f),
         )
         ExposedDropdownMenuBox(

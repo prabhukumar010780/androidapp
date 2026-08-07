@@ -186,7 +186,7 @@ fun LocationSearchSheet(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Icon(Icons.Filled.LocationOff, contentDescription = null, tint = TextTertiary, modifier = Modifier.size(40.dp))
-                        Text(text = stringResource(R.string.no_cities_found), fontSize = 18.sp, fontWeight = FontWeight.Medium, color = CreamText, textAlign = TextAlign.Center)
+                        Text(text = stringResource(R.string.no_cities_found), fontSize = 18.sp, fontWeight = FontWeight.Normal, color = CreamText, textAlign = TextAlign.Center)
                         Text(text = stringResource(R.string.try_different_search), fontSize = 15.sp, color = CreamDim, textAlign = TextAlign.Center)
                     }
                 }

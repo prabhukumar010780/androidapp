@@ -103,7 +103,7 @@ fun SettingsScreen(
                         text = stringResource(R.string.astrology_settings),
                         fontSize = AppType.body,
                         lineHeight = AppType.bodyLh,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         color = CreamText,
                     )
                     Icon(
@@ -165,7 +165,7 @@ fun SettingsScreen(
                         text = stringResource(R.string.settings_language_section),
                         fontSize = AppType.body,
                         lineHeight = AppType.bodyLh,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         color = CreamText,
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -209,7 +209,7 @@ fun SettingsScreen(
                             text = stringResource(R.string.personalized_alerts_title),
                             fontSize = AppType.body,
                             lineHeight = AppType.bodyLh,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                             color = CreamText,
                         )
                         Text(
@@ -248,7 +248,7 @@ private fun CosmicSettingsSection(title: String, content: @Composable ColumnScop
             .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(Radius.card))
             .padding(16.dp),
     ) {
-        Text(text = title, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Gold.copy(alpha = 0.7f))
+        Text(text = title, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Gold.copy(alpha = 0.7f))
         Spacer(Modifier.height(12.dp))
         content()
     }

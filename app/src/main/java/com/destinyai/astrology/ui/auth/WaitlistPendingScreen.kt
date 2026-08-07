@@ -145,7 +145,7 @@ fun WaitlistPendingScreen(
                 ) {
                     Text(
                         stringResource(R.string.waitlist_cta),
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
                     )
                 }

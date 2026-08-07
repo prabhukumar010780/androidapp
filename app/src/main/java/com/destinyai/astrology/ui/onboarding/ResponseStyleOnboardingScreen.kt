@@ -175,7 +175,7 @@ fun ResponseStyleOnboardingScreen(
                             SpanStyle(
                                 color = Gold,
                                 fontStyle = FontStyle.Italic,
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Bold,
                             ),
                         ) {
                             append(titleEmphasis)
@@ -298,7 +298,7 @@ private fun ResponseStyleCard(
                 Text(
                     text = stringResource(option.labelRes),
                     fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     fontFamily = CanelaFontFamily,
                     color = CreamText,
                     modifier = Modifier.weight(1f),
@@ -347,7 +347,7 @@ private fun ResponseStyleCard(
                     Text(
                         text = stringResource(R.string.example_label),
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         color = CreamDim.copy(alpha = 0.5f),
                         letterSpacing = 1.2.sp,
                     )

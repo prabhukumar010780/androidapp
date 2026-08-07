@@ -279,7 +279,7 @@ fun LanguageSelectionScreen(
                         ) {
                             Text(
                                 text = buttonText,
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp,
                                 color = if (selectedCode != null) Color(0xFF0D0D1A) else CreamDim,
                                 maxLines = 1,
@@ -487,7 +487,7 @@ private fun LanguageCard(
             Text(
                 text = lang.nativeName,
                 fontSize = 17.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 fontFamily = CanelaFontFamily,
                 color = if (isSelected) GoldLight else CreamText,
                 textAlign = TextAlign.Center,

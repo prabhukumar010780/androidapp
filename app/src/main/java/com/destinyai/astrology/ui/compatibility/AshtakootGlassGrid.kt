@@ -249,7 +249,7 @@ fun GlassPill(
         Text(
             text = kuta.label,
             style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.Normal,
             color = CreamText,
             fontSize = 11.sp,
             modifier = Modifier.weight(1f),

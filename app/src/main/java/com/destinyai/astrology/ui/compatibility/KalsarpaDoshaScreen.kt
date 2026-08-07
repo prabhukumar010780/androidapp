@@ -118,7 +118,7 @@ fun KalsarpaDoshaScreen(
                 Text(
                     text = stringResource(R.string.kalsarpa_analysis),
                     fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     color = CreamText,
                     modifier = Modifier.semantics { contentDescription = "kalsarpa_analysis_title" },
                 )
@@ -256,7 +256,7 @@ private fun KalsarpaErrorView(message: String) {
             stringResource(R.string.kalsarpa_error),
             fontSize = 16.sp,
             color = CreamText,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(8.dp))
@@ -370,7 +370,7 @@ private fun DivineProtectionView(boyName: String, girlName: String) {
                 )
                 Text(
                     stringResource(R.string.kalsarpa_relationship_benefits),
-                    fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = CreamText,
+                    fontSize = 14.sp, fontWeight = FontWeight.Bold, color = CreamText,
                 )
             }
             Spacer(Modifier.height(16.dp))
@@ -434,7 +434,7 @@ private fun SingleDoshaView(
                     ) {
                         Text("🐍", fontSize = 30.sp)
                     }
-                    Text(affectedName, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = CreamText, maxLines = 1)
+                    Text(affectedName, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = CreamText, maxLines = 1)
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(50))
@@ -477,7 +477,7 @@ private fun SingleDoshaView(
                             modifier = Modifier.size(24.dp),
                         )
                     }
-                    Text(safeName, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = CreamText, maxLines = 1)
+                    Text(safeName, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = CreamText, maxLines = 1)
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(50))
@@ -545,7 +545,7 @@ private fun MutualDoshaView(
             )
             Text(
                 stringResource(R.string.kalsarpa_dosha_samya),
-                fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Gold,
+                fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Gold,
             )
             Text(
                 text = stringResource(R.string.kalsarpa_mutual_message_short),
@@ -575,7 +575,7 @@ private fun MutualDoshaView(
                     Text("🔶", fontSize = 16.sp)
                     Text(
                         stringResource(R.string.kalsarpa_shared_remedies),
-                        fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = CreamText,
+                        fontSize = 15.sp, fontWeight = FontWeight.Bold, color = CreamText,
                     )
                 }
                 Spacer(Modifier.height(12.dp))
@@ -640,7 +640,7 @@ private fun CompactDoshaRow(name: String, data: KalaSarpaModel) {
                 )
                 Text(
                     data.severity.replaceFirstChar { it.uppercase() },
-                    fontSize = 11.sp, fontWeight = FontWeight.Medium, color = CreamDim,
+                    fontSize = 11.sp, fontWeight = FontWeight.Normal, color = CreamDim,
                 )
             }
         }
@@ -726,7 +726,7 @@ private fun DoshaDetailsCard(data: KalaSarpaModel) {
                 Icon(Icons.Filled.Favorite, contentDescription = null, tint = Gold, modifier = Modifier.size(14.dp))
                 Text(
                     stringResource(R.string.affected_areas),
-                    fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CreamDim,
+                    fontSize = 13.sp, fontWeight = FontWeight.Bold, color = CreamDim,
                 )
             }
             Spacer(Modifier.height(8.dp))
@@ -794,7 +794,7 @@ private fun DoshaDetailsCard(data: KalaSarpaModel) {
                 Icon(Icons.Filled.Description, contentDescription = null, tint = Gold, modifier = Modifier.size(14.dp))
                 Text(
                     stringResource(R.string.analysis_notes),
-                    fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CreamDim,
+                    fontSize = 13.sp, fontWeight = FontWeight.Bold, color = CreamDim,
                 )
             }
             Spacer(Modifier.height(8.dp))
@@ -814,7 +814,7 @@ private fun DoshaDetailsCard(data: KalaSarpaModel) {
                 Icon(Icons.Filled.Description, contentDescription = null, tint = Gold, modifier = Modifier.size(14.dp))
                 Text(
                     stringResource(R.string.analysis_notes),
-                    fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CreamDim,
+                    fontSize = 13.sp, fontWeight = FontWeight.Bold, color = CreamDim,
                 )
             }
             Spacer(Modifier.height(8.dp))
@@ -840,7 +840,7 @@ private fun DoshaDetailsCard(data: KalaSarpaModel) {
                 Text("🪐", fontSize = 14.sp)
                 Text(
                     stringResource(R.string.planets_involved),
-                    fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CreamDim,
+                    fontSize = 13.sp, fontWeight = FontWeight.Bold, color = CreamDim,
                 )
             }
             Spacer(Modifier.height(8.dp))
@@ -872,7 +872,7 @@ private fun DoshaDetailsCard(data: KalaSarpaModel) {
                 Icon(Icons.Filled.Schedule, contentDescription = null, tint = Gold, modifier = Modifier.size(14.dp))
                 Text(
                     stringResource(R.string.peak_period),
-                    fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CreamDim,
+                    fontSize = 13.sp, fontWeight = FontWeight.Bold, color = CreamDim,
                 )
             }
             Spacer(Modifier.height(8.dp))
@@ -906,7 +906,7 @@ private fun DoshaRemediesCard(data: KalaSarpaModel) {
             Text("🔶", fontSize = 14.sp)
             Text(
                 stringResource(R.string.kalsarpa_remedies_title),
-                fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = CreamDim,
+                fontSize = 13.sp, fontWeight = FontWeight.Bold, color = CreamDim,
             )
         }
         Spacer(Modifier.height(8.dp))
