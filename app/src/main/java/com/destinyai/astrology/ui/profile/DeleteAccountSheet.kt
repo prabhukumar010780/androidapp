@@ -229,6 +229,32 @@ fun DeleteAccountSheet(
             // user can re-auth-and-retry instead of hitting a dead end. Replaces the
             // destructive button while expired.
             if (sessionExpired) {
+                // iOS parity (DeleteAccountSheet.swift:86-121): a yellow explanatory
+                // banner tells the user WHY deletion is blocked before the Sign In CTA.
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0x33FFC107))
+                        .border(1.dp, Color(0x66FFC107), RoundedCornerShape(12.dp))
+                        .padding(12.dp)
+                        .testTag("delete_account_session_expired_banner"),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Warning,
+                        contentDescription = null,
+                        tint = Color(0xFFFFC107),
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        text = stringResource(R.string.delete_session_expired_message),
+                        color = CreamText,
+                        fontSize = 13.sp,
+                    )
+                }
                 Button(
                     onClick = {
                         focusManager.clearFocus()

@@ -50,6 +50,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -350,7 +352,11 @@ fun ProfileScreen(
                     .padding(innerPadding),
             ) {
                 Column(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        // E2E: Appium accessibility-id root marker. mergeDescendants=false
+                        // so child rows/inputs stay individually addressable.
+                        .semantics(mergeDescendants = false) { contentDescription = "profile_screen" },
                     // Center the capped content on tablets/foldables; no-op on phones.
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
@@ -688,6 +694,7 @@ fun ProfileScreen(
                                         subtitle = stringResource(R.string.birth_details_subtitle),
                                         leadingIcon = Icons.Filled.CalendarMonth,
                                         onClick = onNavigateToBirthDetails,
+                                        e2eContentDescription = "profile_birth_settings",
                                     )
                                     HorizontalDivider(color = Gold.copy(alpha = 0.08f))
 
@@ -831,6 +838,7 @@ fun ProfileScreen(
                                         // onboarding flow. The onboarding route
                                         // remains for first-run only.
                                         onClick = { showLanguageSheet = true },
+                                        e2eContentDescription = "profile_language_settings",
                                     )
                                     HorizontalDivider(color = Gold.copy(alpha = 0.08f))
 
@@ -861,6 +869,7 @@ fun ProfileScreen(
                                         ),
                                         leadingIcon = Icons.Filled.GridView,
                                         onClick = { showChartStyleSheet = true },
+                                        e2eContentDescription = "profile_chart_style_settings",
                                     )
                                     HorizontalDivider(color = Gold.copy(alpha = 0.08f))
 
@@ -1387,6 +1396,8 @@ private fun PreferenceArrowRow(
     // iOS parity (ProfileView.swift:537-569): destructive rows (Clear history)
     // tint the icon container, icon, and label in error red.
     destructive: Boolean = false,
+    // E2E: optional Appium accessibility-id applied to the clickable Row.
+    e2eContentDescription: String? = null,
 ) {
     val errorRed = Color(0xFFFF5252)
     val iconContainerColor = if (destructive) errorRed.copy(alpha = 0.15f) else NavyVariant
@@ -1397,6 +1408,13 @@ private fun PreferenceArrowRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
+            .let {
+                if (e2eContentDescription != null) {
+                    it.semantics { contentDescription = e2eContentDescription }
+                } else {
+                    it
+                }
+            }
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

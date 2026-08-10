@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.platform.testTag
@@ -62,6 +63,7 @@ import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.TouchMin
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
@@ -140,8 +142,6 @@ private fun groupNotificationsByBucket(
     items: List<NotificationDto>,
 ): List<Pair<String, List<NotificationDto>>> {
     if (items.isEmpty()) return emptyList()
-    val now = System.currentTimeMillis()
-    val day = 24L * 60 * 60 * 1000
     fun parseMs(iso: String?): Long {
         val raw = iso?.takeIf { it.isNotEmpty() } ?: return 0L
         val candidate = if (raw.endsWith("Z") || raw.contains("+")) raw else "${raw}Z"
@@ -156,18 +156,42 @@ private fun groupNotificationsByBucket(
         return 0L
     }
     fun bucket(ms: Long): String {
-        val age = now - ms
-        return when {
-            age < day -> "Today"
-            age < 2 * day -> "Yesterday"
-            age < 7 * day -> "This Week"
-            age < 14 * day -> "Last Week"
-            else -> "Earlier"
-        }
+        if (ms == 0L) return "Earlier"
+        val itemCal = Calendar.getInstance().apply { timeInMillis = ms }
+        val nowCal = Calendar.getInstance()
+        // isDateInToday / isDateInYesterday equivalents using calendar-day comparison
+        val itemYear = itemCal.get(Calendar.YEAR)
+        val itemDay = itemCal.get(Calendar.DAY_OF_YEAR)
+        val nowYear = nowCal.get(Calendar.YEAR)
+        val nowDay = nowCal.get(Calendar.DAY_OF_YEAR)
+        if (itemYear == nowYear && itemDay == nowDay) return "Today"
+        val yesterdayCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
+        if (itemYear == yesterdayCal.get(Calendar.YEAR) &&
+            itemDay == yesterdayCal.get(Calendar.DAY_OF_YEAR)
+        ) return "Yesterday"
+        // Week-of-year semantics — mirrors iOS weekOfYear == nowWeek / nowWeek-1
+        val itemWeek = itemCal.get(Calendar.WEEK_OF_YEAR)
+        val nowWeek = nowCal.get(Calendar.WEEK_OF_YEAR)
+        if (itemYear == nowYear && itemWeek == nowWeek) return "This Week"
+        if (itemYear == nowYear && itemWeek == nowWeek - 1) return "Last Week"
+        return "Earlier"
     }
     val order = listOf("Today", "Yesterday", "This Week", "Last Week", "Earlier")
     val grouped = items.groupBy { bucket(parseMs(it.createdAt)) }
     return order.mapNotNull { label -> grouped[label]?.let { label to it } }
+}
+
+/**
+ * Maps the stable internal bucket key (kept in English so grouping/ordering is
+ * locale-independent) to its localized section-header string resource.
+ */
+@androidx.annotation.StringRes
+private fun bucketLabelRes(label: String): Int = when (label) {
+    "Today" -> R.string.history_section_today
+    "Yesterday" -> R.string.history_section_yesterday
+    "This Week" -> R.string.history_section_this_week
+    "Last Week" -> R.string.notif_section_last_week
+    else -> R.string.history_section_earlier
 }
 
 /** iOS parity (NotificationDetailSheet.canAskMore in NotificationInboxView.swift:463-467). */
@@ -247,7 +271,10 @@ fun NotificationsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .semantics { testTagsAsResourceId = true }
+                .semantics {
+                    testTagsAsResourceId = true
+                    contentDescription = "notifications_screen"
+                }
                 .testTag("notifications_screen"),
         ) {
             // Header
@@ -320,7 +347,9 @@ fun NotificationsScreen(
                                 viewModel.markAllRead()
                             }
                         },
-                        modifier = Modifier.size(TouchMin),
+                        modifier = Modifier
+                            .size(TouchMin)
+                            .semantics { contentDescription = "mark_all_read_button" },
                     ) {
                         Box(
                             modifier = Modifier
@@ -460,7 +489,7 @@ fun NotificationsScreen(
                         buckets.forEach { (label, items) ->
                             item(key = "__hdr_$label") {
                                 Text(
-                                    text = label,
+                                    text = stringResource(bucketLabelRes(label)),
                                     color = Gold,
                                     style = MaterialTheme.typography.labelMedium,
                                     modifier = Modifier.padding(top = 4.dp, bottom = 2.dp),
@@ -583,7 +612,10 @@ private fun NotificationRowItem(
                 RoundedCornerShape(Radius.card),
             )
             .clickable { onClick() }
-            .semantics { testTagsAsResourceId = true }
+            .semantics {
+                testTagsAsResourceId = true
+                contentDescription = "notification_item"
+            }
             .testTag("notification_row"),
         verticalAlignment = Alignment.Top,
     ) {

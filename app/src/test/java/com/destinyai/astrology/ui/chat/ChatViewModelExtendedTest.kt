@@ -111,7 +111,7 @@ class ChatViewModelExtendedTest {
 
     @Test
     fun `retryInterruptedQuestion clears interruptedQuestion after send`() = runTest {
-        coEvery { repository.sendMessage(any(), any(), any()) } returns flowOf(Result.success("reply"))
+        coEvery { repository.sendMessage(any(), any(), any(), any()) } returns flowOf(Result.success("reply"))
         viewModel.setInterruptedQuestion("What is my fortune?")
         viewModel.retryInterruptedQuestion()
         viewModel.uiState.test {

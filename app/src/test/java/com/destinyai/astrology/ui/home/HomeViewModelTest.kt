@@ -246,7 +246,7 @@ class HomeViewModelTest {
 
     @Test
     fun `loadHomeData populates dailyInsight`() = runTest {
-        coEvery { repository.getDailyInsight(any(), any()) } returns "A powerful day for decisions."
+        coEvery { repository.getDailyInsight(any(), any(), any()) } returns "A powerful day for decisions."
         coEvery { prefs.getUserEmail() } returns "u@x.com"
         coEvery { profileContextManager.activeBirthData() } returns BirthProfileDto(
             dateOfBirth = "1990-01-01", timeOfBirth = "06:00", cityOfBirth = "Delhi",
@@ -349,5 +349,54 @@ class HomeViewModelTest {
             assertNull(awaitItem().selectedLifeArea)
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    // --- Language-change cache bypass (FIX 4) ---
+
+    /**
+     * When a language change is detected (lastLoadedLanguage != selectedLanguage),
+     * loadHomeData must call getDailyInsight with force=true so the disk-cache read
+     * is skipped and the API is re-fetched in the new language.
+     * Mirrors iOS HomeViewModel.swift:181 shouldBypassCache = force || languageChanged.
+     */
+    @Test
+    fun `loadHomeData passes force=true to getDailyInsight on language change`() = runTest {
+        val birth = BirthProfileDto(
+            dateOfBirth = "1990-01-01", timeOfBirth = "06:00", cityOfBirth = "Delhi",
+            latitude = 28.6, longitude = 77.2,
+        )
+        coEvery { prefs.getUserEmail() } returns "u@x.com"
+        coEvery { prefs.getSelectedLanguage() } returns "hi"         // new language
+        coEvery { prefs.getLastLoadedLanguage() } returns "en"       // previously loaded lang
+        coEvery { prefs.getLastFullLoadDate(any()) } returns null    // force full reload path
+        coEvery { profileContextManager.activeBirthData() } returns birth
+        coEvery { repository.getDailyInsight(any(), any(), any()) } returns "prediction"
+
+        viewModel.loadHomeData()
+
+        // force=true must have been passed (third arg) when language changed
+        coVerify { repository.getDailyInsight(any(), any(), force = true) }
+    }
+
+    /**
+     * When the language has NOT changed, loadHomeData calls getDailyInsight with
+     * force=false (normal cache-read path).
+     */
+    @Test
+    fun `loadHomeData passes force=false to getDailyInsight when language unchanged`() = runTest {
+        val birth = BirthProfileDto(
+            dateOfBirth = "1990-01-01", timeOfBirth = "06:00", cityOfBirth = "Delhi",
+            latitude = 28.6, longitude = 77.2,
+        )
+        coEvery { prefs.getUserEmail() } returns "u@x.com"
+        coEvery { prefs.getSelectedLanguage() } returns "en"
+        coEvery { prefs.getLastLoadedLanguage() } returns "en"       // same — no change
+        coEvery { prefs.getLastFullLoadDate(any()) } returns null
+        coEvery { profileContextManager.activeBirthData() } returns birth
+        coEvery { repository.getDailyInsight(any(), any(), any()) } returns "prediction"
+
+        viewModel.loadHomeData()
+
+        coVerify { repository.getDailyInsight(any(), any(), force = false) }
     }
 }

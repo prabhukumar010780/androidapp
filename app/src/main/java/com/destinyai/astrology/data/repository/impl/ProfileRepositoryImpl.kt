@@ -157,26 +157,48 @@ class ProfileRepositoryImpl @Inject constructor(
         return try {
             api.deleteAccount("Bearer $jwt", DeleteAccountRequest(userEmail = email))
         } catch (e: HttpException) {
-            if (e.code() == 403 || e.code() == 409) {
-                // iOS parity (ProfileService.swift:537-544/609-629): parse detail
-                // (dict or string); fall back to the generic active-subscription guard.
-                val detail = runCatching {
-                    val raw = e.response()?.errorBody()?.string().orEmpty()
-                    if (raw.isBlank()) null
-                    else {
-                        val d = JsonParser.parseString(raw).asJsonObject.get("detail")
-                        when {
-                            d?.isJsonObject == true -> d.asJsonObject.get("message")?.asString
-                            d?.isJsonPrimitive == true -> d.asString
-                            else -> null
+            // iOS parity (ProfileService.swift:640-673 W7 fix): 403 and 409 are distinct.
+            // 403 detail.code == body_email_mismatch | session_required → SessionExpiredException
+            // 403 detail.code == guest_not_allowed → AccountDeletionBlockedException (guest msg)
+            // 409 → active-subscription block (AccountDeletionBlockedException)
+            // Other 403 (unknown code) → fall back to server message / generic guard
+            val rawBody = runCatching { e.response()?.errorBody()?.string().orEmpty() }.getOrDefault("")
+            when (e.code()) {
+                403 -> {
+                    val subCode = parseDetailField(rawBody, "code")
+                    when (subCode) {
+                        "body_email_mismatch", "session_required" -> throw SessionExpiredException()
+                        "guest_not_allowed" -> throw AccountDeletionBlockedException(
+                            parseDetailField(rawBody, "message")
+                                ?: "Guest accounts cannot be deleted."
+                        )
+                        else -> {
+                            val msg = parseDetailField(rawBody, "message")
+                                ?: parseDetailField(rawBody, "error")
+                            throw AccountDeletionBlockedException(
+                                msg ?: "Please cancel your subscription before deleting your account."
+                            )
                         }
                     }
-                }.getOrNull()
-                throw AccountDeletionBlockedException(
-                    detail ?: "Please cancel your subscription before deleting your account."
-                )
+                }
+                409 -> {
+                    val detail = runCatching {
+                        if (rawBody.isBlank()) null
+                        else {
+                            val d = JsonParser.parseString(rawBody).asJsonObject.get("detail")
+                            when {
+                                d?.isJsonObject == true -> d.asJsonObject.get("message")?.asString
+                                d?.isJsonPrimitive == true -> d.asString
+                                else -> null
+                            }
+                        }
+                    }.getOrNull()
+                    throw AccountDeletionBlockedException(
+                        detail ?: "Please cancel your subscription before deleting your account."
+                    )
+                }
+                else -> throw e
             }
-            throw e
         }
     }
 

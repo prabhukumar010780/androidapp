@@ -49,11 +49,18 @@ class SessionAuthenticator(
             return null
         }
 
-        // Attempt the one refresh. On failure — including a thrown ReauthRequired — clear
-        // the session so the interceptor falls back to the API key and Splash/Auth re-routes.
+        // Attempt the one refresh. On failure — including a thrown ReauthRequired or
+        // AccountDeleted — clear the session so the interceptor falls back to the API key
+        // and Splash/Auth re-routes. iOS parity (NetworkClient.swift:114-116): both
+        // .reauthRequired and .accountDeleted cases call clearActiveSession().
         val newJwt = try {
             runBlocking { exchangeClient.get().refresh() }.sessionJwt
         } catch (e: AuthExchangeError.ReauthRequired) {
+            clearForReauth()
+            return null
+        } catch (e: AuthExchangeError.AccountDeleted) {
+            // GDPR erasure / account_archived: the JWT is permanently dead.
+            // Clear so the interceptor stops attaching it and Splash routes to Auth.
             clearForReauth()
             return null
         } catch (e: Exception) {

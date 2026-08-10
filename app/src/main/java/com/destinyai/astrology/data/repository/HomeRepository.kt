@@ -16,8 +16,18 @@ interface HomeRepository {
      *   profile id (partner UUID, or owner email when self is active). Mirrors
      *   iOS profileScopedKey at ProfileContextManager.swift:147-149 — without
      *   this scope, switching profiles would hit a stale self-cached row.
+     * @param force When true, skips the same-day disk-cache read and re-fetches
+     *   from the API (still writes the fresh result back to cache). Mirrors iOS
+     *   HomeViewModel.fetchTodaysPrediction(force:) / shouldBypassCache logic
+     *   (HomeViewModel.swift:181,306-319): used on language change so localized
+     *   prediction text, suggested_questions, life-area briefs, and dasha_insight
+     *   refresh in the new language without waiting for a day rollover.
      */
-    suspend fun getDailyInsight(birth: BirthProfileDto, profileCacheId: String): String
+    suspend fun getDailyInsight(
+        birth: BirthProfileDto,
+        profileCacheId: String,
+        force: Boolean = false,
+    ): String
     suspend fun getRichHomeData(
         email: String,
         birthProfile: BirthProfileDto,

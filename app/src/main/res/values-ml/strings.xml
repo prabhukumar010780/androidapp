@@ -2458,6 +2458,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="history_search_conversations">സംഭാഷണങ്ങള്‍ തിരയുക…</string>
     <string name="history_section_date_format">MMMM d, yyyy</string>
     <string name="history_section_earlier">നേരത്തെ</string>
+    <string name="notif_section_last_week">കഴിഞ്ഞ വാരം</string>
     <string name="history_section_this_week">ഈ വാരം</string>
     <string name="history_section_today">ഇന്ന്</string>
     <string name="history_section_yesterday">നിന്നെ</string>
@@ -2699,4 +2700,8 @@ Until then: Use this period for strategic positioning.</string>
     <string name="yoga_token_moderate">മിതം</string>
     <string name="yoga_token_yoga_reduced">യോഗം കുറഞ്ഞു</string>
     <string name="yoga_token_yoga_cancelled">യോഗം റദ്ദാക്കി</string>
+    <string name="subscription_expired_title">നിങ്ങളുടെ സബ്‌സ്‌ക്രിപ്‌ഷൻ അവസാനിച്ചു</string>
+    <string name="subscription_expired_body">ചോദ്യങ്ങൾ ചോദിക്കാനും പ്രീമിയം ഫീച്ചറുകൾ ഉപയോഗിക്കാനും പുതുക്കുക.</string>
+    <string name="subscription_expired_cta">Plus പുതുക്കുക</string>
+    <string name="quota_daily_limit_title">ദൈനംദിന പരിധി എത്തി</string>
 </resources>

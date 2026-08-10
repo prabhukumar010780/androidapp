@@ -2006,6 +2006,8 @@ Please share deeper insights on how this transit influences my life and any prac
     <string name="history_section_yesterday">Yesterday</string>
     <string name="history_section_this_week">This Week</string>
     <string name="history_section_earlier">Earlier</string>
+    <!-- Notification inbox date-section header (mirrors iOS NotificationModels.inboxBucket "Last Week") -->
+    <string name="notif_section_last_week">Last Week</string>
     <!-- Compatibility group row (mirrors iOS HistoryView.swift:350-353, 428-447) -->
     <string name="history_group_title_format">%1$s + %2$s</string>
     <string name="history_group_partners_format">%1$d partners</string>
@@ -2612,6 +2614,18 @@ Until then: Use this period for strategic positioning.</string>
     <string name="settings_back_cd">Back</string>
     <!-- Auth/birth-data friendly error fallbacks (iOS parity: localized, not raw HTTP exception text) -->
     <string name="auth_generic_sign_in_failed">Sign-in failed. Please check your connection and try again.</string>
+    <!-- iOS parity (AuthViewModel.swift:621-637 crossIdpCollision): shown when /auth/exchange
+         returns cross_idp_collision — the email is bound to a different sign-in provider.
+         %1$s is the capitalized provider name (e.g. "Google", "Apple"). -->
+    <string name="auth_cross_idp_collision_with_provider" tools:ignore="MissingTranslation">This email is already linked to %1$s. Please sign in with %1$s instead.</string>
+    <!-- Fallback when bound_idp is absent from the server response. -->
+    <string name="auth_cross_idp_collision_generic" tools:ignore="MissingTranslation">This email is already linked to a different sign-in method. Please use your original sign-in provider.</string>
+    <!-- iOS parity (delete_guest_not_allowed_message): guest accounts must register before
+         deleting. Shown on 403 detail.code == "guest_not_allowed" on DELETE /account. -->
+    <string name="delete_guest_not_allowed_message" tools:ignore="MissingTranslation">Guest accounts cannot be deleted. Please register with Google to create an account before requesting deletion.</string>
+    <!-- iOS parity (ProfileService.swift:628 active-subscription block): fallback message
+         shown on 403/409 without a parseable detail.code or when code is unrecognised. -->
+    <string name="delete_subscription_block_message" tools:ignore="MissingTranslation">Please cancel your subscription before deleting your account.</string>
     <string name="birth_data_save_failed">We couldn\'t save your profile right now. Please try again.</string>
     <string name="birth_data_please_select_city">Please select your city of birth</string>
     <string name="birth_data_please_select_valid_city">Please select a valid city from the search</string>
@@ -2663,6 +2677,12 @@ Until then: Use this period for strategic positioning.</string>
     <!-- DepthLayersView timing window row (parity with iOS DepthLayersView) -->
     <string name="depth_timing_window">Timing window</string>
     <string name="quota_exhausted_title">You\'ve reached today\'s limit</string>
+    <!-- iOS parity (QuotaExhaustedView): distinct copy for lapsed-paid (subscription_expired)
+         and daily-limit quota states in the chat quota sheet. -->
+    <string name="subscription_expired_title">Your subscription has ended</string>
+    <string name="subscription_expired_body">Renew to keep asking questions and accessing premium features.</string>
+    <string name="subscription_expired_cta">Renew Plus</string>
+    <string name="quota_daily_limit_title">Daily limit reached</string>
     <!-- Guest paywall title — mirrors iOS QuotaExhaustedView "Sign up to continue!" header -->
     <string name="sign_up_to_continue">Sign up to continue!</string>
     <!-- Fair-use violation interstitial (parity with iOS QuotaExhaustedView fair_use branch) -->

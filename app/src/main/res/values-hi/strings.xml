@@ -2438,6 +2438,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="history_search_conversations">वार्तालाप खोजें…</string>
     <string name="history_section_date_format">MMMM d, yyyy</string>
     <string name="history_section_earlier">पहले</string>
+    <string name="notif_section_last_week">पिछले सप्ताह</string>
     <string name="history_section_this_week">इस सप्ताह</string>
     <string name="history_section_today">आज</string>
     <string name="history_section_yesterday">कल</string>
@@ -2679,4 +2680,8 @@ Until then: Use this period for strategic positioning.</string>
     <string name="yoga_token_moderate">मध्यम</string>
     <string name="yoga_token_yoga_reduced">योग कम</string>
     <string name="yoga_token_yoga_cancelled">योग रद्द</string>
+    <string name="subscription_expired_title">आपकी सदस्यता समाप्त हो गई है</string>
+    <string name="subscription_expired_body">प्रश्न पूछना और प्रीमियम सुविधाओं तक पहुंच जारी रखने के लिए नवीनीकरण करें।</string>
+    <string name="subscription_expired_cta">Plus नवीनीकरण करें</string>
+    <string name="quota_daily_limit_title">दैनिक सीमा समाप्त</string>
 </resources>

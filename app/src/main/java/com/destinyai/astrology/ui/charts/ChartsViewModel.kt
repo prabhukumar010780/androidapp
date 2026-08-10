@@ -94,7 +94,8 @@ class ChartsViewModel @Inject constructor(
                 )
             }
             try {
-                val activeProfileId = prefs.getActiveProfileId() ?: ""
+                val activeProfileId = prefs.getActiveProfileId()?.takeIf { it.isNotBlank() }
+                    ?: prefs.getUserEmail().orEmpty()
                 val birthHash = computeBirthHash(profile)
                 // iOS parity (UserChartService.fetchFullChartData): read the forever-cached
                 // chart (year=0,month=0) first; render instantly + skip the network on hit.
@@ -161,7 +162,8 @@ class ChartsViewModel @Inject constructor(
         viewModelScope.launch {
             val year = LocalDate.now().year
             val month = LocalDate.now().monthValue
-            val activeProfileId = prefs.getActiveProfileId() ?: ""
+            val activeProfileId = prefs.getActiveProfileId()?.takeIf { it.isNotBlank() }
+                ?: prefs.getUserEmail().orEmpty()
             val birthHash = computeBirthHash(profile)
             val authHeader = "Bearer ${BuildConfig.API_KEY}"
             val request = DashaTransitRequest(

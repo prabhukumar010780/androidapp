@@ -164,7 +164,7 @@ class ChatViewModelTest {
 
     @Test
     fun `sendMessage appends user message`() = runTest(testDispatcher) {
-        coEvery { repository.sendMessage(any(), any(), any()) } returns flowOf(Result.success("response"))
+        coEvery { repository.sendMessage(any(), any(), any(), any()) } returns flowOf(Result.success("response"))
 
         viewModel.updateInput("Tell me about my day")
         viewModel.sendMessage()
@@ -178,7 +178,7 @@ class ChatViewModelTest {
 
     @Test
     fun `sendMessage clears input field after send`() = runTest(testDispatcher) {
-        coEvery { repository.sendMessage(any(), any(), any()) } returns flowOf(Result.success("response"))
+        coEvery { repository.sendMessage(any(), any(), any(), any()) } returns flowOf(Result.success("response"))
 
         viewModel.updateInput("Some question")
         viewModel.sendMessage()
@@ -191,7 +191,7 @@ class ChatViewModelTest {
 
     @Test
     fun `sendMessage sets isStreaming true during response`() = runTest {
-        coEvery { repository.sendMessage(any(), any(), any()) } returns flowOf(Result.success("..."))
+        coEvery { repository.sendMessage(any(), any(), any(), any()) } returns flowOf(Result.success("..."))
 
         viewModel.updateInput("question")
         viewModel.sendMessage()
@@ -205,7 +205,7 @@ class ChatViewModelTest {
     @Test
     fun `sendMessage appends assistant response to messages`() = runTest(testDispatcher) {
         val responseText = "Mars in your 7th house suggests..."
-        coEvery { repository.sendMessage(any(), any(), any()) } returns flowOf(Result.success(responseText))
+        coEvery { repository.sendMessage(any(), any(), any(), any()) } returns flowOf(Result.success(responseText))
 
         viewModel.updateInput("relationship question")
         viewModel.sendMessage()
@@ -221,7 +221,7 @@ class ChatViewModelTest {
 
     @Test
     fun `sendMessage 403 upgrade_required shows paywall`() = runTest(testDispatcher) {
-        coEvery { repository.sendMessage(any(), any(), any()) } returns
+        coEvery { repository.sendMessage(any(), any(), any(), any()) } returns
             flowOf(Result.failure(UpgradeRequiredException()))
 
         viewModel.updateInput("premium feature question")
@@ -239,11 +239,17 @@ class ChatViewModelTest {
 
     @Test
     fun `sendMessage network error shows retry option`() = runTest {
-        coEvery { repository.sendMessage(any(), any(), any()) } returns
+        coEvery { repository.sendMessage(any(), any(), any(), any()) } returns
             flowOf(Result.failure(Exception("Network error")))
+        // FIX A (iOS parity): a generic mid-stream error now transparently replays via
+        // the non-streaming endpoint. Only when THAT also fails does the retry banner show,
+        // so the sync fallback must fail too for this test to exercise the banner path.
+        coEvery { repository.sendMessageSync(any(), any(), any(), any()) } returns
+            Result.failure(Exception("Network error"))
 
         viewModel.updateInput("question")
         viewModel.sendMessage()
+        advanceUntilIdle()
 
         viewModel.uiState.test {
             assertNotNull(awaitItem().errorMessage)

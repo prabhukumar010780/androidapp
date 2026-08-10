@@ -43,7 +43,7 @@ sealed class ChatStreamEvent {
 }
 
 interface ChatRepository {
-    suspend fun sendMessage(sessionId: String, text: String, idempotencyKey: String? = null): Flow<Result<String>>
+    suspend fun sendMessage(sessionId: String, text: String, idempotencyKey: String? = null, assistantMessageId: String? = null): Flow<Result<String>>
 
     /**
      * iOS parity (ChatViewModel.sendMessageSync — PredictionService.predict): the
@@ -52,7 +52,7 @@ interface ChatRepository {
      * The idempotencyKey should be the SAME key used by the failed streaming send
      * so the server can replay a cached answer instead of re-charging quota.
      */
-    suspend fun sendMessageSync(sessionId: String, text: String, idempotencyKey: String?): Result<String>
+    suspend fun sendMessageSync(sessionId: String, text: String, idempotencyKey: String?, assistantMessageId: String? = null): Result<String>
     suspend fun loadHistory(): List<ChatThread>
     /**
      * Paginated history load — mirrors iOS dataManager.fetchChatThreadsPaginated (ChatView.swift:512-644).

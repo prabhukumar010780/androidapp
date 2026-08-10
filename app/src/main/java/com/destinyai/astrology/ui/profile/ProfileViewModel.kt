@@ -494,10 +494,68 @@ class ProfileViewModel @Inject constructor(
                             ),
                         )
                     }
-                    // Mirrors iOS ProfileService:537-544/609-629 — 403/409 = active
-                    // subscription blocks deletion. Parse the server detail message
-                    // (dict or string shape); fall back to a localized string.
-                    403, 409 -> {
+                    // iOS parity (ProfileService.swift:640-673 W7 fix): 403 carries a
+                    // detail.code that distinguishes identity/session failures (route to
+                    // re-auth) from guest-not-allowed (show register message).
+                    // 409 = active subscription block (unchanged).
+                    403 -> {
+                        val subCode = runCatching {
+                            val raw = e.response()?.errorBody()?.string().orEmpty()
+                            if (raw.isBlank()) return@runCatching null
+                            val d = com.google.gson.JsonParser.parseString(raw).asJsonObject.get("detail")
+                            when {
+                                d?.isJsonObject == true -> d.asJsonObject.get("code")?.asString
+                                else -> null
+                            }
+                        }.getOrNull()
+                        when (subCode) {
+                            "body_email_mismatch", "session_required" ->
+                                // Identity/body-email drift or missing session — a fresh
+                                // sign-in re-syncs the JWT-bound email and unblocks delete.
+                                // Mirrors iOS ProfileError.sessionExpired path.
+                                _uiState.update {
+                                    it.copy(
+                                        isDeletingAccount = false,
+                                        deleteSessionExpired = true,
+                                        deleteErrorMessage = appContext.getString(
+                                            com.destinyai.astrology.R.string.delete_session_expired_message,
+                                        ),
+                                    )
+                                }
+                            "guest_not_allowed" ->
+                                // iOS parity (ProfileService.swift:654-660 guest_not_allowed):
+                                // guest accounts must register before deleting.
+                                _uiState.update {
+                                    it.copy(
+                                        isDeletingAccount = false,
+                                        deleteErrorMessage = appContext.getString(
+                                            com.destinyai.astrology.R.string.delete_guest_not_allowed_message,
+                                        ),
+                                    )
+                                }
+                            else -> {
+                                // Other 403 (e.g. unknown code or no code): fall back to
+                                // server message or the active-subscription guard.
+                                val detail = runCatching {
+                                    val raw = e.response()?.errorBody()?.string().orEmpty()
+                                    val d = com.google.gson.JsonParser.parseString(raw).asJsonObject.get("detail")
+                                    when {
+                                        d?.isJsonObject == true -> d.asJsonObject.get("message")?.asString
+                                        d?.isJsonPrimitive == true -> d.asString
+                                        else -> null
+                                    }
+                                }.getOrNull()
+                                _uiState.update {
+                                    it.copy(
+                                        isDeletingAccount = false,
+                                        deleteErrorMessage = detail
+                                            ?: appContext.getString(com.destinyai.astrology.R.string.delete_subscription_block_message),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    409 -> {
                         val detail = runCatching {
                             val raw = e.response()?.errorBody()?.string().orEmpty()
                             val d = com.google.gson.JsonParser.parseString(raw).asJsonObject.get("detail")
@@ -511,7 +569,7 @@ class ProfileViewModel @Inject constructor(
                             it.copy(
                                 isDeletingAccount = false,
                                 deleteErrorMessage = detail
-                                    ?: "Please cancel your subscription before deleting your account.",
+                                    ?: appContext.getString(com.destinyai.astrology.R.string.delete_subscription_block_message),
                             )
                         }
                     }

@@ -17,6 +17,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withTimeout
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -143,30 +144,43 @@ class QuotaManager @Inject constructor(
 
     /**
      * Authoritative feature access check (mirrors iOS canAccessFeature).
+     *
+     * iOS parity (QuotaManager.swift:446-448): the /subscription/can-access request
+     * is pinned to a 5-second timeout so a cold Cloud Run instance fails fast and
+     * the caller's catch block can take the fail-open path. The stream/predict
+     * endpoint enforces quota server-side and is the source of truth; the pre-flight
+     * check is a UX hint only.
+     *
      * @param count Usages to check (for multi-partner pass partners.size).
+     * On timeout the withTimeout block throws CancellationException, which callers
+     * handle via their own catch/fail-open block (see canAsk, canAddProfile).
      */
     suspend fun canAccessFeature(
         feature: FeatureID,
         email: String,
         count: Int = 1,
     ): FeatureAccessResponse {
-        return api.canAccessFeatureFull(email, feature.raw, count)
+        return withTimeout(PREFLIGHT_TIMEOUT_MS) {
+            api.canAccessFeatureFull(email, feature.raw, count)
+        }
     }
 
     /**
      * Simple bool wrapper for ChatViewModel.send() gating (mirrors iOS canAsk).
-     * Defaults to ai_questions feature. Returns false on network error.
+     * Defaults to ai_questions feature. Returns true (fail-open) on network error
+     * OR on timeout — the predict endpoint enforces quota authoritatively.
      */
     suspend fun canAsk(email: String, feature: FeatureID = FeatureID.AI_QUESTIONS): Boolean {
         return try {
             canAccessFeature(feature, email).canAccess
         } catch (e: Exception) {
             // iOS parity (QuotaManager.swift:460-473, iOS-6 fix): FAIL OPEN on network
-            // error. The server-side check_and_reserve on the predict endpoint is the
-            // source of truth, so a transient network blip must not lock out a user
-            // with remaining quota. Returning true lets the send proceed; the SSE/
-            // predict call enforces quota authoritatively.
-            Log.w(TAG, "canAsk network error — failing open: ${e.message}")
+            // error or timeout. The server-side check_and_reserve on the predict
+            // endpoint is the source of truth, so a transient network blip or cold
+            // Cloud Run instance must not lock out a user with remaining quota.
+            // TimeoutCancellationException is a subclass of CancellationException which
+            // is a subclass of Exception, so it is caught here as well.
+            Log.w(TAG, "canAsk network error/timeout — failing open: ${e.javaClass.simpleName}: ${e.message}")
             true
         }
     }
@@ -540,6 +554,10 @@ class QuotaManager @Inject constructor(
 
     companion object {
         private const val TAG = "QuotaManager"
+        // iOS parity (QuotaManager.swift:448): pre-flight /can-access request timeout.
+        // 5s matches iOS so a cold Cloud Run instance fails fast and the catch/fail-open
+        // path fires instead of blocking the composer for the full OkHttp call timeout.
+        private const val PREFLIGHT_TIMEOUT_MS = 5_000L
         // iOS parity (QuotaManager.swift:786-793): paid statuses that no longer grant entitlement.
         private val TERMINAL_PAID_STATUSES = setOf("expired", "billing_retry", "revoked", "refunded", "on_hold", "paused")
         private const val KEY_IS_PREMIUM = "isPremium"

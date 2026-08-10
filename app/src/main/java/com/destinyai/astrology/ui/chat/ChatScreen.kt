@@ -306,7 +306,16 @@ fun ChatScreen(
 
                     if (showThinkingPillInList(state.isStreaming, state.messages)) {
                         item(key = "streaming") {
-                            ThinkingPill(cosmicStep = cosmicProgressLabel(state.cosmicProgressIndex))
+                            // FIX D: prefer backend-driven cosmicProgressStep when present;
+                            // fall back to canned index rotation when not.
+                            val pillLabel = state.cosmicProgressStep
+                                ?: cosmicProgressLabel(state.cosmicProgressIndex)
+                            // E2E: loading_indicator marker — present ONLY while the
+                            // list-level cosmic-progress pill is shown (isStreaming, before
+                            // the streaming bubble exists). Tests wait for this to disappear.
+                            Box(modifier = Modifier.semantics { contentDescription = "loading_indicator" }) {
+                                ThinkingPill(cosmicStep = pillLabel)
+                            }
                         }
                     }
 
@@ -718,6 +727,10 @@ fun MessageBubbleView(
         // Issue 62 — spoken "Destiny said: <content>" prefix matching iOS accessibilityLabel.
         val destinySaid = stringResource(R.string.a11y_destiny_said, message.content)
         val aiContentDesc = if (isWelcome) "ai_message" else destinySaid
+        // E2E: chat_message_assistant marker on the assistant bubble. Wraps the bubble
+        // Column (which already carries the human a11y label aiContentDesc) so the E2E id
+        // is added WITHOUT clobbering the spoken "Destiny said…" label. Multiple instances.
+        Box(modifier = Modifier.semantics { contentDescription = "chat_message_assistant" }) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -725,7 +738,12 @@ fun MessageBubbleView(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (message.isStreaming && message.content.isEmpty()) {
-                ThinkingPill()
+                // E2E: loading_indicator marker — the inline thinking pill shown while a
+                // streaming assistant bubble has no content yet. Present ONLY during
+                // streaming; disappears once content arrives / streaming completes.
+                Box(modifier = Modifier.semantics { contentDescription = "loading_indicator" }) {
+                    ThinkingPill()
+                }
             } else if (message.content.isNotEmpty()) {
                 // Markdown-aware text renderer (Gap 5) — replaces raw Text() so **bold**,
                 // *italic*, `code`, and "- " list items render with proper styling.
@@ -790,6 +808,10 @@ fun MessageBubbleView(
                         if (!isWelcome && message.content.length > 50) {
                             // A11y: 48dp tap target (Material min) with a small 16dp visible
                             // glyph — keeps the compact look without the sub-target hit area.
+                            // E2E: copy_message_button marker wraps the clickable copy Box
+                            // (which keeps its existing copy_button id) so the new E2E id is
+                            // added without clobbering the existing contentDescription.
+                            Box(modifier = Modifier.semantics { contentDescription = "copy_message_button" }) {
                             Box(
                                 modifier = Modifier
                                     .size(TouchMin)
@@ -813,6 +835,7 @@ fun MessageBubbleView(
                                     modifier = Modifier.size(16.dp),
                                 )
                             }
+                            } // close copy_message_button wrapper Box
                             MessageRatingRow(
                                 rating = message.rating,
                                 onRate = onRate,
@@ -822,6 +845,7 @@ fun MessageBubbleView(
                 }
             }
         }
+        } // close chat_message_assistant wrapper Box
     }
 }
 
@@ -834,6 +858,18 @@ fun MessageBubbleView(
  */
 @Composable
 fun MarkdownText(content: String, modifier: Modifier = Modifier) {
+    // FIX F: iOS parity (MarkdownTextView.swift:38-40) — render as plain Text above 40KB
+    // to avoid the markdown parser stalling the UI on pathological server responses.
+    if (content.length > 40 * 1024) {
+        Text(
+            text = content,
+            modifier = modifier,
+            fontSize = 16.sp,
+            color = Color.White.copy(alpha = 0.92f),
+            lineHeight = 26.sp,
+        )
+        return
+    }
     // Issue 34 — cache the parsed AnnotatedString so streaming chunks with identical text
     // skip the full re-parse cost.
     val annotated = remember(content) { buildMarkdownAnnotated(content) }
@@ -1831,6 +1867,12 @@ private fun QuotaExhaustedAccountSheet(
     // "Usage Restricted / Contact Support" sheet instead of the upgrade interstitial,
     // matching iOS QuotaExhaustedView.fairUseBranch.
     val isFairUse = reason == "fair_use_violation"
+    // iOS parity (QuotaExhaustedView.v2Headline/v2Subheadline): a lapsed paid user
+    // (subscription_expired) sees "Your subscription has ended" + a "Renew" CTA, and a
+    // daily-limit hit gets a dedicated "Daily limit reached" title — instead of the
+    // generic upgrade interstitial.
+    val isSubscriptionExpired = reason == "subscription_expired"
+    val isDailyLimit = reason == "daily_limit_reached"
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = NavySurface,
@@ -1850,7 +1892,14 @@ private fun QuotaExhaustedAccountSheet(
                 modifier = Modifier.size(40.dp),
             )
             Text(
-                stringResource(if (isFairUse) R.string.usage_restricted_title else R.string.quota_exhausted_title),
+                stringResource(
+                    when {
+                        isFairUse -> R.string.usage_restricted_title
+                        isSubscriptionExpired -> R.string.subscription_expired_title
+                        isDailyLimit -> R.string.quota_daily_limit_title
+                        else -> R.string.quota_exhausted_title
+                    },
+                ),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = CanelaFontFamily,
@@ -1860,7 +1909,11 @@ private fun QuotaExhaustedAccountSheet(
             Text(
                 customMessage.ifBlank {
                     stringResource(
-                        if (isFairUse) R.string.fair_use_violation_message else R.string.upgrade_to_keep_going,
+                        when {
+                            isFairUse -> R.string.fair_use_violation_message
+                            isSubscriptionExpired -> R.string.subscription_expired_body
+                            else -> R.string.upgrade_to_keep_going
+                        },
                     )
                 },
                 fontSize = 14.sp,
@@ -1903,7 +1956,7 @@ private fun QuotaExhaustedAccountSheet(
                         .semantics { contentDescription = "quota_exhausted_upgrade_button" },
                 ) {
                     Text(
-                        stringResource(R.string.upgrade_action),
+                        stringResource(if (isSubscriptionExpired) R.string.subscription_expired_cta else R.string.upgrade_action),
                         color = Color(0xFF0D0D1A),
                         fontWeight = FontWeight.Bold,
                     )

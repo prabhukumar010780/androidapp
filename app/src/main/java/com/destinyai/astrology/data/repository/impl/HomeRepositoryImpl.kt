@@ -2,6 +2,7 @@ package com.destinyai.astrology.data.repository.impl
 
 import com.destinyai.astrology.data.local.db.AstroDataCacheDao
 import com.destinyai.astrology.data.local.db.AstroDataCacheEntity
+import com.destinyai.astrology.data.local.prefs.SessionTokenStore
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.remote.BirthProfileDto
@@ -32,6 +33,7 @@ import javax.inject.Singleton
 class HomeRepositoryImpl @Inject constructor(
     private val api: AstroApiService,
     private val prefs: UserPreferences,
+    private val sessionTokenStore: SessionTokenStore,
     private val astroDataCacheDao: AstroDataCacheDao,
 ) : HomeRepository {
 
@@ -72,35 +74,45 @@ class HomeRepositoryImpl @Inject constructor(
         )
     }
 
-    override suspend fun getDailyInsight(birth: BirthProfileDto, profileCacheId: String): String {
+    override suspend fun getDailyInsight(
+        birth: BirthProfileDto,
+        profileCacheId: String,
+        force: Boolean,
+    ): String {
         val email = prefs.getUserEmail() ?: return ""
         // iOS parity (TodaysPredictionCache.swift:32-53): if a today-keyed cache
         // entry exists for this profile, hydrate the in-memory lastTodaysPrediction
         // immediately so HomeView renders without a network call. The cache is
         // day-keyed (YYYYMMDD encoded in `month`) so two consecutive days do not
         // collide in the same Room (kind, profile_id, birth_hash, year, month) PK.
+        // When force=true (language-change bypass, iOS shouldBypassCache parity),
+        // skip the cache read entirely so the fresh response is fetched in the new
+        // language — otherwise the user sees yesterday/today's text in the old language
+        // until dayKey rolls over.
         val today = LocalDate.now()
         val birthHash = computeBirthHash(birth)
         val dayKey = today.year * 10_000 + today.monthValue * 100 + today.dayOfMonth
-        val cachedEntity = runCatching {
-            astroDataCacheDao.get(
-                kind = TODAY_KIND,
-                profileId = profileCacheId,
-                birthHash = birthHash,
-                year = today.year,
-                month = dayKey,
-            )
-        }.getOrNull()
-        if (cachedEntity != null) {
-            val cachedResp = runCatching {
-                Gson().fromJson(
-                    cachedEntity.payloadJson,
-                    com.destinyai.astrology.data.remote.TodaysPredictionResponse::class.java,
+        if (!force) {
+            val cachedEntity = runCatching {
+                astroDataCacheDao.get(
+                    kind = TODAY_KIND,
+                    profileId = profileCacheId,
+                    birthHash = birthHash,
+                    year = today.year,
+                    month = dayKey,
                 )
             }.getOrNull()
-            if (cachedResp?.text != null) {
-                lastTodaysPrediction = cachedResp
-                return cachedResp.text.orEmpty()
+            if (cachedEntity != null) {
+                val cachedResp = runCatching {
+                    Gson().fromJson(
+                        cachedEntity.payloadJson,
+                        com.destinyai.astrology.data.remote.TodaysPredictionResponse::class.java,
+                    )
+                }.getOrNull()
+                if (cachedResp?.text != null) {
+                    lastTodaysPrediction = cachedResp
+                    return cachedResp.text.orEmpty()
+                }
             }
         }
 
@@ -109,6 +121,14 @@ class HomeRepositoryImpl @Inject constructor(
         // a successful response we flip the per-user flag so subsequent loads use the cache.
         val isFirstLogin = !prefs.hasSeenFirstPrediction()
         val language = prefs.getSelectedLanguage()
+        // W7 fix (iOS HomeViewModel.swift:334-335): prefer the JWT-bound session email for
+        // user_email so the request body matches the bearer token identity that the backend
+        // ownership check enforces. UserDefaults / prefs email can drift from the JWT email
+        // via multiple write paths (IdP credential, /register, /profile), causing a 403
+        // body_email_mismatch on /vedic/api/todays-prediction. Fall back to prefs email for
+        // guests (no active session) whose ownership is handled via allow_guest fuzzy match.
+        val sessionEmail = sessionTokenStore.activeEmail()
+        val requestEmail = if (!sessionEmail.isNullOrBlank()) sessionEmail else email
         // Bubble up exceptions so the VM can show an error banner with retry (parity with iOS)
         val resp = api.getTodaysPrediction(
             req = com.destinyai.astrology.data.remote.UserAstroDataRequest(
@@ -120,7 +140,7 @@ class HomeRepositoryImpl @Inject constructor(
                     "latitude" to birth.latitude,
                     "longitude" to birth.longitude,
                 ),
-                user_email = email,
+                user_email = requestEmail,
                 language = language,
                 is_first_login = isFirstLogin,
             ),

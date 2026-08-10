@@ -2458,6 +2458,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="history_search_conversations">Поиск по разговорам…</string>
     <string name="history_section_date_format">MMMM d, yyyy</string>
     <string name="history_section_earlier">Раньше</string>
+    <string name="notif_section_last_week">На прошлой неделе</string>
     <string name="history_section_this_week">На этой неделе</string>
     <string name="history_section_today">Сегодня</string>
     <string name="history_section_yesterday">Вчера</string>
@@ -2699,4 +2700,8 @@ Until then: Use this period for strategic positioning.</string>
     <string name="yoga_token_moderate">умеренный</string>
     <string name="yoga_token_yoga_reduced">йога ослаблена</string>
     <string name="yoga_token_yoga_cancelled">йога отменена</string>
+    <string name="subscription_expired_title">Ваша подписка закончилась</string>
+    <string name="subscription_expired_body">Обновите подписку, чтобы продолжать задавать вопросы и пользоваться премиум-функциями.</string>
+    <string name="subscription_expired_cta">Возобновить Plus</string>
+    <string name="quota_daily_limit_title">Дневной лимит достигнут</string>
 </resources>

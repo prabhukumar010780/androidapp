@@ -321,7 +321,7 @@ fun CompatibilityResultScreen(
                     Spacer(Modifier.height(20.dp))
 
                     ShimmerButton(
-                        text = "View Full Report",
+                        text = stringResource(R.string.view_full_report_action),
                         onClick = {
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                             showFullReport = true
@@ -692,7 +692,7 @@ private fun OrbitTooltipView(
                 .padding(4.dp),
         ) {
             Text(
-                text = "See classical analysis →",
+                text = stringResource(R.string.see_classical_analysis),
                 style = MaterialTheme.typography.labelMedium,
                 color = Gold,
                 fontWeight = FontWeight.Normal,
@@ -745,7 +745,7 @@ fun RecommendationBanner(
             )
             Spacer(Modifier.width(12.dp))
             Text(
-                text = if (result.isRecommended) "Recommended" else "Not Recommended",
+                text = if (result.isRecommended) stringResource(R.string.recommended) else stringResource(R.string.not_recommended),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 color = borderColor,
@@ -776,7 +776,7 @@ fun RecommendationBanner(
             } else {
                 if (result.rejectionReasons.isNotEmpty()) {
                         Text(
-                            text = "Not recommended because:",
+                            text = stringResource(R.string.not_recommended_because),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color = errorColor,

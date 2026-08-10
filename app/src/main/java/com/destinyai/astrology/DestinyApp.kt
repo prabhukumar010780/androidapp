@@ -8,8 +8,10 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import com.destinyai.astrology.data.billing.BillingManager
 import com.destinyai.astrology.data.local.prefs.UserPreferences
+import com.destinyai.astrology.data.repository.AuthRepository
 import com.destinyai.astrology.services.AppStartupService
 import com.destinyai.astrology.services.QuotaManager
+import com.destinyai.astrology.ui.auth.AccountDeletedError
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,6 +25,9 @@ class DestinyApp : Application() {
     @Inject lateinit var appStartupService: AppStartupService
     @Inject lateinit var quotaManager: QuotaManager
     @Inject lateinit var userPreferences: UserPreferences
+    // iOS parity (AppRootView.swift:204-210): on account_deleted detection at foreground,
+    // run the full sign-out teardown so the next Splash routes to Auth.
+    @Inject lateinit var authRepository: AuthRepository
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -50,10 +55,23 @@ class DestinyApp : Application() {
                     // external cancel/expiry (Play Store) or webhook downgrade that happened
                     // while backgrounded downgrades the gates without waiting for re-login.
                     // Force-sync (bypasses cooldown) since foreground is an explicit user signal.
+                    //
+                    // Fix 6 (HIGH): stop swallowing AccountDeletedError from syncStatus — if the
+                    // server returns account_deleted/403 for an already-authenticated user, run
+                    // the full sign-out teardown so the next Splash routes to Auth, matching
+                    // iOS AppRootView.swift:204-210 and ios_appApp.swift foreground behavior.
+                    // Transient network errors (non-AccountDeletedError) are still swallowed.
                     appScope.launch {
-                        runCatching {
-                            val email = userPreferences.getUserEmail()
-                            if (!email.isNullOrBlank()) quotaManager.syncStatus(email, force = true)
+                        val email = runCatching { userPreferences.getUserEmail() }.getOrNull()
+                        if (!email.isNullOrBlank()) {
+                            try {
+                                quotaManager.syncStatus(email, force = true)
+                            } catch (e: AccountDeletedError) {
+                                Log.w("DestinyApp", "foreground syncStatus: account_deleted — forcing sign-out")
+                                runCatching { authRepository.clearSession() }
+                            } catch (_: Exception) {
+                                // Transient / network errors — swallow as before.
+                            }
                         }
                     }
                 }

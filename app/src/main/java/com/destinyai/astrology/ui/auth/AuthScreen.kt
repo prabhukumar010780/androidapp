@@ -34,6 +34,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
@@ -357,7 +359,9 @@ fun AuthScreen(
     )
 
     CosmicBackground {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .semantics { contentDescription = "auth_screen" }) {
         // Layer 2: Orbital rings (ambient decoration, behind content).
         // Mirrors iOS `OrbitalRingsView(rotation: orbitRotation).opacity(0.25)`.
         Box(
@@ -426,6 +430,7 @@ fun AuthScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(54.dp)
+                    .semantics { contentDescription = "google_sign_in_button" }
                     .testTag("auth_google_button"),
                 shape = RoundedCornerShape(Radius.authButton),
                 enabled = !state.isLoading,
@@ -523,6 +528,7 @@ fun AuthScreen(
                     enabled = !state.isLoading,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .semantics { contentDescription = "continue_as_guest_button" }
                         .testTag("auth_continue_as_guest"),
                 ) {
                     if (state.isLoading) {

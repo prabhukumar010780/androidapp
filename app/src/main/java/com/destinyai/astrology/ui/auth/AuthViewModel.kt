@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.destinyai.astrology.R
+import com.destinyai.astrology.data.remote.AuthExchangeError
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.repository.AuthRepository
 import com.destinyai.astrology.domain.model.User
@@ -97,6 +98,17 @@ class AuthViewModel @Inject constructor(
             // Session mint failed (no id_token / rejected exchange) — retryable.
             is SessionMintFailedException ->
                 context.getString(R.string.google_sign_in_failed_generic)
+            // iOS parity (AppleAuthService.swift:114-116 + AuthViewModel.swift:621-637):
+            // cross-IdP collision — surface the bound IDP so the user knows which sign-in
+            // method to use instead of seeing a generic error.
+            is AuthExchangeError.CrossIdpCollision -> {
+                val provider = e.boundIdp?.replaceFirstChar { it.uppercase() }
+                if (!provider.isNullOrBlank()) {
+                    context.getString(R.string.auth_cross_idp_collision_with_provider, provider)
+                } else {
+                    context.getString(R.string.auth_cross_idp_collision_generic)
+                }
+            }
             else -> context.getString(R.string.auth_generic_sign_in_failed)
         }
 

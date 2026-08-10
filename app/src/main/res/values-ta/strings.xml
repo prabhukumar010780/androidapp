@@ -2458,6 +2458,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="history_search_conversations">உரையாடல்களை தேடு…</string>
     <string name="history_section_date_format">MMMM d, yyyy</string>
     <string name="history_section_earlier">முன்பு</string>
+    <string name="notif_section_last_week">கடந்த வாரம்</string>
     <string name="history_section_this_week">இந்த வாரம்</string>
     <string name="history_section_today">இன்று</string>
     <string name="history_section_yesterday">நேற்று</string>
@@ -2700,4 +2701,8 @@ Until then: Use this period for strategic positioning.</string>
     <string name="yoga_token_moderate">மிதமான</string>
     <string name="yoga_token_yoga_reduced">யோகம் குறைந்தது</string>
     <string name="yoga_token_yoga_cancelled">யோகம் ரத்து</string>
+    <string name="subscription_expired_title">உங்கள் சந்தாக்கால அமைப்பு முடிவடைந்துவிட்டது</string>
+    <string name="subscription_expired_body">கேள்விகள் கேட்கவும் பிரீமியம் அம்சங்களை அணுகவும் புதுப்பிக்கவும்.</string>
+    <string name="subscription_expired_cta">Plus புதுப்பிக்கவும்</string>
+    <string name="quota_daily_limit_title">தினசரி வரம்பு எட்டப்பட்டது</string>
 </resources>

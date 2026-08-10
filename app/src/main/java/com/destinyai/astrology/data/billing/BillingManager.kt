@@ -540,8 +540,13 @@ class BillingManager @Inject constructor(
                     platform = "google",
                     userEmail = userEmail,
                     productId = productId,
-                    // iOS parity — guard prod backend from sandbox/test-track purchases.
-                    environment = if (BuildConfig.DEBUG) "Sandbox" else "Production",
+                    // iOS parity (SubscriptionManager.swift:705-725, 1012-1028):
+                    // derive environment from the API URL, NOT from BuildConfig.DEBUG.
+                    // The staging build is release-type (DEBUG=false) but targets
+                    // astroapi-test — sending "Production" there would mislabel it
+                    // the same way iOS TestFlight (same test URL) sends "Sandbox".
+                    // URL contains "astroapi-prod" → Production, else Sandbox.
+                    environment = if (BuildConfig.API_BASE_URL.contains("astroapi-prod")) "Production" else "Sandbox",
                 ),
             )
             if (response.success) {
@@ -616,9 +621,11 @@ class BillingManager @Inject constructor(
 
     /** Finding 3 helper — true when [purchase] looks like a sandbox / license-test
      *  purchase that should be skipped on production builds. Mirrors iOS
-     *  SubscriptionManager.swift:606-611. Real Play orderIds start with "GPA.". */
+     *  SubscriptionManager.swift:1012-1028 (URL-based env check). Real Play
+     *  orderIds start with "GPA.". Keyed on API_BASE_URL like the environment
+     *  label above: staging is non-prod even though DEBUG=false. */
     private fun shouldSkipForProd(purchase: Purchase): Boolean {
-        if (BuildConfig.DEBUG) return false
+        if (!BuildConfig.API_BASE_URL.contains("astroapi-prod")) return false
         val orderId = purchase.orderId
         return orderId.isNullOrEmpty() || !orderId.startsWith("GPA.")
     }
@@ -776,7 +783,12 @@ class BillingManager @Inject constructor(
                     }
                 }
                 BillingResponseCode.USER_CANCELED -> {
+                    // iOS parity (SubscriptionManager.swift:256-257 `defer { directPurchaseInProgress = false }`):
+                    // a cancel is a terminal exit from the purchase flow — reset the flag so a
+                    // subsequent webhook-driven activation is not silently swallowed by
+                    // QuotaManager.syncStatus's directPurchaseInProgress suppression.
                     _isLoading.value = false
+                    directPurchaseInProgress = false
                 }
                 BillingResponseCode.ITEM_ALREADY_OWNED -> {
                     // iOS parity (SubscriptionManager.swift:246-260): Apple's
@@ -793,11 +805,13 @@ class BillingManager @Inject constructor(
                 BillingResponseCode.SERVICE_UNAVAILABLE,
                 BillingResponseCode.SERVICE_DISCONNECTED -> {
                     _isLoading.value = false
+                    directPurchaseInProgress = false
                     _errorMessage.value =
                         "Google Play is temporarily unavailable. Please try again."
                 }
                 else -> {
                     _isLoading.value = false
+                    directPurchaseInProgress = false
                     _errorMessage.value = result.debugMessage
                 }
             }

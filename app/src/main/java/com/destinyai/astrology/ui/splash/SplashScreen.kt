@@ -10,6 +10,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
@@ -107,7 +109,10 @@ fun SplashScreen(soundManager: SoundManager? = null) {
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(NavyDeep)) {
+    Box(modifier = Modifier
+        .fillMaxSize()
+        .background(NavyDeep)
+        .semantics { contentDescription = "splash_screen" }) {
         // Layer 1: Liquid Gold animated fluid background (iOS parity: FluidBackground.swift:15-69)
         LiquidGoldBackground()
 

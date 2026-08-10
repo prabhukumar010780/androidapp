@@ -372,7 +372,7 @@ class HomeViewModel @Inject constructor(
             }
             val questions = repository.getSuggestedQuestions()
             val (insight, loadError) = try {
-                repository.getDailyInsight(activeBirth, activeId) to null
+                repository.getDailyInsight(activeBirth, activeId, force = languageChanged) to null
             } catch (e: Exception) {
                 android.util.Log.w("HomeViewModel", "getDailyInsight failed: ${e.message}", e)
                 "" to friendlyError(e)

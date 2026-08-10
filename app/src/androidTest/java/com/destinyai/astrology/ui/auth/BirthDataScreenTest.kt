@@ -38,6 +38,7 @@ class BirthDataScreenTest {
         val viewModel = BirthDataViewModel(
             api,
             prefs,
+            mockk(relaxed = true), // AuthRepository
             mockk(relaxed = true), // LocationSearchService
             mockk(relaxed = true), // SoundManager
             mockk(relaxed = true), // ChatRepository

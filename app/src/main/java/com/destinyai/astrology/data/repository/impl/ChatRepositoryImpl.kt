@@ -87,7 +87,7 @@ class ChatRepositoryImpl @Inject constructor(
         return parts.joinToString("\n")
     }
 
-    override suspend fun sendMessage(sessionId: String, text: String, idempotencyKey: String?): Flow<Result<String>> = flow {
+    override suspend fun sendMessage(sessionId: String, text: String, idempotencyKey: String?, assistantMessageId: String?): Flow<Result<String>> = flow {
         val email = prefs.getUserEmail() ?: run {
             emit(Result.failure(IllegalStateException("No user email")))
             return@flow
@@ -315,7 +315,9 @@ class ChatRepositoryImpl @Inject constructor(
                                         runCatching {
                                             messageDao.insert(
                                                 LocalChatMessageEntity(
-                                                    id = java.util.UUID.randomUUID().toString(),
+                                                    // FIX B: use the caller-supplied UI id so submitRating
+                                                    // can find this row by the same id that's in the bubble.
+                                                    id = assistantMessageId ?: java.util.UUID.randomUUID().toString(),
                                                     threadId = sessionId,
                                                     role = "assistant",
                                                     content = capPersistedContent(answer),
@@ -395,6 +397,7 @@ class ChatRepositoryImpl @Inject constructor(
         sessionId: String,
         text: String,
         idempotencyKey: String?,
+        assistantMessageId: String?,
     ): Result<String> = runCatching {
         val email = prefs.getUserEmail() ?: throw IllegalStateException("No user email")
         val birthProfile = profileContextManager.activeBirthData()
@@ -463,7 +466,9 @@ class ChatRepositoryImpl @Inject constructor(
             runCatching {
                 messageDao.insert(
                     LocalChatMessageEntity(
-                        id = java.util.UUID.randomUUID().toString(),
+                        // FIX B: use the caller-supplied UI id so submitRating can find
+                        // this row by the same id that's shown in the bubble.
+                        id = assistantMessageId ?: java.util.UUID.randomUUID().toString(),
                         threadId = sessionId,
                         role = "assistant",
                         content = capPersistedContent(answer),
@@ -695,7 +700,10 @@ class ChatRepositoryImpl @Inject constructor(
         val response = runCatching { api.listChatThreads(email) }.getOrNull() ?: return
         val apiThreads = response.threads
         apiThreads.forEach { dto ->
-            threadDao.insert(
+            // FIX E: use insertIfAbsent+updateServerFields instead of REPLACE so that
+            // locally-set profile_id (partner threads) and primary_area (life-area icon)
+            // are never clobbered to null by a server response that doesn't carry them.
+            threadDao.insertIfAbsent(
                 LocalChatThreadEntity(
                     id = dto.id,
                     ownerEmail = email,
@@ -704,6 +712,13 @@ class ChatRepositoryImpl @Inject constructor(
                     updatedAt = dto.updatedAt.orEmpty(),
                     isPinned = dto.isPinned,
                 ),
+            )
+            threadDao.updateServerFields(
+                threadId = dto.id,
+                title = dto.title.orEmpty(),
+                createdAt = dto.createdAt.orEmpty(),
+                updatedAt = dto.updatedAt.orEmpty(),
+                isPinned = dto.isPinned,
             )
         }
         // Server is authoritative — drop local threads it no longer lists. Reached
@@ -727,6 +742,8 @@ class ChatRepositoryImpl @Inject constructor(
                 role = dto.role,
                 content = dto.content,
                 createdAt = dto.createdAt,
+                // FIX B (server-sync part): map server rating so stars survive reinstall.
+                rating = dto.rating,
             )
         }
         messageDao.insertAll(entities)

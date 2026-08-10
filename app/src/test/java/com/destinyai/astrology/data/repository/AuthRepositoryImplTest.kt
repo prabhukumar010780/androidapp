@@ -304,6 +304,64 @@ class AuthRepositoryImplTest {
         assertTrue(result.exceptionOrNull() is SessionMintFailedException)
     }
 
+    @Test
+    fun `signInWithGoogle propagates CrossIdpCollision (not collapsed to SessionMintFailedException)`() = runTest {
+        // iOS parity (AppleAuthService.swift:110-119): cross-IdP collision from /auth/exchange
+        // must surface as the typed error so AuthViewModel can show "Sign in with <provider>".
+        coEvery { api.signInWithGoogle(any()) } returns RegisterResponse(
+            userEmail = "collision@user.com",
+            planId = "free_registered",
+            isGeneratedEmail = false,
+            isPremium = false,
+            accessState = "granted",
+            dailyQuota = 5,
+            dailyUsed = 0,
+        )
+        coEvery { exchangeClient.signInWithGoogle(any(), any(), any()) } throws
+            com.destinyai.astrology.data.remote.AuthExchangeError.CrossIdpCollision(
+                boundIdp = "apple", attemptedIdp = "google", userEmail = "collision@user.com",
+            )
+
+        val result = repo.signInWithGoogle(
+            email = "collision@user.com",
+            googleId = "g-4",
+            name = null,
+            idToken = "token",
+        )
+
+        assertTrue(result.isFailure)
+        // Must NOT be wrapped in SessionMintFailedException — must be the typed CrossIdpCollision.
+        assertTrue(result.exceptionOrNull() is com.destinyai.astrology.data.remote.AuthExchangeError.CrossIdpCollision)
+        assertFalse(result.exceptionOrNull() is SessionMintFailedException)
+    }
+
+    @Test
+    fun `signInWithApple fails when session mint throws (symmetry with Google path)`() = runTest {
+        // Fix (LOW): Apple path must throw on mint failure just like Google, so the app
+        // never enters session-less. id_token is provided so the mint path is entered.
+        coEvery { api.signInWithApple(any()) } returns RegisterResponse(
+            userEmail = "apple@user.com",
+            planId = "free_registered",
+            isGeneratedEmail = false,
+            isPremium = false,
+            accessState = "granted",
+            dailyQuota = 5,
+            dailyUsed = 0,
+        )
+        coEvery { exchangeClient.signInWithApple(any(), any(), any()) } throws
+            RuntimeException("apple exchange 401")
+
+        val result = repo.signInWithApple(
+            appleId = "apple-uid",
+            email = "apple@user.com",
+            name = "Jane",
+            idToken = "apple-id-token",
+        )
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is SessionMintFailedException)
+    }
+
     // ── upgradeGuest ──────────────────────────────────────────────────────────
 
     @Test

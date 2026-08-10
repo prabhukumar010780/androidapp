@@ -4,8 +4,12 @@ import app.cash.turbine.test
 import com.destinyai.astrology.data.local.prefs.SecureStorage
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AstroApiService
+import com.destinyai.astrology.data.repository.AuthRepository
 import com.destinyai.astrology.services.AppStartupService
+import com.destinyai.astrology.ui.auth.AccountDeletedException
+import com.destinyai.astrology.ui.auth.AccountDeletedError
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.*
@@ -20,6 +24,7 @@ class SplashViewModelTest {
     private lateinit var secure: SecureStorage
     private lateinit var api: AstroApiService
     private lateinit var appStartup: AppStartupService
+    private lateinit var authRepository: AuthRepository
     private lateinit var vm: SplashViewModel
 
     @BeforeEach
@@ -28,9 +33,10 @@ class SplashViewModelTest {
         secure = mockk(relaxed = true)
         api = mockk(relaxed = true)
         appStartup = mockk(relaxed = true)
+        authRepository = mockk(relaxed = true)
     }
 
-    private fun buildVm() = SplashViewModel(prefs, secure, api, appStartup)
+    private fun buildVm() = SplashViewModel(prefs, secure, api, appStartup, authRepository)
 
     // ── Initial state ─────────────────────────────────────────────────────────
 
@@ -159,5 +165,63 @@ class SplashViewModelTest {
             assertEquals(SplashDestination.Auth, awaitItem())
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    // ── account_deleted force sign-out (Fix 6 HIGH) ───────────────────────────
+
+    @Test
+    fun `recheckWaitlistStatus force-signs-out on AccountDeletedException`() = runTest {
+        coEvery { prefs.isAuthenticated() } returns true
+        coEvery { secure.getEmail() } returns "deleted@x.com"
+        coEvery { api.register(any()) } throws AccountDeletedException()
+        vm = buildVm()
+
+        val wasForced = vm.recheckWaitlistStatus()
+
+        assertTrue(wasForced)
+        coVerify { authRepository.clearSession() }
+    }
+
+    @Test
+    fun `recheckWaitlistStatus force-signs-out on AccountDeletedError`() = runTest {
+        coEvery { prefs.isAuthenticated() } returns true
+        coEvery { secure.getEmail() } returns "deleted@x.com"
+        coEvery { api.register(any()) } throws AccountDeletedError("account_deleted")
+        vm = buildVm()
+
+        val wasForced = vm.recheckWaitlistStatus()
+
+        assertTrue(wasForced)
+        coVerify { authRepository.clearSession() }
+    }
+
+    @Test
+    fun `recheckWaitlistStatus does NOT sign-out on transient network error`() = runTest {
+        coEvery { prefs.isAuthenticated() } returns true
+        coEvery { secure.getEmail() } returns "u@x.com"
+        coEvery { api.register(any()) } throws java.io.IOException("network timeout")
+        vm = buildVm()
+
+        val wasForced = vm.recheckWaitlistStatus()
+
+        assertFalse(wasForced)
+        coVerify(exactly = 0) { authRepository.clearSession() }
+    }
+
+    @Test
+    fun `resolveDestination returns Auth when recheckWaitlistStatus detects account_deleted`() = runTest {
+        coEvery { prefs.hasCompletedLanguageSelection() } returns true
+        coEvery { prefs.hasSeenOnboarding() } returns true
+        // authenticated=true passes both the top-level gate and the recheckWaitlistStatus guard
+        coEvery { prefs.isAuthenticated() } returns true
+        coEvery { secure.getEmail() } returns "deleted@x.com"
+        coEvery { api.register(any()) } throws AccountDeletedException()
+        vm = buildVm()
+
+        val dest = vm.resolveDestination()
+
+        // recheckWaitlistStatus returns true (force sign-out) → resolveDestination routes to Auth
+        assertEquals(SplashDestination.Auth, dest)
+        coVerify { authRepository.clearSession() }
     }
 }

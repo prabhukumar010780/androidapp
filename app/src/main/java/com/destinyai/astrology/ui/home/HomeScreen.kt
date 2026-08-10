@@ -68,6 +68,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
@@ -262,7 +263,8 @@ fun HomeScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding(),
+                .statusBarsPadding()
+                .semantics(mergeDescendants = false) { contentDescription = "home_screen" },
         ) {
             // Header
             HomeHeader(
@@ -632,7 +634,8 @@ private fun HomeHeader(
                     .size(TouchMin)
                     .clip(CircleShape)
                     .border(1.dp, Gold.copy(alpha = 0.3f), CircleShape)
-                    .clickable(onClick = onHistoryTap),
+                    .clickable(onClick = onHistoryTap)
+                    .semantics { contentDescription = "home_history_button" },
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
@@ -657,7 +660,8 @@ private fun HomeHeader(
                             .size(TouchMin)
                             .clip(CircleShape)
                             .border(1.dp, Gold.copy(alpha = 0.3f), CircleShape)
-                            .clickable(onClick = onNotificationsTap),
+                            .clickable(onClick = onNotificationsTap)
+                            .semantics { contentDescription = "home_notifications_button" },
                         contentAlignment = Alignment.Center,
                     ) {
                         // Parity with iOS HomeView.swift:461 — swap bell glyph when there
@@ -741,7 +745,8 @@ private fun HomeHeader(
                             onClick = onProfileTap,
                             onLongClick = onProfileLongPress,
                         )
-                        .testTag("home_profile_avatar"),
+                        .testTag("home_profile_avatar")
+                        .semantics { contentDescription = "home_profile_button" },
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
@@ -1096,6 +1101,7 @@ private fun DashaInsightCard(dashaInfo: HomeDashaInfo, onClick: () -> Unit = {})
             .background(NavySurface)
             .border(2.dp, Gold.copy(alpha = 0.5f), RoundedCornerShape(Radius.card))
             .clickable(onClick = onClick)
+            .semantics { contentDescription = "dasha_insight_card" }
             .heightIn(min = 120.dp),
     ) {
         // Main content
@@ -1293,7 +1299,8 @@ private fun TransitAlertCard(transit: HomeTransit, onClick: () -> Unit = {}) {
         modifier = Modifier
             .width(80.dp)
             .clickable(onClick = onClick)
-            .testTag("transit_card_${transit.planet.lowercase()}"),
+            .testTag("transit_card_${transit.planet.lowercase()}")
+            .semantics { contentDescription = "transit_alert_card" },
     ) {
         // 68dp orb container — planet image + status ring + floating name capsule,
         // wrapped in a status-tinted shadow (iOS .shadow(borderColor.opacity(0.25))).
@@ -1644,6 +1651,7 @@ private fun PremiumYogaCard(
             )
             .clickable(onClick = onClick)
             .testTag("yoga_card_$index")
+            .semantics { contentDescription = "yoga_highlight_card" }
             .padding(14.dp),
     ) {
         Column(modifier = Modifier.fillMaxSize()) {

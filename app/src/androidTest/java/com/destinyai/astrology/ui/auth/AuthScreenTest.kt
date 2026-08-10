@@ -36,7 +36,15 @@ class AuthScreenTest {
     private fun renderScreen(allowGuest: Boolean = true) {
         val repository = mockk<AuthRepository>(relaxed = true)
         coEvery { repository.getSavedUser() } returns null
-        val viewModel = AuthViewModel(repository)
+        val viewModel = AuthViewModel(
+            repository,
+            mockk(relaxed = true), // HapticManager
+            mockk(relaxed = true), // UserPreferences
+            mockk(relaxed = true), // AppStartupService
+            mockk(relaxed = true), // SoundManager
+            mockk(relaxed = true), // LoginSyncCoordinator
+            mockk(relaxed = true), // ApplicationContext
+        )
         composeTestRule.setContent {
             DestinyTheme {
                 AuthScreen(

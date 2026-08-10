@@ -2458,6 +2458,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="history_search_conversations">Rechercher dans les conversations…</string>
     <string name="history_section_date_format">MMMM d, yyyy</string>
     <string name="history_section_earlier">Plus tôt</string>
+    <string name="notif_section_last_week">La semaine dernière</string>
     <string name="history_section_this_week">Cette semaine</string>
     <string name="history_section_today">Aujourd\'hui</string>
     <string name="history_section_yesterday">Hier</string>
@@ -2699,4 +2700,8 @@ Until then: Use this period for strategic positioning.</string>
     <string name="yoga_token_moderate">modéré</string>
     <string name="yoga_token_yoga_reduced">yoga réduit</string>
     <string name="yoga_token_yoga_cancelled">yoga annulé</string>
+    <string name="subscription_expired_title">Votre abonnement a pris fin</string>
+    <string name="subscription_expired_body">Renouvelez pour continuer à poser des questions et accéder aux fonctionnalités premium.</string>
+    <string name="subscription_expired_cta">Renouveler Plus</string>
+    <string name="quota_daily_limit_title">Limite quotidienne atteinte</string>
 </resources>

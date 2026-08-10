@@ -142,6 +142,24 @@ interface ChatThreadDao {
     @Query("UPDATE chat_threads SET updated_at = :updatedAt WHERE id = :threadId")
     suspend fun touch(threadId: String, updatedAt: String)
 
+    /**
+     * FIX E: Update only the server-authoritative columns (title, timestamps, pin state).
+     * Does NOT touch profile_id or primary_area — those are local-only fields that must
+     * not be clobbered to null when the server omits them (parity with iOS sync path that
+     * coalesces incoming null with the stored local value).
+     */
+    @Query(
+        "UPDATE chat_threads SET title = :title, created_at = :createdAt, " +
+            "updated_at = :updatedAt, is_pinned = :isPinned WHERE id = :threadId",
+    )
+    suspend fun updateServerFields(
+        threadId: String,
+        title: String,
+        createdAt: String,
+        updatedAt: String,
+        isPinned: Boolean,
+    )
+
     @Query("UPDATE chat_threads SET is_pinned = :pinned WHERE id = :threadId")
     suspend fun setPin(threadId: String, pinned: Boolean)
 

@@ -85,15 +85,13 @@ class DestinyFirebaseMessagingService : FirebaseMessagingService() {
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             putExtra("notification_type", type)
-            // Mirrors iOS NotificationRouter chat-prefill flow — forwarded to
-            // MainActivity which dispatches to NotificationRouter.route(...).
-            message.data["prefill"]?.let { putExtra("notification_prefill", it) }
-            message.data["auto_submit"]?.let {
-                putExtra("notification_auto_submit", it.equals("true", ignoreCase = true))
-            }
-            message.data["new_thread"]?.let {
-                putExtra("notification_new_thread", it.equals("true", ignoreCase = true))
-            }
+            // Backend sends the prefill text as `chat_prompt` (daily_prediction.py:153,
+            // custom_alert.py:276, service.py:316). iOS reads userInfo["chat_prompt"].
+            // Store under "notification_prefill" so MainActivity.handleNotificationIntent
+            // finds it via the foreground-path key (DFMS-built intent → foreground key;
+            // raw FCM background tap → "chat_prompt" fallback in MainActivity).
+            message.data["chat_prompt"]?.takeIf { it.isNotBlank() }
+                ?.let { putExtra("notification_prefill", it) }
         }
         val pendingIntent = PendingIntent.getActivity(
             this, 0, intent,

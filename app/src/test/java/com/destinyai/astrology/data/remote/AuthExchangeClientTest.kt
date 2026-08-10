@@ -6,6 +6,7 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -47,6 +48,32 @@ class AuthExchangeClientTest {
         coEvery { api.authExchange(any(), any(), any()) } throws httpError(409, body)
         val thrown = runCatching { client.signInWithApple(idToken = "t", nonce = null) }.exceptionOrNull()
         assertTrue(thrown is AuthExchangeError.CrossIdpCollision)
+    }
+
+    @Test
+    fun `fromHttp maps account_deleted to AccountDeleted`() {
+        val body = """{"detail":{"code":"account_deleted"}}"""
+        val err = AuthExchangeError.fromHttp(403, body)
+        assertTrue(err is AuthExchangeError.AccountDeleted)
+        assertEquals("account_deleted", (err as AuthExchangeError.AccountDeleted).code)
+    }
+
+    @Test
+    fun `fromHttp maps account_archived to AccountDeleted`() {
+        val body = """{"detail":{"code":"account_archived"}}"""
+        val err = AuthExchangeError.fromHttp(403, body)
+        assertTrue(err is AuthExchangeError.AccountDeleted)
+        assertEquals("account_archived", (err as AuthExchangeError.AccountDeleted).code)
+    }
+
+    @Test
+    fun `account_deleted is not mapped to ReauthRequired`() {
+        // Regression: account_deleted must NOT fall into the reauth set (which would be
+        // swallowed as a generic reauth signal and miss the dedicated AccountDeleted path
+        // in SessionAuthenticator + SplashViewModel).
+        val body = """{"detail":{"code":"account_deleted"}}"""
+        val err = AuthExchangeError.fromHttp(403, body)
+        assertFalse(err is AuthExchangeError.ReauthRequired)
     }
 
     @Test

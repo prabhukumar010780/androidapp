@@ -168,7 +168,11 @@ fun PartnersScreen(
     }
 
     CosmicBackground {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .semantics { contentDescription = "partners_screen" },
+        ) {
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -208,7 +212,9 @@ fun PartnersScreen(
                         contentColor = Color(0xFF0D0D1A),
                     ),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                    modifier = Modifier.heightIn(min = TouchMin),
+                    modifier = Modifier
+                        .heightIn(min = TouchMin)
+                        .semantics { contentDescription = "add_partner_button" },
                 ) {
                     Text(
                         stringResource(R.string.partner_form_add_button),
@@ -324,6 +330,7 @@ fun PartnersScreen(
                                     if (partner.isProtected) viewModel.showProtectionAlert(partner)
                                     else viewModel.beginEditPartner(partner)
                                 }
+                                .semantics { contentDescription = "partner_list_item" }
                                 .padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {

@@ -592,7 +592,11 @@ object CosmicGradients {
 object Features {
     // iOS parity: AppTheme.Features.showSoundToggle = false in iOS AppTheme.swift:55
     const val showSoundToggle: Boolean = false
-    const val showAstrologySettings: Boolean = true
+    // iOS parity (AppTheme.swift:59): showAstrologySettings=false in shipping builds.
+    // ayanamsa/house-system are locked to lahiri/whole_sign so Android and iOS users
+    // always share the same chart calculations. Gate entry point via this flag.
+    // Set to true here to re-enable when the feature is ready to ship.
+    const val showAstrologySettings: Boolean = false
     const val multiPartnerComparison: Boolean = true
     const val allowMatchScreenUserEdit: Boolean = true
 }

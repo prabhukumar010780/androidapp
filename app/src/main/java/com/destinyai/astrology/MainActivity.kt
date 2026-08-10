@@ -70,14 +70,30 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Mirrors iOS AppDelegate notification routing. Reads `notification_type`
-     * extra emitted by [DestinyFirebaseMessagingService] and publishes a deep
-     * link to [NotificationRouter] so AppNav can route the user to the right
-     * destination (chat / match / settings / home).
+     * Mirrors iOS AppDelegate notification routing (ios_appApp.swift:227-229).
+     *
+     * Two code paths arrive here:
+     *  1. FOREGROUND tap: [DestinyFirebaseMessagingService.onMessageReceived] built the
+     *     notification tray entry and put `notification_type` / `notification_prefill`
+     *     into the pending intent's extras.
+     *  2. BACKGROUND / KILLED tap: FCM delivered a notification+data message while the
+     *     app was not running. Android restores the app and puts the FCM `data` dict keys
+     *     directly as intent extras — so the type extra is `"type"` (not `"notification_type"`)
+     *     and the prefill extra is `"chat_prompt"` (not `"notification_prefill"`).
+     *
+     * We prefer the explicit foreground-path keys (set by DFMS) and fall back to the raw
+     * backend keys so both paths work. This matches iOS which reads userInfo["type"] and
+     * userInfo["chat_prompt"] in both states.
      */
     private fun handleNotificationIntent(intent: Intent?) {
-        val type = intent?.getStringExtra("notification_type") ?: return
-        val prefill = intent.getStringExtra("notification_prefill").orEmpty()
+        if (intent == null) return
+        // Prefer DFMS-built extra; fall back to raw backend key sent by FCM on background tap.
+        val type = intent.getStringExtra("notification_type")
+            ?: intent.getStringExtra("type")
+            ?: return
+        val prefill = intent.getStringExtra("notification_prefill")
+            ?: intent.getStringExtra("chat_prompt")
+            ?: ""
         val autoSubmit = intent.getBooleanExtra("notification_auto_submit", false)
         val newThread = intent.getBooleanExtra("notification_new_thread", false)
         NotificationRouter.route(

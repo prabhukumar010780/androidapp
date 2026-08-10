@@ -74,6 +74,7 @@ fun ChartsScreen(
     }
 
     CosmicBackground {
+        Box(modifier = Modifier.fillMaxSize().semantics(mergeDescendants = false) { contentDescription = "charts_screen" }) {
         Column(
             modifier = Modifier.fillMaxSize().semantics { contentDescription = "chart_screen" },
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -91,7 +92,7 @@ fun ChartsScreen(
                         haptic.light()
                         onBack()
                     },
-                    modifier = Modifier.testTag("charts_back_button"),
+                    modifier = Modifier.testTag("charts_back_button").semantics { contentDescription = "charts_close_button" },
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
@@ -282,6 +283,7 @@ fun ChartsScreen(
                     }
                 }
             }
+        }
         }
     }
 }

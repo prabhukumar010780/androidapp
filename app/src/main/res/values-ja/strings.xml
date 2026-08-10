@@ -2458,6 +2458,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="history_search_conversations">会話を検索…</string>
     <string name="history_section_date_format">MMMM d, yyyy</string>
     <string name="history_section_earlier">以前</string>
+    <string name="notif_section_last_week">先週</string>
     <string name="history_section_this_week">今週</string>
     <string name="history_section_today">今日</string>
     <string name="history_section_yesterday">昨日</string>
@@ -2699,4 +2700,8 @@ Until then: Use this period for strategic positioning.</string>
     <string name="yoga_token_moderate">中程度</string>
     <string name="yoga_token_yoga_reduced">ヨガ減弱</string>
     <string name="yoga_token_yoga_cancelled">ヨガ無効</string>
+    <string name="subscription_expired_title">サブスクリプションが終了しました</string>
+    <string name="subscription_expired_body">更新して質問とプレミアム機能のご利用を続けてください。</string>
+    <string name="subscription_expired_cta">Plus を更新する</string>
+    <string name="quota_daily_limit_title">本日の上限に達しました</string>
 </resources>

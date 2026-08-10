@@ -1028,30 +1028,126 @@ internal fun buildCompatibilityPdfBytes(
     var (page, canvas) = newPage(pageNum)
     var y = margin
 
-    // Brand label
-    canvas.drawText("DESTINY AI ASTROLOGY", margin, y + 12f, dimPaint)
-    y += 24f
-    // Title (couple names)
-    canvas.drawText("${result.boyName} & ${result.girlName}", margin, y + 22f, titlePaint)
-    y += 36f
-    // Birth dates
-    if (result.boyDob != null && result.girlDob != null) {
-        canvas.drawText("Born: ${result.boyDob}  •  ${result.girlDob}", margin, y + 11f, dimPaint)
-        y += 18f
+    // ── Cover / Header region ─────────────────────────────────────────────────
+    // iOS parity (CompatibilityPDFRenderer.swift drawCoverPage/drawScoreCircle/
+    // drawStarRating): branded cover with score arc gauge + star rating so the
+    // exported PDF is not plainer than the on-screen BrandedHeaderCard.
+
+    val goldColor = android.graphics.Color.rgb(212, 175, 55)
+    val navyColor = android.graphics.Color.rgb(13, 13, 26)
+    val creamColor = android.graphics.Color.rgb(240, 235, 220)
+
+    // Navy background band for the cover region
+    val coverHeight = 200f
+    val coverPaint = android.graphics.Paint().apply { color = navyColor; isAntiAlias = true }
+    canvas.drawRect(0f, 0f, pageWidth.toFloat(), coverHeight, coverPaint)
+
+    // Brand label (top-left of cover) — dedicated paint so the shared dimPaint
+    // (used later for the Ashtakoot table headers + footer) is not mutated to gold.
+    val brandLabelPaint = android.graphics.Paint().apply {
+        color = android.graphics.Color.argb(160, 212, 175, 55)
+        textSize = 9f
+        isAntiAlias = true
     }
-    // Score line
+    canvas.drawText("DESTINY AI ASTROLOGY", margin, margin + 12f, brandLabelPaint)
+
+    // Score circle (centered horizontally, vertically centered in cover)
+    val circleCx = pageWidth / 2f
+    val circleCy = coverHeight / 2f + 10f
+    val circleR = 44f
     val displayScore = result.adjustedScore ?: result.totalScore
     val pct = (displayScore.toDouble() / result.maxScore * 100).toInt()
-    canvas.drawText(
-        "Score: $displayScore / ${result.maxScore} ($pct%)  —  ${if (result.isRecommended) "Recommended" else "Not Recommended"}",
-        margin,
-        y + 13f,
-        headerPaint,
-    )
-    y += 28f
-    // Divider
+    val sweepAngle = (pct / 100f * 360f)
+
+    val trackPaint = android.graphics.Paint().apply {
+        color = android.graphics.Color.argb(60, 212, 175, 55)
+        style = android.graphics.Paint.Style.STROKE
+        strokeWidth = 6f
+        isAntiAlias = true
+    }
+    val arcPaint = android.graphics.Paint().apply {
+        color = goldColor
+        style = android.graphics.Paint.Style.STROKE
+        strokeWidth = 6f
+        strokeCap = android.graphics.Paint.Cap.ROUND
+        isAntiAlias = true
+    }
+    val arcRect = android.graphics.RectF(circleCx - circleR, circleCy - circleR, circleCx + circleR, circleCy + circleR)
+    canvas.drawArc(arcRect, -90f, 360f, false, trackPaint)
+    canvas.drawArc(arcRect, -90f, sweepAngle, false, arcPaint)
+
+    // Score number inside circle
+    val scoreLabelPaint = android.graphics.Paint().apply {
+        color = creamColor
+        textSize = 22f
+        isFakeBoldText = true
+        isAntiAlias = true
+        textAlign = android.graphics.Paint.Align.CENTER
+    }
+    val scoreSubPaint = android.graphics.Paint().apply {
+        color = android.graphics.Color.argb(180, 212, 175, 55)
+        textSize = 9f
+        isAntiAlias = true
+        textAlign = android.graphics.Paint.Align.CENTER
+    }
+    canvas.drawText("$displayScore", circleCx, circleCy + 8f, scoreLabelPaint)
+    canvas.drawText("/ ${result.maxScore}", circleCx, circleCy + 20f, scoreSubPaint)
+
+    // Star rating (below circle, centered)
+    val stars = when {
+        !result.isRecommended -> 1
+        pct >= 90 -> 5
+        pct >= 75 -> 4
+        pct >= 60 -> 3
+        pct >= 50 -> 2
+        else -> 1
+    }
+    val starPaint = android.graphics.Paint().apply {
+        textSize = 14f
+        isAntiAlias = true
+        textAlign = android.graphics.Paint.Align.CENTER
+    }
+    val starY = circleCy + circleR + 18f
+    val starSpacing = 18f
+    val starStartX = circleCx - (2 * starSpacing)
+    for (i in 0 until 5) {
+        starPaint.color = if (i < stars) goldColor else android.graphics.Color.argb(80, 212, 175, 55)
+        canvas.drawText(if (i < stars) "★" else "☆", starStartX + i * starSpacing, starY, starPaint)
+    }
+
+    // Couple names and recommendation status (right of circle)
+    val nameX = margin
+    val namePaint = android.graphics.Paint().apply {
+        color = creamColor
+        textSize = 18f
+        isFakeBoldText = true
+        isAntiAlias = true
+    }
+    val coverBodyPaint = android.graphics.Paint().apply {
+        color = android.graphics.Color.argb(200, 212, 175, 55)
+        textSize = 11f
+        isAntiAlias = true
+    }
+    canvas.drawText("${result.boyName} & ${result.girlName}", nameX, margin + 32f, namePaint)
+    if (result.boyDob != null && result.girlDob != null) {
+        canvas.drawText("Born: ${result.boyDob}  •  ${result.girlDob}", nameX, margin + 48f, coverBodyPaint)
+    }
+    val verdictText = if (result.isRecommended) "✓ Recommended" else "✗ Not Recommended"
+    val verdictColor = if (result.isRecommended) android.graphics.Color.rgb(72, 187, 120) else android.graphics.Color.rgb(252, 129, 129)
+    val verdictPaint = android.graphics.Paint().apply {
+        color = verdictColor
+        textSize = 12f
+        isFakeBoldText = true
+        isAntiAlias = true
+    }
+    canvas.drawText(verdictText, nameX, margin + 64f, verdictPaint)
+    canvas.drawText("$pct% compatibility", nameX, margin + 78f, coverBodyPaint)
+
+    y = coverHeight + 14f
+
+    // Divider below cover
     val dividerPaint = android.graphics.Paint().apply {
-        color = android.graphics.Color.rgb(212, 175, 55)
+        color = goldColor
         alpha = 80
         strokeWidth = 0.6f
     }
@@ -1153,7 +1249,7 @@ internal fun buildCompatibilityPdfBytes(
         }
     }
 
-    fun drawWrappedText(text: String, paint: android.graphics.Paint, maxWidth: Float) {
+    fun drawWrappedText(text: String, paint: android.graphics.Paint, maxWidth: Float, xOffset: Float = margin) {
         val words = text.split(" ")
         val sb = StringBuilder()
         for (word in words) {
@@ -1161,7 +1257,7 @@ internal fun buildCompatibilityPdfBytes(
             val w = paint.measureText(candidate)
             if (w > maxWidth && sb.isNotEmpty()) {
                 ensureSpace(paint.textSize + 4f)
-                canvas.drawText(sb.toString(), margin, y + paint.textSize, paint)
+                canvas.drawText(sb.toString(), xOffset, y + paint.textSize, paint)
                 y += paint.textSize + 4f
                 sb.clear()
                 sb.append(word)
@@ -1172,22 +1268,115 @@ internal fun buildCompatibilityPdfBytes(
         }
         if (sb.isNotEmpty()) {
             ensureSpace(paint.textSize + 4f)
-            canvas.drawText(sb.toString(), margin, y + paint.textSize, paint)
+            canvas.drawText(sb.toString(), xOffset, y + paint.textSize, paint)
             y += paint.textSize + 4f
         }
+    }
+
+    // iOS parity (CompatibilityPDFRenderer.swift drawMarkdownTable): detect markdown table
+    // blocks (header row + |---| separator) in section content and render them as a real
+    // gridded table with cell borders instead of dumping raw '| col |' pipe lines.
+    // Reuses the same parseReportBlocks table detection logic from the on-screen renderer.
+    fun drawPdfTable(headers: List<String>, rows: List<List<String>>, colCount: Int) {
+        val colWidth = (contentWidth / colCount).coerceAtLeast(40f)
+        val rowHeight = bodyPaint.textSize + 8f
+        val tableTotalWidth = colWidth * colCount
+
+        val cellBorderPaint = android.graphics.Paint().apply {
+            color = android.graphics.Color.argb(80, 212, 175, 55)
+            style = android.graphics.Paint.Style.STROKE
+            strokeWidth = 0.5f
+            isAntiAlias = true
+        }
+        val headerCellBg = android.graphics.Paint().apply {
+            color = android.graphics.Color.argb(40, 212, 175, 55)
+            style = android.graphics.Paint.Style.FILL
+        }
+        val altRowBg = android.graphics.Paint().apply {
+            color = android.graphics.Color.argb(12, 255, 255, 255)
+            style = android.graphics.Paint.Style.FILL
+        }
+        val headerTextPaint = android.graphics.Paint().apply {
+            color = android.graphics.Color.rgb(212, 175, 55)
+            textSize = 10f
+            isFakeBoldText = true
+            isAntiAlias = true
+        }
+        val cellTextPaint = android.graphics.Paint().apply {
+            color = android.graphics.Color.rgb(40, 40, 50)
+            textSize = 10f
+            isAntiAlias = true
+        }
+
+        // Header row
+        ensureSpace(rowHeight + 4f)
+        canvas.drawRect(margin, y, margin + tableTotalWidth, y + rowHeight, headerCellBg)
+        headers.forEachIndexed { i, h ->
+            val cx = margin + i * colWidth
+            canvas.drawRect(cx, y, cx + colWidth, y + rowHeight, cellBorderPaint)
+            canvas.drawText(h.take(20), cx + 4f, y + headerTextPaint.textSize + 2f, headerTextPaint)
+        }
+        y += rowHeight
+
+        // Data rows
+        rows.forEachIndexed { rowIdx, row ->
+            ensureSpace(rowHeight + 2f)
+            if (rowIdx % 2 == 1) {
+                canvas.drawRect(margin, y, margin + tableTotalWidth, y + rowHeight, altRowBg)
+            }
+            row.forEachIndexed { i, cell ->
+                if (i >= colCount) return@forEachIndexed
+                val cx = margin + i * colWidth
+                canvas.drawRect(cx, y, cx + colWidth, y + rowHeight, cellBorderPaint)
+                canvas.drawText(cell.take(20), cx + 4f, y + cellTextPaint.textSize + 2f, cellTextPaint)
+            }
+            y += rowHeight
+        }
+        y += 6f
     }
 
     items.forEach { (title, content) ->
         ensureSpace(36f)
         canvas.drawText(title.uppercase(Locale.getDefault()), margin, y + 13f, headerPaint)
         y += 18f
-        // Strip markdown bold markers for PDF text
-        val plain = content.replace("**", "")
-        plain.split("\n").forEach { paragraph ->
-            if (paragraph.isBlank()) {
-                y += 6f
-            } else {
-                drawWrappedText(paragraph.trim(), bodyPaint, contentWidth)
+        // iOS parity (CompatibilityPDFRenderer.swift drawMarkdownTable): parse the section
+        // content using the same block parser as the on-screen ReportMarkdownContent and
+        // render markdown tables as a real grid instead of raw pipe characters. Non-table
+        // content continues to use word-wrapped paragraphs.
+        val blocks = parseReportBlocks(replaceGenericLabels(content, result.boyName, result.girlName))
+        blocks.forEach { block ->
+            when (block) {
+                is MdBlock.TableBlock -> {
+                    val colCount = block.headers.size.coerceAtLeast(1)
+                    drawPdfTable(block.headers, block.rows, colCount)
+                }
+                is MdBlock.Header -> {
+                    ensureSpace(bodyPaint.textSize + 6f)
+                    val hPaint = if (block.level <= 2) headerPaint else bodyPaint
+                    canvas.drawText(block.text.replace("**", ""), margin, y + hPaint.textSize, hPaint)
+                    y += hPaint.textSize + 4f
+                }
+                is MdBlock.BulletList -> {
+                    block.items.forEach { item ->
+                        drawWrappedText("• ${item.replace("**", "")}", bodyPaint, contentWidth - 8f, margin + 4f)
+                    }
+                }
+                is MdBlock.NumberedList -> {
+                    block.items.forEachIndexed { idx, item ->
+                        drawWrappedText("${idx + 1}. ${item.replace("**", "")}", bodyPaint, contentWidth - 8f, margin + 4f)
+                    }
+                }
+                is MdBlock.Divider -> { y += 4f }
+                is MdBlock.Paragraph -> {
+                    val plain = block.text.replace("**", "")
+                    plain.split("\n").forEach { paragraph ->
+                        if (paragraph.isBlank()) {
+                            y += 6f
+                        } else {
+                            drawWrappedText(paragraph.trim(), bodyPaint, contentWidth)
+                        }
+                    }
+                }
             }
         }
         y += 10f

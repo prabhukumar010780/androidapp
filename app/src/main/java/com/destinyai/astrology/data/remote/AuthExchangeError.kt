@@ -14,6 +14,15 @@ sealed class AuthExchangeError(message: String) : Exception(message) {
     data class CrossIdpCollision(
         val boundIdp: String?, val attemptedIdp: String?, val userEmail: String?,
     ) : AuthExchangeError("This email is registered with a different sign-in method.")
+    /**
+     * iOS parity (AuthExchangeClient.swift:181-185): the GDPR soft-delete /
+     * account_archived signal returned by /auth/exchange or /auth/refresh.
+     * Distinct from ReauthRequired so SessionAuthenticator can clear the stale
+     * local session (matching iOS NetworkClient.swift:114-116 .accountDeleted case)
+     * while still returning null so the dead JWT is never re-attached.
+     */
+    data class AccountDeleted(val code: String) :
+        AuthExchangeError("Account deleted or archived ($code)")
     data class Network(val msg: String) : AuthExchangeError("Network error: $msg")
     object NoRefreshToken : AuthExchangeError("No refresh token stored")
 
@@ -22,6 +31,10 @@ sealed class AuthExchangeError(message: String) : Exception(message) {
             "refresh_reused", "refresh_unknown", "refresh_expired",
             "session_revoked", "google_reattest_required",
         )
+        // iOS parity (AuthExchangeClient.swift:181-185): account_deleted and
+        // account_archived from /auth/exchange or /auth/refresh — the JWT is
+        // dead and the session must be cleared, matching .accountDeleted in iOS.
+        private val ACCOUNT_DELETED_CODES = setOf("account_deleted", "account_archived")
 
         fun fromHttp(status: Int, errorBody: String?): AuthExchangeError {
             val detail = runCatching {
@@ -38,6 +51,7 @@ sealed class AuthExchangeError(message: String) : Exception(message) {
                     attemptedIdp = detail.get("attempted_idp")?.takeIf { it.isJsonPrimitive }?.asString,
                     userEmail = detail.get("user_email")?.takeIf { it.isJsonPrimitive }?.asString,
                 )
+                code in ACCOUNT_DELETED_CODES -> AccountDeleted(code)
                 code in REAUTH_CODES -> ReauthRequired(code)
                 else -> IdpRejected(code, status)
             }

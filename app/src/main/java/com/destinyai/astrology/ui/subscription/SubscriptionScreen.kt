@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.SpanStyle
@@ -173,7 +174,10 @@ fun SubscriptionScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .semantics { testTag = "subscription_screen" },
+                .semantics {
+                    testTag = "subscription_screen"
+                    contentDescription = "subscription_screen"
+                },
         ) {
             // Header
             Row(
@@ -486,7 +490,10 @@ fun SubscriptionScreen(
                                         shape = RoundedCornerShape(Radius.card),
                                     )
                                     .padding(16.dp)
-                                    .semantics { testTag = "subscription_plan_card" },
+                                    .semantics {
+                                        testTag = "subscription_plan_card"
+                                        contentDescription = "subscription_plan_card"
+                                    },
                             ) {
                                 Column {
                                     Row(

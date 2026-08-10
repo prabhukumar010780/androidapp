@@ -126,7 +126,10 @@ fun HistoryScreen(
 
     CosmicBackground {
         Column(
-            modifier = Modifier.fillMaxSize().testTag("history_screen"),
+            modifier = Modifier
+                .fillMaxSize()
+                .testTag("history_screen")
+                .semantics { contentDescription = "history_screen" },
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // Header
@@ -691,6 +694,7 @@ private fun ChatThreadRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .semantics { contentDescription = "history_thread_item" }
                 .clip(RoundedCornerShape(16.dp))
                 .background(NavySurface)
                 // Mirrors iOS HistoryView.swift:297-300 — gold-border for pinned rows.

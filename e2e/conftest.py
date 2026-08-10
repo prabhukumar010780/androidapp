@@ -45,7 +45,7 @@ PARTNER = {
 }
 
 APP_PACKAGE = "com.destinyai.astrology"
-APP_ACTIVITY = ".ui.MainActivity"
+APP_ACTIVITY = ".MainActivity"
 
 
 @pytest.fixture(scope="session")

@@ -12,6 +12,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
@@ -173,6 +174,22 @@ class QuotaManagerTest {
     }
 
     @Test
+    fun `canAsk fails open (returns true) when API exceeds 5s timeout`() = runTest {
+        // FIX-3: iOS parity (QuotaManager.swift:448) — the /can-access request has a 5s
+        // timeout. A slow/cold Cloud Run backend must NOT block the composer for 300s;
+        // the timeout triggers the same fail-open path as a network error.
+        coEvery { api.canAccessFeatureFull(any(), any(), any()) } coAnswers {
+            delay(10_000) // simulate a 10s cold start — well past the 5s timeout
+            FeatureAccessResponse(canAccess = false, reason = "should_not_reach")
+        }
+
+        val result = manager.canAsk("u@x.com")
+
+        // Must be true (fail-open) — not false and not hanging
+        assertTrue(result)
+    }
+
+    @Test
     fun `canAsk returns true when canAccess=true`() = runTest {
         coEvery { api.canAccessFeatureFull(any(), any(), any()) } returns
             FeatureAccessResponse(canAccess = true, reason = null)
@@ -186,6 +203,17 @@ class QuotaManagerTest {
             FeatureAccessResponse(canAccess = false, reason = "quota_exceeded")
 
         assertFalse(manager.canAsk("u@x.com"))
+    }
+
+    @Test
+    fun `canAccessFeature propagates response when API responds within timeout`() = runTest {
+        // Verify the success path is unchanged: fast responses still reach callers.
+        coEvery { api.canAccessFeatureFull("u@x.com", "ai_questions", 1) } returns
+            FeatureAccessResponse(canAccess = true, reason = null)
+
+        val response = manager.canAccessFeature(QuotaManager.FeatureID.AI_QUESTIONS, "u@x.com")
+
+        assertTrue(response.canAccess)
     }
 
     @Test

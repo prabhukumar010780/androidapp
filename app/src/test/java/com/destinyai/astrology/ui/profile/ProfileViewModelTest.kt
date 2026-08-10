@@ -300,4 +300,88 @@ class ProfileViewModelTest {
             })
         }
     }
+
+    // ── confirmDeleteAccount 403 sub-code routing (iOS parity fix) ────────────
+
+    private fun http403(body: String) = retrofit2.HttpException(
+        okhttp3.ResponseBody.create(null, body).let { retrofit2.Response.error<Any>(403, it) }
+    )
+
+    private fun http409(body: String) = retrofit2.HttpException(
+        okhttp3.ResponseBody.create(null, body).let { retrofit2.Response.error<Any>(409, it) }
+    )
+
+    @Test
+    fun `confirmDeleteAccount 403 body_email_mismatch sets deleteSessionExpired`() = runTest {
+        every { sessionStore.sessionIsFresh(any()) } returns true
+        every { sessionStore.currentSessionJwt() } returns "SESS"
+        val body = """{"detail":{"code":"body_email_mismatch"}}"""
+        coEvery { api.deleteAccount(any(), any()) } throws http403(body)
+
+        vm.confirmDeleteAccount()
+
+        vm.uiState.test {
+            val s = awaitItem()
+            assertTrue(s.deleteSessionExpired)
+            assertNotNull(s.deleteErrorMessage)
+            assertFalse(s.isDeleted)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `confirmDeleteAccount 403 session_required sets deleteSessionExpired`() = runTest {
+        every { sessionStore.sessionIsFresh(any()) } returns true
+        every { sessionStore.currentSessionJwt() } returns "SESS"
+        val body = """{"detail":{"code":"session_required"}}"""
+        coEvery { api.deleteAccount(any(), any()) } throws http403(body)
+
+        vm.confirmDeleteAccount()
+
+        vm.uiState.test {
+            val s = awaitItem()
+            assertTrue(s.deleteSessionExpired)
+            assertFalse(s.isDeleted)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `confirmDeleteAccount 403 guest_not_allowed sets deleteErrorMessage (not sessionExpired)`() = runTest {
+        every { sessionStore.sessionIsFresh(any()) } returns true
+        every { sessionStore.currentSessionJwt() } returns "SESS"
+        val body = """{"detail":{"code":"guest_not_allowed"}}"""
+        coEvery { api.deleteAccount(any(), any()) } throws http403(body)
+        // relaxed mock appContext.getString(any()) already stubs a non-null return
+
+        vm.confirmDeleteAccount()
+
+        vm.uiState.test {
+            val s = awaitItem()
+            // guest_not_allowed must NOT set deleteSessionExpired — it needs a register flow,
+            // not a re-auth flow. But it must show an inline error.
+            assertFalse(s.deleteSessionExpired)
+            assertNotNull(s.deleteErrorMessage)
+            assertFalse(s.isDeleted)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `confirmDeleteAccount 409 sets deleteErrorMessage (subscription block)`() = runTest {
+        every { sessionStore.sessionIsFresh(any()) } returns true
+        every { sessionStore.currentSessionJwt() } returns "SESS"
+        val body = """{"detail":{"message":"Please cancel your subscription first."}}"""
+        coEvery { api.deleteAccount(any(), any()) } throws http409(body)
+
+        vm.confirmDeleteAccount()
+
+        vm.uiState.test {
+            val s = awaitItem()
+            assertFalse(s.deleteSessionExpired)
+            assertNotNull(s.deleteErrorMessage)
+            assertFalse(s.isDeleted)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 }

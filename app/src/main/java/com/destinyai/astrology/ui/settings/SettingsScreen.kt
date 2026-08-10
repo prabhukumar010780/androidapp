@@ -32,6 +32,7 @@ import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.Radius
 import com.destinyai.astrology.ui.theme.Spacing
+import com.destinyai.astrology.ui.theme.Features
 import com.destinyai.astrology.ui.theme.adaptiveContentWidth
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -87,31 +88,36 @@ fun SettingsScreen(
                     .padding(top = Spacing.xs, bottom = Spacing.xl),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                // Astrology Settings link
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(Radius.card))
-                        .background(NavySurface)
-                        .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(Radius.card))
-                        .clickable(onClick = onNavigateToAstrologySettings)
-                        .padding(horizontal = 16.dp, vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(
-                        text = stringResource(R.string.astrology_settings),
-                        fontSize = AppType.body,
-                        lineHeight = AppType.bodyLh,
-                        fontWeight = FontWeight.Bold,
-                        color = CreamText,
-                    )
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowForwardIos,
-                        contentDescription = null,
-                        tint = Gold.copy(alpha = 0.6f),
-                        modifier = Modifier.size(16.dp),
-                    )
+                // Astrology Settings link — iOS parity (AppTheme.swift:59 showAstrologySettings=false):
+                // hidden in shipping builds; ayanamsa/house-system locked to lahiri/whole_sign.
+                // ChartStylePicker (north/south indian) remains reachable via the Charts screen.
+                // Re-enable by setting Features.showAstrologySettings = true in DestinyTheme.kt.
+                if (Features.showAstrologySettings) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(Radius.card))
+                            .background(NavySurface)
+                            .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(Radius.card))
+                            .clickable(onClick = onNavigateToAstrologySettings)
+                            .padding(horizontal = 16.dp, vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.astrology_settings),
+                            fontSize = AppType.body,
+                            lineHeight = AppType.bodyLh,
+                            fontWeight = FontWeight.Bold,
+                            color = CreamText,
+                        )
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowForwardIos,
+                            contentDescription = null,
+                            tint = Gold.copy(alpha = 0.6f),
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
                 }
 
                 CosmicSettingsSection(title = stringResource(R.string.settings_response_style_section)) {

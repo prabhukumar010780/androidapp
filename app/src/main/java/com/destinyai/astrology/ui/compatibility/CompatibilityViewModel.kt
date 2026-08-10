@@ -698,13 +698,16 @@ class CompatibilityViewModel @Inject constructor(
             val historySnapshot = runCatching { historyDao.getAllForUser(email).map { it.toDomain() } }
                 .getOrDefault(_historyItems.value)
             val cached = historySnapshot.firstOrNull { item ->
+                // iOS parity (CompatibilityHistoryService.findMatchIndex:222-236):
+                // forward match on dob+time+city only — name is excluded so a slightly
+                // different spelling of the same person's name still gets a free cache-hit
+                // instead of re-charging quota. Reverse path (role-swap) is also name-agnostic.
                 val forward = item.boyDob == profile.dateOfBirth &&
                     item.boyTime == profile.timeOfBirth &&
                     item.boyCity.equals(profile.cityOfBirth, ignoreCase = true) &&
                     item.girlDob == s.partnerDob &&
                     item.girlTime == s.partnerTime &&
-                    item.girlCity.equals(s.partnerCity, ignoreCase = true) &&
-                    item.girlName.equals(s.partnerName, ignoreCase = true)
+                    item.girlCity.equals(s.partnerCity, ignoreCase = true)
                 // iOS parity (CompatibilityHistoryService.findMatchIndex:222-236): also match
                 // the swapped role ordering so an A-vs-B match is reused when re-entered as
                 // B-vs-A (e.g. after a profile switch) instead of re-charging a new analysis.
@@ -1565,11 +1568,14 @@ class CompatibilityViewModel @Inject constructor(
                 // name/DOB/city but different birth times aren't wrongly collapsed.
                 val cachedItem = historySnapshot.firstOrNull { item ->
                     if (item.result == null) return@firstOrNull false
+                    // iOS parity (CompatibilityHistoryService.findMatchIndex): forward match
+                    // on dob+time+city only — name excluded so a name re-spelling still hits
+                    // the cache. girlTime included so two partners sharing dob/city but
+                    // different birth times aren't wrongly collapsed (Fix A).
                     val forward = item.boyDob == profile.dateOfBirth && item.boyTime == profile.timeOfBirth &&
                         item.boyCity.equals(profile.cityOfBirth, ignoreCase = true) &&
                         item.girlDob == partner.dob && item.girlTime == partner.time &&
-                        item.girlCity.equals(partner.city, ignoreCase = true) &&
-                        item.girlName.equals(partner.name, ignoreCase = true)
+                        item.girlCity.equals(partner.city, ignoreCase = true)
                     val reverse = item.girlDob == profile.dateOfBirth && item.girlTime == profile.timeOfBirth &&
                         item.girlCity.equals(profile.cityOfBirth, ignoreCase = true) &&
                         item.boyDob == partner.dob && item.boyTime == partner.time &&

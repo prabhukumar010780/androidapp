@@ -214,6 +214,19 @@ class ChatViewModel @Inject constructor(
                 when (ev) {
                     is ChatStreamEvent.FollowUpSuggestions ->
                         _uiState.update { it.copy(suggestedQuestions = ev.suggestions) }
+                    is ChatStreamEvent.ProgressStep -> {
+                        // FIX D: iOS parity (ChatViewModel.swift:1332-1344) — map the backend
+                        // display_key to a localized step label and override the canned rotation.
+                        // Fall back to canned rotation (cosmicProgressIndex) when key is null/unknown.
+                        val stepLabel = mapProgressDisplayKey(ev.displayKey)
+                        if (stepLabel != null) {
+                            _uiState.update { it.copy(cosmicProgressStep = stepLabel) }
+                        }
+                        // If isDone clear the override so the canned rotation resumes.
+                        if (ev.isDone) {
+                            _uiState.update { it.copy(cosmicProgressStep = null) }
+                        }
+                    }
                     is ChatStreamEvent.Metadata -> {
                         // Patch the most recent assistant message with tool/source/advice/exec/trace
                         // metadata so the reading layout can render chips, depth layers, exec pill
@@ -555,6 +568,12 @@ class ChatViewModel @Inject constructor(
 
             val assistantId = UUID.randomUUID().toString()
             var accumulated = ""
+            // FIX A: set when the stream's onFailure branch fired. The empty-done
+            // fallback (case 2) below must NOT run after a real failure — the failure
+            // branches already handle recovery (backpressure/generic → sync) or are
+            // terminal (upgrade/daily-limit paywall). Re-running sync here would
+            // double-handle a quota block or re-charge the query.
+            var streamFailed = false
             resetPump()
 
             // iOS parity (AppConfig.shouldStreamFor + ChatViewModel routing): honor the
@@ -563,7 +582,7 @@ class ChatViewModel @Inject constructor(
             val useStreaming = appStartupService.shouldStreamFor(prefs.getUserEmail())
             if (!useStreaming) {
                 val result = repository.sendMessageSync(
-                    _uiState.value.sessionId ?: "", input, currentIdempotencyKey,
+                    _uiState.value.sessionId ?: "", input, currentIdempotencyKey, assistantId,
                 )
                 stopCosmicProgressTimer()
                 result.onSuccess { answer ->
@@ -590,7 +609,7 @@ class ChatViewModel @Inject constructor(
                 return@launch
             }
 
-            repository.sendMessage(_uiState.value.sessionId ?: "", input, currentIdempotencyKey).collect { result ->
+            repository.sendMessage(_uiState.value.sessionId ?: "", input, currentIdempotencyKey, assistantId).collect { result ->
                 result
                     .onSuccess { chunk ->
                         accumulated += chunk
@@ -600,6 +619,7 @@ class ChatViewModel @Inject constructor(
                     }
                     .onFailure { e ->
                         // Mirrors iOS quota-error mapping (StreamingPredictionService).
+                        streamFailed = true
                         stopCosmicProgressTimer()
                         // Stop the reveal pump — failure branches render their own final state.
                         pumpJob?.cancel()
@@ -610,7 +630,7 @@ class ChatViewModel @Inject constructor(
                                 // SAME idempotency key so quota isn't double-charged.
                                 val recovered = runCatching {
                                     repository.sendMessageSync(
-                                        _uiState.value.sessionId ?: "", input, currentIdempotencyKey,
+                                        _uiState.value.sessionId ?: "", input, currentIdempotencyKey, assistantId,
                                     )
                                 }.getOrNull()?.getOrNull()
                                 if (!recovered.isNullOrBlank()) {
@@ -659,21 +679,83 @@ class ChatViewModel @Inject constructor(
                                         messages = it.messages.filterNot { m -> m.id == assistantId },
                                     )
                                 }
-                            else ->
-                                _uiState.update {
-                                    it.copy(
-                                        isStreaming = false,
-                                        errorMessage = friendlyError(e),
-                                        interruptedQuestion = lastSentQuery,
-                                        messages = it.messages.filterNot { m -> m.id == assistantId },
-                                    )
+                            else -> {
+                                // FIX A (case 3): iOS parity (ChatViewModel.swift:989-996) —
+                                // for any generic mid-stream error that is NOT a quota/limit
+                                // signal and NOT user-cancel, transparently replay via the
+                                // non-streaming endpoint with the same idempotency key.
+                                // Do NOT surface a banner; if sync also fails, then show the error.
+                                val isCancellation = e is kotlinx.coroutines.CancellationException ||
+                                    e.message?.contains("cancel", ignoreCase = true) == true
+                                if (isCancellation) {
+                                    _uiState.update {
+                                        it.copy(
+                                            isStreaming = false,
+                                            errorMessage = null,
+                                            messages = it.messages.filterNot { m -> m.id == assistantId },
+                                        )
+                                    }
+                                } else {
+                                    val recovered = runCatching {
+                                        repository.sendMessageSync(
+                                            _uiState.value.sessionId ?: "", input, currentIdempotencyKey, assistantId,
+                                        )
+                                    }.getOrNull()?.getOrNull()
+                                    if (!recovered.isNullOrBlank()) {
+                                        accumulated = stripFollowUpBlock(recovered)
+                                        _uiState.update { s ->
+                                            val msg = ChatMessage(
+                                                id = assistantId,
+                                                role = ChatMessage.Role.ASSISTANT,
+                                                content = accumulated,
+                                                isStreaming = false,
+                                                createdAtMs = System.currentTimeMillis(),
+                                            )
+                                            s.copy(messages = s.messages.filterNot { it.id == assistantId } + msg, isStreaming = false)
+                                        }
+                                    } else {
+                                        _uiState.update {
+                                            it.copy(
+                                                isStreaming = false,
+                                                errorMessage = friendlyError(e),
+                                                interruptedQuestion = lastSentQuery,
+                                                messages = it.messages.filterNot { m -> m.id == assistantId },
+                                            )
+                                        }
+                                    }
                                 }
+                            }
                         }
                     }
             }
 
             // Mark last assistant message as no longer streaming
             stopCosmicProgressTimer()
+            // FIX A (case 2): iOS parity (ChatViewModel.swift:1041-1048) — if the stream
+            // emitted a `done` event but we accumulated nothing (empty-done), transparently
+            // fall through to the non-streaming endpoint rather than leaving a silent no-answer.
+            if (accumulated.isBlank() && !streamFailed) {
+                val recovered = runCatching {
+                    repository.sendMessageSync(
+                        _uiState.value.sessionId ?: "", input, currentIdempotencyKey, assistantId,
+                    )
+                }.getOrNull()?.getOrNull()
+                if (!recovered.isNullOrBlank()) {
+                    accumulated = stripFollowUpBlock(recovered)
+                    _uiState.update { s ->
+                        val msg = ChatMessage(
+                            id = assistantId,
+                            role = ChatMessage.Role.ASSISTANT,
+                            content = accumulated,
+                            isStreaming = false,
+                            createdAtMs = System.currentTimeMillis(),
+                        )
+                        s.copy(messages = s.messages.filterNot { it.id == assistantId } + msg, isStreaming = false)
+                    }
+                    email?.let { runCatching { quotaManager.recordFeatureUsage(QuotaManager.FeatureID.AI_QUESTIONS, it) } }
+                    return@launch
+                }
+            }
             // iOS parity: fast-drain any remaining pumped text so the final answer is
             // fully visible the instant the stream closes (no lingering partial reveal).
             drainPump(assistantId)
@@ -1065,7 +1147,31 @@ class ChatViewModel @Inject constructor(
     private fun stopCosmicProgressTimer() {
         cosmicProgressJob?.cancel()
         cosmicProgressJob = null
-        _uiState.update { it.copy(cosmicProgressIndex = null) }
+        _uiState.update { it.copy(cosmicProgressIndex = null, cosmicProgressStep = null) }
+    }
+
+    /**
+     * FIX D: iOS parity (ChatViewModel.swift:1332-1344) — maps a backend `display_key`
+     * from a progress_step SSE event to one of the existing localized cosmic-progress step
+     * IDs. The ViewModel stores the resolved string ID name; ChatScreen resolves it via the
+     * cosmicProgressStep state field (which takes precedence over the canned rotation index).
+     * Returns null for unknown keys so the canned rotation continues unchanged.
+     */
+    private fun mapProgressDisplayKey(key: String?): String? {
+        if (key.isNullOrBlank()) return null
+        return when (key.lowercase().trim()) {
+            "reading_stars", "chart_reading", "houses" -> appContext.getString(R.string.cosmic_progress_1)
+            "aligning_planets", "planets", "planetary_positions" -> appContext.getString(R.string.cosmic_progress_2)
+            "dasha", "dasha_period", "dasha_analysis" -> appContext.getString(R.string.cosmic_progress_3)
+            "divisional_charts", "divisional", "varga" -> appContext.getString(R.string.cosmic_progress_4)
+            "strength", "planet_strength", "shadbala" -> appContext.getString(R.string.cosmic_progress_5)
+            "transits", "transit_analysis" -> appContext.getString(R.string.cosmic_progress_6)
+            "nakshatra", "nakshatra_analysis" -> appContext.getString(R.string.cosmic_progress_7)
+            "yogas", "doshas", "yoga_dosha" -> appContext.getString(R.string.cosmic_progress_8)
+            "synthesis", "synthesizing" -> appContext.getString(R.string.cosmic_progress_9)
+            "finalizing", "final", "complete" -> appContext.getString(R.string.cosmic_progress_10)
+            else -> null
+        }
     }
 
     // ── Smooth typewriter pump (iOS ChatViewModel.startSmoothPump parity) ──────────
@@ -1105,13 +1211,16 @@ class ChatViewModel @Inject constructor(
     }
 
     /** 60Hz interpolator revealing pumpTarget at ~70 ch/s ±20% jitter, with catch-up
-     *  scaling when the backend is far ahead (mirrors iOS BASE_CHARS_PER_SEC + jitter). */
+     *  scaling when the backend is far ahead (mirrors iOS BASE_CHARS_PER_SEC + jitter).
+     *  FIX C: publishes to UI state only every 3rd frame (~20Hz, mirrors iOS RENDER_EVERY=3)
+     *  to bound markdown re-parse cost, while the reveal index advances every frame. */
     private fun startSmoothPump(assistantId: String) {
         pumpJob?.cancel()
         pumpJob = viewModelScope.launch {
             val baseCharsPerSec = 70.0
             val frameMs = 16L // ~60Hz
             var carry = 0.0
+            var renderSkip = 0 // FIX C: publish every 3rd frame
             while (true) {
                 val remaining = pumpTarget.length - pumpRevealed
                 if (remaining <= 0) {
@@ -1130,7 +1239,13 @@ class ChatViewModel @Inject constructor(
                 if (step >= 1) {
                     carry -= step
                     pumpRevealed = (pumpRevealed + step).coerceAtMost(pumpTarget.length)
-                    renderPumpFrame(assistantId, pumpTarget.substring(0, pumpRevealed))
+                    // FIX C: only push visible content to UI every 3rd frame (~20Hz)
+                    // to bound markdown re-parse; reveal index still advances every frame.
+                    renderSkip++
+                    if (renderSkip >= 3) {
+                        renderSkip = 0
+                        renderPumpFrame(assistantId, pumpTarget.substring(0, pumpRevealed))
+                    }
                 }
                 kotlinx.coroutines.delay(frameMs)
             }

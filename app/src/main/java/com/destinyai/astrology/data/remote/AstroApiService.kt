@@ -525,6 +525,9 @@ data class ChatMessageDto(
     @SerializedName("role") val role: String,
     @SerializedName("content") val content: String,
     @SerializedName("created_at") val createdAt: String,
+    // iOS parity (ChatHistorySyncService maps rating): server stores the star rating so
+    // it survives reinstall / cross-device. Null when not yet rated.
+    @SerializedName("rating") val rating: Int? = null,
 )
 
 data class PartnerDto(

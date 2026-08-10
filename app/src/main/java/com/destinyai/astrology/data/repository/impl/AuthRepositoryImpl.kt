@@ -140,9 +140,14 @@ class AuthRepositoryImpl @Inject constructor(
             throw SessionMintFailedException()
         }
         runCatching { exchangeClient.signInWithGoogle(idToken, nonce = null) }
-            .onFailure {
-                android.util.Log.w("AuthRepository", "google session mint failed: ${it.message}", it)
-                throw SessionMintFailedException(it)
+            .onFailure { err ->
+                android.util.Log.w("AuthRepository", "google session mint failed: ${err.message}", err)
+                // iOS parity (AppleAuthService.swift:110-119): cross-IdP collision from
+                // /auth/exchange must be propagated as a typed CrossIdpCollision so
+                // AuthViewModel can surface "Sign in with <bound_idp>" instead of a generic
+                // error. All other exchange failures → SessionMintFailedException (retryable).
+                if (err is com.destinyai.astrology.data.remote.AuthExchangeError.CrossIdpCollision) throw err
+                throw SessionMintFailedException(err)
             }
         resp.toUser()
     }
@@ -218,9 +223,18 @@ class AuthRepositoryImpl @Inject constructor(
         // stale/failed mint can never leave another user's JWT active for this user.
         sessionStore.clearActiveSession()
         // Mint a session JWT when the Apple id_token is available.
+        // iOS parity: Apple sign-in is dead-code on Android UI (button removed) but the
+        // backend integration is preserved for future deep-link / cross-platform flows.
+        // Mirror the Google path exactly: propagate CrossIdpCollision and throw
+        // SessionMintFailedException on all other exchange failures so the caller never
+        // enters the app session-less (same fix as the Google path — symmetry).
         if (!idToken.isNullOrBlank()) {
             runCatching { exchangeClient.signInWithApple(idToken, nonce = null) }
-                .onFailure { android.util.Log.w("AuthRepository", "apple session mint failed: ${it.message}") }
+                .onFailure { err ->
+                    android.util.Log.w("AuthRepository", "apple session mint failed: ${err.message}", err)
+                    if (err is com.destinyai.astrology.data.remote.AuthExchangeError.CrossIdpCollision) throw err
+                    throw SessionMintFailedException(err)
+                }
         }
         resp.toUser()
     }

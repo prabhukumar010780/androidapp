@@ -1,6 +1,7 @@
 package com.destinyai.astrology.ui.charts
 
 import app.cash.turbine.test
+import com.destinyai.astrology.data.local.db.AstroDataCacheDao
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.remote.BirthProfileDto
@@ -184,6 +185,77 @@ class ChartsViewModelExtendedTest {
             val s = awaitItem()
             assertEquals("Ge", s.ascendantSign) // sign 3 = Gemini = "Ge"
             cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // ── Cache key parity (FIX: Home vs Charts divergence) ────────────────────
+
+    /**
+     * When no activeProfileId is set, ChartsViewModel must fall back to the user
+     * email — not to "" — so the cache key matches HomeRepositoryImpl's fallback
+     * (activeProfileId.takeIf{notBlank} ?: email).
+     *
+     * If ChartsViewModel writes the "chart" cache row under "" and Home reads it
+     * under email, they write two different rows and the chart fetch is doubled on
+     * every Home+Charts open.
+     */
+    @Test
+    fun `loadChartData uses email as cache key fallback when activeProfileId is blank`() = runTest {
+        val cacheDao = mockk<AstroDataCacheDao>(relaxed = true)
+        coEvery { prefs.getActiveProfileId() } returns null          // no partner active
+        coEvery { prefs.getUserEmail() } returns "user@test.com"
+        coEvery { prefs.getBirthProfile() } returns BirthProfileDto(
+            dateOfBirth = "1980-07-01",
+            timeOfBirth = "06:32",
+            cityOfBirth = "Bhilai",
+            latitude = 21.2138,
+            longitude = 81.3943,
+        )
+        coEvery { api.getChartData(any()) } returns makeChartApiResponse()
+        // cacheDao.get returns null so the network path is taken
+        coEvery { cacheDao.get(any(), any(), any(), any(), any()) } returns null
+
+        val vmWithCache = ChartsViewModel(prefs, api, cacheDao)
+        vmWithCache.loadChartData()
+
+        // The upsert must have been called with profileId = email, NOT ""
+        coVerify {
+            cacheDao.upsert(
+                match { entity ->
+                    entity.profileId == "user@test.com"
+                },
+            )
+        }
+    }
+
+    /**
+     * When a partner profile IS active (non-blank UUID), that UUID is used as-is —
+     * the email fallback must not overwrite it.
+     */
+    @Test
+    fun `loadChartData uses activeProfileId when set and non-blank`() = runTest {
+        val cacheDao = mockk<AstroDataCacheDao>(relaxed = true)
+        coEvery { prefs.getActiveProfileId() } returns "partner-uuid-abc"
+        coEvery { prefs.getUserEmail() } returns "user@test.com"
+        coEvery { prefs.getBirthProfile() } returns BirthProfileDto(
+            dateOfBirth = "1980-07-01",
+            timeOfBirth = "06:32",
+            cityOfBirth = "Bhilai",
+            latitude = 21.2138,
+            longitude = 81.3943,
+        )
+        coEvery { api.getChartData(any()) } returns makeChartApiResponse()
+        coEvery { cacheDao.get(any(), any(), any(), any(), any()) } returns null
+
+        val vmWithCache = ChartsViewModel(prefs, api, cacheDao)
+        vmWithCache.loadChartData()
+
+        coVerify {
+            cacheDao.upsert(
+                match { entity ->
+                    entity.profileId == "partner-uuid-abc"
+                },
+            )
         }
     }
 

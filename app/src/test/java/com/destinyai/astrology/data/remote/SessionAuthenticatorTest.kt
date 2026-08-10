@@ -114,6 +114,37 @@ class SessionAuthenticatorTest {
     }
 
     @Test
+    fun `account_deleted from refresh clears session and does not retry`() {
+        // iOS parity (NetworkClient.swift:114-116): .accountDeleted case also clears
+        // the stale local session so the dead JWT stops being attached.
+        val accountDeletedBody = """{"detail":{"code":"account_deleted"}}"""
+        // The 401 triggers the refresh path; mock the refresh to throw AccountDeleted.
+        every { runBlocking { exchange.refresh() } } throws
+            AuthExchangeError.AccountDeleted("account_deleted")
+        server.enqueue(MockResponse().setResponseCode(401).setBody(body("session_expired")))
+
+        val resp = callWithStaleBearer()
+        assertEquals(401, resp.code) // null returned → OkHttp surfaces the original 401
+        resp.close()
+
+        verify { runBlocking { exchange.refresh() } }
+        verify { store.clearActiveSession() }
+    }
+
+    @Test
+    fun `account_archived from refresh clears session and does not retry`() {
+        every { runBlocking { exchange.refresh() } } throws
+            AuthExchangeError.AccountDeleted("account_archived")
+        server.enqueue(MockResponse().setResponseCode(401).setBody(body("session_expired")))
+
+        val resp = callWithStaleBearer()
+        assertEquals(401, resp.code)
+        resp.close()
+
+        verify { store.clearActiveSession() }
+    }
+
+    @Test
     fun `does NOT refresh when the failing request did not carry the session jwt`() {
         // e.g. an API-key-only request that 401s — not our session to refresh.
         server.enqueue(MockResponse().setResponseCode(401).setBody(body("session_required")))
