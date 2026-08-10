@@ -450,7 +450,8 @@ private fun LanguageCard(
                 color = if (isSelected) Gold else Gold.copy(alpha = 0.15f),
                 shape = shape,
             )
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick)
+            .semantics { contentDescription = "language_card_${lang.code}" },
         contentAlignment = Alignment.Center,
     ) {
         // White sheen depth layer (top → bottom) — matches iOS card depth gradient.

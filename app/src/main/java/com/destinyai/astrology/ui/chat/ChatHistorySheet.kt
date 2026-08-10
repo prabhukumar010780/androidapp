@@ -61,7 +61,7 @@ fun ChatHistorySheet(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .semantics { contentDescription = "history_screen" },
+                    .semantics(mergeDescendants = false) { contentDescription = "history_screen" },
             ) {
                 // Toolbar
                 Row(

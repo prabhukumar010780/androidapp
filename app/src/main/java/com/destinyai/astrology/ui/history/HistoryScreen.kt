@@ -129,7 +129,7 @@ fun HistoryScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .testTag("history_screen")
-                .semantics { contentDescription = "history_screen" },
+                .semantics(mergeDescendants = false) { contentDescription = "history_screen" },
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // Header

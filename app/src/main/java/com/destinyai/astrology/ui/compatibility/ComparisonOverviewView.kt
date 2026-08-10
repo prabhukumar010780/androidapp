@@ -246,7 +246,7 @@ fun ComparisonOverviewView(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .semantics { contentDescription = "comparison_overview_screen" },
+                .semantics(mergeDescendants = false) { contentDescription = "comparison_overview_screen" },
         ) {
             // Header
             ComparisonHeader(userName = userName, onBack = onBack, onShare = sharePdfWithText)

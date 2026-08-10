@@ -174,7 +174,7 @@ fun SubscriptionScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .semantics {
+                .semantics(mergeDescendants = false) {
                     testTag = "subscription_screen"
                     contentDescription = "subscription_screen"
                 },

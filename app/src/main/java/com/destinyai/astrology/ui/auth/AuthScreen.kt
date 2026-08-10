@@ -361,7 +361,7 @@ fun AuthScreen(
     CosmicBackground {
         Box(modifier = Modifier
             .fillMaxSize()
-            .semantics { contentDescription = "auth_screen" }) {
+            .semantics(mergeDescendants = false) { contentDescription = "auth_screen" }) {
         // Layer 2: Orbital rings (ambient decoration, behind content).
         // Mirrors iOS `OrbitalRingsView(rotation: orbitRotation).opacity(0.25)`.
         Box(

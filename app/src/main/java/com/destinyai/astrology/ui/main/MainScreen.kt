@@ -724,7 +724,8 @@ private fun DestinyTabBar(
                 onClick = { onTabSelected(0) },
                 modifier = Modifier
                     .weight(1f)
-                    .testTag("tab_home"),
+                    .testTag("tab_home")
+                    .semantics { contentDescription = "tab_home" },
             )
 
             // Transparent placeholder — preserves layout for the center FAB.
@@ -737,7 +738,8 @@ private fun DestinyTabBar(
                 onClick = { onTabSelected(2) },
                 modifier = Modifier
                     .weight(1f)
-                    .testTag("tab_match"),
+                    .testTag("tab_match")
+                    .semantics { contentDescription = "tab_match" },
             )
         }
 
@@ -757,7 +759,8 @@ private fun DestinyTabBar(
                 onClick = { onTabSelected(1) },
                 modifier = Modifier
                     .zIndex(1f)
-                    .testTag("tab_chat"),
+                    .testTag("tab_chat")
+                    .semantics { contentDescription = "tab_chat" },
             )
         }
     }

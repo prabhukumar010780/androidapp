@@ -94,7 +94,7 @@ fun OnboardingScreen(
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .testTag("onboarding_screen")
-                .semantics { contentDescription = "onboarding_screen" },
+                .semantics(mergeDescendants = false) { contentDescription = "onboarding_screen" },
         ) {
             // Skip button — iOS parity (OnboardingView.swift:43-61): pinned to leading edge.
             if (!isLastSlide) {

@@ -271,7 +271,7 @@ fun NotificationsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .semantics {
+                .semantics(mergeDescendants = false) {
                     testTagsAsResourceId = true
                     contentDescription = "notifications_screen"
                 }

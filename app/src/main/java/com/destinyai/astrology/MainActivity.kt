@@ -9,6 +9,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
 import com.destinyai.astrology.services.FcmTokenManager
 import com.destinyai.astrology.services.NotificationRouter
+import com.destinyai.astrology.ui.auth.E2EBirthDataOverrides
 import com.destinyai.astrology.ui.compatibility.E2EPartnerOverrides
 import com.destinyai.astrology.ui.nav.AppNav
 import com.destinyai.astrology.ui.theme.DestinyTheme
@@ -39,6 +40,7 @@ class MainActivity : ComponentActivity() {
         // on its first invocation. No-op in release builds (BuildConfig.DEBUG
         // gate inside E2EPartnerOverrides).
         E2EPartnerOverrides.captureFromIntent(intent)
+        E2EBirthDataOverrides.captureFromIntent(intent)
         // Notification permission is requested in-context from MainScreen, after the user
         // has completed onboarding and auth. Removed from here (cold onCreate) because
         // firing the system dialog immediately on every launch — before the user has seen
@@ -66,6 +68,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         E2EPartnerOverrides.captureFromIntent(intent)
+        E2EBirthDataOverrides.captureFromIntent(intent)
         handleNotificationIntent(intent)
     }
 

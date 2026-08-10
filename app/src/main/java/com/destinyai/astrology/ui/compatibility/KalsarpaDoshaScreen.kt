@@ -94,7 +94,7 @@ fun KalsarpaDoshaScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .semantics { contentDescription = "kalsarpa_dosha_screen" },
+                .semantics(mergeDescendants = false) { contentDescription = "kalsarpa_dosha_screen" },
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // Issue 2: render localized title alongside the back arrow (iOS navigationTitle parity).

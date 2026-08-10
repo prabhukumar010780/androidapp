@@ -76,7 +76,7 @@ fun ChartsScreen(
     CosmicBackground {
         Box(modifier = Modifier.fillMaxSize().semantics(mergeDescendants = false) { contentDescription = "charts_screen" }) {
         Column(
-            modifier = Modifier.fillMaxSize().semantics { contentDescription = "chart_screen" },
+            modifier = Modifier.fillMaxSize().semantics(mergeDescendants = false) { contentDescription = "chart_screen" },
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // Navigation bar

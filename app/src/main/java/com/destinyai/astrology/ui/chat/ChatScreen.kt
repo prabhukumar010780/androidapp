@@ -219,7 +219,7 @@ fun ChatScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .semantics { contentDescription = "chat_screen" },
+                .semantics(mergeDescendants = false) { contentDescription = "chat_screen" },
             // Cat 4 adaptability: center children so adaptiveContentWidth() caps the
             // message list + input bar to a readable column on tablets/foldables
             // instead of stretching full-bleed. No-op on phones.

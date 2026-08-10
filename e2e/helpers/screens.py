@@ -25,7 +25,22 @@ class _Base:
         return self.d.find_elements(AppiumBy.ACCESSIBILITY_ID, aid)
 
     def tap(self, aid):
-        self.find(aid).click()
+        """Tap an element by accessibility id.
+
+        Compose exposes a contentDescription/testTag node that is often distinct
+        from the node carrying the click action, so Appium reports the located
+        element as clickable=false and element.click() becomes a no-op. To be
+        robust we always tap the element's on-screen center via a pointer
+        gesture, which dispatches to whatever clickable Compose node sits there.
+        """
+        el = self.find(aid)
+        if el.get_attribute("clickable") == "true":
+            el.click()
+            return
+        rect = el.rect
+        cx = int(rect["x"] + rect["width"] / 2)
+        cy = int(rect["y"] + rect["height"] / 2)
+        self.d.execute_script("mobile: clickGesture", {"x": cx, "y": cy})
 
     def present(self, aid) -> bool:
         return len(self.finds(aid)) > 0
@@ -41,6 +56,118 @@ class _Base:
         WebDriverWait(self.d, timeout).until_not(
             EC.presence_of_element_located((AppiumBy.ACCESSIBILITY_ID, aid))
         )
+
+
+class OnboardingScreen(_Base):
+    """First-launch flow driver: language → onboarding slides → auth → guest →
+    birth-data (auto-filled via E2EBirthDataOverrides) → profile-setup → Home."""
+
+    def reach_home(self, timeout=60):
+        from appium.webdriver.common.appiumby import AppiumBy
+        from selenium.common.exceptions import TimeoutException, WebDriverException
+
+        # Already at Home? (a prior test in the session navigated there)
+        if self.present("home_screen"):
+            return
+
+        # 1. Language selection — tap English card, then continue.
+        try:
+            WebDriverWait(self.d, 20).until(
+                EC.presence_of_element_located(
+                    (AppiumBy.ACCESSIBILITY_ID, "language_card_en")
+                )
+            )
+            self.tap("language_card_en")
+            self.tap("language_continue_button")
+        except (TimeoutException, WebDriverException):
+            pass  # language screen may be skipped if a language was already chosen
+
+        # 2. Onboarding — page through the slides via the primary Continue CTA
+        #    (the last slide's Continue navigates to auth). The leading "Skip"
+        #    sits inside the status-bar padding zone and isn't reliably tappable,
+        #    so we advance with Continue, which also exercises the real slide flow.
+        try:
+            WebDriverWait(self.d, 15).until(
+                EC.presence_of_element_located(
+                    (AppiumBy.ACCESSIBILITY_ID, "onboarding_screen")
+                )
+            )
+            import time
+            for _ in range(6):
+                if self.present("auth_screen"):
+                    break
+                if not self.present("onboarding_continue"):
+                    break
+                self.tap("onboarding_continue")
+                time.sleep(1.2)
+        except (TimeoutException, WebDriverException):
+            pass
+
+        # 3. Auth — continue as guest (mints a guest session against the backend).
+        WebDriverWait(self.d, 20).until(
+            EC.presence_of_element_located(
+                (AppiumBy.ACCESSIBILITY_ID, "continue_as_guest_button")
+            )
+        )
+        self.tap("continue_as_guest_button")
+
+        # 4. Birth-data — E2EBirthDataOverrides auto-fills the form so isValid is
+        #    true; just tap Continue. Wait for the button (guest mint is async).
+        WebDriverWait(self.d, 30).until(
+            EC.presence_of_element_located(
+                (AppiumBy.ACCESSIBILITY_ID, "birth_data_continue")
+            )
+        )
+        self.tap("birth_data_continue")
+
+        # 5. Response-style sheet — a successful save presents the response-style
+        #    picker; its Continue triggers onSaved() → profile-setup. Wait for it
+        #    (the save round-trips the backend) then continue with the default style.
+        try:
+            WebDriverWait(self.d, 30).until(
+                EC.presence_of_element_located(
+                    (AppiumBy.ACCESSIBILITY_ID, "response_style_continue")
+                )
+            )
+            self.tap("response_style_continue")
+        except (TimeoutException, WebDriverException):
+            pass  # some flows may skip straight to profile-setup
+
+        # 6. Profile-setup loader prefetches chart + today's prediction (an LLM
+        #    call, ~20s) then lands on Home. On first reach of Home the OS
+        #    notification-permission dialog appears and covers the screen — grant
+        #    it so home_screen becomes visible. Poll generously for the prefetch.
+        deadline_polls = max(1, timeout // 3)
+        for _ in range(deadline_polls):
+            self._grant_notification_permission_if_present()
+            if self.present("home_screen"):
+                return
+            import time
+            time.sleep(3)
+        # Final explicit wait so the failure message points here if still not Home.
+        self._grant_notification_permission_if_present()
+        WebDriverWait(self.d, 15).until(
+            EC.presence_of_element_located((AppiumBy.ACCESSIBILITY_ID, "home_screen"))
+        )
+
+    def _grant_notification_permission_if_present(self):
+        """Grant the Android 13+ POST_NOTIFICATIONS system dialog if it is up.
+        It renders in com.android.permissioncontroller (not the app), so match by
+        resource-id / text rather than an app accessibility id."""
+        from appium.webdriver.common.appiumby import AppiumBy
+        for by, sel in [
+            (AppiumBy.ID, "com.android.permissioncontroller:id/permission_allow_button"),
+            (AppiumBy.XPATH, "//*[@text='Allow' or @text='ALLOW']"),
+        ]:
+            try:
+                els = self.d.find_elements(by, sel)
+                if els:
+                    els[0].click()
+                    import time
+                    time.sleep(1)
+                    return
+            except Exception:
+                pass
 
 
 class HomeScreen(_Base):
@@ -91,10 +218,9 @@ class CompatibilityScreen(_Base):
 
 
 class ChartsScreen(_Base):
+    # Single vertical-scroll layout (no Dasha/Transits/Planets tabs — those are
+    # intentionally omitted to match iOS PlanetaryPositionsSheet.swift).
     def is_visible(self):           return self.present("charts_screen")
-    def tap_dasha_tab(self):        self.tap("charts_tab_dasha")
-    def tap_transits_tab(self):     self.tap("charts_tab_transits")
-    def tap_planets_tab(self):      self.tap("charts_tab_planets")
     def tap_close(self):            self.tap("charts_close_button")
 
 
@@ -132,6 +258,7 @@ class Screens:
     """Aggregates all screen page objects — injected into every test via fixture."""
 
     def __init__(self, driver):
+        self.onboarding = OnboardingScreen(driver)
         self.home = HomeScreen(driver)
         self.chat = ChatScreen(driver)
         self.compatibility = CompatibilityScreen(driver)

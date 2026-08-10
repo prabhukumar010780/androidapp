@@ -476,7 +476,7 @@ fun BirthDataScreen(
                         .fillMaxWidth()
                         .height(54.dp)
                         .testTag("birth_data_continue")
-                        .semantics { contentDescription = "Continue" },
+                        .semantics { contentDescription = "birth_data_continue" },
                 )
 
                 Spacer(Modifier.height(24.dp))

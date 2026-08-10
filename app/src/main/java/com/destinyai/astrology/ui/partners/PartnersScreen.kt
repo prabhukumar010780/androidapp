@@ -171,7 +171,7 @@ fun PartnersScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .semantics { contentDescription = "partners_screen" },
+                .semantics(mergeDescendants = false) { contentDescription = "partners_screen" },
         ) {
         Column(
             modifier = Modifier.fillMaxSize(),

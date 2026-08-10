@@ -93,6 +93,23 @@ class BirthDataViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Debug-only E2E: if the launch intent carried self birth-data extras
+     * (UI_TEST_MODE), pre-fill the form so `isValid` flips true and the Appium
+     * suite can reach Home without driving the date/time pickers and location
+     * search. Applied from [loadSaved] AFTER the no-saved-profile branch so it is
+     * not clobbered by the empty-state reset. No-op in release (BuildConfig.DEBUG
+     * guard inside E2EBirthDataOverrides) and when no override was captured.
+     */
+    private fun applyE2EBirthDataOverrideIfPresent() {
+        val s = E2EBirthDataOverrides.consume() ?: return
+        setUserName(s.name)
+        setGender(s.gender)
+        if (s.dob.isNotBlank()) setDateOfBirth(s.dob)
+        if (s.time.isNotBlank()) setTimeOfBirth(s.time) else setTimeUnknown(true)
+        if (s.city.isNotBlank()) setLocation(s.city, s.latitude, s.longitude)
+    }
+
     val isValid: Boolean
         get() {
             val s = _uiState.value
@@ -285,6 +302,9 @@ class BirthDataViewModel @Inject constructor(
                         isGuest = isGuest,
                     )
                 }
+                // Debug-only: apply any E2E birth-data override AFTER the empty-state
+                // reset so it is not clobbered (no saved profile → fresh guest case).
+                applyE2EBirthDataOverrideIfPresent()
             }
         }
     }
@@ -511,9 +531,13 @@ class BirthDataViewModel @Inject constructor(
     }
 
     /**
-     * iOS parity (EmailGenerator.generateFromComponents): a deterministic guest email
-     * derived from immutable birth components so a guest keeps the same identity
-     * across reinstalls. Lowercased, alphanumeric-only, suffixed with @guest.destiny.ai.
+     * iOS parity (EmailGenerator.generateFromComponents): a deterministic guest
+     * email derived from immutable birth components so a guest keeps the same
+     * identity across reinstalls AND across platforms. MUST match iOS byte-for-byte:
+     * format `YYYYMMDD_HHMM_cityPrefix_latInt_lngInt@daa.com` where cityPrefix is the
+     * first 3 ASCII-alphanumeric letters (lowercased, transliterated), and lat/lng are
+     * the absolute integer parts. The `@daa.com` suffix is also what the backend uses
+     * to detect generated (guest) emails — a different domain breaks guest detection.
      */
     private fun generateGuestEmail(
         dob: String,
@@ -522,11 +546,18 @@ class BirthDataViewModel @Inject constructor(
         lat: Double,
         lng: Double,
     ): String {
-        val seed = "$dob|$time|${city.trim().lowercase()}|" +
-            "%.4f|%.4f".format(Locale.US, lat, lng)
-        val token = seed.hashCode().toUInt().toString(16).padStart(8, '0')
-        val cityToken = city.trim().lowercase().filter { it.isLetterOrDigit() }.take(6).ifEmpty { "guest" }
-        return "guest_${cityToken}_$token@guest.destiny.ai"
+        // YYYY-MM-DD -> YYYYMMDD ; HH:MM -> HHMM
+        val dobPart = dob.replace("-", "")
+        val tobPart = time.replace(":", "")
+        // Transliterate to Latin + strip diacritics so non-Latin scripts (Hindi, etc.)
+        // still yield a valid ASCII email — mirrors iOS applyingTransform(.toLatin).
+        val normalized = java.text.Normalizer.normalize(city.trim(), java.text.Normalizer.Form.NFD)
+            .replace(Regex("\\p{Mn}+"), "")
+        val asciiCity = normalized.filter { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' }
+        val cityPrefix = asciiCity.take(3).lowercase().ifEmpty { "unk" }
+        val latInt = kotlin.math.abs(lat.toInt())
+        val lngInt = kotlin.math.abs(lng.toInt())
+        return "${dobPart}_${tobPart}_${cityPrefix}_${latInt}_${lngInt}@daa.com"
     }
 
     /**
