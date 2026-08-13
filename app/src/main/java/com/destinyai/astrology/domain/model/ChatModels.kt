@@ -27,6 +27,9 @@ data class ChatMessage(
     val traceId: String? = null,
     /** 1..5 star rating, 0 = not yet rated. */
     val rating: Int = 0,
+    /** Follow-up suggestion pills persisted on the assistant row (parity with iOS LocalChatMessage.followUps).
+     *  Reopening a thread rehydrates these from the last assistant message so guided next-questions survive. */
+    val followUps: List<String> = emptyList(),
 ) {
     enum class Role { USER, ASSISTANT, SYSTEM }
 }

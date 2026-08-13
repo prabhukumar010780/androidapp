@@ -42,6 +42,10 @@ data class ChatUiState(
     val copiedMessageId: String? = null,
     val showPaywall: Boolean = false,
     val errorMessage: String? = null,
+    // New-Chat empty-state starter questions — sourced from homeRepository.getSuggestedQuestions()
+    // so they match the Home tab exactly (server-personalized). Empty until loaded; the empty
+    // state falls back to the static defaults meanwhile.
+    val starterQuestions: List<String> = emptyList(),
     val suggestedQuestions: List<String> = emptyList(),
     val interruptedQuestion: String? = null,
     // Mirrors iOS HistorySettingsManager.isHistoryEnabled — when false the history sheet shows
@@ -102,6 +106,10 @@ class BackpressureException(val retryAfterSeconds: Int = 0) : Exception("backpre
 @HiltViewModel
 class ChatViewModel @Inject constructor(
     private val repository: ChatRepository,
+    // Shared source of the home-screen starter questions (getSuggestedQuestions()) so the
+    // New-Chat empty state shows the SAME questions the Home tab does (server-personalized,
+    // language-aware), not a divergent hardcoded list.
+    private val homeRepository: com.destinyai.astrology.data.repository.HomeRepository,
     // iOS parity (ChatView.swift signOutAndReauth): used by requestSignInFromQuota
     // to perform a partial sign-out so AuthScreen routes to login UI without
     // bouncing back to Main.
@@ -192,6 +200,13 @@ class ChatViewModel @Inject constructor(
                 sessionId = UUID.randomUUID().toString(),
                 messages = listOf(welcomeMessage),
             )
+        }
+        // Load the home-screen starter questions so the New-Chat empty state matches the
+        // Home tab (same getSuggestedQuestions() source, server-personalized). Best-effort:
+        // on failure the empty state keeps its static default starters.
+        viewModelScope.launch {
+            val qs = runCatching { homeRepository.getSuggestedQuestions() }.getOrDefault(emptyList())
+            if (qs.isNotEmpty()) _uiState.update { it.copy(starterQuestions = qs) }
         }
         // Load active profile name from prefs and re-render welcome message once available.
         viewModelScope.launch {
@@ -874,10 +889,12 @@ class ChatViewModel @Inject constructor(
             // assume there are older ones still on disk/server. UI flips false after a successful
             // loadOlderMessages() returns an empty page.
             val older = messages.size >= HISTORY_PAGE_SIZE
-            // iOS parity (ChatViewModel.loadThread:351-356): rehydrate follow-up pills
-            // from the last assistant message so reopened threads keep their guided
-            // next-question affordance.
-            val followUps = runCatching { repository.loadThreadFollowUps(threadId) }.getOrDefault(emptyList())
+            // iOS parity (ChatViewModel.loadThread:351-353): rehydrate follow-up pills
+            // from the LAST ASSISTANT MESSAGE's persisted followUps — reading from the
+            // loaded messages themselves (same source iOS uses), not a separate DB query.
+            // Without this, reopening a thread shows no guided next-question pills.
+            val followUps = messages.lastOrNull { it.role == ChatMessage.Role.ASSISTANT }
+                ?.followUps.orEmpty()
             _uiState.update {
                 it.copy(
                     activeThreadId = threadId,

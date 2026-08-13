@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
@@ -339,6 +340,12 @@ class HomeViewModel @Inject constructor(
                 // leaves its spinner stuck over the life-area rings. Clear both
                 // loading flags explicitly before the early return.
                 _uiState.update { it.copy(isLoading = false, isRichDataLoading = false) }
+                // On the cache-hit path all code above runs synchronously on
+                // Main.immediate before Compose renders a single frame, so
+                // isRefreshing never flips true in any rendered frame and
+                // PullToRefreshBox's state machine gets stuck. A short delay
+                // lets Compose render isRefreshing=true before finally clears it.
+                if (manualRefresh) delay(300)
                 return@launch
             }
 

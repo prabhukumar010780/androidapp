@@ -632,6 +632,7 @@ class ChatRepositoryImpl @Inject constructor(
             executionTimeMs = executionTimeMs ?: 0.0,
             traceId = traceId,
             rating = rating ?: 0,
+            followUps = parseList(followUps),
         )
     }
 

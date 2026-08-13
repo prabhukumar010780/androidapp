@@ -18,16 +18,22 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.destinyai.astrology.R
@@ -40,12 +46,6 @@ import com.destinyai.astrology.ui.theme.TouchMin
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
-/**
- * iOS parity (SharedThemeComponents.swift PremiumDatePicker time variant).
- *
- * 2-column wheel inside a ModalBottomSheet (hour + minute) with cosmic background
- * and gold "Done" button. Replaces the previous AlertDialog stub.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimePickerSheetStyled(
@@ -65,6 +65,20 @@ fun TimePickerSheetStyled(
     val minuteRange = (0..59).toList()
     val hourLabels = hourRange.map { it.toString().padStart(2, '0') }
     val minuteLabels = minuteRange.map { it.toString().padStart(2, '0') }
+
+    // Prevent wheel scroll from leaking up to the ModalBottomSheet and dismissing it.
+    val blockSheetScroll = remember {
+        object : NestedScrollConnection {
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset = available
+
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity =
+                available
+        }
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -102,8 +116,7 @@ fun TimePickerSheetStyled(
                         .clip(RoundedCornerShape(Radius.button))
                         .clickable {
                             scope.launch {
-                                val outHour = if (is24Hour) selectedHour else selectedHour
-                                onTimeSelected(outHour, selectedMinute)
+                                onTimeSelected(selectedHour, selectedMinute)
                                 sheetState.hide()
                             }
                         }
@@ -113,7 +126,10 @@ fun TimePickerSheetStyled(
             }
 
             Row(
-                modifier = Modifier.fillMaxWidth().height(220.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(220.dp)
+                    .nestedScroll(blockSheetScroll),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 WheelColumn(
@@ -129,7 +145,7 @@ fun TimePickerSheetStyled(
                     modifier = Modifier.weight(1f),
                 )
             }
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(32.dp))
         }
     }
 }

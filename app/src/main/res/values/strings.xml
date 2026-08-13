@@ -2578,16 +2578,16 @@ Until then: Use this period for strategic positioning.</string>
     <string name="chat_starter_decisions">What\'s a good time for important decisions?</string>
     <string name="chat_starter_dasha">What is my current dasha period?</string>
     <!-- Cosmic progress timer (mirrors iOS ChatViewModel.startCosmicProgressTimer) -->
-    <string name="cosmic_progress_1">Reading your stars…</string>
-    <string name="cosmic_progress_2">Aligning planetary positions…</string>
-    <string name="cosmic_progress_3">Consulting your dasha period…</string>
-    <string name="cosmic_progress_4">Mapping divisional charts…</string>
-    <string name="cosmic_progress_5">Weighing planetary strengths…</string>
-    <string name="cosmic_progress_6">Tracing transits…</string>
-    <string name="cosmic_progress_7">Listening to your nakshatra…</string>
-    <string name="cosmic_progress_8">Cross-checking yogas and doshas…</string>
-    <string name="cosmic_progress_9">Synthesizing your reading…</string>
-    <string name="cosmic_progress_10">Finalizing guidance…</string>
+    <string name="cosmic_progress_1">Connecting to the cosmos…</string>
+    <string name="cosmic_progress_2">Mapping the sky at the moment of your birth…</string>
+    <string name="cosmic_progress_3">Reading what the planets hold for you…</string>
+    <string name="cosmic_progress_4">Feeling the weight of each planetary voice…</string>
+    <string name="cosmic_progress_5">The chart is revealing its secrets…</string>
+    <string name="cosmic_progress_6">Looking for the deeper patterns in your stars…</string>
+    <string name="cosmic_progress_7">Tracing the river of time through your life…</string>
+    <string name="cosmic_progress_8">The cosmic windows are becoming visible…</string>
+    <string name="cosmic_progress_9">Sensing what your destiny is shaped by…</string>
+    <string name="cosmic_progress_10">The oracle is weaving your reading…</string>
 
     <!-- Push notification fallbacks and channel names -->
     <string name="notification_default_title">Destiny AI</string>

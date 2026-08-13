@@ -2,19 +2,20 @@ package com.destinyai.astrology.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -23,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -33,10 +35,15 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.destinyai.astrology.R
@@ -47,24 +54,13 @@ import com.destinyai.astrology.ui.theme.NavyDeep
 import com.destinyai.astrology.ui.theme.Radius
 import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.TouchMin
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import java.text.DateFormatSymbols
 import java.util.Calendar
 import java.util.Locale
+import kotlin.math.abs
 
-/**
- * iOS parity (SharedThemeComponents.swift:106-525 PremiumDatePicker / DatePickerSheet).
- *
- * Custom 3-column wheel inside a ModalBottomSheet with cosmic background, gold "Done"
- * button, and a top handle. Replaces the previous Android system DatePickerDialog stub.
- *
- * @param initialYear   Year shown when the sheet opens.
- * @param initialMonth  Month (0-based) shown when the sheet opens.
- * @param initialDay    Day shown when the sheet opens.
- * @param onDateSelected  Called with (year, month0based, day) when Done tapped.
- * @param onDismiss  Called when the sheet is dismissed without confirming.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DatePickerSheetStyled(
@@ -96,9 +92,22 @@ fun DatePickerSheetStyled(
         cal.getActualMaximum(Calendar.DAY_OF_MONTH)
     }
 
-    // Clamp day if month/year change reduces days available.
     LaunchedEffect(daysInMonth) {
         if (selectedDay > daysInMonth) selectedDay = daysInMonth
+    }
+
+    // Prevent wheel scroll from leaking up to the ModalBottomSheet and dismissing it.
+    val blockSheetScroll = remember {
+        object : NestedScrollConnection {
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset = available
+
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity =
+                available
+        }
     }
 
     ModalBottomSheet(
@@ -147,7 +156,10 @@ fun DatePickerSheetStyled(
             }
 
             Row(
-                modifier = Modifier.fillMaxWidth().height(220.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(220.dp)
+                    .nestedScroll(blockSheetScroll),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 WheelColumn(
@@ -169,15 +181,16 @@ fun DatePickerSheetStyled(
                     modifier = Modifier.weight(1f),
                 )
             }
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(32.dp))
         }
     }
 }
 
 /**
- * Wheel-style picker column. Each row is 36dp tall; the centered row is the
- * selected value (gold, bold). The list snaps to integer indices via scroll
- * state observation. Mirrors the iOS `PremiumWheelPicker` row styling.
+ * Wheel-style picker column. Uses contentPadding (not spacer items) so
+ * firstVisibleItemIndex always maps 1-to-1 to data indices. The selected
+ * value is derived from layoutInfo — whichever item is closest to the
+ * viewport centre — which is snapped + reported when scrolling stops.
  */
 @Composable
 internal fun WheelColumn(
@@ -186,43 +199,70 @@ internal fun WheelColumn(
     onSelectionChanged: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val rowHeight = 36.dp
+    val rowHeight = 44.dp
     val visibleRows = 5
-    val padding = (rowHeight * (visibleRows / 2))
-    val state = rememberLazyListState(initialFirstVisibleItemIndex = selectedIndex)
+    val halfRows = visibleRows / 2
 
-    // Notify caller of the snapped center index.
-    LaunchedEffect(state, items) {
-        snapshotFlow { state.firstVisibleItemIndex to state.firstVisibleItemScrollOffset }
-            .collectLatest { (idx, _) ->
-                if (!state.isScrollInProgress) onSelectionChanged(idx.coerceIn(0, items.size - 1))
+    val density = LocalDensity.current
+    val halfRowsPx = with(density) { (rowHeight * halfRows).toPx().toInt() }
+
+    val state = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+
+    // The index of the item visually centred in the viewport right now.
+    val centeredIndex by remember {
+        derivedStateOf {
+            val info = state.layoutInfo
+            if (info.visibleItemsInfo.isEmpty()) return@derivedStateOf selectedIndex
+            val vpCenter = (info.viewportEndOffset - info.viewportStartOffset) / 2f
+            info.visibleItemsInfo
+                .minByOrNull { abs(it.offset + it.size / 2f - vpCenter) }
+                ?.index
+                ?.coerceIn(0, items.lastIndex)
+                ?: selectedIndex
+        }
+    }
+
+    // Snap to nearest item centre and report selection when scroll settles.
+    LaunchedEffect(state) {
+        snapshotFlow { state.isScrollInProgress }
+            .filter { !it }
+            .collect {
+                val idx = centeredIndex
+                onSelectionChanged(idx)
+                val info = state.layoutInfo
+                val vpCenter = (info.viewportEndOffset - info.viewportStartOffset) / 2f
+                val item = info.visibleItemsInfo.firstOrNull { it.index == idx }
+                if (item != null && abs(item.offset + item.size / 2f - vpCenter) > 1f) {
+                    state.animateScrollToItem(idx, scrollOffset = -halfRowsPx)
+                }
             }
     }
 
-    // Re-sync when external selection changes.
+    // Sync when an external change drives selectedIndex.
     LaunchedEffect(selectedIndex) {
-        if (state.firstVisibleItemIndex != selectedIndex) {
-            state.scrollToItem(selectedIndex.coerceIn(0, (items.size - 1).coerceAtLeast(0)))
+        if (!state.isScrollInProgress && centeredIndex != selectedIndex) {
+            state.scrollToItem(selectedIndex, scrollOffset = -halfRowsPx)
         }
     }
 
     Box(modifier = modifier.height(rowHeight * visibleRows), contentAlignment = Alignment.Center) {
-        // Center row gold underline + overline.
+        // Gold tint on the centre row — no hairline dividers.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(rowHeight)
-                .background(Gold.copy(alpha = 0.08f), RoundedCornerShape(6.dp)),
+                .background(Gold.copy(alpha = 0.10f), RoundedCornerShape(8.dp)),
         )
         LazyColumn(
             state = state,
+            contentPadding = PaddingValues(vertical = rowHeight * halfRows),
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
+            flingBehavior = ScrollableDefaults.flingBehavior(),
         ) {
-            item { Spacer(Modifier.height(padding)) }
-            items(items) { item ->
-                val index = items.indexOf(item)
-                val isSelected = index == state.firstVisibleItemIndex
+            itemsIndexed(items) { index, item ->
+                val isSelected = centeredIndex == index
                 Box(
                     modifier = Modifier.fillMaxWidth().height(rowHeight),
                     contentAlignment = Alignment.Center,
@@ -236,23 +276,6 @@ internal fun WheelColumn(
                     )
                 }
             }
-            item { Spacer(Modifier.height(padding)) }
         }
-        // Top + bottom fade overlays approximating iOS attributed-text fade.
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(rowHeight)
-                .align(Alignment.TopCenter)
-                .background(Color.Transparent),
-        )
-        // Hairline gold separators around center row.
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(Gold.copy(alpha = 0.4f))
-                .padding(horizontal = 4.dp),
-        )
     }
 }

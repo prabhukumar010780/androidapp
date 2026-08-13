@@ -59,4 +59,45 @@ class MarkdownRenderingTest {
         // Inline bold is not a heading, so it must not be gold.
         assertEquals(Color.Unspecified, boldSpan!!.item.color)
     }
+
+    /**
+     * #1a: a STANDALONE bold line (whole line is `**…**`, no colon) is a section title
+     * the backend emits without a `#` prefix (e.g. "Key timing windows"). It must render
+     * GOLD like a heading — matching iOS renderBoldLabel — not plain bold white.
+     */
+    @Test
+    fun `standalone bold line renders gold like a heading`() {
+        val annotated = buildMarkdownAnnotated("**Key timing windows**")
+        assertEquals("Key timing windows", annotated.text)
+        val spans = annotated.spanStyles
+        assertTrue(spans.isNotEmpty(), "standalone bold title should carry style spans")
+        assertTrue(spans.all { it.item.color == Gold }, "standalone bold title must be Gold")
+        assertTrue(spans.all { it.item.fontWeight == FontWeight.Bold }, "standalone bold title must be bold")
+    }
+
+    /**
+     * A `**Label:** content` line has a colon, so it is NOT a standalone title — it must
+     * stay inline bold (not gold-heading), so ordinary "**Note:** …" lines don't turn gold.
+     */
+    @Test
+    fun `bold label with colon is not treated as a gold heading`() {
+        val annotated = buildMarkdownAnnotated("**Note:** stay grounded today.")
+        assertFalse(
+            annotated.spanStyles.all { it.item.color == Gold },
+            "a **Label:** line must not render wholly gold",
+        )
+    }
+
+    /** #1b: bullet lines get a left indent + wider gap after the dot (iOS inset parity). */
+    @Test
+    fun `bullet line is indented with a wider gap`() {
+        val annotated = buildMarkdownAnnotated("- first point")
+        // Leading indent before the bullet glyph, and a gap between the dot and the text.
+        assertTrue(annotated.text.startsWith(" "), "bullet line should be left-indented: '${annotated.text}'")
+        assertTrue(annotated.text.contains("•"), "bullet glyph should be present: '${annotated.text}'")
+        assertTrue(
+            Regex("•\\s{2,}first point").containsMatchIn(annotated.text),
+            "bullet should have a wide gap before content: '${annotated.text}'",
+        )
+    }
 }

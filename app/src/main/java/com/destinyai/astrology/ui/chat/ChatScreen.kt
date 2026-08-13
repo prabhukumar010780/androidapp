@@ -248,7 +248,13 @@ fun ChatScreen(
             // Message list
             val isNewChat = state.messages.count { !it.isStreaming } <= 1
             val defaultStarters = defaultStarterQuestionResIds.map { stringResource(it) }
-            val activeStarters = starterQuestions.ifEmpty { defaultStarters }.take(4)
+            // Prefer the home-screen starters loaded by the VM (getSuggestedQuestions(),
+            // server-personalized — parity with the Home tab), then any caller-supplied
+            // starterQuestions, then the static defaults.
+            val activeStarters = state.starterQuestions
+                .ifEmpty { starterQuestions }
+                .ifEmpty { defaultStarters }
+                .take(4)
 
             LazyColumn(
                 state = listState,
@@ -641,7 +647,7 @@ private fun StarterQuestionsView(questions: List<String>, onQuestionTap: (String
             color = CreamText,
         )
         Text(
-            stringResource(R.string.chat_personal_guide_subtitle),
+            stringResource(R.string.chat_welcome_subtitle),
             fontSize = 14.sp,
             color = CreamDim,
         )
@@ -887,14 +893,31 @@ internal fun buildMarkdownAnnotated(raw: String): androidx.compose.ui.text.Annot
     val lines = raw.split("\n")
     lines.forEachIndexed { idx, originalLine ->
         var line = originalLine
-        // Bullet lines
+        // Bullet lines — iOS parity: indent the bullet in from the left margin and
+        // give a wider gap after the dot so content isn't cramped against it
+        // (iOS renders bullets as inset rows with .padding(.leading) + 10pt gap).
         if (line.trimStart().startsWith("- ") || line.trimStart().startsWith("* ")) {
-            line = "• " + line.trimStart().removePrefix("- ").removePrefix("* ")
+            line = "  •  " + line.trimStart().removePrefix("- ").removePrefix("* ")
         }
         // Heading lines — render as bold larger weight
-        val isHeading = line.trimStart().startsWith("#")
+        var isHeading = line.trimStart().startsWith("#")
         if (isHeading) {
             line = line.trimStart().trimStart('#').trimStart()
+        }
+        // iOS parity (MarkdownTextView renderBoldLabel): a STANDALONE bold line
+        // — the whole trimmed line is `**…**` with no trailing content and no colon —
+        // is a section title (e.g. "**Key timing windows**", "**What makes this powerful**")
+        // and renders GOLD like a heading, not plain bold-white. Also `**Label:** …`
+        // gives a gold label. The backend emits section titles this way (not as `#`),
+        // so without this they read as ordinary bold text (the "header not gold" gap).
+        if (!isHeading) {
+            val t = line.trim()
+            val standaloneBold = t.length >= 5 && t.startsWith("**") && t.endsWith("**") &&
+                t.indexOf("**", 2) == t.length - 2 && !t.removeSurrounding("**").contains(":")
+            if (standaloneBold) {
+                line = t.removeSurrounding("**").trim()
+                isHeading = true
+            }
         }
         // DES-161 B6b: blockquote closing statement (`> **_..._**`). The backend ends
         // each reading with a `>`-prefixed closing summary BEFORE the follow-up block.
@@ -1556,7 +1579,7 @@ private fun ChatInputBar(
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(vertical = 11.dp),
+                    .padding(horizontal = 12.dp, vertical = 11.dp),
             ) {
                 BasicTextField(
                     value = text,

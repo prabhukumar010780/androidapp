@@ -61,6 +61,7 @@ class ChatViewModelExtendedTest {
         every { appStartup.shouldStreamFor(any()) } returns true
         viewModel = ChatViewModel(
             repository = repository,
+            homeRepository = mockk(relaxed = true),
             authRepository = mockk(relaxed = true),
             api = api,
             prefs = prefs,
