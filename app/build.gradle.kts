@@ -88,7 +88,12 @@ android {
         // emitted on the streaming path). Bumped to match iOS and clear the gate.
         versionName = "1.10"
 
-        testInstrumentationRunner = "com.destinyai.astrology.HiltTestRunner"
+        // No instrumented test uses @HiltAndroidTest/HiltAndroidRule — the Compose
+        // UI tests hand-construct ViewModels with mockk and the DB/storage tests are
+        // Hilt-free. Use the standard runner so the real @HiltAndroidApp DestinyApp
+        // graph builds; that lets Firebase's auto-started @AndroidEntryPoint FCM
+        // service inject real deps instead of crashing on a missing test component.
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
@@ -163,6 +168,26 @@ android {
         viewBinding = true
         buildConfig = true
         compose = true
+    }
+
+    // Resolve duplicate license metadata pulled in transitively on the
+    // androidTest classpath (JUnit 5 jars via mockk-android / hilt-testing),
+    // which otherwise fails mergeDebugAndroidTestJavaResource. License text
+    // files only — no runtime impact.
+    packaging {
+        resources {
+            excludes += setOf(
+                "META-INF/LICENSE.md",
+                "META-INF/LICENSE-notice.md",
+                "META-INF/LICENSE",
+                "META-INF/LICENSE.txt",
+                "META-INF/NOTICE",
+                "META-INF/NOTICE.md",
+                "META-INF/NOTICE.txt",
+                "META-INF/AL2.0",
+                "META-INF/LGPL2.1",
+            )
+        }
     }
 
     // JUnit5 support for unit tests

@@ -138,8 +138,11 @@ class BirthDataScreenTest {
     fun time_warning_shown_after_toggling_time_unknown() {
         renderScreen()
         composeTestRule.onNodeWithText("I don't know my birth time").performClick()
+        // "birth time" alone matches 3 nodes (the toggle label + the "Birth time unknown"
+        // placeholder + the warning). Match the warning's distinctive phrase so we assert
+        // the WARNING specifically appeared after toggling.
         composeTestRule
-            .onNodeWithText("birth time", substring = true, ignoreCase = true)
+            .onNodeWithText("quality of insights", substring = true, ignoreCase = true)
             .assertIsDisplayed()
     }
 

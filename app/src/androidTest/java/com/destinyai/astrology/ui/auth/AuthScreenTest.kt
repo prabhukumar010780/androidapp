@@ -7,9 +7,12 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.destinyai.astrology.data.repository.AuthRepository
+import com.destinyai.astrology.services.AppStartupService
 import com.destinyai.astrology.ui.theme.DestinyTheme
 import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -36,11 +39,18 @@ class AuthScreenTest {
     private fun renderScreen(allowGuest: Boolean = true) {
         val repository = mockk<AuthRepository>(relaxed = true)
         coEvery { repository.getSavedUser() } returns null
+        // AppStartupService exposes config as StateFlow<Boolean>/<String>. A relaxed mock
+        // returns type-erased proxies for StateFlow.value, so AuthViewModel.init's
+        // `allowGuest.value` cast to Boolean throws ClassCastException before the test body
+        // runs. Stub both flows with concrete values matching the scenario.
+        val appStartup = mockk<AppStartupService>(relaxed = true)
+        every { appStartup.allowGuest } returns MutableStateFlow(allowGuest)
+        every { appStartup.gateMode } returns MutableStateFlow("off")
         val viewModel = AuthViewModel(
             repository,
             mockk(relaxed = true), // HapticManager
             mockk(relaxed = true), // UserPreferences
-            mockk(relaxed = true), // AppStartupService
+            appStartup, // AppStartupService
             mockk(relaxed = true), // SoundManager
             mockk(relaxed = true), // LoginSyncCoordinator
             mockk(relaxed = true), // ApplicationContext
@@ -73,12 +83,15 @@ class AuthScreenTest {
     }
 
     @Test
-    fun continue_with_apple_button_is_displayed_and_clickable() {
+    fun apple_sign_in_is_not_offered_on_android() {
+        // By design, Android is Google + Guest only — the "Continue with Apple" option
+        // is iOS-only (Apple users are reconciled server-side). See AuthScreen.kt where
+        // the Apple notice was intentionally removed. This guards against re-introducing
+        // an iOS-parity Apple button that doesn't belong on Android.
         renderScreen()
         composeTestRule
             .onNodeWithText("Continue with Apple", substring = true)
-            .assertIsDisplayed()
-            .assertHasClickAction()
+            .assertDoesNotExist()
     }
 
     @Test
