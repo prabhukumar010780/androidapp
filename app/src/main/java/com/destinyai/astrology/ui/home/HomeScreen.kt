@@ -324,11 +324,25 @@ fun HomeScreen(
                 label = "home_content_fade",
             )
 
-            // Hero loading state — parity with iOS HomeView.swift:150-172. Gates ALL
-            // content on isLoading and shows centered sparkles + "syncing_cosmic_data"
+            // Hero loading state — shows centered sparkles + "syncing_cosmic_data"
             // + "almost_there" + ProgressView so the user sees a clear bootstrap state
             // instead of a half-empty page with a tiny tail spinner.
-            val showHeroLoader = state.isLoading && state.dashaInfo == null &&
+            //
+            // Per user request, the loader gates on BOTH load phases: the fast daily
+            // insight (isLoading) AND the heavier rich-data call (isRichDataLoading,
+            // which populates dashaInfo/transits/yogas). This holds the full Home
+            // screen behind the loader until everything is ready, then reveals it
+            // complete — removing the previous "yoga section blank, then pops in"
+            // flash. (Intentional divergence from iOS HomeView.swift:150-172, which
+            // reveals the insight first and streams rich data in afterward.)
+            //
+            // The `no content yet` guard (dashaInfo/transits/yogas all empty) means
+            // this only fires on a cold load — never on pull-to-refresh or a 24h
+            // cache-hit, where content is already on screen. If rich data fails or
+            // returns nothing, isRichDataLoading still flips false in its finally
+            // block, so the screen reveals rather than hanging on the loader forever.
+            val showHeroLoader = (state.isLoading || state.isRichDataLoading) &&
+                state.dashaInfo == null &&
                 state.transits.isEmpty() && state.yogas.isEmpty()
             if (showHeroLoader) {
                 Box(
