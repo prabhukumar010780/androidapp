@@ -69,6 +69,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -122,11 +123,25 @@ val GoldGradient = Brush.linearGradient(
     end = Offset(300f, 0f),
 )
 
-val CanelaFontFamily = FontFamily(
-    Font(R.font.canela_bold, FontWeight.Bold),
-    Font(R.font.canela_roman, FontWeight.Normal),
-    Font(R.font.canela_light, FontWeight.Light),
+// DES-162: app typography moved from Canela to Google Lora (serif) per Aug-10
+// testing feedback. Static weights instanced from the Lora variable font
+// (400/500/600/700 + italics) so they render on minSdk 24 without runtime
+// variable-font support. Light maps to Regular (Lora's lightest weight is 400).
+val LoraFontFamily = FontFamily(
+    Font(R.font.lora_regular, FontWeight.Light),
+    Font(R.font.lora_regular, FontWeight.Normal),
+    Font(R.font.lora_medium, FontWeight.Medium),
+    Font(R.font.lora_semibold, FontWeight.SemiBold),
+    Font(R.font.lora_bold, FontWeight.Bold),
+    Font(R.font.lora_italic, FontWeight.Normal, FontStyle.Italic),
+    Font(R.font.lora_medium_italic, FontWeight.Medium, FontStyle.Italic),
+    Font(R.font.lora_semibold_italic, FontWeight.SemiBold, FontStyle.Italic),
+    Font(R.font.lora_bold_italic, FontWeight.Bold, FontStyle.Italic),
 )
+
+// Back-compat alias: 36 screens reference CanelaFontFamily by name. Repointed to
+// Lora so the whole app renders in the new serif without touching every call site.
+val CanelaFontFamily = LoraFontFamily
 
 /**
  * Auth screen dimensions — mirrors iOS `AppTheme.Auth` exactly.

@@ -196,6 +196,26 @@ interface ChatMessageDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(messages: List<LocalChatMessageEntity>)
 
+    // Server-sync inserts (getChatThread) must NOT clobber the rich assistant
+    // metadata (follow_ups, advice, timing, tools, sources, exec, trace) that the
+    // stream persisted locally — the server DTO doesn't carry those columns, so a
+    // REPLACE would null them and a reopened thread would lose its follow-up pills.
+    // Mirror the thread-sync pattern: IGNORE-insert new rows, then refresh only the
+    // server-authoritative fields (content, created_at, rating) on existing rows.
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertIfAbsent(message: LocalChatMessageEntity)
+
+    @Query(
+        "UPDATE chat_messages SET content = :content, created_at = :createdAt, " +
+            "rating = COALESCE(:rating, rating) WHERE id = :messageId",
+    )
+    suspend fun updateServerFields(
+        messageId: String,
+        content: String,
+        createdAt: String,
+        rating: Int?,
+    )
+
     @Query("DELETE FROM chat_messages WHERE thread_id = :threadId")
     suspend fun deleteForThread(threadId: String)
 

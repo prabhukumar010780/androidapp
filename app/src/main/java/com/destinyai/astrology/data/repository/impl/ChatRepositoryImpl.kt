@@ -736,17 +736,28 @@ class ChatRepositoryImpl @Inject constructor(
         val email = prefs.getUserEmail() ?: return
         val detail = runCatching { api.getChatThread(email, threadId) }.getOrNull() ?: return
         val messages = detail.messages
-        val entities = messages.map { dto ->
-            LocalChatMessageEntity(
-                id = dto.messageId,
-                threadId = threadId,
-                role = dto.role,
+        // insertIfAbsent + updateServerFields (NOT insertAll REPLACE): the server DTO
+        // carries only id/role/content/created_at/rating, so a REPLACE would null the
+        // locally-persisted follow_ups/advice/timing/tools/sources — wiping the
+        // follow-up pills and depth layers of a thread reopened while online.
+        messages.forEach { dto ->
+            messageDao.insertIfAbsent(
+                LocalChatMessageEntity(
+                    id = dto.messageId,
+                    threadId = threadId,
+                    role = dto.role,
+                    content = dto.content,
+                    createdAt = dto.createdAt,
+                    // FIX B (server-sync part): map server rating so stars survive reinstall.
+                    rating = dto.rating,
+                ),
+            )
+            messageDao.updateServerFields(
+                messageId = dto.messageId,
                 content = dto.content,
                 createdAt = dto.createdAt,
-                // FIX B (server-sync part): map server rating so stars survive reinstall.
                 rating = dto.rating,
             )
         }
-        messageDao.insertAll(entities)
     }
 }

@@ -785,6 +785,10 @@ class CompatibilityViewModel @Inject constructor(
             )
 
             try {
+                // iOS parity: keep the process alive so the compatibility stream survives
+                // backgrounding (same foreground service the chat stream uses). The finally
+                // stops it for any outcome — success, SSE error, exception, or cancellation.
+                com.destinyai.astrology.services.ChatStreamingForegroundService.start(appContext)
                 compatibilityRepo.streamAnalysis(request).collect { event ->
                     when (event) {
                         is SseEvent.Step -> _currentStep.value = mapStepName(event.stepName)
@@ -864,6 +868,8 @@ class CompatibilityViewModel @Inject constructor(
                     else -> e.message ?: "Analysis failed"
                 }
                 _uiState.update { it.copy(isAnalyzing = false, showStreamingView = false, error = msg) }
+            } finally {
+                com.destinyai.astrology.services.ChatStreamingForegroundService.stop(appContext)
             }
         }
     }

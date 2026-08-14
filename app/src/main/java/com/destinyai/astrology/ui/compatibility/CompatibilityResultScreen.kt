@@ -1542,8 +1542,11 @@ private fun AskChatBubble(
                         val cleanedText = text.trimStart()
                             .removePrefix("**Answer:**")
                             .removePrefix("**Answer**:")
+                            .removePrefix("**Answer**")
+                            .removePrefix("*Answer:*")
                             .removePrefix("Answer:")
-                            .trimStart('\n', ' ')
+                            .removePrefix("Answer")
+                            .trimStart('\n', ' ', ':', '*')
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
