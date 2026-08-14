@@ -651,6 +651,8 @@ private fun StarterQuestionsView(questions: List<String>, onQuestionTap: (String
             stringResource(R.string.chat_welcome_subtitle),
             fontSize = 14.sp,
             color = CreamDim,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 32.dp),
         )
 
         Column(
