@@ -59,8 +59,8 @@ app/src/main/java/com/destinyai/astrology/
 | `release` | `com.destinyai.astrology` | https://astroapi-prod-...run.app | (none) |
 
 Single Play Console app for both staging and release. Branch routing:
-- `test` branch → CI runs `bundleStaging` → uploads to internal track (auto-completed)
-- `main` branch → CI runs `bundleRelease` → uploads to internal track (draft, manual promote)
+- `test` branch → CI runs `bundleStaging` → uploads to **alpha (Closed testing)** track (auto-completed)
+- `main` branch → CI runs `bundleRelease` → uploads to internal track (draft, manual promote to production)
 
 The `[STAGING]` / `[LOCAL]` label in the Settings screen footer (driven by
 `BuildConfig.ENV`) tells testers which environment a given install is on.

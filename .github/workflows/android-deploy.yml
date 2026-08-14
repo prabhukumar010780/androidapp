@@ -51,11 +51,13 @@ jobs:
             echo "task=bundleRelease" >> "$GITHUB_OUTPUT"
             echo "aab_dir=release" >> "$GITHUB_OUTPUT"
             echo "release_status=draft" >> "$GITHUB_OUTPUT"
+            echo "play_track=internal" >> "$GITHUB_OUTPUT"
           else
             echo "build_type=staging" >> "$GITHUB_OUTPUT"
             echo "task=bundleStaging" >> "$GITHUB_OUTPUT"
             echo "aab_dir=staging" >> "$GITHUB_OUTPUT"
             echo "release_status=completed" >> "$GITHUB_OUTPUT"
+            echo "play_track=alpha" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build AAB
@@ -131,7 +133,7 @@ jobs:
           serviceAccountJson: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
           packageName: com.destinyai.astrology
           releaseFiles: app/build/outputs/bundle/${{ steps.config.outputs.aab_dir }}/*.aab
-          track: internal
+          track: ${{ steps.config.outputs.play_track }}
           status: ${{ steps.config.outputs.release_status }}
 
       - name: Wait before retry 2
@@ -147,7 +149,7 @@ jobs:
           serviceAccountJson: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
           packageName: com.destinyai.astrology
           releaseFiles: app/build/outputs/bundle/${{ steps.config.outputs.aab_dir }}/*.aab
-          track: internal
+          track: ${{ steps.config.outputs.play_track }}
           status: ${{ steps.config.outputs.release_status }}
 
       - name: Wait before retry 3
@@ -161,7 +163,7 @@ jobs:
           serviceAccountJson: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
           packageName: com.destinyai.astrology
           releaseFiles: app/build/outputs/bundle/${{ steps.config.outputs.aab_dir }}/*.aab
-          track: internal
+          track: ${{ steps.config.outputs.play_track }}
           status: ${{ steps.config.outputs.release_status }}
 
       - name: Cleanup keystore
