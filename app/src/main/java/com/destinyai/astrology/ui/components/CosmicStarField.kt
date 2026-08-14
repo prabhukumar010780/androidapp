@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
@@ -85,7 +86,9 @@ fun CosmicNebulae(modifier: Modifier = Modifier) {
                 .size(nebulaSize)
                 .offset(x = (-nebulaSize.value * 0.3f).dp, y = (-nebulaSize.value * 0.2f).dp)
                 .rotate(25f)
-                .blur(nebulaBlur)
+                // Unbounded so the glow bleeds past the box boundary (iOS parity:
+                // SwiftUI `.blur(radius:)` spreads in all directions by default).
+                .blur(radius = nebulaBlur, edgeTreatment = BlurredEdgeTreatment.Unbounded)
                 .motionParallax(intensity = 1.5f)
                 .background(
                     Brush.radialGradient(
@@ -105,7 +108,7 @@ fun CosmicNebulae(modifier: Modifier = Modifier) {
                 .size(purpleSize)
                 .offset(x = (purpleSize.value * 0.5f).dp, y = (purpleSize.value * 0.6f).dp)
                 .rotate(-17.5f)
-                .blur(nebulaBlur * 0.8f)
+                .blur(radius = nebulaBlur * 0.8f, edgeTreatment = BlurredEdgeTreatment.Unbounded)
                 .motionParallax(intensity = 1.2f)
                 .background(
                     Brush.radialGradient(
@@ -125,7 +128,7 @@ fun CosmicNebulae(modifier: Modifier = Modifier) {
                 .size(secondarySize)
                 .offset(x = (secondarySize.value * 0.2f).dp, y = (secondarySize.value * 0.9f).dp)
                 .rotate(12.5f)
-                .blur(nebulaBlur * 0.6f)
+                .blur(radius = nebulaBlur * 0.6f, edgeTreatment = BlurredEdgeTreatment.Unbounded)
                 .motionParallax(intensity = 0.8f)
                 .background(
                     Brush.radialGradient(

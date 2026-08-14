@@ -1,5 +1,6 @@
 package com.destinyai.astrology.ui.components
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,13 +16,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -43,7 +44,6 @@ import com.destinyai.astrology.ui.theme.NavyDeep
 import com.destinyai.astrology.ui.theme.Radius
 import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.TouchMin
-import kotlinx.coroutines.launch
 import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,8 +55,10 @@ fun TimePickerSheetStyled(
     onTimeSelected: (hour: Int, minute: Int) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val scope = rememberCoroutineScope()
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        confirmValueChange = { it != SheetValue.Hidden },
+    )
 
     var selectedHour by rememberSaveable { mutableIntStateOf(initialHour) }
     var selectedMinute by rememberSaveable { mutableIntStateOf(initialMinute) }
@@ -96,6 +98,7 @@ fun TimePickerSheetStyled(
         },
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            BackHandler { onDismiss() }
             Row(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -115,10 +118,7 @@ fun TimePickerSheetStyled(
                     modifier = Modifier
                         .clip(RoundedCornerShape(Radius.button))
                         .clickable {
-                            scope.launch {
-                                onTimeSelected(selectedHour, selectedMinute)
-                                sheetState.hide()
-                            }
+                            onTimeSelected(selectedHour, selectedMinute)
                         }
                         .heightIn(min = TouchMin)
                         .padding(horizontal = Spacing.md),
@@ -128,7 +128,7 @@ fun TimePickerSheetStyled(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(220.dp)
+                    .height(308.dp)
                     .nestedScroll(blockSheetScroll),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {

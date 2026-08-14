@@ -231,6 +231,7 @@ class HomeViewModel @Inject constructor(
         loadInFlight = false
         _uiState.update {
             it.copy(
+                isLoading = true,
                 dailyInsight = null,
                 transits = emptyList(),
                 dashaInfo = null,

@@ -227,8 +227,18 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             repository.progressEvents.collect { ev ->
                 when (ev) {
-                    is ChatStreamEvent.FollowUpSuggestions ->
-                        _uiState.update { it.copy(suggestedQuestions = ev.suggestions) }
+                    is ChatStreamEvent.FollowUpSuggestions -> {
+                        // #26: deduplicate against already-asked user messages so the same
+                        // question never appears again in the suggestion chips.
+                        val askedTexts = _uiState.value.messages
+                            .filter { it.role == ChatMessage.Role.USER }
+                            .map { it.content.trim().lowercase() }
+                            .toSet()
+                        val unique = ev.suggestions
+                            .distinctBy { it.trim().lowercase() }
+                            .filterNot { askedTexts.contains(it.trim().lowercase()) }
+                        _uiState.update { it.copy(suggestedQuestions = unique) }
+                    }
                     is ChatStreamEvent.ProgressStep -> {
                         // FIX D: iOS parity (ChatViewModel.swift:1332-1344) — map the backend
                         // display_key to a localized step label and override the canned rotation.
@@ -418,6 +428,9 @@ class ChatViewModel @Inject constructor(
         if (input.isBlank()) return
         lastSentQuery = input
         currentIdempotencyKey = UUID.randomUUID().toString()
+        // iOS parity: start a foreground service so the stream survives backgrounding.
+        // invokeOnCompletion stops it for any outcome (success / error / cancellation).
+        com.destinyai.astrology.services.ChatStreamingForegroundService.start(appContext)
 
         streamJob = viewModelScope.launch {
             // Pre-flight quota check before invoking streaming prediction (mirrors iOS canAsk).
@@ -792,6 +805,9 @@ class ChatViewModel @Inject constructor(
                 }
             }
         }
+        streamJob?.invokeOnCompletion {
+            com.destinyai.astrology.services.ChatStreamingForegroundService.stop(appContext)
+        }
     }
 
     fun startNewChat() {
@@ -802,11 +818,23 @@ class ChatViewModel @Inject constructor(
                 inputText = "",
                 canSend = false,
                 activeThreadId = null,
+                // #18: clear any follow-up chips from the previous conversation so the
+                // empty state shows only the fresh starter questions.
+                suggestedQuestions = emptyList(),
             )
         }
         viewModelScope.launch {
             val history = repository.loadHistory()
-            _uiState.update { it.copy(threads = history) }
+            // #18: re-fetch home questions on every new-chat so the starter questions
+            // match the Home screen (same server-personalised source). Best-effort: keep
+            // the existing starterQuestions on failure.
+            val qs = runCatching { homeRepository.getSuggestedQuestions() }.getOrDefault(emptyList())
+            _uiState.update { state ->
+                state.copy(
+                    threads = history,
+                    starterQuestions = qs.ifEmpty { state.starterQuestions },
+                )
+            }
         }
     }
 
@@ -818,6 +846,11 @@ class ChatViewModel @Inject constructor(
      */
     fun loadDefaultState() {
         viewModelScope.launch {
+            // If an active conversation is already loaded (more than the welcome
+            // message), don't overwrite it. This prevents LaunchedEffect(Unit)
+            // re-firing on recomposition after a Settings navigation round-trip
+            // from wiping the in-progress chat.
+            if (_uiState.value.messages.size > 1) return@launch
             val threads = runCatching { repository.loadHistory() }.getOrElse { emptyList() }
             _uiState.update { it.copy(threads = threads) }
             val latest = threads.maxByOrNull { it.updatedAtMs }
@@ -825,6 +858,13 @@ class ChatViewModel @Inject constructor(
                 val messages = runCatching { repository.loadThread(latest.id) }.getOrElse { emptyList() }
                 if (messages.isNotEmpty()) {
                     val older = messages.size >= HISTORY_PAGE_SIZE
+                    // #17: rehydrate follow-up chips from the last assistant message in the
+                    // auto-loaded thread (mirrors openThread logic). The sync path in
+                    // ChatRepositoryImpl replaces DB rows on CONFLICT so followUps may be null
+                    // after a sync — the openThread call preserves them only for explicit taps;
+                    // loadDefaultState must do the same for the auto-resume case.
+                    val followUps = messages.lastOrNull { it.role == ChatMessage.Role.ASSISTANT }
+                        ?.followUps.orEmpty()
                     _uiState.update {
                         it.copy(
                             activeThreadId = latest.id,
@@ -833,6 +873,7 @@ class ChatViewModel @Inject constructor(
                             sessionId = latest.id,
                             messages = messages,
                             hasOlderMessages = older,
+                            suggestedQuestions = followUps,
                         )
                     }
                 }
@@ -1104,28 +1145,17 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    // Mirrors iOS handleBackgroundExpiry — cancels active stream, sets interruptedQuestion
-    // for the Retry banner, scrubs orphan streaming assistant bubble.
+    // Mirrors iOS observeAppLifecycle() background handling: if a stream is in
+    // flight the foreground service keeps the process alive so we do NOT cancel.
+    // Only clean up state if there is no active stream.
     private fun handleBackgroundExpiry() {
         stopCosmicProgressTimer()
         pumpJob?.cancel()
         pumpJob = null
         val job = streamJob
         if (job != null && job.isActive) {
-            job.cancel()
-            streamJob = null
-            val q = lastSentQuery
-            _uiState.update { s ->
-                s.copy(
-                    isStreaming = false,
-                    interruptedQuestion = q,
-                    // DES-161 D1: clear any errorMessage the cancelled stream may have
-                    // emitted (e.g. the R8-minified "Z2 was cancelled" CancellationException
-                    // surfaced by the SSE flow). Backgrounding is not a user-facing error.
-                    errorMessage = null,
-                    messages = s.messages.filterNot { it.isStreaming },
-                )
-            }
+            // Foreground service already started in sendMessage() — stream continues.
+            return
         }
     }
 

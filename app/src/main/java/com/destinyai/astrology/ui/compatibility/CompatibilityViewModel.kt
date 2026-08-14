@@ -854,7 +854,16 @@ class CompatibilityViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 Log.e("CompatVM", "analyze() collector threw: ${e.message}", e)
-                _uiState.update { it.copy(isAnalyzing = false, showStreamingView = false, error = e.message ?: "Analysis failed") }
+                val msg = when {
+                    e is java.net.SocketException ||
+                    e is java.io.IOException ||
+                    e.message?.contains("abort", ignoreCase = true) == true ||
+                    e.message?.contains("connection", ignoreCase = true) == true ||
+                    e.message?.contains("socket", ignoreCase = true) == true ->
+                        "Connection lost. Please try again."
+                    else -> e.message ?: "Analysis failed"
+                }
+                _uiState.update { it.copy(isAnalyzing = false, showStreamingView = false, error = msg) }
             }
         }
     }
@@ -866,6 +875,11 @@ class CompatibilityViewModel @Inject constructor(
         "yoga_kalsarpa", "formatting" -> AnalysisStep.COLLECTING_YOGAS
         "generating_analysis", "llm" -> AnalysisStep.GENERATING_ANALYSIS
         else -> _currentStep.value
+    }
+
+    fun retryAnalysis() {
+        _uiState.update { it.copy(error = null) }
+        analyze()
     }
 
     fun clearResult() {

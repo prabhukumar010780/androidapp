@@ -314,7 +314,7 @@ fun MainScreen(
         )
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(NavyDeep)) {
+    Box(modifier = Modifier.fillMaxSize()) {
         // Navigation visibility (shared by bottom bar AND rail) — hidden on chat tab
         // (index 1), when the soft keyboard is visible (iOS MainTabView.swift:116),
         // when a match result is showing, or when an overlay screen is pushed.

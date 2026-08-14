@@ -8,8 +8,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import com.destinyai.astrology.ui.theme.CosmicBackground
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -183,7 +183,13 @@ fun AppNav() {
     // that children don't consume, without stealing taps from buttons/fields.
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
-    Box(
+    // Single root cosmic background — applied here so every route and every
+    // transition inherits the deep-navy + golden-nebula + star-field look
+    // without each screen having to redraw the base layer (iOS parity:
+    // CosmicBackgroundView rendered once in AppRootView's ZStack root).
+    // The pointerInput tap-to-dismiss keyboard lives here so it still fires
+    // on any tap that child screens don't consume.
+    CosmicBackground(
         modifier = Modifier
             .fillMaxSize()
             .pointerInput(Unit) {

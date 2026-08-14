@@ -2321,7 +2321,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="chart_style_north_subtitle">हीरे का लेआउट। भाव स्थिर हैं; ग्रह चलते हैं।</string>
     <string name="chart_style_south_subtitle">वर्गाकार लेआउट। राशियाँ स्थिर हैं; ग्रह चलते हैं।</string>
     <string name="chat_ask_anything_placeholder">कुछ भी पूछें…</string>
-    <string name="chat_personal_guide_subtitle">आपकी व्यक्तिगत Vedic ज्योतिष मार्गदर्शिका</string>
+    <string name="chat_personal_guide_subtitle">आपका व्यक्तिगत ज्योतिष मार्गदर्शक। अपने दिन, रिश्तों, करियर या आगे की राह के बारे में पूछें।</string>
     <string name="chat_search_chats">चैट खोजें</string>
     <string name="chat_starter_dasha">मेरी वर्तमान Dasha अवधि क्या है?</string>
     <string name="chat_starter_decisions">महत्वपूर्ण निर्णयों के लिए अच्छा समय कब है?</string>
@@ -2380,7 +2380,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="compat_share_compat_chooser">कुंडली मिलान रिपोर्ट साझा करें</string>
     <string name="compat_this_may_take_a_moment">इसमें थोड़ा समय लग सकता है…</string>
     <string name="compat_time_unknown">समय अज्ञात</string>
-    <string name="compat_time_unknown_note">समय अज्ञात होने पर कुंडली मिलान सूर्य राशि अनुमान का उपयोग करता है।</string>
+    <string name="compat_time_unknown_note">सटीक जन्म समय के बिना, अंतर्दृष्टि की गुणवत्ता प्रभावित हो सकती है।</string>
     <string name="compat_use_saved">सहेजा हुआ उपयोग करें</string>
     <string name="cosmic_progress_1">ब्रह्मांड से जुड़ रहे हैं…</string>
     <string name="cosmic_progress_10">ज्योतिषी आपकी कुंडली बुन रहे हैं…</string>

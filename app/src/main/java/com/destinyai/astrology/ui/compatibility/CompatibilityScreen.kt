@@ -543,6 +543,16 @@ fun CompatibilityScreen(
                         color = Color(0xFFFF8A80),
                         style = MaterialTheme.typography.bodySmall,
                     )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = viewModel::retryAnalysis,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(Radius.button),
+                        border = BorderStroke(1.dp, Gold.copy(alpha = 0.5f)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold),
+                    ) {
+                        Text(stringResource(com.destinyai.astrology.R.string.retry), fontWeight = FontWeight.Bold)
+                    }
                 }
 
                 if (hasFailedPartners) {

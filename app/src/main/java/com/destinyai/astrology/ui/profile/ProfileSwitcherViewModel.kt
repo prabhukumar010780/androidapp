@@ -108,13 +108,6 @@ class ProfileSwitcherViewModel @Inject constructor(
 
             val selfName = prefs.getUserName() ?: selfEmail
             val selfBirth = prefs.getBirthProfile()
-            val selfEntry = ProfileEntry(
-                id = selfEmail,
-                email = selfEmail,
-                name = selfName,
-                isSelf = true,
-                dateOfBirth = selfBirth?.dateOfBirth,
-            )
 
             // iOS parity (PartnerProfileService.swift:191-289): server-first with
             // SwiftData fallback. On Android we mirror with Room — try the network
@@ -127,8 +120,27 @@ class ProfileSwitcherViewModel @Inject constructor(
                 loadPartnersFromCache(selfEmail)
             }
 
+            // The server returns the self-profile (is_self=true) with its real UUID id.
+            // Use that UUID so switchProfile sends the correct id the backend expects.
+            // Fall back to email only if the server didn't return a self entry (cache path).
+            val serverSelf = partners.firstOrNull { it.isSelf }
+            val selfEntry = ProfileEntry(
+                id = serverSelf?.id ?: selfEmail,
+                email = selfEmail,
+                name = selfName,
+                isSelf = true,
+                dateOfBirth = selfBirth?.dateOfBirth,
+            )
+
+            // Also fix stored activeProfileId: if prefs still has the old email-as-id
+            // value, migrate it to the real UUID so the active highlight is correct.
+            if (serverSelf != null && activeId == selfEmail) {
+                prefs.setActiveProfileId(serverSelf.id)
+                _activeProfileId.value = serverSelf.id
+            }
+
             val entries = mutableListOf(selfEntry)
-            partners.forEach { partner ->
+            partners.filter { !it.isSelf }.forEach { partner ->
                 entries.add(
                     ProfileEntry(
                         id = partner.id,

@@ -2341,7 +2341,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="chart_style_north_subtitle">ダイヤモンド型レイアウト。ハウスは固定、惑星は移動します。</string>
     <string name="chart_style_south_subtitle">正方形レイアウト。サインは固定、惑星は移動します。</string>
     <string name="chat_ask_anything_placeholder">何でも質問してください…</string>
-    <string name="chat_personal_guide_subtitle">あなた専用のVedic占星術ガイド</string>
+    <string name="chat_personal_guide_subtitle">あなただけの占星術ガイド。あなたの一日、人間関係、キャリア、将来の道について尋ねてください。</string>
     <string name="chat_search_chats">チャットを検索</string>
     <string name="chat_starter_dasha">現在のDasha期間はいつですか？</string>
     <string name="chat_starter_decisions">大事な決断に良い時期はいつですか？</string>
@@ -2400,7 +2400,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="compat_share_compat_chooser">相性レポートを共有</string>
     <string name="compat_this_may_take_a_moment">少々お待ちください…</string>
     <string name="compat_time_unknown">時刻不明</string>
-    <string name="compat_time_unknown_note">時刻不明の場合は太陽星座による近似値を使用します。</string>
+    <string name="compat_time_unknown_note">正確な生まれた時刻がない場合、洞察の質が影響を受ける可能性があります。</string>
     <string name="compat_use_saved">保存済みを使用</string>
     <string name="cosmic_progress_1">宇宙に接続中…</string>
     <string name="cosmic_progress_10">神託があなたのリーディングを紡いでいます…</string>

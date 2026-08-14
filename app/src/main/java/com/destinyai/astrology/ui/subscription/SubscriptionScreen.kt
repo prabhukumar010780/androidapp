@@ -501,7 +501,7 @@ fun SubscriptionScreen(
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
-                                        Column {
+                                        Column(modifier = Modifier.weight(1f)) {
                                             Row(verticalAlignment = Alignment.CenterVertically) {
                                                 Text(
                                                     text = plan.displayName,
@@ -597,12 +597,17 @@ fun SubscriptionScreen(
                                                 }
                                             }
                                         }
-                                        Column(horizontalAlignment = Alignment.End) {
+                                        Column(
+                                            horizontalAlignment = Alignment.End,
+                                            modifier = Modifier.padding(start = 8.dp),
+                                        ) {
                                             Text(
                                                 text = "$formattedPrice$periodSuffix",
                                                 fontSize = 17.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = Gold,
+                                                maxLines = 1,
+                                                softWrap = false,
                                             )
                                             if (isYearly) {
                                                 Text(

@@ -2341,7 +2341,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="chart_style_north_subtitle">Ромбовидный макет. Дома фиксированы; планеты движутся.</string>
     <string name="chart_style_south_subtitle">Квадратный макет. Знаки фиксированы; планеты движутся.</string>
     <string name="chat_ask_anything_placeholder">Спросите что угодно…</string>
-    <string name="chat_personal_guide_subtitle">Ваш личный гид по Ведической астрологии</string>
+    <string name="chat_personal_guide_subtitle">Ваш личный астрологический гид. Спросите о своем дне, отношениях, карьере или предстоящем пути.</string>
     <string name="chat_search_chats">Поиск по чатам</string>
     <string name="chat_starter_dasha">Какой у меня текущий период Dasha?</string>
     <string name="chat_starter_decisions">Когда лучшее время для важных решений?</string>
@@ -2400,7 +2400,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="compat_share_compat_chooser">Поделиться отчётом о совместимости</string>
     <string name="compat_this_may_take_a_moment">Это может занять некоторое время…</string>
     <string name="compat_time_unknown">Время неизвестно</string>
-    <string name="compat_time_unknown_note">При неизвестном времени совместимость рассчитывается по знаку Солнца.</string>
+    <string name="compat_time_unknown_note">Без точного времени рождения качество прогнозов может снизиться.</string>
     <string name="compat_use_saved">Использовать сохранённое</string>
     <string name="cosmic_progress_1">Подключаемся к космосу…</string>
     <string name="cosmic_progress_10">Оракул плетёт вашу карту…</string>

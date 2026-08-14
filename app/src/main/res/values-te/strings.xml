@@ -2341,7 +2341,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="chart_style_north_subtitle">డైమండ్ లేఅవుట్. ఇళ్ల పరిష్కారం స్థిరంగా ఉంది; గ్రహాలు కదులుతాయి.</string>
     <string name="chart_style_south_subtitle">చతురస్ర లేఅవుట్. సంకేతాలు స్థిరంగా ఉంటాయి; గ్రహాలు కదులుతాయి.</string>
     <string name="chat_ask_anything_placeholder">ఏదైనా అడగండి…</string>
-    <string name="chat_personal_guide_subtitle">మీ వ్యక్తిగత వైదిక జ్యోతిష శాస్త్ర గైడ్</string>
+    <string name="chat_personal_guide_subtitle">మీ వ్యక్తిగత జ్యోతిష్య మార్గదర్శి. మీ రోజు, సంబంధాలు, కెరీర్ లేదా ముందుకు వెళ్లే మార్గం గురించి అడగండి.</string>
     <string name="chat_search_chats">చాట్‌లను శోధించండి</string>
     <string name="chat_starter_dasha">నా ప్రస్తుత Dasha కాలం ఏమిటి?</string>
     <string name="chat_starter_decisions">ముఖ్యమైన నిర్ణయాల కోసం ఉత్తమ సమయం ఏమిటి?</string>
@@ -2400,7 +2400,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="compat_share_compat_chooser">సంగతి నివేదికను భాగస్వామం చేయండి</string>
     <string name="compat_this_may_take_a_moment">ఇది ఒక క్షణం తీసుకోవచ్చు…</string>
     <string name="compat_time_unknown">సమయం తెలియదు</string>
-    <string name="compat_time_unknown_note">సమయం తెలియనప్పుడు సంగతి సూర్య-చిహ్నం ఉజ్జాయింపును ఉపయోగిస్తుంది.</string>
+    <string name="compat_time_unknown_note">ఖచ్చితమైన జన్మ సమయం లేకుండా, అంతర్దృష్టుల నాణ్యత ప్రభావితమవుతుంది.</string>
     <string name="compat_use_saved">సేవ్ చేసిన వాటిని ఉపయోగించండి</string>
     <string name="cosmic_progress_1">విశ్వంతో అనుసంధానమవుతోంది…</string>
     <string name="cosmic_progress_10">జ్యోతిషుడు మీ పఠనాన్ని అల్లుతున్నాడు…</string>

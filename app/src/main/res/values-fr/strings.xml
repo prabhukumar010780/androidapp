@@ -2341,7 +2341,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="chart_style_north_subtitle">Disposition en diamant. Les maisons sont fixes ; les planètes bougent.</string>
     <string name="chart_style_south_subtitle">Disposition en carré. Les signes sont fixes ; les planètes bougent.</string>
     <string name="chat_ask_anything_placeholder">Pose n\'importe quelle question…</string>
-    <string name="chat_personal_guide_subtitle">Ton guide personnel d\'astrologie Vedic</string>
+    <string name="chat_personal_guide_subtitle">Votre guide d\'astrologie personnel. Renseignez-vous sur votre journée, vos relations, votre carrière ou votre chemin à parcourir.</string>
     <string name="chat_search_chats">Rechercher des chats</string>
     <string name="chat_starter_dasha">Quelle est ma période Dasha actuelle ?</string>
     <string name="chat_starter_decisions">Quel est le bon moment pour prendre des décisions importantes ?</string>
@@ -2400,7 +2400,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="compat_share_compat_chooser">Partager le rapport de compatibilité</string>
     <string name="compat_this_may_take_a_moment">Cela peut prendre un moment…</string>
     <string name="compat_time_unknown">Heure inconnue</string>
-    <string name="compat_time_unknown_note">La compatibilité utilise une approximation par signe solaire lorsque l\'heure est inconnue.</string>
+    <string name="compat_time_unknown_note">Sans heure de naissance exacte, la qualité des aperçus peut être affectée.</string>
     <string name="compat_use_saved">Utiliser l\'enregistré</string>
     <string name="cosmic_progress_1">Connexion au cosmos…</string>
     <string name="cosmic_progress_10">L’oracle tisse ta lecture…</string>

@@ -29,13 +29,13 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.destinyai.astrology.R
 import com.destinyai.astrology.domain.model.DestinyTileType
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.Gold
-import com.destinyai.astrology.ui.theme.AppType
 
 /**
  * Weighted-Row tab bar — mirrors iOS Compatibility/Components/MagicTabbar.swift.
@@ -115,14 +115,15 @@ internal fun MagicTabbar(
                 )
                 Text(
                     text = stringResource(id = tab.labelResource()).uppercase(),
-                    fontSize = AppType.caption, // 12.sp
-                    lineHeight = AppType.captionLh,
+                    fontSize = 9.sp,
+                    lineHeight = 11.sp,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                    letterSpacing = 0.5.sp,
+                    letterSpacing = 0.3.sp,
                     color = labelColor,
                     textAlign = TextAlign.Center,
                     maxLines = 1,
                     softWrap = false,
+                    overflow = TextOverflow.Clip,
                 )
                 // Animated active indicator dot — uses per-tile accent color, mirrors iOS
                 Box(
@@ -178,7 +179,7 @@ private fun DestinyTileType.labelResource(): Int = when (this) {
     DestinyTileType.FAMILY -> R.string.tile_family_label
     DestinyTileType.WISDOM -> R.string.tile_wisdom_label
     DestinyTileType.HEALTH -> R.string.tile_health_label
-    DestinyTileType.DOSHA -> R.string.doshas
+    DestinyTileType.DOSHA -> R.string.tile_challenges_label
 }
 
 /**

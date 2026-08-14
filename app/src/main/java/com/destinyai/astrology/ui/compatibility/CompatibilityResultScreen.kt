@@ -1,12 +1,9 @@
 package com.destinyai.astrology.ui.compatibility
 
+import android.content.ClipData
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
 import android.net.Uri
-import android.view.View
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
@@ -43,6 +40,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.WarningAmber
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.*
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -61,7 +59,6 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -165,70 +162,48 @@ fun CompatibilityResultScreen(
     )
     LaunchedEffect(Unit) { contentVisible = true }
 
-    // R2-CM12+CM13: Bitmap share helper
+    // iOS parity (CompatibilityResultSheets.swift:107-152 presentNativeShareSheet):
+    // share as PDF + text. WhatsApp requires clipData to be set for ACTION_SEND
+    // with EXTRA_STREAM — without it the file is silently ignored and only text arrives.
     fun shareBitmap() {
         scope.launch {
-            val shareView = ComposeView(context).apply {
-                setContent {
-                    ShareCardView(
-                        boyName = result.boyName,
-                        girlName = result.girlName,
-                        totalScore = result.totalScore,
-                        maxScore = result.maxScore,
-                        percentage = result.adjustedPercentage,
-                        isRecommended = result.isRecommended,
-                        adjustedScore = result.adjustedScore,
-                        forSharing = true,
-                    )
-                }
+            val pct = ((result.adjustedScore ?: result.totalScore).toDouble() / result.maxScore * 100).toInt()
+            val ratingText = when {
+                !result.isRecommended -> "Not Recommended"
+                pct >= 90 -> "Excellent ⭐⭐⭐⭐⭐"
+                pct >= 75 -> "Very Good ⭐⭐⭐⭐"
+                pct >= 60 -> "Good ⭐⭐⭐"
+                pct >= 50 -> "Average ⭐⭐"
+                else -> "Not Recommended"
             }
-            val width = 1080
-            val height = 1080
-            shareView.measure(
-                View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
-                View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY),
-            )
-            shareView.layout(0, 0, width, height)
-            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-            val canvas = android.graphics.Canvas(bitmap)
-            shareView.draw(canvas)
+            val shareText = "✨ ${result.boyName} & ${result.girlName} — Compatibility score: " +
+                "${result.totalScore}/${result.maxScore} ($pct%) $ratingText\n\n" +
+                "Analyzed with Destiny AI Astrology\n🔗 destinyaiastrology.com"
 
             val sessionTag = result.boyName.take(4) + result.girlName.take(4)
-            val pngFile = File(context.cacheDir, "share-$sessionTag.png")
-            val pdfFile = File(context.cacheDir, "share-$sessionTag.pdf")
-            withContext(Dispatchers.IO) {
-                FileOutputStream(pngFile).use { bitmap.compress(Bitmap.CompressFormat.PNG, 90, it) }
-                // iOS parity (CompatibilityResultSheets.swift:107-152): include
-                // a branded PDF alongside the PNG so partners get the same
-                // bundle the iOS share sheet attaches.
+            val pdfFile = File(context.cacheDir, "compat-$sessionTag.pdf")
+            val pdfUri: Uri? = withContext(Dispatchers.IO) {
                 runCatching {
-                    val pdfBytes = buildCompatibilityPdfBytes(result, emptyList())
-                    FileOutputStream(pdfFile).use { it.write(pdfBytes) }
-                }
-            }
-            val authority = "${context.packageName}.fileprovider"
-            val pngUri: Uri = FileProvider.getUriForFile(context, authority, pngFile)
-            val pdfUri: Uri? = if (pdfFile.exists() && pdfFile.length() > 0L) {
-                runCatching { FileProvider.getUriForFile(context, authority, pdfFile) }.getOrNull()
-            } else null
-
-            val streamUris = ArrayList<Uri>().apply {
-                add(pngUri)
-                pdfUri?.let { add(it) }
+                    val bytes = buildCompatibilityPdfBytes(result, emptyList())
+                    FileOutputStream(pdfFile).use { it.write(bytes) }
+                    FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", pdfFile)
+                }.getOrNull()
             }
 
-            val intent = Intent(if (streamUris.size > 1) Intent.ACTION_SEND_MULTIPLE else Intent.ACTION_SEND).apply {
-                type = if (streamUris.size > 1) "*/*" else "image/png"
-                if (streamUris.size > 1) {
-                    putParcelableArrayListExtra(Intent.EXTRA_STREAM, streamUris)
-                } else {
-                    putExtra(Intent.EXTRA_STREAM, pngUri)
+            val intent = if (pdfUri != null) {
+                Intent(Intent.ACTION_SEND).apply {
+                    type = "application/pdf"
+                    putExtra(Intent.EXTRA_TEXT, shareText)
+                    putExtra(Intent.EXTRA_SUBJECT, "${result.boyName} & ${result.girlName} — Compatibility Report")
+                    putExtra(Intent.EXTRA_STREAM, pdfUri)
+                    clipData = ClipData.newRawUri("Compatibility Report", pdfUri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
-                putExtra(
-                    Intent.EXTRA_TEXT,
-                    "${result.boyName} ♡ ${result.girlName} — Analysed with Destiny AI Astrology",
-                )
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            } else {
+                Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, shareText)
+                }
             }
             context.startActivity(
                 Intent.createChooser(intent, context.getString(R.string.compat_share_compat_chooser))
@@ -1098,10 +1073,9 @@ fun AskDestinyDialog(
                             Spacer(Modifier.height(24.dp))
 
                             // Suggestion pills — mirrors iOS quickQuestionButton: gold pill, gold text
-                            // DES-161 C6a: left-align (Start), matching iOS. Was CenterHorizontally.
                             Column(
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                                horizontalAlignment = Alignment.Start,
+                                horizontalAlignment = Alignment.CenterHorizontally,
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
                                 displaySuggestions.forEach { suggestion ->
@@ -1163,35 +1137,40 @@ fun AskDestinyDialog(
                         }
                     }
                 }
-                // Follow-up suggestion chips after last AI reply
+                // Follow-up suggestion chips after last AI reply — mirrors AMA FollowUpSuggestionsView
                 if (vmMessages.isNotEmpty() && !isLoading) {
                     item {
-                        // DES-161 C6a: left-align (Start), matching iOS. Was CenterHorizontally.
                         Column(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
-                            horizontalAlignment = Alignment.Start,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(top = 8.dp),
                         ) {
                             displaySuggestions.forEach { suggestion ->
-                                Box(
+                                Row(
                                     modifier = Modifier
-                                        .clip(RoundedCornerShape(20.dp))
-                                        .background(Gold.copy(alpha = 0.10f))
-                                        .border(1.dp, Gold.copy(alpha = 0.30f), RoundedCornerShape(20.dp))
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(NavySurface)
+                                        .border(0.5.dp, Gold.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
                                         .clickable {
                                             dismissIme()
                                             viewModel.sendFollowUp(suggestion)
                                         }
-                                        .padding(horizontal = 16.dp, vertical = 10.dp),
-                                    contentAlignment = Alignment.Center,
+                                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     Text(
                                         text = suggestion,
-                                        fontSize = 13.sp,
-                                        color = Gold,
-                                        textAlign = TextAlign.Center,
+                                        fontSize = 14.sp,
+                                        color = CreamDim,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    Icon(
+                                        Icons.Default.ChevronRight,
+                                        contentDescription = null,
+                                        tint = Gold.copy(alpha = 0.5f),
+                                        modifier = Modifier.size(16.dp),
                                     )
                                 }
                             }
@@ -1558,16 +1537,32 @@ private fun AskChatBubble(
                         )
                     }
                     else -> {
-                        // iOS parity (CompatibilityResultSheets.swift:1737-1741
-                        // MarkdownTextView): render full markdown — bold,
-                        // italic, lists, and headers — instead of a
-                        // bold-only fallback. Uses the shared MarkdownText
-                        // composable from ChatScreen.kt that mirrors
-                        // MarkdownTextView.swift block-by-block.
-                        com.destinyai.astrology.ui.chat.MarkdownText(
-                            content = text,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                        // Strip LLM-generated "Answer:" / "**Answer:**" prefix and
+                        // replace with a styled gold header.
+                        val cleanedText = text.trimStart()
+                            .removePrefix("**Answer:**")
+                            .removePrefix("**Answer**:")
+                            .removePrefix("Answer:")
+                            .trimStart('\n', ' ')
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Text("✦", color = Gold, fontSize = 13.sp)
+                                Text(
+                                    text = "Cosmic Insight",
+                                    color = Gold,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    letterSpacing = 0.5.sp,
+                                )
+                            }
+                            com.destinyai.astrology.ui.chat.MarkdownText(
+                                content = cleanedText,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
                     }
                 }
             }

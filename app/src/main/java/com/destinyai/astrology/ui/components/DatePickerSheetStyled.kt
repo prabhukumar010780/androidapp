@@ -1,5 +1,6 @@
 package com.destinyai.astrology.ui.components
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.ScrollableDefaults
@@ -20,6 +21,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -55,7 +57,6 @@ import com.destinyai.astrology.ui.theme.Radius
 import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.TouchMin
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.launch
 import java.text.DateFormatSymbols
 import java.util.Calendar
 import java.util.Locale
@@ -70,8 +71,10 @@ fun DatePickerSheetStyled(
     onDateSelected: (year: Int, month: Int, day: Int) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val scope = rememberCoroutineScope()
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        confirmValueChange = { it != SheetValue.Hidden },
+    )
 
     var selectedYear by rememberSaveable { mutableIntStateOf(initialYear) }
     var selectedMonth by rememberSaveable { mutableIntStateOf(initialMonth) }
@@ -126,6 +129,7 @@ fun DatePickerSheetStyled(
         },
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            BackHandler { onDismiss() }
             Row(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -145,10 +149,7 @@ fun DatePickerSheetStyled(
                     modifier = Modifier
                         .clip(RoundedCornerShape(Radius.button))
                         .clickable {
-                            scope.launch {
-                                onDateSelected(selectedYear, selectedMonth, selectedDay)
-                                sheetState.hide()
-                            }
+                            onDateSelected(selectedYear, selectedMonth, selectedDay)
                         }
                         .heightIn(min = TouchMin)
                         .padding(horizontal = Spacing.md),
@@ -158,7 +159,7 @@ fun DatePickerSheetStyled(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(220.dp)
+                    .height(308.dp)
                     .nestedScroll(blockSheetScroll),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -200,7 +201,7 @@ internal fun WheelColumn(
     modifier: Modifier = Modifier,
 ) {
     val rowHeight = 44.dp
-    val visibleRows = 5
+    val visibleRows = 7
     val halfRows = visibleRows / 2
 
     val density = LocalDensity.current
@@ -252,7 +253,7 @@ internal fun WheelColumn(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(rowHeight)
-                .background(Gold.copy(alpha = 0.10f), RoundedCornerShape(8.dp)),
+                .background(Gold.copy(alpha = 0.10f)),
         )
         LazyColumn(
             state = state,

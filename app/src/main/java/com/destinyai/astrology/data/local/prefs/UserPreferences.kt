@@ -465,13 +465,13 @@ class UserPreferences @Inject constructor(
 
     // Mirrors iOS UserDefaults "userResponseLength" — short / standard / detailed.
     suspend fun getResponseLength(): String =
-        store.data.map { it[Keys.RESPONSE_LENGTH] ?: "standard" }.first()
+        store.data.map { it[Keys.RESPONSE_LENGTH] ?: "detailed" }.first()
 
     suspend fun setResponseLength(length: String) {
         store.edit { it[Keys.RESPONSE_LENGTH] = length }
     }
 
-    val responseLengthFlow get() = store.data.map { it[Keys.RESPONSE_LENGTH] ?: "standard" }
+    val responseLengthFlow get() = store.data.map { it[Keys.RESPONSE_LENGTH] ?: "detailed" }
 
     suspend fun getBirthProfile(): BirthProfileDto? {
         val prefs = store.data.first()

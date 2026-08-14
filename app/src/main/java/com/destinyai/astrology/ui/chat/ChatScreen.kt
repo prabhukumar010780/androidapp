@@ -68,11 +68,12 @@ import kotlinx.coroutines.launch
 
 // Default starter question string-resource IDs (English fallbacks live in res/values/strings.xml).
 // Consumed inside @Composable scope so stringResource(...) can resolve them.
+// iOS parity: ChatView.swift fallbackQuestions — marriage / career / finance / health.
 private val defaultStarterQuestionResIds = listOf(
-    R.string.chat_starter_today,
-    R.string.chat_starter_relationships,
-    R.string.chat_starter_decisions,
-    R.string.chat_starter_dasha,
+    R.string.chat_starter_marriage,
+    R.string.chat_starter_career_direction,
+    R.string.chat_starter_finance,
+    R.string.chat_starter_health_check,
 )
 
 @Composable
@@ -897,7 +898,7 @@ internal fun buildMarkdownAnnotated(raw: String): androidx.compose.ui.text.Annot
         // give a wider gap after the dot so content isn't cramped against it
         // (iOS renders bullets as inset rows with .padding(.leading) + 10pt gap).
         if (line.trimStart().startsWith("- ") || line.trimStart().startsWith("* ")) {
-            line = "  •  " + line.trimStart().removePrefix("- ").removePrefix("* ")
+            line = "    •  " + line.trimStart().removePrefix("- ").removePrefix("* ")
         }
         // Heading lines — render as bold larger weight
         var isHeading = line.trimStart().startsWith("#")
@@ -913,7 +914,7 @@ internal fun buildMarkdownAnnotated(raw: String): androidx.compose.ui.text.Annot
         if (!isHeading) {
             val t = line.trim()
             val standaloneBold = t.length >= 5 && t.startsWith("**") && t.endsWith("**") &&
-                t.indexOf("**", 2) == t.length - 2 && !t.removeSurrounding("**").contains(":")
+                t.indexOf("**", 2) == t.length - 2
             if (standaloneBold) {
                 line = t.removeSurrounding("**").trim()
                 isHeading = true
@@ -963,9 +964,13 @@ private fun appendInlineMarkdown(
         if (i + 1 < text.length && text[i] == '*' && text[i + 1] == '*') {
             val end = text.indexOf("**", i + 2)
             if (end > 0) {
-                builder.pushStyle(
-                    androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold),
-                )
+                // When inside a heading context, bold spans also render in Gold
+                // (parity with iOS MarkdownTextView which colours all heading content gold).
+                val boldStyle = if (headingBold)
+                    androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold, color = Gold)
+                else
+                    androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold)
+                builder.pushStyle(boldStyle)
                 builder.append(text.substring(i + 2, end))
                 builder.pop()
                 i = end + 2
@@ -1607,7 +1612,9 @@ private fun ChatInputBar(
                         // decoration height stays constant. Previously they stacked
                         // sequentially, doubling the box height when empty and making
                         // the text jump/shift out of the pill on send + stream-start.
-                        Box(contentAlignment = Alignment.CenterStart) {
+                        // fillMaxWidth ensures the placeholder occupies the full input
+                        // width (iOS parity: TextField placeholder is inside the field).
+                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
                             if (text.isEmpty()) {
                                 Text(stringResource(R.string.chat_ask_anything_placeholder), color = Color(0xFF718096), fontSize = 16.sp)
                             }
@@ -1763,8 +1770,8 @@ private fun ResponseLengthSheet(
             ResponseLengthOption(
                 title = stringResource(R.string.response_length_concise),
                 desc = stringResource(R.string.response_length_concise_desc),
-                value = "short",
-                isSelected = current == "short",
+                value = "concise",
+                isSelected = current == "concise" || current == "short",
                 onSelect = handleSelect,
             )
             ResponseLengthOption(

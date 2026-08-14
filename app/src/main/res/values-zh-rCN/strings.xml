@@ -2341,7 +2341,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="chart_style_north_subtitle">菱形布局。宫位固定，行星移动。</string>
     <string name="chart_style_south_subtitle">方形布局。星座固定，行星移动。</string>
     <string name="chat_ask_anything_placeholder">随便问点什么…</string>
-    <string name="chat_personal_guide_subtitle">您的专属 Vedic 占星指南</string>
+    <string name="chat_personal_guide_subtitle">您的个人占星指南。询问你的一天、人际关系、职业或未来的道路。</string>
     <string name="chat_search_chats">搜索聊天</string>
     <string name="chat_starter_dasha">我目前处于哪个 Dasha 周期？</string>
     <string name="chat_starter_decisions">什么时候适合做重要决定？</string>
@@ -2400,7 +2400,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="compat_share_compat_chooser">分享配对报告</string>
     <string name="compat_this_may_take_a_moment">这可能需要一点时间…</string>
     <string name="compat_time_unknown">时间未知</string>
-    <string name="compat_time_unknown_note">时间未知时，配对使用太阳星座近似值。</string>
+    <string name="compat_time_unknown_note">没有确切的出生时间，洞察的质量可能会受到影响。</string>
     <string name="compat_use_saved">使用已保存</string>
     <string name="cosmic_progress_1">正在连接宇宙…</string>
     <string name="cosmic_progress_10">神谕正在编织您的解读…</string>

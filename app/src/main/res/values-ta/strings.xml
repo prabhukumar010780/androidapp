@@ -2341,7 +2341,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="chart_style_north_subtitle">வைர வடிவமைப்பு. வீடுகள் நிலையானவை; கிரகங்கள் நகரும்.</string>
     <string name="chart_style_south_subtitle">சதுர வடிவமைப்பு. ராசிகள் நிலையானவை; கிரகங்கள் நகரும்.</string>
     <string name="chat_ask_anything_placeholder">எதையும் கேளுங்கள்…</string>
-    <string name="chat_personal_guide_subtitle">உங்கள் தனிப்பட்ட Vedic ஜோதிட வழிகாட்டி</string>
+    <string name="chat_personal_guide_subtitle">உங்கள் தனிப்பட்ட ஜோதிட வழிகாட்டி. உங்கள் நாள், உறவுகள், தொழில் அல்லது முன்னோக்கி செல்லும் பாதை பற்றி கேளுங்கள்.</string>
     <string name="chat_search_chats">அரட்டைகளை தேடு</string>
     <string name="chat_starter_dasha">என் தற்போதைய Dasha காலம் என்ன?</string>
     <string name="chat_starter_decisions">முக்கியமான முடிவுகளுக்கு நல்ல நேரம் எது?</string>
@@ -2400,7 +2400,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="compat_share_compat_chooser">பொருத்த அறிக்கையை பகிர்</string>
     <string name="compat_this_may_take_a_moment">இதற்கு கொஞ்சம் நேரம் ஆகலாம்…</string>
     <string name="compat_time_unknown">நேரம் தெரியாது</string>
-    <string name="compat_time_unknown_note">நேரம் தெரியாதபோது பொருத்தம் சூரிய ராசி கணிப்பை பயன்படுத்துகிறது.</string>
+    <string name="compat_time_unknown_note">சரியான பிறந்த நேரம் இல்லாமல், நுண்ணறிவுகளின் தரம் பாதிக்கப்படலாம்.</string>
     <string name="compat_use_saved">சேமித்ததை பயன்படுத்து</string>
     <string name="cosmic_progress_1">பிரபஞ்சத்துடன் இணைகிறது…</string>
     <string name="cosmic_progress_10">ஜோதிடர் உங்கள் ஜோசியத்தை நெய்கிறார்…</string>

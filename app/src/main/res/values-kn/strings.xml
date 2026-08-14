@@ -2341,7 +2341,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="chart_style_north_subtitle">ವಜ್ರ ವಿನ್ಯಾಸ. ಭವನಗಳು ನಿಶ್ಚಿತ; ಗ್ರಹಗಳು ಚಲಿಸುತ್ತವೆ.</string>
     <string name="chart_style_south_subtitle">ಚದರ ವಿನ್ಯಾಸ. ರಾಶಿಗಳು ನಿಶ್ಚಿತ; ಗ್ರಹಗಳು ಚಲಿಸುತ್ತವೆ.</string>
     <string name="chat_ask_anything_placeholder">ಯಾವುದೇ ವಿಷಯ ಕೇಳಿ…</string>
-    <string name="chat_personal_guide_subtitle">ನಿಮ್ಮ ವೈಯಕ್ತಿಕ ವೈದಿಕ ಜ್ಯೋತಿಷ ಮಾರ್ಗದರ್ಶಕ</string>
+    <string name="chat_personal_guide_subtitle">ನಿಮ್ಮ ವೈಯಕ್ತಿಕ ಜ್ಯೋತಿಷ್ಯ ಮಾರ್ಗದರ್ಶಿ. ನಿಮ್ಮ ದಿನ, ಸಂಬಂಧಗಳು, ವೃತ್ತಿ ಅಥವಾ ಮುಂದಿನ ಹಾದಿಯ ಬಗ್ಗೆ ಕೇಳಿ.</string>
     <string name="chat_search_chats">ಚಾಟ್‌ಗಳನ್ನು ಹುಡುಕಿ</string>
     <string name="chat_starter_dasha">ನನ್ನ ಪ್ರಸ್ತುತ Dasha ಅವಧಿ ಯಾವುದು?</string>
     <string name="chat_starter_decisions">ಪ್ರಮುಖ ನಿರ್ಧಾರಗಳಿಗೆ ಯಾವುದು ಒಳ್ಳೆಯ ಸಮಯ?</string>
@@ -2400,7 +2400,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="compat_share_compat_chooser">ಹೊಂದಾಣಿಕೆ ವರದಿ ಹಂಚಿಕೊಳ್ಳಿ</string>
     <string name="compat_this_may_take_a_moment">ಇದು ಸ್ವಲ್ಪ ಸಮಯ ತೆಗೆದುಕೊಳ್ಳಬಹುದು…</string>
     <string name="compat_time_unknown">ಸಮಯ ತಿಳಿದಿಲ್ಲ</string>
-    <string name="compat_time_unknown_note">ಸಮಯ ತಿಳಿದಿಲ್ಲದಿದ್ದಾಗ ಹೊಂದಾಣಿಕೆ ಸೂರ್ಯ-ಚಿಹ್ನೆ ಅಂದಾಜು ಬಳಸುತ್ತದೆ.</string>
+    <string name="compat_time_unknown_note">ನಿಖರ ಜನ್ಮ ಸಮಯವಿಲ್ಲದೆ, ಒಳನೋಟಗಳ ಗುಣಮಟ್ಟ ಪ್ರಭಾವಿತವಾಗಬಹುದು.</string>
     <string name="compat_use_saved">ಸಂರಕ್ಷಿತ ಬಳಸಿ</string>
     <string name="cosmic_progress_1">ಬ್ರಹ್ಮಾಂಡಕ್ಕೆ ಸಂಪರ್ಕಿಸಲಾಗುತ್ತಿದೆ…</string>
     <string name="cosmic_progress_10">ಜ್ಯೋತಿಷಿ ನಿಮ್ಮ ಜ್ಯೋತಿಷ್ಯವನ್ನು ನೇಯ್ಯುತ್ತಿದ್ದಾರೆ…</string>
