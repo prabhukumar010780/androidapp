@@ -718,8 +718,20 @@ fun SubscriptionScreen(
                                     // iOS parity (SubscriptionView.swift:683-690):
                                     // dual-line "Start 7-Day Free Trial" / "then
                                     // <price> · cancel anytime" CTA when trial-eligible.
+                                    // GAP-3: verify this specific product actually carries
+                                    // a trial offer token before showing the "7-Day Free
+                                    // Trial" CTA. isPlusTrialEligible checks server-side
+                                    // eligibility but not whether the Play product has a
+                                    // matching offer (a product that returned no trial
+                                    // offer from the Play catalog must not show the CTA).
+                                    val hasTrialOffer = productDetails?.subscriptionOfferDetails
+                                        ?.any { offer ->
+                                            offer.offerId?.contains("trial", ignoreCase = true) == true ||
+                                                offer.pricingPhases.pricingPhaseList.any { it.priceAmountMicros == 0L }
+                                        } ?: false
                                     val showTrialCta = isPlus &&
                                         isPlusTrialEligible &&
+                                        hasTrialOffer &&
                                         !hasActiveSub &&
                                         conflict == null &&
                                         !isCurrentPlan
@@ -747,17 +759,29 @@ fun SubscriptionScreen(
                                             // would charge the user immediately despite the label.
                                             // Prefer an offerId containing "trial", else an offer
                                             // with a $0 pricing phase, else fall back to first.
+                                            // GAP-3: when showing the trial CTA, resolve the
+                                            // trial offer token explicitly. Do NOT fall back
+                                            // to firstOrNull() — that silently charges the
+                                            // base price while the button says "Free Trial".
+                                            // If no trial offer is found, pass null so
+                                            // BillingFlowParams uses the base plan; the
+                                            // hasTrialOffer guard above will have already
+                                            // suppressed the "7-Day Free Trial" label.
                                             val offers = productDetails?.subscriptionOfferDetails
                                             val offerToken = if (showTrialCta) {
-                                                (
-                                                    offers?.firstOrNull {
-                                                        it.offerId?.contains("trial", ignoreCase = true) == true
-                                                    }
-                                                        ?: offers?.firstOrNull { o ->
-                                                            o.pricingPhases.pricingPhaseList.any { it.priceAmountMicros == 0L }
-                                                        }
-                                                        ?: offers?.firstOrNull()
-                                                    )?.offerToken
+                                                val trialOffer = offers?.firstOrNull {
+                                                    it.offerId?.contains("trial", ignoreCase = true) == true
+                                                } ?: offers?.firstOrNull { o ->
+                                                    o.pricingPhases.pricingPhaseList.any { it.priceAmountMicros == 0L }
+                                                }
+                                                if (trialOffer == null) {
+                                                    android.util.Log.w(
+                                                        "SubscriptionScreen",
+                                                        "showTrialCta=true but no trial offer found for " +
+                                                            "${productDetails?.productId}; proceeding without trial token",
+                                                    )
+                                                }
+                                                trialOffer?.offerToken
                                             } else {
                                                 offers?.firstOrNull()?.offerToken
                                             }

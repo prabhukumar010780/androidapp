@@ -290,7 +290,21 @@ class BillingManager @Inject constructor(
         directPurchaseInProgress = false
         isReconciling.set(false)
         lastReconcileTime = 0L
-        scope.launch { prefs.setSubscription(false, "") }
+        // QM-1: wipe QuotaManager's SharedPreferences store (quota_manager_prefs)
+        // synchronously. resetForAccountSwitch() is the single subscription
+        // sign-out entry point and must clear BOTH the DataStore (destiny_prefs)
+        // and SharedPreferences stores so stale premium state cannot survive an
+        // account switch regardless of which code path triggers the reset.
+        runCatching { quotaManager.get().resetForSignOut() }
+        scope.launch {
+            prefs.setSubscription(false, "")
+            // QM-1: clear all subscription metadata in DataStore — not just
+            // IS_PREMIUM and PLAN_ID — so cold-start UI cannot display stale
+            // plan / expiry / auto-renew data from the previous account.
+            prefs.clearSubscriptionMeta()
+            prefs.setCachedAvailablePlansJson(null)
+            prefs.setCachedAvailableFeaturesJson(null)
+        }
     }
 
     /** Mirrors iOS QuotaManager.resetForSignOut() — alias used by sign-out
@@ -382,49 +396,84 @@ class BillingManager @Inject constructor(
         // purchase confirmation flow instead (iOS QuotaManager.swift:325).
         directPurchaseInProgress = true
 
-        val productDetailsParamsList = listOf(
-            BillingFlowParams.ProductDetailsParams.newBuilder()
-                .setProductDetails(productDetails)
+        // BILLING-1: query existing active subscriptions async before building
+        // BillingFlowParams. If the user is switching from a different active
+        // product, we must attach SubscriptionUpdateParams — without it Play
+        // Billing rejects the upgrade/downgrade with ITEM_ALREADY_OWNED.
+        scope.launch {
+            val existingPurchaseToken: String? = try {
+                val queryParams = QueryPurchasesParams.newBuilder()
+                    .setProductType(BillingClient.ProductType.SUBS)
+                    .build()
+                val (queryResult, existingPurchases) = queryPurchasesAsync(queryParams)
+                if (queryResult.responseCode == BillingResponseCode.OK) {
+                    existingPurchases
+                        ?.filter { it.purchaseState == Purchase.PurchaseState.PURCHASED }
+                        ?.firstOrNull { it.products.firstOrNull() != productDetails.productId }
+                        ?.purchaseToken
+                } else null
+            } catch (e: Exception) {
+                null
+            }
+
+            val productDetailsParamsList = listOf(
+                BillingFlowParams.ProductDetailsParams.newBuilder()
+                    .setProductDetails(productDetails)
+                    .apply {
+                        if (offerToken != null) setOfferToken(offerToken)
+                        else {
+                            // Use first available offer token if present
+                            val token = productDetails.subscriptionOfferDetails
+                                ?.firstOrNull()
+                                ?.offerToken
+                            if (token != null) setOfferToken(token)
+                        }
+                    }
+                    .build(),
+            )
+
+            val flowParams = BillingFlowParams.newBuilder()
+                .setProductDetailsParamsList(productDetailsParamsList)
                 .apply {
-                    if (offerToken != null) setOfferToken(offerToken)
-                    else {
-                        // Use first available offer token if present
-                        val token = productDetails.subscriptionOfferDetails
-                            ?.firstOrNull()
-                            ?.offerToken
-                        if (token != null) setOfferToken(token)
+                    // iOS parity (SubscriptionManager.swift:268-274 appAccountToken): bind
+                    // the purchase to the signed-in Destiny account so a Play purchase is
+                    // cryptographically tied to this user (cross-account replay defense).
+                    // Use a stable non-PII hash of the email as the obfuscated account id
+                    // (Play requires <=64 chars, no raw PII).
+                    val email = userEmail
+                    if (!email.isNullOrBlank()) {
+                        setObfuscatedAccountId(obfuscatedAccountId(email))
+                    }
+                    // BILLING-1: attach upgrade/downgrade params when switching from a
+                    // different active subscription. CHARGE_FULL_PRICE is the safe
+                    // default for both upgrades (Core→Plus) and same-tier period changes
+                    // (monthly→yearly). Play requires this or the request is rejected.
+                    if (existingPurchaseToken != null) {
+                        setSubscriptionUpdateParams(
+                            BillingFlowParams.SubscriptionUpdateParams.newBuilder()
+                                .setOldPurchaseToken(existingPurchaseToken)
+                                .setSubscriptionReplacementMode(
+                                    BillingFlowParams.SubscriptionUpdateParams.ReplacementMode.CHARGE_FULL_PRICE,
+                                )
+                                .build(),
+                        )
                     }
                 }
-                .build(),
-        )
+                .build()
 
-        val flowParams = BillingFlowParams.newBuilder()
-            .setProductDetailsParamsList(productDetailsParamsList)
-            .apply {
-                // iOS parity (SubscriptionManager.swift:268-274 appAccountToken): bind
-                // the purchase to the signed-in Destiny account so a Play purchase is
-                // cryptographically tied to this user (cross-account replay defense).
-                // Use a stable non-PII hash of the email as the obfuscated account id
-                // (Play requires <=64 chars, no raw PII).
-                val email = userEmail
-                if (!email.isNullOrBlank()) {
-                    setObfuscatedAccountId(obfuscatedAccountId(email))
+            val result = billingClient.launchBillingFlow(activity, flowParams)
+            if (result.responseCode != BillingResponseCode.OK) {
+                _isLoading.value = false
+                directPurchaseInProgress = false
+                // iOS parity: handle the "already subscribed" recovery path by
+                // auto-reconciling rather than showing the raw error (iOS
+                // SubscriptionManager.swift:246-260).
+                if (result.responseCode == BillingResponseCode.ITEM_ALREADY_OWNED) {
+                    _errorMessage.value = null
+                    scope.launch { reconcileEntitlements() }
+                } else {
+                    _errorMessage.value = result.debugMessage
                 }
-            }
-            .build()
-
-        val result = billingClient.launchBillingFlow(activity, flowParams)
-        if (result.responseCode != BillingResponseCode.OK) {
-            _isLoading.value = false
-            directPurchaseInProgress = false
-            // iOS parity: handle the "already subscribed" recovery path by
-            // auto-reconciling rather than showing the raw error (iOS
-            // SubscriptionManager.swift:246-260).
-            if (result.responseCode == BillingResponseCode.ITEM_ALREADY_OWNED) {
-                _errorMessage.value = null
-                scope.launch { reconcileEntitlements() }
-            } else {
-                _errorMessage.value = result.debugMessage
             }
         }
     }
@@ -473,7 +522,14 @@ class BillingManager @Inject constructor(
     }
 
     private suspend fun handlePurchase(purchase: Purchase) {
-        val email = prefs.getUserEmail() ?: return
+        // BILLING-2: guard + cleanup before returning on null email so
+        // _isLoading and directPurchaseInProgress are never left stuck.
+        val email = prefs.getUserEmail() ?: run {
+            _isLoading.value = false
+            directPurchaseInProgress = false
+            android.util.Log.w("BillingManager", "handlePurchase: no email, cannot verify purchase ${purchase.purchaseToken}")
+            return
+        }
         val productId = purchase.products.firstOrNull() ?: return
 
         // Finding 3 — security: skip sandbox / license-tester purchases on
