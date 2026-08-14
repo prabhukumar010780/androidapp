@@ -248,17 +248,25 @@ class AuthViewModel @Inject constructor(
                     haptic.success()
                     // Carry forward guest birth profile + run upgrade in best-effort mode.
                     if (wasGuest && guestEmail != null && user.email != guestEmail) {
-                        // iOS parity (AuthViewModel.swift:344-350 logs "GUEST MIGRATION FAILED"):
-                        // do NOT swallow — a failed migration orphans the guest's chat/compat/
-                        // partner history, so surface it in logs for diagnosis (M3).
-                        repository.upgradeGuest(guestEmail, user.email)
-                            .onFailure {
-                                Log.e(
-                                    "AuthViewModel",
-                                    "GUEST MIGRATION FAILED guest=$guestEmail new=${user.email}: ${it.message}",
-                                    it,
-                                )
-                            }
+                        val upgradeError = repository.upgradeGuest(guestEmail, user.email).exceptionOrNull()
+                        if (upgradeError is ConflictException) {
+                            // iOS parity (BirthDataTakenError → merge UI): a guest→registered
+                            // birth-data conflict must surface the merge dialog rather than be
+                            // swallowed. Mirrors the dedicated upgradeGuest() onFailure branch;
+                            // stop here so we don't auto-authenticate over an unresolved conflict.
+                            _uiState.update { it.copy(isLoading = false, showMergeDialog = true) }
+                            return@onSuccess
+                        }
+                        if (upgradeError != null) {
+                            // iOS parity (AuthViewModel.swift:344-350 logs "GUEST MIGRATION FAILED"):
+                            // do NOT swallow — a failed migration orphans the guest's chat/compat/
+                            // partner history, so surface it in logs for diagnosis (M3).
+                            Log.e(
+                                "AuthViewModel",
+                                "GUEST MIGRATION FAILED guest=$guestEmail new=${user.email}: ${upgradeError.message}",
+                                upgradeError,
+                            )
+                        }
                         if (guestBirth != null) {
                             try { prefs.setBirthProfile(guestBirth) } catch (_: Exception) {}
                         }

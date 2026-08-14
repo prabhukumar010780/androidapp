@@ -205,7 +205,7 @@ fun PlanetaryPositionsSheet(
                         dob = state.dateOfBirth,
                         time = state.timeOfBirth,
                         city = state.cityOfBirth,
-                        ascendantSign = state.ascendantSign?.let { ChartConstants.signFullNames[it] ?: it },
+                        ascendantSign = state.ascendantSign?.let { stringResource(getSignNameRes(it)) },
                         timeUnknown = state.timeUnknown,
                     )
 

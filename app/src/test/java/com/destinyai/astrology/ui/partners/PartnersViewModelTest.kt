@@ -83,10 +83,10 @@ class PartnersViewModelTest {
     }
 
     @Test
-    fun `isFormValid false when city empty`() {
+    fun `isFormValid true when city empty (birth place optional, iOS parity)`() {
         setValidForm()
         vm.setFormLocation("", 0.0, 0.0)
-        assertFalse(vm.uiState.value.isFormValid)
+        assertTrue(vm.uiState.value.isFormValid)
     }
 
     @Test

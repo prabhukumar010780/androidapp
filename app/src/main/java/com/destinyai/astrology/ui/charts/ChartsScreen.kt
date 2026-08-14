@@ -227,7 +227,7 @@ fun ChartsScreen(
                             dob = state.dateOfBirth,
                             time = state.timeOfBirth,
                             city = state.cityOfBirth,
-                            ascendantSign = state.ascendantSign?.let { ChartConstants.signFullNames[it] ?: it },
+                            ascendantSign = state.ascendantSign?.let { stringResource(getSignNameRes(it)) },
                             timeUnknown = state.timeUnknown,
                         )
 
@@ -386,7 +386,7 @@ fun PremiumPlanetRow(
                 if (data.vargottama == true) ChartBadge("V", Color(0xFF9C27B0))
             }
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(ChartConstants.signFullNames[data.sign] ?: data.sign, fontSize = 14.sp, color = Gold)
+                Text(stringResource(getSignNameRes(data.sign)), fontSize = 14.sp, color = Gold)
                 Text("•", color = CreamDim.copy(alpha = 0.5f), fontSize = 10.sp)
                 Text(ChartConstants.formatDegree(data.degree), fontSize = 13.sp, color = CreamDim)
             }

@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -78,7 +79,7 @@ fun PlanetDetailCard(planet: PlanetDisplayInfo, signAbbrev: String?, modifier: M
         if (signAbbrev != null) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Icon(Icons.Default.Home, contentDescription = null, modifier = Modifier.size(8.dp), tint = Gold.copy(alpha = 0.8f))
-                Text(ChartConstants.signFullNames[signAbbrev] ?: signAbbrev, fontSize = AppType.caption, lineHeight = AppType.captionLh, color = CreamText, maxLines = 1)
+                Text(stringResource(getSignNameRes(signAbbrev)), fontSize = AppType.caption, lineHeight = AppType.captionLh, color = CreamText, maxLines = 1)
             }
         }
 

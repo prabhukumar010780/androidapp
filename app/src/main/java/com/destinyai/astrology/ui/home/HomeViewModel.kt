@@ -378,13 +378,18 @@ class HomeViewModel @Inject constructor(
             if (!activeName.isNullOrBlank()) {
                 _uiState.update { it.copy(displayName = activeName) }
             }
-            val questions = repository.getSuggestedQuestions()
             val (insight, loadError) = try {
                 repository.getDailyInsight(activeBirth, activeId, force = languageChanged) to null
             } catch (e: Exception) {
                 android.util.Log.w("HomeViewModel", "getDailyInsight failed: ${e.message}", e)
                 "" to friendlyError(e)
             }
+            // Fetch suggested "mind" questions AFTER getDailyInsight() so the
+            // server's language-aware, chart-personalized list (carried on the
+            // todays-prediction response) is already in the in-memory cache.
+            // Calling it first returned the static English fallback on cold start,
+            // so non-English users saw English question text until a refresh.
+            val questions = repository.getSuggestedQuestions()
             // iOS parity (HomeViewModel.swift:328-332): suppress errorMessage when
             // cached content is already on screen. A silent refresh failure should
             // not flash a banner over a working Home; only show errors when there

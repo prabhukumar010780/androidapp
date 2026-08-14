@@ -83,12 +83,12 @@ object NetworkModule {
             .addInterceptor(logging)
             .connectTimeout(30, TimeUnit.SECONDS)
             // Non-streaming Opus calls (POST /vedic/api/predict, /vedic/api/compatibility/analyze)
-            // can hold the connection 3-5 min before the response lands. iOS uses
-            // timeoutIntervalForResource=600s; we mirror the spec's "300s for
-            // non-streaming, infinite for streaming" contract here.
-            .readTimeout(300, TimeUnit.SECONDS)
+            // can hold the connection several minutes before the response lands. Match iOS
+            // timeoutIntervalForResource=600s so a slow prediction isn't killed early when the
+            // streaming path falls back to the non-streaming client.
+            .readTimeout(600, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
-            .callTimeout(300, TimeUnit.SECONDS)
+            .callTimeout(600, TimeUnit.SECONDS)
             .build()
     }
 

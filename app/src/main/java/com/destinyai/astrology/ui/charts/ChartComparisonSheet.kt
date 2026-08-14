@@ -192,7 +192,7 @@ private fun PersonChartSection(
         ) {
             Text(personName, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Gold)
             if (ascendant != null) {
-                val ascFull = ChartConstants.signFullNames[ascendant] ?: ascendant
+                val ascFull = stringResource(getSignNameRes(ascendant))
                 Text(
                     stringResource(R.string.ascendant_label_fmt, ascFull),
                     fontSize = 13.sp,

@@ -290,19 +290,14 @@ class QuotaManager @Inject constructor(
 
     private fun parseExpiryMs(): Long? {
         val raw = _subscriptionExpiresAt.value ?: return null
-        val patterns = listOf(
-            "yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'",
-            "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
-            "yyyy-MM-dd'T'HH:mm:ss'Z'",
-            "yyyy-MM-dd'T'HH:mm:ssXXX",
-            "yyyy-MM-dd'T'HH:mm:ss",
-        )
-        val candidate = if (raw.endsWith("Z") || raw.contains("+")) raw else "${raw}Z"
-        for (p in patterns) {
-            val fmt = java.text.SimpleDateFormat(p, java.util.Locale.US).apply {
-                timeZone = java.util.TimeZone.getTimeZone("UTC")
-            }
-            runCatching { return fmt.parse(candidate)?.time }.getOrNull()
+        val t = raw.trim()
+        // java.time parsers accept fractional seconds of any precision. The prior
+        // SimpleDateFormat ".SSSSSS" pattern misread microseconds as milliseconds,
+        // skewing the formatted renew/expiry date. Offset-aware first (Z or +hh:mm),
+        // then naive (assume UTC to match the backend).
+        runCatching { return java.time.OffsetDateTime.parse(t).toInstant().toEpochMilli() }
+        runCatching {
+            return java.time.LocalDateTime.parse(t).toInstant(java.time.ZoneOffset.UTC).toEpochMilli()
         }
         return null
     }

@@ -1,9 +1,9 @@
 package com.destinyai.astrology.data.remote
 
 import com.google.gson.JsonParser
-import java.text.SimpleDateFormat
-import java.util.Locale
-import java.util.TimeZone
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 /** iOS parity: AuthExchangeError enum + ISO8601 robust parse. */
 sealed class AuthExchangeError(message: String) : Exception(message) {
@@ -66,18 +66,13 @@ sealed class AuthExchangeError(message: String) : Exception(message) {
  * make sessionIsFresh() always false — the exact iOS 1970 bug that bricked W7).
  */
 fun parseIso8601Millis(s: String): Long? {
-    val patterns = listOf(
-        "yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'",
-        "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
-        "yyyy-MM-dd'T'HH:mm:ss'Z'",
-    )
-    val candidates = if (s.endsWith("Z")) listOf(s) else listOf(s, s + "Z")
-    for (c in candidates) {
-        for (p in patterns) {
-            val fmt = SimpleDateFormat(p, Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
-            val parsed = runCatching { fmt.parse(c)?.time }.getOrNull()
-            if (parsed != null) return parsed
-        }
-    }
+    val t = s.trim()
+    // java.time parsers accept fractional seconds of ANY precision (millis,
+    // micros, nanos). The previous SimpleDateFormat approach read ".SSSSSS"
+    // microseconds as raw milliseconds, skewing expiry by up to ~16 min.
+    // Offset-aware first (handles trailing "Z" and "+hh:mm").
+    runCatching { return OffsetDateTime.parse(t).toInstant().toEpochMilli() }
+    // Naive timestamp (no zone) → treat as UTC, matching the backend.
+    runCatching { return LocalDateTime.parse(t).toInstant(ZoneOffset.UTC).toEpochMilli() }
     return null
 }

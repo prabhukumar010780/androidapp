@@ -61,17 +61,11 @@ class HomeRepositoryImpl @Inject constructor(
 
     override suspend fun getSuggestedQuestions(): List<String> {
         // Parity with iOS HomeViewModel: prefer server-generated, language-aware mind questions
-        // (UserAstroDataRequest.language) returned in the todays-prediction response. Fall back
-        // to a static English list only when the prediction has not been fetched yet OR when
-        // the server omitted suggestions for the user's birth profile.
-        val serverList = lastTodaysPrediction?.suggested_questions
-        if (!serverList.isNullOrEmpty()) return serverList
-        return listOf(
-            "What should I be mindful of today?",
-            "How can I improve my focus and productivity?",
-            "What's a good time for important decisions?",
-            "What does my chart say about relationships?",
-        )
+        // (UserAstroDataRequest.language) returned in the todays-prediction response. When the
+        // prediction has not been fetched yet OR the server omitted suggestions, return empty so
+        // the UI (HomeScreen) applies its LOCALIZED string-resource fallback — never a hardcoded
+        // English list, which would show English question text to non-English users.
+        return lastTodaysPrediction?.suggested_questions.orEmpty()
     }
 
     override suspend fun getDailyInsight(

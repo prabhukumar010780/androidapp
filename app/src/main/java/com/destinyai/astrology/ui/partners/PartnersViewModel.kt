@@ -80,7 +80,6 @@ data class PartnersUiState(
         get() = formName.isNotBlank() &&
             formGender.isNotBlank() &&
             formDob.isNotBlank() &&
-            formCity.isNotBlank() &&
             (formTime.isNotBlank() || formBirthTimeUnknown) &&
             (!isUnder13(formDob) || formGuardianConsentGiven)
 
@@ -270,9 +269,11 @@ class PartnersViewModel @Inject constructor(
                         gender = s.formGender,
                         dateOfBirth = s.formDob,
                         timeOfBirth = if (s.formBirthTimeUnknown) null else s.formTime,
-                        cityOfBirth = s.formCity.trim(),
-                        latitude = s.formLatitude,
-                        longitude = s.formLongitude,
+                        // iOS parity (PartnerFormView): birth place is optional —
+                        // send null (not "") for city/lat/lon when left blank.
+                        cityOfBirth = s.formCity.trim().takeIf { it.isNotBlank() },
+                        latitude = if (s.formCity.isBlank()) null else s.formLatitude,
+                        longitude = if (s.formCity.isBlank()) null else s.formLongitude,
                         birthTimeUnknown = s.formBirthTimeUnknown,
                         forCompatibility = effectiveForCompat,
                         guardianConsentGiven = s.formGuardianConsentGiven,
