@@ -1223,9 +1223,25 @@ private fun SupportLinksSection(context: android.content.Context, onNavigateToFa
             testTag = "profile_contact_us",
             onClick = {
                 haptic.light()
-                // iOS parity: ProfileView.swift:744-748 — mailto:support@destinyaiastrology.com
-                val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:support@destinyaiastrology.com?subject=Support"))
-                context.startActivity(Intent.createChooser(intent, context.getString(R.string.profile_contact_us)))
+                // iOS parity: ProfileView.swift Contact Us — mailto:support@destinyaiastrology.com
+                val email = "support@destinyaiastrology.com"
+                val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:$email?subject=Support"))
+                try {
+                    // ACTION_SENDTO throws if no email app can handle it; Android shows
+                    // its own disambiguation dialog when multiple apps qualify.
+                    context.startActivity(intent)
+                } catch (e: android.content.ActivityNotFoundException) {
+                    // No email app (e.g. emulator / Mail removed) — copy the address so
+                    // the user can still reach us instead of a dead-end. Mirrors iOS.
+                    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                        as android.content.ClipboardManager
+                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("email", email))
+                    android.widget.Toast.makeText(
+                        context,
+                        context.getString(R.string.contact_us_no_mail_app, email),
+                        android.widget.Toast.LENGTH_LONG,
+                    ).show()
+                }
             },
         )
         HorizontalDivider(color = Gold.copy(alpha = 0.08f))

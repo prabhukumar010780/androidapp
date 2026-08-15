@@ -2243,6 +2243,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_chart_style">चार्ट शैली</string>
     <string name="profile_chat_history">चैट हिस्ट्री</string>
     <string name="profile_contact_us">हमसे संपर्क करें</string>
+    <string name="contact_us_no_mail_app">कोई ईमेल ऐप नहीं मिला। %1$s क्लिपबोर्ड पर कॉपी किया गया।</string>
     <string name="profile_delete_account">खाता हटाएं</string>
     <string name="profile_guest_user_email">गेस्ट यूज़र</string>
     <string name="profile_manage_birth_charts_link">जन्म कुंडली प्रबंधित करें</string>

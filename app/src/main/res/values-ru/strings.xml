@@ -2263,6 +2263,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_chart_style">Стиль диаграммы</string>
     <string name="profile_chat_history">История чатов</string>
     <string name="profile_contact_us">Связаться с нами</string>
+    <string name="contact_us_no_mail_app">Почтовое приложение не найдено. %1$s скопировано в буфер обмена.</string>
     <string name="profile_delete_account">Удалить аккаунт</string>
     <string name="profile_guest_user_email">Гость</string>
     <string name="profile_manage_birth_charts_link">Управление картами рождения</string>

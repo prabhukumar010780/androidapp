@@ -2263,6 +2263,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_chart_style">グラフのスタイル</string>
     <string name="profile_chat_history">チャット履歴</string>
     <string name="profile_contact_us">お問い合わせ</string>
+    <string name="contact_us_no_mail_app">メールアプリが見つかりません。%1$s をクリップボードにコピーしました。</string>
     <string name="profile_delete_account">アカウントの削除</string>
     <string name="profile_guest_user_email">ゲスト</string>
     <string name="profile_manage_birth_charts_link">出生図の管理</string>

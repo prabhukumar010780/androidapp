@@ -2263,6 +2263,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_chart_style">చార్ట్ శైలి</string>
     <string name="profile_chat_history">చాట్ చరిత్ర</string>
     <string name="profile_contact_us">మాకు సంప్రదించండి</string>
+    <string name="contact_us_no_mail_app">ఇమెయిల్ యాప్ కనబడలేదు. %1$s క్లిప్‌బోర్డ్‌కు కాపీ చేయబడింది.</string>
     <string name="profile_delete_account">ఖాతాను తొలగించండి</string>
     <string name="profile_guest_user_email">అతిథి</string>
     <string name="profile_manage_birth_charts_link">బర్త్ చార్ట్‌లను నిర్వహించండి</string>

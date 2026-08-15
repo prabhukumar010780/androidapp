@@ -2263,6 +2263,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_chart_style">ಚಾರ್ಟ್ ಶೈಲಿ</string>
     <string name="profile_chat_history">ಚಾಟ್ ಇತಿಹಾಸ</string>
     <string name="profile_contact_us">ನಮ್ಮನ್ನು ಸಂಪರ್ಕಿಸಿ</string>
+    <string name="contact_us_no_mail_app">ಯಾವುದೇ ಇಮೇಲ್ ಅಪ್ಲಿಕೇಶನ್ ಸಿಗಲಿಲ್ಲ. %1$s ಕ್ಲಿಪ್‌ಬೋರ್ಡ್‌ಗೆ ನಕಲಿಸಲಾಗಿದೆ.</string>
     <string name="profile_delete_account">ಖಾತೆಯನ್ನು ಅಳಿಸಿ</string>
     <string name="profile_guest_user_email">ಅತಿಥಿ</string>
     <string name="profile_manage_birth_charts_link">ಜನನ ಚಾರ್ಟ್‌ಗಳನ್ನು ನಿರ್ವಹಿಸಿ</string>

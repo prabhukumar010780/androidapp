@@ -2263,6 +2263,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_chart_style">图表样式</string>
     <string name="profile_chat_history">聊天历史</string>
     <string name="profile_contact_us">联系我们</string>
+    <string name="contact_us_no_mail_app">未找到电子邮件应用。%1$s 已复制到剪贴板。</string>
     <string name="profile_delete_account">删除账户</string>
     <string name="profile_guest_user_email">游客</string>
     <string name="profile_manage_birth_charts_link">管理出生图</string>

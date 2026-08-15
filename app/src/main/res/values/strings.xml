@@ -2524,6 +2524,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_birth_details">Birth Details</string>
     <string name="profile_preferences_section">Preferences</string>
     <string name="profile_contact_us">Contact Us</string>
+    <string name="contact_us_no_mail_app">No email app found. %1$s copied to clipboard.</string>
     <string name="profile_privacy_policy">Privacy Policy</string>
     <string name="profile_terms_of_service">Terms of Service</string>
     <string name="profile_maybe_later">Maybe later</string>

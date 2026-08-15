@@ -2263,6 +2263,7 @@ Until then: Use this period for strategic positioning.</string>
     <string name="profile_chart_style">Estilo de gráfico</string>
     <string name="profile_chat_history">Histórico de bate-papo</string>
     <string name="profile_contact_us">Fale conosco</string>
+    <string name="contact_us_no_mail_app">Nenhum app de e-mail encontrado. %1$s copiado para a área de transferência.</string>
     <string name="profile_delete_account">Excluir conta</string>
     <string name="profile_guest_user_email">Visitante</string>
     <string name="profile_manage_birth_charts_link">Gerenciar mapas de nascimento</string>
