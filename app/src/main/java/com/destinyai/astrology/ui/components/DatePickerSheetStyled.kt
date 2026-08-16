@@ -41,7 +41,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -56,6 +55,7 @@ import com.destinyai.astrology.ui.theme.NavyDeep
 import com.destinyai.astrology.ui.theme.Radius
 import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.TouchMin
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
 import java.text.DateFormatSymbols
 import java.util.Calendar
@@ -204,9 +204,6 @@ internal fun WheelColumn(
     val visibleRows = 7
     val halfRows = visibleRows / 2
 
-    val density = LocalDensity.current
-    val halfRowsPx = with(density) { (rowHeight * halfRows).toPx().toInt() }
-
     val state = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
@@ -215,7 +212,7 @@ internal fun WheelColumn(
         derivedStateOf {
             val info = state.layoutInfo
             if (info.visibleItemsInfo.isEmpty()) return@derivedStateOf selectedIndex
-            val vpCenter = (info.viewportEndOffset - info.viewportStartOffset) / 2f
+            val vpCenter = (info.viewportStartOffset + info.viewportEndOffset) / 2f
             info.visibleItemsInfo
                 .minByOrNull { abs(it.offset + it.size / 2f - vpCenter) }
                 ?.index
@@ -225,17 +222,20 @@ internal fun WheelColumn(
     }
 
     // Snap to nearest item centre and report selection when scroll settles.
+    // drop(1) ignores the initial "settled" emission on open so we don't clobber
+    // the incoming initial selection before it has been scrolled into place.
     LaunchedEffect(state) {
         snapshotFlow { state.isScrollInProgress }
             .filter { !it }
+            .drop(1)
             .collect {
                 val idx = centeredIndex
                 onSelectionChanged(idx)
                 val info = state.layoutInfo
-                val vpCenter = (info.viewportEndOffset - info.viewportStartOffset) / 2f
+                val vpCenter = (info.viewportStartOffset + info.viewportEndOffset) / 2f
                 val item = info.visibleItemsInfo.firstOrNull { it.index == idx }
                 if (item != null && abs(item.offset + item.size / 2f - vpCenter) > 1f) {
-                    state.animateScrollToItem(idx, scrollOffset = -halfRowsPx)
+                    state.animateScrollToItem(idx)
                 }
             }
     }
@@ -243,7 +243,7 @@ internal fun WheelColumn(
     // Sync when an external change drives selectedIndex.
     LaunchedEffect(selectedIndex) {
         if (!state.isScrollInProgress && centeredIndex != selectedIndex) {
-            state.scrollToItem(selectedIndex, scrollOffset = -halfRowsPx)
+            state.scrollToItem(selectedIndex)
         }
     }
 
