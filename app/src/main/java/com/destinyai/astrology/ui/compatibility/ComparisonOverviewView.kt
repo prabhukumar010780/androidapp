@@ -66,6 +66,9 @@ import com.destinyai.astrology.ui.theme.TouchMin
 import java.io.File
 import java.io.FileOutputStream
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private val SuccessColor = Color(0xFF48BB78)
 private val ErrorColor = Color(0xFFFC8181)
@@ -181,6 +184,7 @@ fun ComparisonOverviewView(
 
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
     val shareText = remember(sortedResults, userName) {
         buildComparisonExportText(userName, sortedResults)
     }
@@ -191,20 +195,24 @@ fun ComparisonOverviewView(
         runCatching { buildComparisonPdf(context, userName, sortedResults) }.getOrNull()
     }
     val sharePdfWithText: () -> Unit = {
-        val uri = pdfBuilder()
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "application/pdf"
-            putExtra(Intent.EXTRA_TEXT, shareText)
-            putExtra(Intent.EXTRA_SUBJECT, "$userName — Compatibility Report")
-            if (uri != null) {
-                putExtra(Intent.EXTRA_STREAM, uri)
-                clipData = ClipData.newRawUri("Compatibility PDF", uri)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            } else {
-                type = "text/plain"
+        scope.launch {
+            val uri: Uri? = withContext(Dispatchers.IO) {
+                runCatching { buildComparisonPdf(context, userName, sortedResults) }.getOrNull()
             }
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "application/pdf"
+                putExtra(Intent.EXTRA_TEXT, shareText)
+                putExtra(Intent.EXTRA_SUBJECT, "$userName — Compatibility Report")
+                if (uri != null) {
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    clipData = ClipData.newRawUri("Compatibility PDF", uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                } else {
+                    type = "text/plain"
+                }
+            }
+            context.startActivity(Intent.createChooser(intent, "Share Results"))
         }
-        context.startActivity(Intent.createChooser(intent, "Share Results"))
     }
     val saveToFiles: () -> Unit
     // iOS parity (ComparisonOverviewView.swift:751-768): Save uses the SAF
