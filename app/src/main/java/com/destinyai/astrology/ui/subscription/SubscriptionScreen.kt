@@ -620,12 +620,6 @@ fun SubscriptionScreen(
                                         }
                                     }
                                     Spacer(Modifier.height(4.dp))
-                                    Text(
-                                        text = if (plan.dailyQuota < 0) stringResource(R.string.subscription_unlimited_questions)
-                                        else stringResource(R.string.subscription_questions_per_day, plan.dailyQuota),
-                                        fontSize = 13.sp,
-                                        color = CreamDim,
-                                    )
                                     // iOS parity (SubscriptionView.swift:521-572, 664-678):
                                     // Per-plan entitlements list with checkmarks. Plus shows
                                     // an "Everything in Core, plus:" header.
