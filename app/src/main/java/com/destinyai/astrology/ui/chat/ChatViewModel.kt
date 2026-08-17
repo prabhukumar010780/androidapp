@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -326,6 +327,7 @@ class ChatViewModel @Inject constructor(
         // also resets when ProfileContextManager is mutated outside the bus (e.g. deep link).
         viewModelScope.launch {
             prefs.activeProfileIdFlow
+                .distinctUntilChanged()
                 .drop(1)
                 .collect {
                     handleProfileSwitch()
@@ -863,7 +865,7 @@ class ChatViewModel @Inject constructor(
                     // ChatRepositoryImpl replaces DB rows on CONFLICT so followUps may be null
                     // after a sync — the openThread call preserves them only for explicit taps;
                     // loadDefaultState must do the same for the auto-resume case.
-                    val followUps = messages.lastOrNull { it.role == ChatMessage.Role.ASSISTANT }
+                    val followUps = messages.lastOrNull { it.role == ChatMessage.Role.ASSISTANT && it.followUps.isNotEmpty() }
                         ?.followUps.orEmpty()
                     _uiState.update {
                         it.copy(
@@ -934,7 +936,7 @@ class ChatViewModel @Inject constructor(
             // from the LAST ASSISTANT MESSAGE's persisted followUps — reading from the
             // loaded messages themselves (same source iOS uses), not a separate DB query.
             // Without this, reopening a thread shows no guided next-question pills.
-            val followUps = messages.lastOrNull { it.role == ChatMessage.Role.ASSISTANT }
+            val followUps = messages.lastOrNull { it.role == ChatMessage.Role.ASSISTANT && it.followUps.isNotEmpty() }
                 ?.followUps.orEmpty()
             _uiState.update {
                 it.copy(
