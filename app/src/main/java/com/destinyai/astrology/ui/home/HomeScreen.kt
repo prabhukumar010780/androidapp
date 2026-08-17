@@ -443,7 +443,7 @@ fun HomeScreen(
                 // contains only the logo + side buttons, not the greeting.
                 item {
                     Spacer(Modifier.height(4.dp))
-                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    Column(modifier = Modifier.padding(horizontal = 12.dp)) {
                         Text(
                             text = stringResource(
                                 R.string.home_greeting_with_name,
@@ -536,7 +536,7 @@ fun HomeScreen(
                     item {
                         GoldGradientText(
                             text = stringResource(R.string.home_current_dasha),
-                            modifier = Modifier.padding(horizontal = 16.dp),
+                            modifier = Modifier.padding(horizontal = 12.dp),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = CanelaFontFamily,
@@ -559,7 +559,7 @@ fun HomeScreen(
                     item {
                         GoldGradientText(
                             text = stringResource(R.string.home_current_transits),
-                            modifier = Modifier.padding(horizontal = 16.dp),
+                            modifier = Modifier.padding(horizontal = 12.dp),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = CanelaFontFamily,
@@ -807,7 +807,7 @@ private fun LifeAreaOrbs(
         )
     }
     LazyRow(
-        contentPadding = PaddingValues(horizontal = 16.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         items(areas, key = { it.name }) { area ->
@@ -1104,7 +1104,7 @@ private fun DashaInsightCard(dashaInfo: HomeDashaInfo, onClick: () -> Unit = {})
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = 12.dp)
             .shadow(
                 elevation = 8.dp,
                 shape = RoundedCornerShape(Radius.card),
@@ -1285,7 +1285,7 @@ private fun TransitAlertsRow(
     onTransitTap: (HomeTransit) -> Unit = {},
 ) {
     LazyRow(
-        contentPadding = PaddingValues(horizontal = 16.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         items(transits, key = { it.planet }) { transit ->
@@ -1462,7 +1462,7 @@ private fun YogaHighlightRow(
     onFilterSelected: (YogaFilter) -> Unit,
     onYogaClick: (HomeYoga) -> Unit,
 ) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+    Column(modifier = Modifier.padding(horizontal = 12.dp)) {
         GoldGradientText(
             text = stringResource(R.string.yoga_positive_negative),
             fontSize = 18.sp,
@@ -1756,7 +1756,12 @@ private fun PremiumYogaCard(
                         .map { it.trim() }
                         .filter { it.isNotEmpty() }
                         .joinToString(", ") { "H$it" }
-                    Column(horizontalAlignment = Alignment.End) {
+                    // end padding clears the 20dp bottom-right arrow CTA overlay so the
+                    // right-aligned HOUSES label / value never sit under it (was overlapping).
+                    Column(
+                        horizontalAlignment = Alignment.End,
+                        modifier = Modifier.padding(end = 22.dp),
+                    ) {
                         Text(
                             text = stringResource(R.string.houses_label),
                             fontSize = AppType.caption,
@@ -1831,7 +1836,7 @@ private fun HomeYoga.matchesFilter(filter: YogaFilter): Boolean {
 
 @Composable
 private fun DoshaStatusRow(doshas: HomeDoshaStatus) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+    Column(modifier = Modifier.padding(horizontal = 12.dp)) {
         Text(
             text = stringResource(R.string.home_dosha_alerts),
             style = MaterialTheme.typography.labelLarge,
@@ -2512,7 +2517,7 @@ private fun WhatsInMyMindGrid(
     questions: List<String>,
     onQuestionTap: (String) -> Unit,
 ) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+    Column(modifier = Modifier.padding(horizontal = 12.dp)) {
         GoldGradientText(
             text = stringResource(R.string.home_what_in_my_mind),
             fontSize = 18.sp,
