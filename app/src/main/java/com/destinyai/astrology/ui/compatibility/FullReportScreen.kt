@@ -71,7 +71,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private data class ReportSection(val emoji: String, val title: String, val content: String)
+internal data class ReportSection(val emoji: String, val title: String, val content: String)
 
 /**
  * DES-161 C3: build the share-sheet body text. The score fraction and the
@@ -850,7 +850,7 @@ private fun ReportTable(table: MdBlock.TableBlock) {
 
 // ─── Pure Helpers ─────────────────────────────────────────────────────────────
 
-private fun parseSections(summary: String): List<ReportSection> {
+internal fun parseSections(summary: String): List<ReportSection> {
     if (summary.isEmpty()) return emptyList()
 
     val result = mutableListOf<ReportSection>()

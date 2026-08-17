@@ -2,8 +2,11 @@ package com.destinyai.astrology.ui.compatibility
 
 import android.content.ClipData
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.pdf.PdfDocument
 import android.net.Uri
+import android.view.View
+import androidx.compose.ui.platform.ComposeView
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
@@ -163,51 +166,82 @@ fun CompatibilityResultScreen(
     LaunchedEffect(Unit) { contentVisible = true }
 
     // iOS parity (CompatibilityResultSheets.swift:107-152 presentNativeShareSheet):
-    // share as PDF + text. WhatsApp requires clipData to be set for ACTION_SEND
-    // with EXTRA_STREAM — without it the file is silently ignored and only text arrives.
+    // share shareText + PNG social card + PDF report via ACTION_SEND_MULTIPLE.
+    fun renderShareCardBitmap(): Bitmap {
+        val shareView = ComposeView(context).apply {
+            setContent {
+                ShareCardView(
+                    boyName = result.boyName,
+                    girlName = result.girlName,
+                    totalScore = result.totalScore,
+                    maxScore = result.maxScore,
+                    percentage = result.adjustedPercentage,
+                    isRecommended = result.isRecommended,
+                    adjustedScore = result.adjustedScore,
+                    forSharing = true,
+                )
+            }
+        }
+        val size = 1080
+        shareView.measure(
+            View.MeasureSpec.makeMeasureSpec(size, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(size, View.MeasureSpec.EXACTLY),
+        )
+        shareView.layout(0, 0, size, size)
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        shareView.draw(android.graphics.Canvas(bitmap))
+        return bitmap
+    }
+
     fun shareBitmap() {
         scope.launch {
-            val pct = ((result.adjustedScore ?: result.totalScore).toDouble() / result.maxScore * 100).toInt()
-            val ratingText = when {
-                !result.isRecommended -> "Not Recommended"
-                pct >= 90 -> "Excellent ⭐⭐⭐⭐⭐"
-                pct >= 75 -> "Very Good ⭐⭐⭐⭐"
-                pct >= 60 -> "Good ⭐⭐⭐"
-                pct >= 50 -> "Average ⭐⭐"
-                else -> "Not Recommended"
-            }
-            val shareText = "✨ ${result.boyName} & ${result.girlName} — Compatibility score: " +
-                "${result.totalScore}/${result.maxScore} ($pct%) $ratingText\n\n" +
-                "Analyzed with Destiny AI Astrology\n🔗 destinyaiastrology.com"
-
+            val shareText = buildCompatibilityShareText(result)
+            val authority = "${context.packageName}.fileprovider"
             val sessionTag = result.boyName.take(4) + result.girlName.take(4)
-            val pdfFile = File(context.cacheDir, "compat-$sessionTag.pdf")
-            val pdfUri: Uri? = withContext(Dispatchers.IO) {
-                runCatching {
-                    val bytes = buildCompatibilityPdfBytes(result, emptyList())
-                    FileOutputStream(pdfFile).use { it.write(bytes) }
-                    FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", pdfFile)
-                }.getOrNull()
-            }
-
-            val intent = if (pdfUri != null) {
-                Intent(Intent.ACTION_SEND).apply {
-                    type = "application/pdf"
-                    putExtra(Intent.EXTRA_TEXT, shareText)
-                    putExtra(Intent.EXTRA_SUBJECT, "${result.boyName} & ${result.girlName} — Compatibility Report")
-                    putExtra(Intent.EXTRA_STREAM, pdfUri)
-                    clipData = ClipData.newRawUri("Compatibility Report", pdfUri)
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            try {
+                val bitmap = renderShareCardBitmap()
+                val pngUri = withContext(Dispatchers.IO) {
+                    val file = File(context.cacheDir, "compat-$sessionTag.png")
+                    FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 90, it) }
+                    FileProvider.getUriForFile(context, authority, file)
                 }
-            } else {
-                Intent(Intent.ACTION_SEND).apply {
+                val pdfUri: Uri? = runCatching {
+                    withContext(Dispatchers.IO) {
+                        val sections = parseSections(result.summary)
+                        val bytes = buildCompatibilityPdfBytes(result, sections)
+                        val file = File(context.cacheDir, "compat-$sessionTag.pdf")
+                        FileOutputStream(file).use { it.write(bytes) }
+                        FileProvider.getUriForFile(context, authority, file)
+                    }
+                }.getOrNull()
+
+                val intent = if (pdfUri != null) {
+                    Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                        type = "*/*"
+                        putParcelableArrayListExtra(Intent.EXTRA_STREAM, arrayListOf(pngUri, pdfUri))
+                        putExtra(Intent.EXTRA_TEXT, shareText)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                } else {
+                    Intent(Intent.ACTION_SEND).apply {
+                        type = "image/png"
+                        putExtra(Intent.EXTRA_STREAM, pngUri)
+                        putExtra(Intent.EXTRA_TEXT, shareText)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                }
+                context.startActivity(
+                    Intent.createChooser(intent, context.getString(R.string.compat_share_compat_chooser))
+                )
+            } catch (_: Exception) {
+                val intent = Intent(Intent.ACTION_SEND).apply {
                     type = "text/plain"
                     putExtra(Intent.EXTRA_TEXT, shareText)
                 }
+                context.startActivity(
+                    Intent.createChooser(intent, context.getString(R.string.compat_share_compat_chooser))
+                )
             }
-            context.startActivity(
-                Intent.createChooser(intent, context.getString(R.string.compat_share_compat_chooser))
-            )
         }
     }
 
