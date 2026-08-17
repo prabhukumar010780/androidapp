@@ -1835,26 +1835,57 @@ private fun QuotaExhaustedGuestSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 16.dp)
+                .padding(horizontal = 24.dp, vertical = 16.dp)
                 .semantics { contentDescription = "quota_exhausted_guest_sheet" },
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Icon(Icons.Default.Lock, contentDescription = null, tint = Gold, modifier = Modifier.size(40.dp))
             Text(
-                stringResource(R.string.guest_question_limit_reached),
-                fontSize = 18.sp,
+                stringResource(R.string.guest_sign_up_header),
+                fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = CanelaFontFamily,
                 color = Gold,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
             Text(
-                stringResource(R.string.sign_in_to_continue_chat),
+                stringResource(R.string.guest_sign_up_body),
                 fontSize = 14.sp,
                 color = CreamDim,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
+            Spacer(Modifier.height(4.dp))
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                listOf(
+                    R.string.feature_ask_more_questions,
+                    R.string.feature_save_birth_chart,
+                    R.string.feature_get_daily_insights,
+                    R.string.feature_unlock_destiny_matching,
+                    R.string.feature_follow_up_match_report,
+                ).forEach { resId ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Icon(
+                            Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = Gold,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Text(
+                            stringResource(resId),
+                            fontSize = 14.sp,
+                            color = CreamText,
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(4.dp))
             Button(
                 onClick = onSignIn,
                 colors = ButtonDefaults.buttonColors(containerColor = Gold),
@@ -1863,20 +1894,13 @@ private fun QuotaExhaustedGuestSheet(
                     .semantics { contentDescription = "sign_in_button" },
             ) {
                 Text(
-                    stringResource(R.string.sign_in_button),
+                    stringResource(R.string.sign_up_button),
                     color = Color(0xFF0D0D1A),
                     fontWeight = FontWeight.Bold,
                 )
             }
-            // Issue 58 — guest benefit hint, mirrors iOS QuotaExhaustedView guest path.
-            Text(
-                stringResource(R.string.guest_user_benefit),
-                fontSize = 11.sp,
-                color = CreamDim.copy(alpha = 0.7f),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            )
             TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.cancel), color = CreamDim)
+                Text(stringResource(R.string.not_now), color = CreamDim)
             }
             Spacer(Modifier.height(8.dp))
         }
@@ -1929,7 +1953,7 @@ private fun QuotaExhaustedAccountSheet(
                         isFairUse -> R.string.usage_restricted_title
                         isSubscriptionExpired -> R.string.subscription_expired_title
                         isDailyLimit -> R.string.quota_daily_limit_title
-                        else -> R.string.quota_exhausted_title
+                        else -> R.string.quota_upgrade_header
                     },
                 ),
                 fontSize = 18.sp,
@@ -1980,6 +2004,35 @@ private fun QuotaExhaustedAccountSheet(
                     )
                 }
             } else {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    listOf(
+                        R.string.feature_unlimited_questions,
+                        R.string.feature_unlimited_matching,
+                        R.string.feature_multiple_profiles,
+                        R.string.feature_daily_personalized_insights,
+                    ).forEach { resId ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = Gold,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Text(
+                                stringResource(resId),
+                                fontSize = 14.sp,
+                                color = CreamText,
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
                 Button(
                     onClick = onUpgrade,
                     colors = ButtonDefaults.buttonColors(containerColor = Gold),
@@ -1988,20 +2041,14 @@ private fun QuotaExhaustedAccountSheet(
                         .semantics { contentDescription = "quota_exhausted_upgrade_button" },
                 ) {
                     Text(
-                        stringResource(if (isSubscriptionExpired) R.string.subscription_expired_cta else R.string.upgrade_action),
+                        stringResource(if (isSubscriptionExpired) R.string.subscription_expired_cta else R.string.choose_plan_button),
                         color = Color(0xFF0D0D1A),
                         fontWeight = FontWeight.Bold,
                     )
                 }
-                Text(
-                    stringResource(R.string.paid_user_benefit),
-                    fontSize = 11.sp,
-                    color = CreamDim.copy(alpha = 0.7f),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                )
             }
             TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.cancel), color = CreamDim)
+                Text(stringResource(R.string.not_now), color = CreamDim)
             }
             Spacer(Modifier.height(8.dp))
         }

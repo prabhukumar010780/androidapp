@@ -2711,6 +2711,21 @@ Until then: Use this period for strategic positioning.</string>
     <!-- Quota-exhausted guest sheet (mirrors iOS QuotaExhaustedView guest path). -->
     <string name="guest_question_limit_reached">Question limit reached</string>
     <string name="sign_in_to_continue_chat">Sign in to keep your chat history and unlock more questions. Your birth data is preserved.</string>
+    <string name="guest_sign_up_header" tools:ignore="MissingTranslation">Sign up to continue!</string>
+    <string name="guest_sign_up_body" tools:ignore="MissingTranslation">Create an account to keep going and save your progress.</string>
+    <!-- Feature list items for guest sign-up sheet -->
+    <string name="feature_ask_more_questions" tools:ignore="MissingTranslation">Ask more questions</string>
+    <string name="feature_save_birth_chart" tools:ignore="MissingTranslation">Save your birth chart</string>
+    <string name="feature_get_daily_insights" tools:ignore="MissingTranslation">Get daily insights</string>
+    <string name="feature_unlock_destiny_matching" tools:ignore="MissingTranslation">Unlock Destiny Matching™ (compatibility matching)</string>
+    <string name="feature_follow_up_match_report" tools:ignore="MissingTranslation">Ask follow-up questions after your match report</string>
+    <!-- Quota-exhausted upgrade sheet — header + feature list -->
+    <string name="quota_upgrade_header" tools:ignore="MissingTranslation">You\'ve reached your limit</string>
+    <string name="choose_plan_button" tools:ignore="MissingTranslation">Choose a plan</string>
+    <string name="feature_unlimited_questions" tools:ignore="MissingTranslation">Unlimited questions</string>
+    <string name="feature_unlimited_matching" tools:ignore="MissingTranslation">Unlimited Destiny Matching™</string>
+    <string name="feature_multiple_profiles" tools:ignore="MissingTranslation">Multiple birth charts/profiles</string>
+    <string name="feature_daily_personalized_insights" tools:ignore="MissingTranslation">Daily personalized insights</string>
     <!-- Astrology Settings screen (parity with iOS AstrologySettingsSheet) -->
     <string name="astrology_settings_back_cd">Back</string>
     <string name="ayanamsa_lahiri_default">Lahiri (Default)</string>
