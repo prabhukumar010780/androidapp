@@ -401,6 +401,10 @@ class HomeViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     isLoading = false,
+                    // Raise isRichDataLoading here so showHeroLoader stays true with
+                    // no gap between isLoading going false and loadRichHomeData raising it
+                    // — prevents the empty-yoga flash during a profile switch.
+                    isRichDataLoading = true,
                     suggestedQuestions = questions,
                     dailyInsight = insight.ifBlank { it.dailyInsight },
                     errorMessage = when {
