@@ -66,13 +66,20 @@ internal suspend fun captureComposableAsBitmap(
                         View.MeasureSpec.makeMeasureSpec(heightPx, View.MeasureSpec.EXACTLY),
                     )
                     composeView.layout(0, 0, widthPx, heightPx)
-                    val bitmap = Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888)
-                    composeView.draw(Canvas(bitmap))
-                    if (cont.isActive) cont.resume(bitmap)
+                    composeView.post {
+                        try {
+                            val bitmap = Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888)
+                            composeView.draw(Canvas(bitmap))
+                            if (cont.isActive) cont.resume(bitmap)
+                        } catch (t: Throwable) {
+                            if (cont.isActive) cont.resumeWithException(t)
+                        } finally {
+                            cleanup()
+                        }
+                    }
                 } catch (t: Throwable) {
-                    if (cont.isActive) cont.resumeWithException(t)
-                } finally {
                     cleanup()
+                    if (cont.isActive) cont.resumeWithException(t)
                 }
             }
 
@@ -82,7 +89,6 @@ internal suspend fun captureComposableAsBitmap(
             val listener = object : ViewTreeObserver.OnPreDrawListener {
                 override fun onPreDraw(): Boolean {
                     if (observer.isAlive) observer.removeOnPreDrawListener(this)
-                    // Second frame: composition has been applied to the layout.
                     composeView.post { finishWithBitmap() }
                     return true
                 }

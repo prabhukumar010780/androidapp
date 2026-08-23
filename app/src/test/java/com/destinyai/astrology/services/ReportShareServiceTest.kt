@@ -104,6 +104,25 @@ class ReportShareServiceTest {
     }
 
     @Test
+    fun `shareUsesSendMultiple is true for png plus pdf like iOS`() {
+        val png = ShareAttachment(uri = mockk(relaxed = true), mimeType = "image/png", label = "card")
+        val pdf = ShareAttachment(uri = mockk(relaxed = true), mimeType = "application/pdf", label = "report")
+        assertTrue(shareUsesSendMultiple(listOf(png, pdf)))
+        assertFalse(shareUsesSendMultiple(listOf(png)))
+        assertFalse(shareUsesSendMultiple(listOf(pdf)))
+    }
+
+    @Test
+    fun `shareTextForIntent drops url lines when files are attached`() {
+        val pdf = ShareAttachment(uri = mockk(relaxed = true), mimeType = "application/pdf", label = "report")
+        val full = "✨ Ravi & Meera — Compatibility score: 29/36 (80%)\n\nAnalyzed with Destiny AI Astrology\n🔗 destinyaiastrology.com"
+        val caption = shareTextForIntent(full, listOf(pdf))
+        assertFalse(caption.contains("destinyaiastrology.com"))
+        assertTrue(caption.contains("29/36"))
+        assertEquals(full, shareTextForIntent(full, emptyList()))
+    }
+
+    @Test
     fun `buildDestinyShareIntent accepts text plus png and pdf`() {
         val png = ShareAttachment(uri = mockk(relaxed = true), mimeType = "image/png", label = "card")
         val pdf = ShareAttachment(uri = mockk(relaxed = true), mimeType = "application/pdf", label = "report")

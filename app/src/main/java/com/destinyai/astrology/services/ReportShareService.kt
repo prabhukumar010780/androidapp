@@ -53,10 +53,14 @@ fun buildDestinyShareIntent(
     subject: String? = null,
     title: String = "Destiny AI Astrology",
 ): Intent {
-    val action = if (attachments.size > 1) Intent.ACTION_SEND_MULTIPLE else Intent.ACTION_SEND
+    val action = if (shareUsesSendMultiple(attachments)) {
+        Intent.ACTION_SEND_MULTIPLE
+    } else {
+        Intent.ACTION_SEND
+    }
     val intent = Intent(action).apply {
         type = shareMimeType(attachments.map { it.mimeType })
-        putExtra(Intent.EXTRA_TEXT, text)
+        putExtra(Intent.EXTRA_TEXT, shareTextForIntent(text, attachments))
         putExtra(Intent.EXTRA_TITLE, title)
         subject?.takeIf { it.isNotBlank() }?.let { putExtra(Intent.EXTRA_SUBJECT, it) }
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -64,16 +68,16 @@ fun buildDestinyShareIntent(
 
     if (attachments.isNotEmpty()) {
         val mimeTypes = attachments.map { it.mimeType }.distinct().toTypedArray()
-        intent.clipData = buildShareClipData(text, attachments, title, mimeTypes)
+        intent.clipData = buildShareClipData(attachments, title, mimeTypes)
         intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
 
-        if (attachments.size == 1) {
-            intent.putExtra(Intent.EXTRA_STREAM, attachments.first().uri)
-        } else {
+        if (shareUsesSendMultiple(attachments)) {
             intent.putParcelableArrayListExtra(
                 Intent.EXTRA_STREAM,
                 ArrayList(attachments.map { it.uri }),
             )
+        } else if (attachments.isNotEmpty()) {
+            intent.putExtra(Intent.EXTRA_STREAM, attachments.first().uri)
         }
     }
 
@@ -133,18 +137,42 @@ internal fun shareMimeType(mimeTypes: List<String>): String {
     }
 }
 
+/**
+ * iOS UIActivityViewController gets [text, image, pdf] as separate items.
+ * Android equivalent is ACTION_SEND_MULTIPLE with every file in EXTRA_STREAM.
+ * A single ACTION_SEND with only the PNG is why the sheet showed the screenshot
+ * and dropped the PDF.
+ */
+internal fun shareUsesSendMultiple(attachments: List<ShareAttachment>): Boolean =
+    attachments.size > 1
+
+/**
+ * WhatsApp turns EXTRA_TEXT into a link preview when it contains a URL and then
+ * drops attached files. Keep the score copy; drop URL lines if anything is attached.
+ */
+internal fun shareTextForIntent(text: String, attachments: List<ShareAttachment>): String {
+    if (attachments.isEmpty()) return text
+    return text.lineSequence()
+        .filterNot { line ->
+            val lower = line.lowercase()
+            lower.contains("destinyaiastrology.com") ||
+                lower.contains("http://") ||
+                lower.contains("https://")
+        }
+        .joinToString("\n")
+        .trim()
+}
+
 private fun buildShareClipData(
-    text: String,
     attachments: List<ShareAttachment>,
     title: String,
     mimeTypes: Array<String>,
 ): ClipData {
     val first = attachments.first()
-    val clipMimes = (listOf("text/plain") + mimeTypes).distinct().toTypedArray()
     return ClipData(
         first.label.ifBlank { title },
-        clipMimes,
-        ClipData.Item(text, null, first.uri),
+        mimeTypes.ifEmpty { arrayOf(first.mimeType) },
+        ClipData.Item(first.uri),
     ).apply {
         attachments.drop(1).forEach { attachment ->
             addItem(ClipData.Item(attachment.uri))
