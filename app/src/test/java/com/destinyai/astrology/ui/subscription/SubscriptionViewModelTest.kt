@@ -362,4 +362,38 @@ class SubscriptionViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    @Test
+    fun `sortPaidPlansPlusFirst puts plus above core`() {
+        val core = PlanDto("core", "Core", false, 4.99, 49.99, 10)
+        val plus = PlanDto("plus", "Plus", false, 7.99, 79.99, 20)
+        val sorted = sortPaidPlansPlusFirst(listOf(core, plus))
+        assertEquals(listOf("plus", "core"), sorted.map { it.planId })
+    }
+
+    @Test
+    fun `sortPaidPlansPlusFirst keeps plus first with a third paid tier`() {
+        val elite = PlanDto("elite", "Elite", false, 12.99, 129.99, 30)
+        val core = PlanDto("core", "Core", false, 4.99, 49.99, 10)
+        val plus = PlanDto("plus", "Plus", false, 7.99, 79.99, 20)
+        val sorted = sortPaidPlansPlusFirst(listOf(elite, core, plus))
+        assertEquals(listOf("plus", "core", "elite"), sorted.map { it.planId })
+    }
+
+    @Test
+    fun `displayPlans renders plus above core`() = runTest {
+        coEvery { api.getPlans() } returns listOf(
+            PlanDto("core", "Core", false, 4.99, 49.99, 10),
+            PlanDto("plus", "Plus", false, 7.99, 79.99, 20),
+            PlanDto("free_registered", "Free", true, 0.0, 0.0, 3),
+        )
+
+        vm.loadPlans()
+
+        vm.displayPlans.test {
+            val plans = awaitItem().ifEmpty { awaitItem() }
+            assertEquals(listOf("plus", "core"), plans.map { it.source.planId })
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 }

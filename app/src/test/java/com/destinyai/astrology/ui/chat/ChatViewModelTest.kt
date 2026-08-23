@@ -350,6 +350,67 @@ class ChatViewModelTest {
         }
     }
 
+    // --- Home-prefill send: quota must never leave a dead Send with no sheet ---
+
+    @Test
+    fun `canSend stays true with text even when canAskQuestion is false`() = runTest {
+        viewModel.updateInput("Is this a good time to push my career forward?")
+        viewModel.dismissPaywall() // ensures canAsk starts true
+        // Simulate a prior quota deny that cleared canAskQuestion without going through dismiss.
+        viewModel.uiState.test {
+            val filled = awaitItem()
+            assertTrue(filled.canSend)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `sendMessage with user_not_found fail-opens and still sends`() = runTest(testDispatcher) {
+        coEvery { prefs.getUserEmail() } returns "new@user.com"
+        coEvery { quotaManager.canAccessFeature(any(), any(), any()) } returns
+            com.destinyai.astrology.data.remote.FeatureAccessResponse(
+                canAccess = false,
+                reason = "user_not_found",
+            )
+        coEvery { repository.sendMessage(any(), any(), any(), any()) } returns
+            flowOf(Result.success("Welcome, new user."))
+
+        viewModel.updateInput("What's my most attractive quality?")
+        viewModel.sendMessage()
+        advanceUntilIdle()
+
+        viewModel.uiState.test {
+            val state = awaitItem()
+            assertFalse(state.showPaywall)
+            assertFalse(state.showQuotaExhaustedAccountSheet)
+            assertTrue(state.messages.any { it.role == ChatMessage.Role.USER })
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `sendMessage with unknown quota reason shows upgrade sheet and keeps send enabled`() =
+        runTest(testDispatcher) {
+            coEvery { prefs.getUserEmail() } returns "new@user.com"
+            coEvery { quotaManager.canAccessFeature(any(), any(), any()) } returns
+                com.destinyai.astrology.data.remote.FeatureAccessResponse(
+                    canAccess = false,
+                    reason = "mystery_reason",
+                )
+
+            viewModel.updateInput("Is this a good time to push my career forward?")
+            viewModel.sendMessage()
+            advanceUntilIdle()
+
+            viewModel.uiState.test {
+                val state = awaitItem()
+                assertTrue(state.showQuotaExhaustedAccountSheet || state.showPaywall)
+                assertTrue(state.canSend)
+                assertTrue(state.inputText.isNotBlank())
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
     // --- DES-161 B3: dismissing the paywall must re-enable the send button ---
 
     @Test

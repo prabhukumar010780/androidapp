@@ -555,6 +555,40 @@ class CompatibilityComponentLogicTest {
     // ── followUpResponseStatus ────────────────────────────────────────────────
 
     @Test
+    fun `followUpQuotaGate allows when canAccess is true`() {
+        assertEquals(FollowUpQuotaGate.Allowed, followUpQuotaGate(true, null))
+        assertEquals(FollowUpQuotaGate.Allowed, followUpQuotaGate(true, "overall_limit_reached"))
+    }
+
+    @Test
+    fun `followUpQuotaGate uses daily-limit banner only for daily_limit_reached`() {
+        assertEquals(
+            FollowUpQuotaGate.DailyLimit,
+            followUpQuotaGate(false, "daily_limit_reached"),
+        )
+    }
+
+    @Test
+    fun `followUpQuotaGate shows upgrade sheet for overall limit and unknown reasons`() {
+        assertEquals(
+            FollowUpQuotaGate.UpgradeRequired,
+            followUpQuotaGate(false, "overall_limit_reached"),
+        )
+        assertEquals(
+            FollowUpQuotaGate.UpgradeRequired,
+            followUpQuotaGate(false, "upgrade_required"),
+        )
+        assertEquals(
+            FollowUpQuotaGate.UpgradeRequired,
+            followUpQuotaGate(false, "user_not_found"),
+        )
+        assertEquals(
+            FollowUpQuotaGate.UpgradeRequired,
+            followUpQuotaGate(false, null),
+        )
+    }
+
+    @Test
     fun `followUpResponseStatus returns success for success status`() {
         assertEquals(FollowUpResponseStatus.SUCCESS, followUpResponseStatus("success"))
     }

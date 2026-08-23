@@ -153,12 +153,7 @@ class SubscriptionViewModel @Inject constructor(
     val displayPlans: StateFlow<List<DisplayPlan>> =
         _uiState
             .map { state ->
-                state.plans
-                    .filter { !it.isFree }
-                    // iOS parity (SubscriptionView.swift:139, 151) — paid plans
-                    // are sorted by priceMonthly ascending so Core renders
-                    // before Plus regardless of backend ordering.
-                    .sortedBy { it.priceMonthly }
+                sortPaidPlansPlusFirst(state.plans.filter { !it.isFree })
                     .map { plan ->
                         val tier = when {
                             plan.planId.contains("plus", ignoreCase = true) -> "plus"
@@ -433,6 +428,22 @@ class SubscriptionViewModel @Inject constructor(
             billingManager.reconcileEntitlements()
             loadCurrentPlan(force = true)
             loadPlans()
+        }
+    }
+}
+
+/**
+ * iOS parity (SubscriptionView.swift loadPlans + SubscriptionViewPlanOrderTests):
+ * Plus is anchored on top; remaining paid tiers sort by monthly price ascending.
+ */
+internal fun sortPaidPlansPlusFirst(plans: List<PlanDto>): List<PlanDto> {
+    return plans.sortedWith { lhs, rhs ->
+        val lhsPlus = lhs.planId.equals("plus", ignoreCase = true)
+        val rhsPlus = rhs.planId.equals("plus", ignoreCase = true)
+        when {
+            lhsPlus && !rhsPlus -> -1
+            !lhsPlus && rhsPlus -> 1
+            else -> lhs.priceMonthly.compareTo(rhs.priceMonthly)
         }
     }
 }

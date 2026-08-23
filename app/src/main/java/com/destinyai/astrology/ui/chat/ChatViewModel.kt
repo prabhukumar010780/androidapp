@@ -164,6 +164,36 @@ class ChatViewModel @Inject constructor(
 
     private companion object {
         const val HISTORY_PAGE_SIZE: Int = 20
+        val PROVISIONING_FAIL_OPEN_REASONS = setOf(
+            "user_not_found",
+            "no_plan_assigned",
+            "feature_not_found",
+        )
+    }
+
+    /** iOS ChatViewModel else-branch: quota deny always presents a sheet, never a dead Send. */
+    private fun presentQuotaDeniedUi(reason: String?, details: String, planId: String?) {
+        val text = _uiState.value.inputText
+        if (_uiState.value.isGuestUser) {
+            _uiState.update {
+                it.copy(
+                    canAskQuestion = false,
+                    canSend = text.isNotBlank(),
+                    showPaywall = true,
+                )
+            }
+        } else {
+            _uiState.update {
+                it.copy(
+                    canAskQuestion = false,
+                    canSend = text.isNotBlank(),
+                    showQuotaExhaustedAccountSheet = true,
+                    quotaDetails = details.ifBlank { reason.orEmpty() },
+                    quotaReason = reason,
+                    quotaPlanId = planId,
+                )
+            }
+        }
     }
 
     private val lifecycleObserver = object : DefaultLifecycleObserver {
@@ -418,14 +448,16 @@ class ChatViewModel @Inject constructor(
         _uiState.update { state ->
             state.copy(
                 inputText = text,
-                canSend = text.isNotBlank() && !state.isLoading && !state.isStreaming && state.canAskQuestion,
+                // iOS ChatInputBar.canSend: nonempty text + not loading/streaming.
+                // Quota is NOT part of the button enablement — tapping Send either
+                // asks the question or presents the upgrade/quota sheet.
+                canSend = text.isNotBlank() && !state.isLoading && !state.isStreaming,
             )
         }
     }
 
     fun sendMessage() {
         val state = _uiState.value
-        if (!state.canAskQuestion) return
         val input = state.inputText.trim()
         if (input.isBlank()) return
         lastSentQuery = input
@@ -444,6 +476,15 @@ class ChatViewModel @Inject constructor(
                     val access = quotaManager.canAccessFeature(QuotaManager.FeatureID.AI_QUESTIONS, email)
                     if (!access.canAccess) {
                         when (access.reason) {
+                            // New-account provisioning race: the user row/plan may not
+                            // exist yet. Fail open so /predict can create them — matching
+                            // "new account should be allowed to ask".
+                            "user_not_found", "no_plan_assigned", "feature_not_found" -> {
+                                android.util.Log.w(
+                                    "ChatViewModel",
+                                    "pre-flight quota reason=${access.reason} — proceeding (provisioning fail-open)",
+                                )
+                            }
                             "daily_limit_reached" -> {
                                 // iOS parity (QuotaExhaustedView.swift:206-208): dedicated daily-limit
                                 // sheet with a localized "resets" message, not a hardcoded error banner.
@@ -554,15 +595,20 @@ class ChatViewModel @Inject constructor(
                                     }
                                 }
                             }
-                            else -> _uiState.update {
-                                it.copy(
-                                    canAskQuestion = false,
-                                    canSend = false,
-                                    errorMessage = "Unable to send question right now.",
+                            else -> {
+                                // iOS ChatViewModel else: always present QuotaExhaustedView.
+                                // Never leave Send disabled with no sheet (home-question bug).
+                                pendingPostUpgradeQuery = input
+                                presentQuotaDeniedUi(
+                                    reason = access.reason,
+                                    details = access.upgradeCta?.message ?: "",
+                                    planId = access.planId,
                                 )
                             }
                         }
-                        return@launch
+                        if (access.reason !in PROVISIONING_FAIL_OPEN_REASONS) {
+                            return@launch
+                        }
                     }
                 } catch (e: Exception) {
                     // iOS parity (QuotaManager.swift:460-473, iOS-6 fix): FAIL OPEN on a
@@ -813,12 +859,17 @@ class ChatViewModel @Inject constructor(
     }
 
     fun startNewChat() {
+        streamJob?.cancel()
+        streamJob = null
+        stopCosmicProgressTimer()
         _uiState.update {
             it.copy(
                 sessionId = UUID.randomUUID().toString(),
                 messages = listOf(welcomeMessage),
                 inputText = "",
                 canSend = false,
+                isLoading = false,
+                isStreaming = false,
                 activeThreadId = null,
                 // #18: clear any follow-up chips from the previous conversation so the
                 // empty state shows only the fresh starter questions.
@@ -1070,7 +1121,14 @@ class ChatViewModel @Inject constructor(
 
     /** Mirrors iOS QuotaExhaustedView dismiss for the account-user (non-guest) path. */
     fun dismissQuotaExhaustedAccountSheet() {
-        _uiState.update { it.copy(showQuotaExhaustedAccountSheet = false) }
+        val text = _uiState.value.inputText
+        _uiState.update {
+            it.copy(
+                showQuotaExhaustedAccountSheet = false,
+                canAskQuestion = true,
+                canSend = text.isNotBlank() && !it.isLoading && !it.isStreaming,
+            )
+        }
     }
 
     /**

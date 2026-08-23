@@ -659,22 +659,44 @@ class CompatibilityViewModel @Inject constructor(
     /**
      * iOS parity (CompatibilityResultSheets.swift:1432-1451): pre-flight the
      * ai_questions quota for follow-up chat. Returns true if the user may send;
-     * on a hard block it surfaces the inline follow-up banner (daily-limit vs
-     * upgrade) and returns false. Fail-open on network error like iOS.
+     * daily-limit shows the inline banner, any other deny presents the
+     * QuotaExhausted sheet (not a red "upgrade to unlock" banner). Fail-open
+     * on network error like iOS.
      */
+    private val _showFollowUpQuotaSheet = MutableStateFlow(false)
+    val showFollowUpQuotaSheet: StateFlow<Boolean> = _showFollowUpQuotaSheet
+    private val _followUpQuotaIsGuest = MutableStateFlow(false)
+    val followUpQuotaIsGuest: StateFlow<Boolean> = _followUpQuotaIsGuest
+
+    fun dismissFollowUpQuotaSheet() { _showFollowUpQuotaSheet.value = false }
+
+    fun requestUpgradeFromFollowUpQuota() {
+        _showFollowUpQuotaSheet.value = false
+        showPaywallSheet()
+    }
+
+    private fun isGuestEmail(email: String?): Boolean {
+        val e = email.orEmpty()
+        return e.isBlank() || e.contains("guest", ignoreCase = true) || e.contains("@gen.com", ignoreCase = true)
+    }
+
     private suspend fun checkFollowUpQuota(email: String): Boolean {
         return try {
             val access = api.canAccessFeatureFull(email, "ai_questions")
-            if (access.canAccess) {
-                true
-            } else {
-                _followUpError.value = if (access.reason == "daily_limit_reached") {
-                    access.resetAt?.let { appContext.getString(R.string.daily_limit_reset_time, it) }
-                        ?: appContext.getString(R.string.daily_limit_reached_tomorrow)
-                } else {
-                    appContext.getString(R.string.upgrade_to_unlock)
+            when (followUpQuotaGate(access.canAccess, access.reason)) {
+                FollowUpQuotaGate.Allowed -> true
+                FollowUpQuotaGate.DailyLimit -> {
+                    _followUpError.value = access.resetAt?.let {
+                        appContext.getString(R.string.daily_limit_reset_time, it)
+                    } ?: appContext.getString(R.string.daily_limit_reached_tomorrow)
+                    false
                 }
-                false
+                FollowUpQuotaGate.UpgradeRequired -> {
+                    _followUpError.value = null
+                    _followUpQuotaIsGuest.value = isGuestEmail(email)
+                    _showFollowUpQuotaSheet.value = true
+                    false
+                }
             }
         } catch (e: Exception) {
             // Fail-open: backend still gates the follow-up endpoint server-side.
@@ -1073,11 +1095,16 @@ class CompatibilityViewModel @Inject constructor(
             } catch (e: Exception) {
                 val msg = (e.message ?: "").lowercase()
                 val isQuota = msg.contains("quota") || msg.contains("limit") ||
-                    msg.contains("maximum free")
+                    msg.contains("maximum free") || msg.contains("upgrade") ||
+                    msg.contains("403") || msg.contains("402")
                 if (isQuota) {
                     _followUpMessages.update { list -> list.filter { it !== userMessage } }
+                    _followUpError.value = null
+                    _followUpQuotaIsGuest.value = isGuestEmail(email)
+                    _showFollowUpQuotaSheet.value = true
+                } else {
+                    _followUpError.value = "Failed to get response. Please try again."
                 }
-                _followUpError.value = "Failed to get response. Please try again."
             } finally {
                 _isFollowUpLoading.value = false
             }

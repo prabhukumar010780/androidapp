@@ -96,6 +96,7 @@ import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
 import com.destinyai.astrology.ui.theme.Radius
 import com.destinyai.astrology.ui.theme.Spacing
+import com.destinyai.astrology.ui.subscription.SubscriptionScreen
 import com.destinyai.astrology.ui.theme.TouchMin
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.semantics.contentDescription
@@ -874,6 +875,12 @@ fun AskDestinyDialog(
     // iOS parity (CompatibilityResultSheets.swift:1056-1073): inline error
     // banner shown above the input bar; tap to dismiss.
     val errorMessage by viewModel.followUpError.collectAsState()
+    val showQuotaSheet by viewModel.showFollowUpQuotaSheet.collectAsState()
+    val quotaIsGuest by viewModel.followUpQuotaIsGuest.collectAsState()
+    val compatUiState by viewModel.uiState.collectAsState()
+    LaunchedEffect(compatUiState.navigateToAuth) {
+        if (compatUiState.navigateToAuth) onDismiss()
+    }
     var inputText by remember { mutableStateOf("") }
     val scrollState = androidx.compose.foundation.lazy.rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -1316,6 +1323,29 @@ fun AskDestinyDialog(
                 showStyleSelector = false
             },
             onDismiss = { showStyleSelector = false },
+        )
+    }
+
+    // iOS parity (CompatibilityResultSheets.swift:1154-1193 showQuotaSheet):
+    // quota / plan denials present QuotaExhaustedView, not a red banner.
+    if (showQuotaSheet) {
+        QuotaExhaustedDialog(
+            isGuest = quotaIsGuest,
+            customMessage = null,
+            onSignIn = {
+                viewModel.dismissFollowUpQuotaSheet()
+                viewModel.requestSignInFromQuota()
+            },
+            onUpgrade = { viewModel.requestUpgradeFromFollowUpQuota() },
+            onDismiss = { viewModel.dismissFollowUpQuotaSheet() },
+        )
+    }
+
+    // ModalBottomSheet sits above CompatibilityScreen, so the paywall must be
+    // composed here or Upgrade would open behind Ask Destiny.
+    if (compatUiState.showPaywall) {
+        SubscriptionScreen(
+            onBack = { viewModel.dismissPaywall() },
         )
     }
 }
@@ -1809,6 +1839,22 @@ private object KutaTextBuilder {
 // ─── Follow-Up Pure Helpers ───────────────────────────────────────────────────
 
 enum class FollowUpResponseStatus { SUCCESS, REDIRECT, BLOCKED, ERROR }
+
+/** How Ask Destiny should react to a pre-flight /can-access deny. */
+internal enum class FollowUpQuotaGate { Allowed, DailyLimit, UpgradeRequired }
+
+/**
+ * iOS CompatibilityResultSheets.sendMessage quota branch:
+ * daily_limit_reached → inline banner; any other deny → QuotaExhaustedView sheet.
+ */
+internal fun followUpQuotaGate(canAccess: Boolean, reason: String?): FollowUpQuotaGate {
+    if (canAccess) return FollowUpQuotaGate.Allowed
+    return if (reason == "daily_limit_reached") {
+        FollowUpQuotaGate.DailyLimit
+    } else {
+        FollowUpQuotaGate.UpgradeRequired
+    }
+}
 
 internal fun followUpResponseStatus(status: String?): FollowUpResponseStatus = when (status) {
     "success" -> FollowUpResponseStatus.SUCCESS
