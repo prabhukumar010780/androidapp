@@ -117,6 +117,12 @@ class ReportShareServiceTest {
     }
 
     @Test
+    fun `grantReadPermissionToShareTargets is a no-op without attachment uris`() {
+        val intent = Intent(Intent.ACTION_SEND).apply { type = "text/plain" }
+        assertDoesNotThrow { grantReadPermissionToShareTargets(context, intent) }
+    }
+
+    @Test
     fun `buildDestinyShareIntent accepts text plus pdf only`() {
         val pdf = ShareAttachment(uri = mockk(relaxed = true), mimeType = "application/pdf", label = "comparison")
         assertDoesNotThrow {

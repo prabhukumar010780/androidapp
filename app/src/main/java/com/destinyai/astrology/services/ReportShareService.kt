@@ -3,6 +3,7 @@ package com.destinyai.astrology.services
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
@@ -63,7 +64,7 @@ fun buildDestinyShareIntent(
 
     if (attachments.isNotEmpty()) {
         val mimeTypes = attachments.map { it.mimeType }.distinct().toTypedArray()
-        intent.clipData = buildShareClipData(attachments, title, mimeTypes)
+        intent.clipData = buildShareClipData(text, attachments, title, mimeTypes)
         intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
 
         if (attachments.size == 1) {
@@ -80,11 +81,47 @@ fun buildDestinyShareIntent(
 }
 
 fun presentShareChooser(context: Context, shareIntent: Intent, title: String) {
+    grantReadPermissionToShareTargets(context, shareIntent)
     val chooser = Intent.createChooser(shareIntent, title).apply {
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         shareIntent.clipData?.let { clipData = it }
     }
     context.startActivity(chooser)
+}
+
+internal fun grantReadPermissionToShareTargets(context: Context, shareIntent: Intent) {
+    val uris = shareUrisFromIntent(shareIntent)
+    if (uris.isEmpty()) return
+    @Suppress("DEPRECATION")
+    val targets = context.packageManager.queryIntentActivities(
+        shareIntent,
+        PackageManager.MATCH_DEFAULT_ONLY,
+    )
+    for (resolveInfo in targets) {
+        val packageName = resolveInfo.activityInfo.packageName
+        for (uri in uris) {
+            context.grantUriPermission(
+                packageName,
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION,
+            )
+        }
+    }
+}
+
+@Suppress("DEPRECATION")
+internal fun shareUrisFromIntent(shareIntent: Intent): List<Uri> {
+    val uris = linkedSetOf<Uri>()
+    shareIntent.clipData?.let { clip ->
+        for (i in 0 until clip.itemCount) {
+            clip.getItemAt(i).uri?.let(uris::add)
+        }
+    }
+    shareIntent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)?.let(uris::add)
+    shareIntent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)?.forEach { uri ->
+        if (uri != null) uris.add(uri)
+    }
+    return uris.toList()
 }
 
 internal fun shareMimeType(mimeTypes: List<String>): String {
@@ -97,15 +134,17 @@ internal fun shareMimeType(mimeTypes: List<String>): String {
 }
 
 private fun buildShareClipData(
+    text: String,
     attachments: List<ShareAttachment>,
     title: String,
     mimeTypes: Array<String>,
 ): ClipData {
     val first = attachments.first()
+    val clipMimes = (listOf("text/plain") + mimeTypes).distinct().toTypedArray()
     return ClipData(
         first.label.ifBlank { title },
-        mimeTypes,
-        ClipData.Item(first.uri),
+        clipMimes,
+        ClipData.Item(text, null, first.uri),
     ).apply {
         attachments.drop(1).forEach { attachment ->
             addItem(ClipData.Item(attachment.uri))
