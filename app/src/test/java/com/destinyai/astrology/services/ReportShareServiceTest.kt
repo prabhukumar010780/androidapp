@@ -83,4 +83,49 @@ class ReportShareServiceTest {
     fun `fileProviderAuthority uses package name`() {
         assertEquals("com.destinyai.astrology.fileprovider", service.fileProviderAuthority)
     }
+
+    // iOS parity: result share sends text + PNG + PDF; comparison sends text + PDF.
+    // Mixed MIME types must not collapse to the first file type (WhatsApp/Gmail
+    // then drop the other attachment).
+
+    @Test
+    fun `shareMimeType is text-plain with no attachments`() {
+        assertEquals("text/plain", shareMimeType(emptyList()))
+    }
+
+    @Test
+    fun `shareMimeType returns the single attachment type`() {
+        assertEquals("application/pdf", shareMimeType(listOf("application/pdf")))
+    }
+
+    @Test
+    fun `shareMimeType is wildcard when png and pdf are both attached`() {
+        assertEquals("*/*", shareMimeType(listOf("image/png", "application/pdf")))
+    }
+
+    @Test
+    fun `buildDestinyShareIntent accepts text plus png and pdf`() {
+        val png = ShareAttachment(uri = mockk(relaxed = true), mimeType = "image/png", label = "card")
+        val pdf = ShareAttachment(uri = mockk(relaxed = true), mimeType = "application/pdf", label = "report")
+        assertDoesNotThrow {
+            buildDestinyShareIntent(
+                text = "✨ Ravi & Meera — Compatibility score: 29/36 (80%)\n\nAnalyzed with Destiny AI Astrology\n🔗 destinyaiastrology.com",
+                attachments = listOf(png, pdf),
+                subject = "Ravi & Meera — Compatibility Report",
+            )
+        }
+    }
+
+    @Test
+    fun `buildDestinyShareIntent accepts text plus pdf only`() {
+        val pdf = ShareAttachment(uri = mockk(relaxed = true), mimeType = "application/pdf", label = "comparison")
+        assertDoesNotThrow {
+            buildDestinyShareIntent(
+                text = "✨ Compatibility Analysis – Priya\n\nAnalyzed with Destiny AI Astrology\n🔗 destinyaiastrology.com",
+                attachments = listOf(pdf),
+                subject = "Priya — Compatibility Report",
+                title = "Share Results",
+            )
+        }
+    }
 }

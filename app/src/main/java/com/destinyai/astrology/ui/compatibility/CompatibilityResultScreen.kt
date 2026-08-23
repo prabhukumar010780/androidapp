@@ -1,12 +1,8 @@
 package com.destinyai.astrology.ui.compatibility
 
-import android.content.ClipData
-import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.pdf.PdfDocument
 import android.net.Uri
-import android.view.View
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
@@ -85,6 +81,9 @@ import com.destinyai.astrology.R
 import com.destinyai.astrology.domain.model.CompatibilityResult
 import com.destinyai.astrology.domain.model.KutaDetail
 import com.destinyai.astrology.services.AppEvents
+import com.destinyai.astrology.services.ShareAttachment
+import com.destinyai.astrology.services.buildDestinyShareIntent
+import com.destinyai.astrology.services.presentShareChooser
 import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.components.ShimmerButton
@@ -167,81 +166,59 @@ fun CompatibilityResultScreen(
 
     // iOS parity (CompatibilityResultSheets.swift:107-152 presentNativeShareSheet):
     // share shareText + PNG social card + PDF report via ACTION_SEND_MULTIPLE.
-    fun renderShareCardBitmap(): Bitmap {
-        val shareView = ComposeView(context).apply {
-            setContent {
-                ShareCardView(
-                    boyName = result.boyName,
-                    girlName = result.girlName,
-                    totalScore = result.totalScore,
-                    maxScore = result.maxScore,
-                    percentage = result.adjustedPercentage,
-                    isRecommended = result.isRecommended,
-                    adjustedScore = result.adjustedScore,
-                    forSharing = true,
-                )
-            }
-        }
-        val size = 1080
-        shareView.measure(
-            View.MeasureSpec.makeMeasureSpec(size, View.MeasureSpec.EXACTLY),
-            View.MeasureSpec.makeMeasureSpec(size, View.MeasureSpec.EXACTLY),
-        )
-        shareView.layout(0, 0, size, size)
-        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        shareView.draw(android.graphics.Canvas(bitmap))
-        return bitmap
-    }
-
     fun shareBitmap() {
         scope.launch {
             val shareText = buildCompatibilityShareText(result)
             val authority = "${context.packageName}.fileprovider"
             val sessionTag = result.boyName.take(4) + result.girlName.take(4)
-            try {
-                val bitmap = renderShareCardBitmap()
-                val pngUri = withContext(Dispatchers.IO) {
+
+            val pngUri = runCatching {
+                val bitmap = captureComposableAsBitmap(context, 1080, 1080) {
+                    ShareCardView(
+                        boyName = result.boyName,
+                        girlName = result.girlName,
+                        totalScore = result.totalScore,
+                        maxScore = result.maxScore,
+                        percentage = result.adjustedPercentage,
+                        isRecommended = result.isRecommended,
+                        adjustedScore = result.adjustedScore,
+                        forSharing = true,
+                    )
+                }
+                withContext(Dispatchers.IO) {
                     val file = File(context.cacheDir, "compat-$sessionTag.png")
                     FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 90, it) }
                     FileProvider.getUriForFile(context, authority, file)
                 }
-                val pdfUri: Uri? = runCatching {
-                    withContext(Dispatchers.IO) {
-                        val sections = parseSections(result.summary)
-                        val bytes = buildCompatibilityPdfBytes(result, sections)
-                        val file = File(context.cacheDir, "compat-$sessionTag.pdf")
-                        FileOutputStream(file).use { it.write(bytes) }
-                        FileProvider.getUriForFile(context, authority, file)
-                    }
-                }.getOrNull()
+            }.getOrNull()
 
-                val intent = if (pdfUri != null) {
-                    Intent(Intent.ACTION_SEND_MULTIPLE).apply {
-                        type = "*/*"
-                        putParcelableArrayListExtra(Intent.EXTRA_STREAM, arrayListOf(pngUri, pdfUri))
-                        putExtra(Intent.EXTRA_TEXT, shareText)
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-                } else {
-                    Intent(Intent.ACTION_SEND).apply {
-                        type = "image/png"
-                        putExtra(Intent.EXTRA_STREAM, pngUri)
-                        putExtra(Intent.EXTRA_TEXT, shareText)
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
+            val pdfUri: Uri? = runCatching {
+                withContext(Dispatchers.IO) {
+                    val sections = parseSections(result.summary)
+                    val bytes = buildCompatibilityPdfBytes(result, sections)
+                    val file = File(context.cacheDir, "compat-$sessionTag.pdf")
+                    FileOutputStream(file).use { it.write(bytes) }
+                    FileProvider.getUriForFile(context, authority, file)
                 }
-                context.startActivity(
-                    Intent.createChooser(intent, context.getString(R.string.compat_share_compat_chooser))
-                )
-            } catch (_: Exception) {
-                val intent = Intent(Intent.ACTION_SEND).apply {
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_TEXT, shareText)
+            }.getOrNull()
+
+            val attachments = buildList {
+                pngUri?.let {
+                    add(ShareAttachment(uri = it, mimeType = "image/png", label = "Compatibility score card"))
                 }
-                context.startActivity(
-                    Intent.createChooser(intent, context.getString(R.string.compat_share_compat_chooser))
-                )
+                pdfUri?.let {
+                    add(ShareAttachment(uri = it, mimeType = "application/pdf", label = "Compatibility PDF report"))
+                }
             }
+
+            val chooserTitle = context.getString(R.string.compat_share_compat_chooser)
+            val intent = buildDestinyShareIntent(
+                text = shareText,
+                attachments = attachments,
+                subject = "${result.boyName} & ${result.girlName} — Compatibility Report",
+                title = chooserTitle,
+            )
+            presentShareChooser(context, intent, chooserTitle)
         }
     }
 

@@ -106,8 +106,10 @@ fun ShareCardView(
     // 1080dp x 1080dp surface so the off-screen bitmap matches the iOS
     // 1080x1080 social-share dimensions exactly. In-app previews continue to
     // honor the caller-provided modifier (square via aspectRatio).
+    // Off-screen capture measures the ComposeView at 1080px. fillMaxSize fills
+    // that pixel buffer; size(1080.dp) would overflow on xxhdpi (1080dp ≠ 1080px).
     val sizeModifier = if (forSharing) {
-        Modifier.size(1080.dp)
+        Modifier.fillMaxSize()
     } else {
         modifier.aspectRatio(1f)
     }

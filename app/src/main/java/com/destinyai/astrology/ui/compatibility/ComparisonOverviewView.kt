@@ -38,9 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import android.content.ClipData
 import android.content.Context
-import android.content.Intent
 import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
 import android.net.Uri
@@ -52,6 +50,9 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import com.destinyai.astrology.domain.model.ComparisonResult
+import com.destinyai.astrology.services.ShareAttachment
+import com.destinyai.astrology.services.buildDestinyShareIntent
+import com.destinyai.astrology.services.presentShareChooser
 import com.destinyai.astrology.ui.chat.MarkdownText
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
@@ -199,19 +200,16 @@ fun ComparisonOverviewView(
             val uri: Uri? = withContext(Dispatchers.IO) {
                 runCatching { buildComparisonPdf(context, userName, sortedResults) }.getOrNull()
             }
-            val intent = Intent(Intent.ACTION_SEND).apply {
-                type = "application/pdf"
-                putExtra(Intent.EXTRA_TEXT, shareText)
-                putExtra(Intent.EXTRA_SUBJECT, "$userName — Compatibility Report")
-                if (uri != null) {
-                    putExtra(Intent.EXTRA_STREAM, uri)
-                    clipData = ClipData.newRawUri("Compatibility PDF", uri)
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                } else {
-                    type = "text/plain"
-                }
-            }
-            context.startActivity(Intent.createChooser(intent, "Share Results"))
+            val attachments = uri?.let {
+                listOf(ShareAttachment(uri = it, mimeType = "application/pdf", label = "Compatibility comparison PDF"))
+            } ?: emptyList()
+            val intent = buildDestinyShareIntent(
+                text = shareText,
+                attachments = attachments,
+                subject = "$userName — Compatibility Report",
+                title = "Share Results",
+            )
+            presentShareChooser(context, intent, "Share Results")
         }
     }
     val saveToFiles: () -> Unit
@@ -225,17 +223,21 @@ fun ComparisonOverviewView(
             isGeneratingPDF = false
             return@rememberLauncherForActivityResult
         }
-        val srcUri = pdfBuilder()
-        if (srcUri != null) {
-            runCatching {
-                context.contentResolver.openInputStream(srcUri)?.use { input ->
-                    context.contentResolver.openOutputStream(destUri)?.use { output ->
-                        input.copyTo(output)
+        scope.launch {
+            withContext(Dispatchers.IO) {
+                val srcUri = pdfBuilder()
+                if (srcUri != null) {
+                    runCatching {
+                        context.contentResolver.openInputStream(srcUri)?.use { input ->
+                            context.contentResolver.openOutputStream(destUri)?.use { output ->
+                                input.copyTo(output)
+                            }
+                        }
                     }
                 }
             }
+            isGeneratingPDF = false
         }
-        isGeneratingPDF = false
     }
     saveToFiles = {
         if (!isGeneratingPDF) {

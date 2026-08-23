@@ -1,14 +1,12 @@
 package com.destinyai.astrology.ui.compatibility
 
 import android.content.ContentValues
-import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.pdf.PdfDocument
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
-import android.view.View
 import android.widget.Toast
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -25,7 +23,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.SaveAlt
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.material3.*
@@ -53,6 +50,9 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.destinyai.astrology.R
 import com.destinyai.astrology.domain.model.CompatibilityResult
+import com.destinyai.astrology.services.ShareAttachment
+import com.destinyai.astrology.services.buildDestinyShareIntent
+import com.destinyai.astrology.services.presentShareChooser
 import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
@@ -101,87 +101,59 @@ fun FullReportScreen(
 
     // iOS parity (CompatibilityResultSheets.swift:107-152): render branded
     // ShareCardView to a 1080x1080 PNG and attach to the share intent.
-    fun renderShareCardBitmap(): Bitmap {
-        val shareView = ComposeView(context).apply {
-            setContent {
-                ShareCardView(
-                    boyName = result.boyName,
-                    girlName = result.girlName,
-                    totalScore = result.totalScore,
-                    maxScore = result.maxScore,
-                    percentage = result.adjustedPercentage,
-                    isRecommended = result.isRecommended,
-                    adjustedScore = result.adjustedScore,
-                    forSharing = true,
-                )
-            }
-        }
-        val width = 1080
-        val height = 1080
-        shareView.measure(
-            View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
-            View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY),
-        )
-        shareView.layout(0, 0, width, height)
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        val canvas = android.graphics.Canvas(bitmap)
-        shareView.draw(canvas)
-        return bitmap
-    }
-
     fun shareWithImage() {
         scope.launch {
-            try {
-                val bitmap = renderShareCardBitmap()
-                val sessionTag = result.boyName.take(4) + result.girlName.take(4)
-                val authority = "${context.packageName}.fileprovider"
-                val pngUri = withContext(Dispatchers.IO) {
+            val sessionTag = result.boyName.take(4) + result.girlName.take(4)
+            val authority = "${context.packageName}.fileprovider"
+
+            val pngUri = runCatching {
+                val bitmap = captureComposableAsBitmap(context, 1080, 1080) {
+                    ShareCardView(
+                        boyName = result.boyName,
+                        girlName = result.girlName,
+                        totalScore = result.totalScore,
+                        maxScore = result.maxScore,
+                        percentage = result.adjustedPercentage,
+                        isRecommended = result.isRecommended,
+                        adjustedScore = result.adjustedScore,
+                        forSharing = true,
+                    )
+                }
+                withContext(Dispatchers.IO) {
                     val file = File(context.cacheDir, "report-$sessionTag.png")
                     FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 90, it) }
                     FileProvider.getUriForFile(context, authority, file)
                 }
-                // iOS parity (CompatibilityResultSheets.swift:107-151 shares text + PNG
-                // + PDF): render the full PDF report and attach it alongside the card.
-                val pdfUri = runCatching {
-                    withContext(Dispatchers.IO) {
-                        val pdfBytes = buildCompatibilityPdfBytes(result, sections)
-                        val pdfFile = File(context.cacheDir, "report-$sessionTag.pdf")
-                        FileOutputStream(pdfFile).use { it.write(pdfBytes) }
-                        FileProvider.getUriForFile(context, authority, pdfFile)
-                    }
-                }.getOrNull()
+            }.getOrNull()
 
-                val intent = if (pdfUri != null) {
-                    Intent(Intent.ACTION_SEND_MULTIPLE).apply {
-                        type = "*/*"
-                        putParcelableArrayListExtra(
-                            Intent.EXTRA_STREAM,
-                            arrayListOf(pngUri, pdfUri),
-                        )
-                        putExtra(Intent.EXTRA_TEXT, shareText)
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-                } else {
-                    Intent(Intent.ACTION_SEND).apply {
-                        type = "image/png"
-                        putExtra(Intent.EXTRA_STREAM, pngUri)
-                        putExtra(Intent.EXTRA_TEXT, shareText)
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
+            // iOS parity (CompatibilityResultSheets.swift:107-151 shares text + PNG
+            // + PDF): render the full PDF report and attach it alongside the card.
+            val pdfUri = runCatching {
+                withContext(Dispatchers.IO) {
+                    val pdfBytes = buildCompatibilityPdfBytes(result, sections)
+                    val pdfFile = File(context.cacheDir, "report-$sessionTag.pdf")
+                    FileOutputStream(pdfFile).use { it.write(pdfBytes) }
+                    FileProvider.getUriForFile(context, authority, pdfFile)
                 }
-                context.startActivity(
-                    Intent.createChooser(intent, context.getString(R.string.full_report_share_chooser))
-                )
-            } catch (_: Exception) {
-                // Fallback to text-only share
-                val intent = Intent(Intent.ACTION_SEND).apply {
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_TEXT, shareText)
+            }.getOrNull()
+
+            val attachments = buildList {
+                pngUri?.let {
+                    add(ShareAttachment(uri = it, mimeType = "image/png", label = "Compatibility score card"))
                 }
-                context.startActivity(
-                    Intent.createChooser(intent, context.getString(R.string.full_report_share_chooser))
-                )
+                pdfUri?.let {
+                    add(ShareAttachment(uri = it, mimeType = "application/pdf", label = "Compatibility PDF report"))
+                }
             }
+
+            val chooserTitle = context.getString(R.string.full_report_share_chooser)
+            val intent = buildDestinyShareIntent(
+                text = shareText,
+                attachments = attachments,
+                subject = "${result.boyName} & ${result.girlName} — Compatibility Report",
+                title = chooserTitle,
+            )
+            presentShareChooser(context, intent, chooserTitle)
         }
     }
 
