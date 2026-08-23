@@ -443,7 +443,7 @@ fun HomeScreen(
                 // contains only the logo + side buttons, not the greeting.
                 item {
                     Spacer(Modifier.height(4.dp))
-                    Column(modifier = Modifier.padding(horizontal = 12.dp)) {
+                    Column(modifier = Modifier.padding(horizontal = HomeLayout.GUTTER_DP.dp)) {
                         Text(
                             text = stringResource(
                                 R.string.home_greeting_with_name,
@@ -536,7 +536,7 @@ fun HomeScreen(
                     item {
                         GoldGradientText(
                             text = stringResource(R.string.home_current_dasha),
-                            modifier = Modifier.padding(horizontal = 12.dp),
+                            modifier = Modifier.padding(horizontal = HomeLayout.GUTTER_DP.dp),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = CanelaFontFamily,
@@ -559,7 +559,7 @@ fun HomeScreen(
                     item {
                         GoldGradientText(
                             text = stringResource(R.string.home_current_transits),
-                            modifier = Modifier.padding(horizontal = 12.dp),
+                            modifier = Modifier.padding(horizontal = HomeLayout.GUTTER_DP.dp),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = CanelaFontFamily,
@@ -807,7 +807,7 @@ private fun LifeAreaOrbs(
         )
     }
     LazyRow(
-        contentPadding = PaddingValues(horizontal = 12.dp),
+        contentPadding = PaddingValues(horizontal = HomeLayout.GUTTER_DP.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         items(areas, key = { it.name }) { area ->
@@ -1104,7 +1104,7 @@ private fun DashaInsightCard(dashaInfo: HomeDashaInfo, onClick: () -> Unit = {})
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp)
+            .padding(horizontal = HomeLayout.GUTTER_DP.dp)
             .shadow(
                 elevation = 8.dp,
                 shape = RoundedCornerShape(Radius.card),
@@ -1285,7 +1285,7 @@ private fun TransitAlertsRow(
     onTransitTap: (HomeTransit) -> Unit = {},
 ) {
     LazyRow(
-        contentPadding = PaddingValues(horizontal = 12.dp),
+        contentPadding = PaddingValues(horizontal = HomeLayout.GUTTER_DP.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         items(transits, key = { it.planet }) { transit ->
@@ -1462,7 +1462,7 @@ private fun YogaHighlightRow(
     onFilterSelected: (YogaFilter) -> Unit,
     onYogaClick: (HomeYoga) -> Unit,
 ) {
-    Column(modifier = Modifier.padding(horizontal = 12.dp)) {
+    Column(modifier = Modifier.padding(horizontal = HomeLayout.GUTTER_DP.dp)) {
         GoldGradientText(
             text = stringResource(R.string.yoga_positive_negative),
             fontSize = 18.sp,
@@ -1518,7 +1518,7 @@ private fun YogaHighlightRow(
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
                         .width(40.dp)
-                        .height(170.dp)
+                        .height(HomeLayout.YOGA_CARD_HEIGHT_DP.dp)
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(Color.Transparent, NavySurface),
@@ -1626,8 +1626,8 @@ private fun YogaFilterChip(
 }
 
 /**
- * Parity with iOS PremiumYogaCard (YogaHighlightCard.swift) — 170dp card with status
- * badge, dosha icon, planets, houses, divider, gold border, arrow CTA.
+ * Parity with iOS PremiumYogaCard (YogaHighlightCard.swift) — 180×170dp card with
+ * status badge, dosha icon, planets, houses, divider, gold border, in-flow arrow CTA.
  */
 @Composable
 private fun PremiumYogaCard(
@@ -1653,9 +1653,10 @@ private fun PremiumYogaCard(
     }
     Box(
         modifier = Modifier
-            // iOS parity: fixed 170×170 so every card is identical and detail rows align
-            // across the row (was heightIn(min) → variable height broke cross-card alignment).
-            .size(170.dp)
+            // 180×170: extra width lets planets, houses, and the ask-more arrow share
+            // one row so the arrow cannot cover house numbers (was a 170 overlay).
+            .width(HomeLayout.YOGA_CARD_WIDTH_DP.dp)
+            .height(HomeLayout.YOGA_CARD_HEIGHT_DP.dp)
             .clip(RoundedCornerShape(Radius.card))
             .background(NavySurface)
             .border(
@@ -1724,10 +1725,11 @@ private fun PremiumYogaCard(
                     .background(Brush.horizontalGradient(listOf(baseColor.copy(alpha = 0.5f), Color.Transparent))),
             )
             Spacer(Modifier.height(8.dp))
-            // Details: Planets (left) + Houses (right) as two columns, uppercase micro-labels.
+            // Planets, houses, ask-more — arrow is in-flow so it cannot cover houses.
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top,
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -1750,18 +1752,12 @@ private fun PremiumYogaCard(
                     )
                 }
                 if (yoga.houses.isNotBlank()) {
-                    Spacer(Modifier.width(8.dp))
                     val housesDisplay = yoga.houses
                         .split(",")
                         .map { it.trim() }
                         .filter { it.isNotEmpty() }
                         .joinToString(", ") { "H$it" }
-                    // end padding clears the 20dp bottom-right arrow CTA overlay so the
-                    // right-aligned HOUSES label / value never sit under it (was overlapping).
-                    Column(
-                        horizontalAlignment = Alignment.End,
-                        modifier = Modifier.padding(end = 22.dp),
-                    ) {
+                    Column(horizontalAlignment = Alignment.End) {
                         Text(
                             text = stringResource(R.string.houses_label),
                             fontSize = AppType.caption,
@@ -1780,24 +1776,23 @@ private fun PremiumYogaCard(
                         )
                     }
                 }
+                if (HomeLayout.YOGA_ASK_MORE_IN_FLOW) {
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clip(CircleShape)
+                            .background(Brush.linearGradient(listOf(GoldLight, Gold))),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = Color(red = 0.15f, green = 0.15f, blue = 0.2f),
+                            modifier = Modifier.size(12.dp),
+                        )
+                    }
+                }
             }
-        }
-        // Bottom-right arrow CTA overlay (iOS: absolute corner, independent of content).
-        // No "Strength" on the front face — iOS keeps strength in the detail popup only.
-        Box(
-            modifier = Modifier
-                .size(20.dp)
-                .align(Alignment.BottomEnd)
-                .clip(CircleShape)
-                .background(Brush.linearGradient(listOf(GoldLight, Gold))),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = "→",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(red = 0.15f, green = 0.15f, blue = 0.2f),
-            )
         }
     }
 }
@@ -1836,7 +1831,7 @@ private fun HomeYoga.matchesFilter(filter: YogaFilter): Boolean {
 
 @Composable
 private fun DoshaStatusRow(doshas: HomeDoshaStatus) {
-    Column(modifier = Modifier.padding(horizontal = 12.dp)) {
+    Column(modifier = Modifier.padding(horizontal = HomeLayout.GUTTER_DP.dp)) {
         Text(
             text = stringResource(R.string.home_dosha_alerts),
             style = MaterialTheme.typography.labelLarge,
@@ -2517,7 +2512,7 @@ private fun WhatsInMyMindGrid(
     questions: List<String>,
     onQuestionTap: (String) -> Unit,
 ) {
-    Column(modifier = Modifier.padding(horizontal = 12.dp)) {
+    Column(modifier = Modifier.padding(horizontal = HomeLayout.GUTTER_DP.dp)) {
         GoldGradientText(
             text = stringResource(R.string.home_what_in_my_mind),
             fontSize = 18.sp,
