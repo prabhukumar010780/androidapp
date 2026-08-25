@@ -457,9 +457,13 @@ fun MainScreen(
                     if (hasVisitedChat || selectedTab == 1) {
                         val initialQ = pendingQuestion
                         val initialT = pendingThreadId
-                        LaunchedEffect(selectedTab, initialQ, initialT) {
+                        LaunchedEffect(selectedTab, initialT) {
                             if (selectedTab == 1) {
-                                if (initialQ != null) pendingQuestion = null
+                                // NOTE: pendingQuestion is intentionally NOT cleared here.
+                                // Clearing it eagerly re-keyed ChatScreen's auto-send effect
+                                // and could cancel the send before it ran (prefilled question
+                                // + dead Send bug). ChatScreen clears it via
+                                // onInitialQuestionConsumed AFTER the send has launched.
                                 if (initialT != null) pendingThreadId = null
                             }
                         }
@@ -486,6 +490,7 @@ fun MainScreen(
                                 onNavigateToSettings = onNavigateToSettings,
                                 initialQuestion = initialQ,
                                 initialThreadId = initialT,
+                                onInitialQuestionConsumed = { pendingQuestion = null },
                             )
                         }
                     }

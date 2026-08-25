@@ -83,6 +83,10 @@ fun ChatScreen(
     initialQuestion: String? = null,
     initialDisplayLabel: String? = null,
     initialThreadId: String? = null,
+    // Invoked once the incoming initialQuestion has been consumed (auto-send launched).
+    // The host clears its pending-question state HERE — not eagerly — so nulling the prop
+    // cannot re-key and cancel this screen's auto-send effect before it runs.
+    onInitialQuestionConsumed: (() -> Unit)? = null,
     starterQuestions: List<String> = emptyList(),
     onNavigateToCharts: (() -> Unit)? = null,
     onNavigateToAuth: (() -> Unit)? = null,
@@ -204,6 +208,10 @@ fun ChatScreen(
             viewModel.pendingDisplayLabel = initialDisplayLabel
             viewModel.updateInput(initialQuestion)
             viewModel.sendMessage()
+            // Send is now launched in viewModelScope (survives this effect). Tell the host
+            // to clear its pending question ONLY now, so the resulting prop→null re-key
+            // cancels an already-completed effect instead of racing the auto-send.
+            onInitialQuestionConsumed?.invoke()
         }
     }
 
@@ -404,7 +412,10 @@ fun ChatScreen(
                     text = state.inputText,
                     onTextChange = viewModel::updateInput,
                     onSend = viewModel::sendMessage,
-                    canSend = state.canSend,
+                    // Derive Send-enabled from ground truth (text + stream state), never
+                    // the stored flag — a stranded canSend left a prefilled question with a
+                    // dead Send and no popup (Home suggested-question hand-off race).
+                    canSend = chatSendEnabled(state.inputText, state.isStreaming, state.isLoading),
                     isLoading = state.isLoading || state.isStreaming,
                     onStop = viewModel::stopGeneration,
                     onStyleTap = { showResponseLengthSheet = true },

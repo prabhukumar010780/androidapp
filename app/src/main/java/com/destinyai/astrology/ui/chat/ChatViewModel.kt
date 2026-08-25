@@ -104,6 +104,21 @@ class GuestLimitException(message: String? = null) : Exception(message ?: "overa
 // load. The VM catches this and transparently replays via the non-streaming endpoint.
 class BackpressureException(val retryAfterSeconds: Int = 0) : Exception("backpressure")
 
+/**
+ * Single source of truth for whether the chat Send button is enabled.
+ *
+ * The button MUST be derived from ground truth — non-blank text and no in-flight
+ * generation — NOT from a stored flag. A stored `canSend` was mutated by ~10 quota /
+ * stream / navigation paths and could be stranded `false` while a question sat prefilled
+ * in the box (e.g. a Home suggested-question hand-off whose auto-send was cancelled),
+ * leaving a dead Send with no popup. Deriving here makes that state impossible: whenever
+ * there is text and nothing is streaming, Send is tappable — and tapping it either asks
+ * the question or presents the quota/upgrade sheet.
+ */
+internal fun chatSendEnabled(inputText: String, isStreaming: Boolean, isLoading: Boolean): Boolean =
+    inputText.isNotBlank() && !isStreaming && !isLoading
+
+
 @HiltViewModel
 class ChatViewModel @Inject constructor(
     private val repository: ChatRepository,
@@ -451,7 +466,7 @@ class ChatViewModel @Inject constructor(
                 // iOS ChatInputBar.canSend: nonempty text + not loading/streaming.
                 // Quota is NOT part of the button enablement — tapping Send either
                 // asks the question or presents the upgrade/quota sheet.
-                canSend = text.isNotBlank() && !state.isLoading && !state.isStreaming,
+                canSend = chatSendEnabled(text, isStreaming = state.isStreaming, isLoading = state.isLoading),
             )
         }
     }
