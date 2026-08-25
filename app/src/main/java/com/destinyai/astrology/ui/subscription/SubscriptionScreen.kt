@@ -42,6 +42,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.destinyai.astrology.R
 import com.destinyai.astrology.data.billing.RestoreResult
+import com.destinyai.astrology.data.billing.StoreBillingGate
 import com.destinyai.astrology.services.HapticManager
 import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
@@ -109,6 +110,7 @@ fun SubscriptionScreen(
     val restoreEmptyMsg = stringResource(R.string.restore_no_purchases)
     val restoreFailedMsg = stringResource(R.string.restore_failed)
     val productNotAvailableMsg = stringResource(R.string.product_not_available_error)
+    val alreadySubscribedOtherStoreMsg = stringResource(R.string.already_subscribed_other_store)
 
     LaunchedEffect(Unit) {
         // iOS parity (SubscriptionView.swift:118-130 .task) — auto-refresh products
@@ -149,7 +151,11 @@ fun SubscriptionScreen(
     // when purchase fails (null product, BillingManager error, etc.).
     LaunchedEffect(purchaseError) {
         purchaseError?.let { err ->
-            val msg = if (err == "product_not_available_error") productNotAvailableMsg else err
+            val msg = when (err) {
+                "product_not_available_error" -> productNotAvailableMsg
+                StoreBillingGate.ERROR_OTHER_PLATFORM -> alreadySubscribedOtherStoreMsg
+                else -> err
+            }
             snackbarHostState.showSnackbar(msg)
             viewModel.consumePurchaseError()
         }

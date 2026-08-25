@@ -656,6 +656,8 @@ class BillingManager @Inject constructor(
                         _conflictDetectedThisSession.value = true
                         setConflict(SubscriptionConflict(productId))
                     }
+                } else if (response.error == StoreBillingGate.ERROR_OTHER_PLATFORM) {
+                    _errorMessage.value = StoreBillingGate.ERROR_OTHER_PLATFORM
                 } else {
                     _errorMessage.value = response.message ?: "Purchase verification failed"
                 }

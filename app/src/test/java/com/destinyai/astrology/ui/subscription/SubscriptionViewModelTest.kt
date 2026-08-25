@@ -4,6 +4,7 @@ import android.app.Activity
 import app.cash.turbine.test
 import com.android.billingclient.api.ProductDetails
 import com.destinyai.astrology.data.billing.BillingManager
+import com.destinyai.astrology.data.billing.StoreBillingGate
 import com.destinyai.astrology.data.billing.SubscriptionConflict
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AstroApiService
@@ -47,6 +48,8 @@ class SubscriptionViewModelTest {
     private val purchasedIdsFlow = MutableStateFlow<Set<String>>(emptySet())
     private val loadingFlow = MutableStateFlow(false)
     private val hasEverSubscribedFlow = MutableStateFlow(false)
+    private val isPremiumFlow = MutableStateFlow(false)
+    private val subscriptionPlatformFlow = MutableStateFlow<String?>(null)
     private val errorFlow = MutableStateFlow<String?>(null)
     private val conflictFlow = MutableStateFlow<SubscriptionConflict?>(null)
     private val isPlusTrialEligibleFlow = MutableStateFlow(false)
@@ -77,6 +80,8 @@ class SubscriptionViewModelTest {
         every { billingManager.shouldShowTrialButton } returns MutableStateFlow(false)
         quotaManager = mockk(relaxed = true)
         every { quotaManager.hasEverSubscribed } returns hasEverSubscribedFlow
+        every { quotaManager.isPremium } returns isPremiumFlow
+        every { quotaManager.subscriptionPlatform } returns subscriptionPlatformFlow
 
         productsFlow.value = emptyList()
         purchasedIdsFlow.value = emptySet()
@@ -84,6 +89,8 @@ class SubscriptionViewModelTest {
         errorFlow.value = null
         conflictFlow.value = null
         isPlusTrialEligibleFlow.value = false
+        isPremiumFlow.value = false
+        subscriptionPlatformFlow.value = null
 
         vm = SubscriptionViewModel(api, prefs, billingManager, quotaManager)
     }
@@ -233,6 +240,22 @@ class SubscriptionViewModelTest {
         vm.purchase(productDetails, activity)
 
         coVerify { billingManager.launchBillingFlow(activity, productDetails, null, any()) }
+    }
+
+    @Test
+    fun `purchase is blocked when account is already plus on apple`() = runTest {
+        isPremiumFlow.value = true
+        subscriptionPlatformFlow.value = "apple"
+        val activity = mockk<Activity>(relaxed = true)
+        val productDetails = mockk<ProductDetails>(relaxed = true)
+
+        vm.purchase(productDetails, activity)
+
+        coVerify(exactly = 0) { billingManager.launchBillingFlow(any(), any(), any(), any()) }
+        vm.purchaseError.test {
+            assertEquals(StoreBillingGate.ERROR_OTHER_PLATFORM, awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test

@@ -120,6 +120,9 @@ class QuotaManager @Inject constructor(
     private val _hasEverSubscribed = MutableStateFlow(prefs.getBoolean(KEY_HAS_EVER_SUBSCRIBED, false))
     val hasEverSubscribed: StateFlow<Boolean> = _hasEverSubscribed.asStateFlow()
 
+    private val _subscriptionPlatform = MutableStateFlow(prefs.getString(KEY_SUBSCRIPTION_PLATFORM, null))
+    val subscriptionPlatform: StateFlow<String?> = _subscriptionPlatform.asStateFlow()
+
     /** Mirrors iOS QuotaManager.externalPlanChangeAlert — surfaces an alert when the
      *  backend reports the user's subscription was renewed/upgraded outside the app. */
     private val _externalPlanChangeAlert = MutableStateFlow<ExternalPlanChange?>(null)
@@ -469,6 +472,7 @@ class QuotaManager @Inject constructor(
         _autoRenewStatus.value = status.autoRenewStatus
         _currentPlanDisplayName.value = status.planDisplayName
         _hasEverSubscribed.value = status.hasEverSubscribed
+        _subscriptionPlatform.value = status.subscriptionPlatform
         // Populate the plan's enabled features so hasFeature() works. Pre-fix this was
         // never set, so gates (alerts, switch_profile, maintain_profile) always failed —
         // even for Plus. iOS parity: QuotaManager derives entitlements from the same list.
@@ -477,6 +481,11 @@ class QuotaManager @Inject constructor(
             putBoolean(KEY_IS_PREMIUM, status.isPremium)
             putString(KEY_CURRENT_PLAN_ID, status.planId)
             putBoolean(KEY_HAS_EVER_SUBSCRIBED, status.hasEverSubscribed)
+            if (status.subscriptionPlatform != null) {
+                putString(KEY_SUBSCRIPTION_PLATFORM, status.subscriptionPlatform)
+            } else {
+                remove(KEY_SUBSCRIPTION_PLATFORM)
+            }
             putString(KEY_CACHED_FEATURES, gson.toJson(status.features))
             if (status.subscriptionStatus != null) {
                 putString(KEY_SUBSCRIPTION_STATUS, status.subscriptionStatus)
@@ -516,6 +525,7 @@ class QuotaManager @Inject constructor(
         _availableFeatures.value = emptyList()
         _totalQuestionsAsked.value = 0
         _hasEverSubscribed.value = false
+        _subscriptionPlatform.value = null
         // SUBSCRIPTION-GAP-4: clear the observed plan tracker so the new
         // user's first syncStatus does not falsely fire externalPlanChangeAlert
         // against the previous user's plan id.
@@ -563,6 +573,7 @@ class QuotaManager @Inject constructor(
         private const val KEY_CURRENT_PLAN_DISPLAY_NAME = "currentPlanDisplayName"
         private const val KEY_TOTAL_QUESTIONS = "totalQuestionsAsked"
         private const val KEY_HAS_EVER_SUBSCRIBED = "hasEverSubscribed"
+        private const val KEY_SUBSCRIPTION_PLATFORM = "subscriptionPlatform"
         private const val KEY_CACHED_PLANS = "cachedAvailablePlans"
         private const val KEY_CACHED_FEATURES = "cachedAvailableFeatures"
     }

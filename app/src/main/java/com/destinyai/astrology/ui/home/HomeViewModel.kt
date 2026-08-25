@@ -327,7 +327,8 @@ class HomeViewModel @Inject constructor(
             val withinWindow = storedMs != null && (nowMs - storedMs) < FRESH_WINDOW_MS
             val haveDataInMemory = _uiState.value.dailyInsight != null &&
                 _uiState.value.transits.isNotEmpty()
-            val canSkipFullReload = !languageChanged && withinWindow && haveDataInMemory
+            val premiumUiStale = quotaManager.isPremium.value != _uiState.value.isPremium
+            val canSkipFullReload = !languageChanged && withinWindow && haveDataInMemory && !premiumUiStale
 
             if (canSkipFullReload) {
                 android.util.Log.i(

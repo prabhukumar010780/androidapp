@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.android.billingclient.api.ProductDetails
 import com.destinyai.astrology.data.billing.BillingManager
 import com.destinyai.astrology.data.billing.RestoreResult
+import com.destinyai.astrology.data.billing.StoreBillingGate
 import com.destinyai.astrology.data.billing.SubscriptionConflict
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AstroApiService
@@ -362,6 +363,14 @@ class SubscriptionViewModel @Inject constructor(
         // "product_not_available_error" alert message.
         if (productDetails == null) {
             _purchaseError.value = "product_not_available_error"
+            return
+        }
+        if (StoreBillingGate.shouldBlockPurchase(
+                isPremium = quotaManager.isPremium.value,
+                accountPlatform = quotaManager.subscriptionPlatform.value,
+            )
+        ) {
+            _purchaseError.value = StoreBillingGate.ERROR_OTHER_PLATFORM
             return
         }
         val productId = productDetails.productId

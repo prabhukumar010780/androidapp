@@ -312,6 +312,7 @@ data class VerifyResponse(
     // UI can render a "Scheduled" badge and effective date.
     @SerializedName("pending_upgrade_product_id") val pendingUpgradeProductId: String? = null,
     @SerializedName("pending_upgrade_effective_date") val pendingUpgradeEffectiveDate: String? = null,
+    @SerializedName("other_platform") val otherPlatform: String? = null,
 )
 
 // iOS parity (SubscriptionManager.swift:848-895): reconcile-empty self-heal ping.
@@ -455,6 +456,9 @@ data class StatusResponse(
     // server gate so a previously-subscribed user (Play intro-offer eligibility
     // may have reset) is not re-offered a free trial.
     @SerializedName("has_ever_subscribed") val hasEverSubscribed: Boolean = false,
+    // Store that owns the live entitlement (apple|google|stripe|manual). Used to
+    // block a second-store IAP. Additive — missing on older backends decodes as null.
+    @SerializedName("subscription_platform") val subscriptionPlatform: String? = null,
     // Backend StatusResponse.features (subscription_router.py:117) — the plan's enabled
     // feature ids (compatibility, maintain_profile, switch_profile, alerts, etc.). Dropped
     // pre-fix, leaving QuotaManager._availableFeatures empty so hasFeature() always false —

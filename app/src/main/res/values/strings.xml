@@ -2212,6 +2212,7 @@ Please share deeper insights on how this transit influences my life and any prac
     <string name="choose_plus_label">Choose Plus</string>
     <string name="choose_core_label">Choose Core</string>
     <string name="product_not_available_error">Product not available. Please try again later.</string>
+    <string name="already_subscribed_other_store" tools:ignore="MissingTranslation">You\'re already subscribed on another store. This account is unlocked — manage billing where you originally subscribed (App Store or Google Play).</string>
     <string name="notification_action_transit">View Transit Alert</string>
     <string name="notification_action_life_alert">View Alert</string>
     <string name="notification_action_compat">View Compatibility</string>
