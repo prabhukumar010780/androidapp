@@ -1959,7 +1959,6 @@ Please share deeper insights on how this transit influences my life and any prac
     <string name="birth_city_value_a11y">Birth city: %1$s</string>
     <string name="daily_limit_reset_time">Daily limit reached. Resets at %1$s.</string>
     <string name="daily_limit_reached_tomorrow">Daily limit reached. Resets tomorrow.</string>
-    <string name="upgrade_to_unlock">Upgrade to unlock this feature.</string>
     <string name="quota_check_failed">Unable to check compatibility access.</string>
     <string name="comparing_partners_count">Comparing %d Partners</string>
     <string name="partners_complete_count">%d/%d Complete</string>

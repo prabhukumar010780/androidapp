@@ -1868,7 +1868,6 @@
     <string name="birth_city_value_a11y">ಹುಟ್ಟಿದ ನಗರ: %1$s</string>
     <string name="daily_limit_reset_time">ದೈನಂದಿನ ಮಿತಿಯನ್ನು ತಲುಪಿದೆ. %1$s ನಲ್ಲಿ ಮರುಹೊಂದಿಸುತ್ತದೆ.</string>
     <string name="daily_limit_reached_tomorrow">ದೈನಂದಿನ ಮಿತಿಯನ್ನು ತಲುಪಿದೆ. ನಾಳೆ ಮರುಹೊಂದಿಸುತ್ತದೆ.</string>
-    <string name="upgrade_to_unlock">ಈ ವೈಶಿಷ್ಟ್ಯವನ್ನು ಅನ್‌ಲಾಕ್ ಮಾಡಲು ಅಪ್‌ಗ್ರೇಡ್ ಮಾಡಿ.</string>
     <string name="quota_check_failed">ಹೊಂದಾಣಿಕೆಯ ಪ್ರವೇಶವನ್ನು ಪರಿಶೀಲಿಸಲು ಸಾಧ್ಯವಾಗುತ್ತಿಲ್ಲ.</string>
     <string name="comparing_partners_count">%d ಪಾಲುದಾರರನ್ನು ಹೋಲಿಸಲಾಗುತ್ತಿದೆ</string>
     <string name="partners_complete_count">%d/%d ಪೂರ್ಣಗೊಂಡಿದೆ</string>

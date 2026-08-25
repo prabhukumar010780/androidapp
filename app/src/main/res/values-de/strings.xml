@@ -1868,7 +1868,6 @@ Bitte teilen Sie tiefere Einblicke, wie dieser Transit mein Leben beeinflusst, u
     <string name="birth_city_value_a11y">Geburtsort: %1$s</string>
     <string name="daily_limit_reset_time">Tageslimit erreicht. Wird um %1$s zurückgesetzt.</string>
     <string name="daily_limit_reached_tomorrow">Tageslimit erreicht. Wird morgen zurückgesetzt.</string>
-    <string name="upgrade_to_unlock">Führen Sie ein Upgrade durch, um diese Funktion freizuschalten.</string>
     <string name="quota_check_failed">Der Kompatibilitätszugriff konnte nicht überprüft werden.</string>
     <string name="comparing_partners_count">Vergleich von %d Partnern</string>
     <string name="partners_complete_count">%d/%d abgeschlossen</string>

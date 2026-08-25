@@ -1846,7 +1846,6 @@
     <string name="birth_city_value_a11y">जन्म शहर: %1$s</string>
     <string name="daily_limit_reset_time">दैनिक सीमा समाप्त। %1$s पर रीसेट होगी।</string>
     <string name="daily_limit_reached_tomorrow">दैनिक सीमा समाप्त। कल रीसेट होगी।</string>
-    <string name="upgrade_to_unlock">इस सुविधा को अनलॉक करने के लिए अपग्रेड करें।</string>
     <string name="quota_check_failed">संगतता पहुंच की जांच करने में असमर्थ।</string>
     <string name="comparing_partners_count">%d साथियों की तुलना कर रहे हैं</string>
     <string name="partners_complete_count">%d/%d पूर्ण</string>

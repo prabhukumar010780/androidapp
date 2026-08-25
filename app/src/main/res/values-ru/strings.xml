@@ -1868,7 +1868,6 @@
     <string name="birth_city_value_a11y">Город рождения: %1$s</string>
     <string name="daily_limit_reset_time">Дневной лимит достигнут. Сбрасывается в %1$s.</string>
     <string name="daily_limit_reached_tomorrow">Дневной лимит достигнут. Обновится завтра.</string>
-    <string name="upgrade_to_unlock">Обновите, чтобы разблокировать эту функцию.</string>
     <string name="quota_check_failed">Не удалось проверить доступ на совместимость.</string>
     <string name="comparing_partners_count">Сравнение %d партнеров</string>
     <string name="partners_complete_count">%d/%d завершено</string>

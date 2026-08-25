@@ -1868,7 +1868,6 @@ Por favor comparta información más profunda sobre cómo este tránsito influye
     <string name="birth_city_value_a11y">Ciudad de nacimiento: %1$s</string>
     <string name="daily_limit_reset_time">Límite diario alcanzado. Se reinicia en %1$s.</string>
     <string name="daily_limit_reached_tomorrow">Límite diario alcanzado. Se reinicia mañana.</string>
-    <string name="upgrade_to_unlock">Actualice para desbloquear esta función.</string>
     <string name="quota_check_failed">No se puede comprobar el acceso de compatibilidad.</string>
     <string name="comparing_partners_count">Comparando %d socios</string>
     <string name="partners_complete_count">%d/%d completo</string>

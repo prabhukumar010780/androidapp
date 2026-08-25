@@ -1868,7 +1868,6 @@ Por favor, compartilhe percepções mais profundas sobre como este trânsito inf
     <string name="birth_city_value_a11y">Cidade natal: %1$s</string>
     <string name="daily_limit_reset_time">Limite diário atingido. Reinicia em %1$s.</string>
     <string name="daily_limit_reached_tomorrow">Limite diário atingido. Reinicia amanhã.</string>
-    <string name="upgrade_to_unlock">Atualize para desbloquear esse recurso.</string>
     <string name="quota_check_failed">Não foi possível verificar o acesso à compatibilidade.</string>
     <string name="comparing_partners_count">Comparando %d parceiros</string>
     <string name="partners_complete_count">%d/%d Concluído</string>

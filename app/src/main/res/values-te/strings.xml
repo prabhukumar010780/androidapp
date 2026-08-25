@@ -1852,7 +1852,6 @@
     <string name="birth_city_value_a11y">పుట్టిన నగరం: %1$s</string>
     <string name="daily_limit_reset_time">రోజువారీ పరిమితిని చేరుకున్నారు. %1$s వద్ద రీసెట్ చేయబడుతుంది.</string>
     <string name="daily_limit_reached_tomorrow">రోజువారీ పరిమితిని చేరుకున్నారు. రేపు రీసెట్ అవుతుంది.</string>
-    <string name="upgrade_to_unlock">ఈ ఫీచర్‌ని అన్‌లాక్ చేయడానికి అప్‌గ్రేడ్ చేయండి.</string>
     <string name="quota_check_failed">అనుకూలత యాక్సెస్‌ని తనిఖీ చేయడం సాధ్యపడలేదు.</string>
     <string name="comparing_partners_count">%d భాగస్వాములను పోల్చడం</string>
     <string name="partners_complete_count">%d/%d పూర్తయింది</string>

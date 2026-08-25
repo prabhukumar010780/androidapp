@@ -1868,7 +1868,6 @@ Veuillez partager des informations plus approfondies sur la façon dont ce trans
     <string name="birth_city_value_a11y">Ville de naissance : %1$s</string>
     <string name="daily_limit_reset_time">Limite quotidienne atteinte. Se réinitialise à %1$s.</string>
     <string name="daily_limit_reached_tomorrow">Limite quotidienne atteinte. Réinitialise demain.</string>
-    <string name="upgrade_to_unlock">Mettez à niveau pour débloquer cette fonctionnalité.</string>
     <string name="quota_check_failed">Impossible de vérifier l\'accès à la compatibilité.</string>
     <string name="comparing_partners_count">Comparaison de %d partenaires</string>
     <string name="partners_complete_count">%d/%d terminé</string>

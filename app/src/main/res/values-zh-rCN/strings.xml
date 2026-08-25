@@ -1868,7 +1868,6 @@
     <string name="birth_city_value_a11y">出生城市：%1$s</string>
     <string name="daily_limit_reset_time">每日限额已达。重置于%1$s。</string>
     <string name="daily_limit_reached_tomorrow">每日限额已达。明天重置。</string>
-    <string name="upgrade_to_unlock">升级即可解锁此功能。</string>
     <string name="quota_check_failed">无法检查兼容性访问。</string>
     <string name="comparing_partners_count">比较 %d 个合作伙伴</string>
     <string name="partners_complete_count">%d/%d 已完成</string>

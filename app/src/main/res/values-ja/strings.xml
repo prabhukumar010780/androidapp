@@ -1868,7 +1868,6 @@
     <string name="birth_city_value_a11y">誕生都市: %1$s</string>
     <string name="daily_limit_reset_time">1 日の制限に達しました。 %1$s でリセットされます。</string>
     <string name="daily_limit_reached_tomorrow">1 日の制限に達しました。明日はリセット。</string>
-    <string name="upgrade_to_unlock">この機能を利用するにはアップグレードしてください。</string>
     <string name="quota_check_failed">互換性アクセスを確認できません。</string>
     <string name="comparing_partners_count">%d パートナーを比較しています</string>
     <string name="partners_complete_count">%d/%d 完了</string>

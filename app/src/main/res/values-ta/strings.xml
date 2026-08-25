@@ -1859,7 +1859,6 @@
     <string name="birth_city_value_a11y">பிறந்த நகரம்: %1$s</string>
     <string name="daily_limit_reset_time">தினசரி வரம்பை எட்டிவிட்டது. %1$s இல் மீட்டமைக்கப்படும்.</string>
     <string name="daily_limit_reached_tomorrow">தினசரி வரம்பை அடைந்தது. நாளை மீட்டமைக்கப்படும்.</string>
-    <string name="upgrade_to_unlock">இந்த அம்சத்தைத் திறக்க மேம்படுத்தவும்.</string>
     <string name="quota_check_failed">பொருந்தக்கூடிய அணுகலைச் சரிபார்க்க முடியவில்லை.</string>
     <string name="comparing_partners_count">%d கூட்டாளர்களை ஒப்பிடுகிறது</string>
     <string name="partners_complete_count">%d/%d முடிந்தது</string>

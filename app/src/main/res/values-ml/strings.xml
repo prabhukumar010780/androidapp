@@ -1868,7 +1868,6 @@
     <string name="birth_city_value_a11y">ജന്മനഗരം: %1$s</string>
     <string name="daily_limit_reset_time">പ്രതിദിന പരിധി എത്തി. %1$s-ൽ പുനഃസജ്ജമാക്കുന്നു.</string>
     <string name="daily_limit_reached_tomorrow">പ്രതിദിന പരിധി എത്തി. നാളെ പുനഃക്രമീകരിക്കുന്നു.</string>
-    <string name="upgrade_to_unlock">ഈ ഫീച്ചർ അൺലോക്ക് ചെയ്യാൻ അപ്‌ഗ്രേഡ് ചെയ്യുക.</string>
     <string name="quota_check_failed">അനുയോജ്യത ആക്സസ് പരിശോധിക്കാനായില്ല.</string>
     <string name="comparing_partners_count">%d പങ്കാളികളെ താരതമ്യം ചെയ്യുന്നു</string>
     <string name="partners_complete_count">%d/%d പൂർത്തിയായി</string>
