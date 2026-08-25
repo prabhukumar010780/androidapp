@@ -166,7 +166,14 @@ fun SubscriptionScreen(
     // letting it sit forever in the LazyColumn with no acknowledgement path.
     LaunchedEffect(state.error) {
         state.error?.let { err ->
-            snackbarHostState.showSnackbar(err)
+            // Map the stable verify backstop code to human copy — BillingManager
+            // surfaces the raw code here (parity with the purchaseError handler
+            // above), so without this the user would see the literal error string.
+            val msg = when (err) {
+                StoreBillingGate.ERROR_OTHER_PLATFORM -> alreadySubscribedOtherStoreMsg
+                else -> err
+            }
+            snackbarHostState.showSnackbar(msg)
             viewModel.consumeError()
         }
     }
