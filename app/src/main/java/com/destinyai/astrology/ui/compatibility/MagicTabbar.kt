@@ -59,16 +59,19 @@ internal fun MagicTabbar(
     onSelect: (DestinyTileType) -> Unit,
 ) {
     val haptics = LocalHapticFeedback.current
+    // Touch-width budget: 7 × weight(1f) tabs.
+    // gutter=4dp (xs) each side, inner-h=4dp (xs) each side, gap=0dp between tabs.
+    // Per-tab width on 360dp phone: (360 − 2×4 − 2×4 − 6×0) / 7 = 344/7 ≈ 49.1dp ≥ 48dp ✓
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = Spacing.screenH)
+            .padding(horizontal = Spacing.xs)
             .clip(RoundedCornerShape(Radius.card))
             .background(Color.White.copy(alpha = 0.03f))
             .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(Radius.card))
-            .padding(horizontal = Spacing.sm, vertical = Spacing.xs)
+            .padding(horizontal = Spacing.xs, vertical = Spacing.xs)
             .semantics { contentDescription = "magic_tabbar" },
-        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+        horizontalArrangement = Arrangement.spacedBy(0.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         tabs.forEach { tab ->

@@ -228,24 +228,29 @@ private val DestinyTypography = Typography(
     // headings visibly heavier than iOS. Match iOS = FontWeight.Normal. Call sites
     // that want a bold heading add .copy(fontWeight = Bold) explicitly (parity with
     // iOS `Fonts.title(...).weight(.bold)`).
-    displayLarge = TextStyle(fontFamily = CanelaFontFamily, fontWeight = FontWeight.Normal, fontSize = 57.sp, lineHeight = 64.sp),
-    displayMedium = TextStyle(fontFamily = CanelaFontFamily, fontWeight = FontWeight.Normal, fontSize = 45.sp, lineHeight = 52.sp),
-    displaySmall = TextStyle(fontFamily = CanelaFontFamily, fontWeight = FontWeight.Normal, fontSize = 36.sp, lineHeight = 44.sp),
-    headlineLarge = TextStyle(fontFamily = CanelaFontFamily, fontWeight = FontWeight.Normal, fontSize = 32.sp, lineHeight = 40.sp),
-    headlineMedium = TextStyle(fontFamily = CanelaFontFamily, fontWeight = FontWeight.Normal, fontSize = 28.sp, lineHeight = 36.sp),
-    headlineSmall = TextStyle(fontFamily = CanelaFontFamily, fontWeight = FontWeight.Normal, fontSize = 24.sp, lineHeight = 32.sp),
-    titleLarge = TextStyle(fontFamily = CanelaFontFamily, fontWeight = FontWeight.Normal, fontSize = 22.sp, lineHeight = 30.sp),
-    titleMedium = TextStyle(fontFamily = CanelaFontFamily, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 22.sp),
-    titleSmall = TextStyle(fontFamily = CanelaFontFamily, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 20.sp),
+    //
+    // Type-scale derivation: roles whose fontSize matches an AppType token reference it
+    // directly. Roles above the AppType scale (display/headline/titleLarge) keep their
+    // own values — nearest AppType mapping noted in comment.
+    displayLarge  = TextStyle(fontFamily = CanelaFontFamily, fontWeight = FontWeight.Normal, fontSize = 57.sp, lineHeight = 64.sp),   // above AppType scale
+    displayMedium = TextStyle(fontFamily = CanelaFontFamily, fontWeight = FontWeight.Normal, fontSize = 45.sp, lineHeight = 52.sp),   // above AppType scale
+    displaySmall  = TextStyle(fontFamily = CanelaFontFamily, fontWeight = FontWeight.Normal, fontSize = 36.sp, lineHeight = 44.sp),   // above AppType scale
+    headlineLarge  = TextStyle(fontFamily = CanelaFontFamily, fontWeight = FontWeight.Normal, fontSize = 32.sp, lineHeight = 40.sp), // above AppType scale
+    headlineMedium = TextStyle(fontFamily = CanelaFontFamily, fontWeight = FontWeight.Normal, fontSize = 28.sp, lineHeight = 36.sp), // above AppType scale
+    headlineSmall  = TextStyle(fontFamily = CanelaFontFamily, fontWeight = FontWeight.Normal, fontSize = 24.sp, lineHeight = 32.sp), // above AppType scale
+    titleLarge  = TextStyle(fontFamily = CanelaFontFamily, fontWeight = FontWeight.Normal, fontSize = 22.sp, lineHeight = 30.sp),    // above AppType scale
+    // From here down, fontSize/lineHeight are derived from AppType constants:
+    titleMedium = TextStyle(fontFamily = CanelaFontFamily, fontWeight = FontWeight.Normal, fontSize = AppType.body,      lineHeight = AppType.bodyLh),       // → AppType.body (16sp/22sp)
+    titleSmall  = TextStyle(fontFamily = CanelaFontFamily, fontWeight = FontWeight.Normal, fontSize = AppType.secondary, lineHeight = AppType.secondaryLh),  // → AppType.secondary (14sp/20sp)
     // DES-161 D7: body + label roles had no fontFamily → fell back to Roboto, which
     // read differently from iOS. iOS uses Canela Roman for body copy, so set the
     // Canela family here for cross-platform parity.
-    bodyLarge = TextStyle(fontFamily = CanelaFontFamily, fontSize = 16.sp, lineHeight = 22.sp),
-    bodyMedium = TextStyle(fontFamily = CanelaFontFamily, fontSize = 14.sp, lineHeight = 20.sp),
-    bodySmall = TextStyle(fontFamily = CanelaFontFamily, fontSize = 12.sp, lineHeight = 16.sp),
-    labelLarge = TextStyle(fontFamily = CanelaFontFamily, fontSize = 14.sp, fontWeight = FontWeight.Normal, lineHeight = 20.sp),
-    labelMedium = TextStyle(fontFamily = CanelaFontFamily, fontSize = 12.sp, lineHeight = 16.sp),
-    labelSmall = TextStyle(fontFamily = CanelaFontFamily, fontSize = 11.sp, lineHeight = 16.sp),
+    bodyLarge  = TextStyle(fontFamily = CanelaFontFamily, fontSize = AppType.body,      lineHeight = AppType.bodyLh),       // → AppType.body (16sp/22sp)
+    bodyMedium = TextStyle(fontFamily = CanelaFontFamily, fontSize = AppType.secondary, lineHeight = AppType.secondaryLh),  // → AppType.secondary (14sp/20sp)
+    bodySmall  = TextStyle(fontFamily = CanelaFontFamily, fontSize = AppType.caption,   lineHeight = AppType.captionLh),    // → AppType.caption (12sp/16sp)
+    labelLarge  = TextStyle(fontFamily = CanelaFontFamily, fontSize = AppType.secondary, fontWeight = FontWeight.Normal, lineHeight = AppType.secondaryLh), // → AppType.secondary (14sp/20sp)
+    labelMedium = TextStyle(fontFamily = CanelaFontFamily, fontSize = AppType.caption,   lineHeight = AppType.captionLh),   // → AppType.caption (12sp/16sp)
+    labelSmall  = TextStyle(fontFamily = CanelaFontFamily, fontSize = AppType.caption,   lineHeight = AppType.captionLh),   // nearest: AppType.caption (12sp) — retires 11sp per AppType floor
 )
 
 private val DarkColors = darkColorScheme(
@@ -386,38 +391,41 @@ object AppTheme {
     /**
      * Issue 17: semantic typography helpers mirroring iOS AppTheme.Fonts.
      * These re-use CanelaFontFamily so they cooperate with the global serif fallback.
+     * fontSize/lineHeight are derived from AppType where values match; roles above the
+     * AppType scale keep their own values (nearest AppType mapping noted in comment).
      */
     object typography {
         val soul = TextStyle(
             fontFamily = CanelaFontFamily,
             fontWeight = FontWeight.Bold,
-            fontSize = 20.sp,
+            fontSize = 20.sp,      // between AppType.sectionHeader (18sp) and screenTitle (26sp) — nearest: sectionHeader
             lineHeight = 28.sp,
         )
         val premiumDisplay = TextStyle(
             fontFamily = CanelaFontFamily,
             fontWeight = FontWeight.Bold,
-            fontSize = 32.sp,
+            fontSize = 32.sp,      // above AppType scale
             lineHeight = 40.sp,
         )
         val premiumTitle = TextStyle(
             fontFamily = CanelaFontFamily,
             fontWeight = FontWeight.Bold,
-            fontSize = 22.sp,
+            fontSize = 22.sp,      // above AppType scale — nearest: AppType.sectionHeader (18sp)
             lineHeight = 30.sp,
         )
+        // From here down, fontSize/lineHeight are derived from AppType constants:
         val premiumBody = TextStyle(
             fontFamily = CanelaFontFamily,
             fontWeight = FontWeight.Normal,
-            fontSize = 16.sp,
-            lineHeight = 22.sp,
+            fontSize = AppType.body,     // → AppType.body (16sp)
+            lineHeight = AppType.bodyLh, // → AppType.bodyLh (22sp)
         )
-        // caption: 12sp unified with AppType.caption (was 13sp — fixes two-value conflict)
+        // caption: derived from AppType.caption (12sp/16sp)
         val caption = TextStyle(
             fontFamily = CanelaFontFamily,
             fontWeight = FontWeight.Normal,
-            fontSize = 12.sp,
-            lineHeight = 16.sp,
+            fontSize = AppType.caption,     // → AppType.caption (12sp)
+            lineHeight = AppType.captionLh, // → AppType.captionLh (16sp)
         )
     }
 

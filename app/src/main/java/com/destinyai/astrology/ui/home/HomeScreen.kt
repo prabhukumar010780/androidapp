@@ -690,13 +690,16 @@ private fun HomeHeader(
                         Box(
                             modifier = Modifier
                                 .padding(top = 2.dp, end = 0.dp)
+                                .sizeIn(minWidth = 20.dp, minHeight = 20.dp)
                                 .clip(CircleShape)
                                 .background(Color(0xFFE53E3E))
-                                .padding(horizontal = 5.dp, vertical = 1.dp),
+                                .padding(horizontal = 5.dp, vertical = 2.dp),
+                            contentAlignment = Alignment.Center,
                         ) {
                             Text(
                                 text = badgeText,
-                                fontSize = 10.sp,
+                                fontSize = AppType.caption,
+                                lineHeight = AppType.captionLh,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
                             )

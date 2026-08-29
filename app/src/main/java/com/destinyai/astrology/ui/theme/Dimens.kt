@@ -1,5 +1,6 @@
 package com.destinyai.astrology.ui.theme
 
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -113,4 +114,16 @@ object AppType {
     val secondaryLh = 20.sp
     val caption = 12.sp
     val captionLh = 16.sp
+
+    /**
+     * Paired TextStyle accessors — recommended API for new call sites so fontSize and
+     * lineHeight are always matched. The loose fontSize/lineHeight constants above are
+     * kept for the ~27 existing call sites that reference them individually.
+     */
+    val screenTitleStyle get() = TextStyle(fontSize = screenTitle, lineHeight = screenTitleLh)
+    val sectionHeaderStyle get() = TextStyle(fontSize = sectionHeader, lineHeight = sectionHeaderLh)
+    val cardTitleStyle get() = TextStyle(fontSize = cardTitle, lineHeight = cardTitleLh)
+    val bodyStyle get() = TextStyle(fontSize = body, lineHeight = bodyLh)
+    val secondaryStyle get() = TextStyle(fontSize = secondary, lineHeight = secondaryLh)
+    val captionStyle get() = TextStyle(fontSize = caption, lineHeight = captionLh)
 }
