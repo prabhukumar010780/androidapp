@@ -111,6 +111,10 @@ fun SubscriptionScreen(
     val restoreFailedMsg = stringResource(R.string.restore_failed)
     val productNotAvailableMsg = stringResource(R.string.product_not_available_error)
     val alreadySubscribedOtherStoreMsg = stringResource(R.string.already_subscribed_other_store)
+    // R5c: pre-resolve localized strings for billing error mapping so they are
+    // available inside LaunchedEffect (where stringResource cannot be called).
+    val billingPurchasePendingMsg = stringResource(R.string.billing_purchase_pending)
+    val billingErrorGenericMsg = stringResource(R.string.billing_error_generic)
 
     LaunchedEffect(Unit) {
         // iOS parity (SubscriptionView.swift:118-130 .task) — auto-refresh products
@@ -154,7 +158,14 @@ fun SubscriptionScreen(
             val msg = when (err) {
                 "product_not_available_error" -> productNotAvailableMsg
                 StoreBillingGate.ERROR_OTHER_PLATFORM -> alreadySubscribedOtherStoreMsg
-                else -> err
+                // R5c: map the pending-purchase token to human copy instead of
+                // surfacing the raw token.
+                "pending_purchase" -> billingPurchasePendingMsg
+                // R5c: never show raw Play SDK debugMessage to users — log it only.
+                else -> {
+                    android.util.Log.w("SubscriptionScreen", "Unhandled purchase error (raw, hidden from user): $err")
+                    billingErrorGenericMsg
+                }
             }
             snackbarHostState.showSnackbar(msg)
             viewModel.consumePurchaseError()
@@ -171,7 +182,13 @@ fun SubscriptionScreen(
             // above), so without this the user would see the literal error string.
             val msg = when (err) {
                 StoreBillingGate.ERROR_OTHER_PLATFORM -> alreadySubscribedOtherStoreMsg
-                else -> err
+                // R5c: map the pending-purchase token to human copy.
+                "pending_purchase" -> billingPurchasePendingMsg
+                // R5c: never show raw Play SDK debugMessage to users — log it only.
+                else -> {
+                    android.util.Log.w("SubscriptionScreen", "Unhandled billing state error (raw, hidden from user): $err")
+                    billingErrorGenericMsg
+                }
             }
             snackbarHostState.showSnackbar(msg)
             viewModel.consumeError()

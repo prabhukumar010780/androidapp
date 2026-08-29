@@ -62,9 +62,9 @@ class NotificationRouterTest {
     }
 
     @Test
-    fun `SUBSCRIPTION_EXPIRING routes to Settings`() {
+    fun `SUBSCRIPTION_EXPIRING routes to Subscription`() {
         NotificationRouter.route("SUBSCRIPTION_EXPIRING")
-        assertTrue(NotificationRouter.pendingDeepLink.value is NotificationDeepLink.Settings)
+        assertTrue(NotificationRouter.pendingDeepLink.value is NotificationDeepLink.Subscription)
     }
 
     @Test

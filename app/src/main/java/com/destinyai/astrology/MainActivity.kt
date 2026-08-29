@@ -4,8 +4,10 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import android.graphics.Color
 import androidx.lifecycle.lifecycleScope
 import com.destinyai.astrology.services.FcmTokenManager
 import com.destinyai.astrology.services.NotificationRouter
@@ -33,7 +35,17 @@ class MainActivity : ComponentActivity() {
         // "tab bar missing on device" (emulator dispatched insets differently, so it
         // showed there). Also required for IME (keyboard) insets to be reported so
         // adjustResize + imePadding behave.
-        enableEdgeToEdge()
+        //
+        // R7 fix: force light (white) icons on BOTH bars unconditionally. The app uses
+        // a dark theme exclusively (DestinyTheme never switches to a light palette).
+        // The no-arg overload uses SystemBarStyle.auto() keyed to the device night-mode
+        // setting; on a Light-mode device it requests dark icons over our dark navy
+        // backdrop → invisible clock/battery/nav pill. Explicit SystemBarStyle.dark()
+        // ensures white icons regardless of the device's system theme.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+        )
         super.onCreate(savedInstanceState)
         // Debug-only: capture E2E partner pre-fill extras before any Compose
         // graph runs so CompatibilityViewModel.loadUserData() can consume them

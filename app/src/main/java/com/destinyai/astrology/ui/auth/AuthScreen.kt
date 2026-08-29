@@ -652,6 +652,25 @@ fun AuthScreen(
             }
         }
 
+        // Merge-conflict dialog — shown when a guest user tries to upgrade to a
+        // registered account whose birth data already exists on the server.
+        // A full Keep/Merge/Cancel flow requires a confirmed backend merge endpoint
+        // (not yet available); this dialog surfaces the conflict clearly so the
+        // user knows what to do rather than hitting the previous silent dead-end
+        // (spinner vanishes, nothing happens). iOS parity: BirthDataTakenError path.
+        if (state.showMergeDialog) {
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissMergeDialog() },
+                title = { Text(stringResource(R.string.merge_conflict_title)) },
+                text = { Text(stringResource(R.string.merge_conflict_message)) },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.dismissMergeDialog() }) {
+                        Text(stringResource(R.string.merge_conflict_dismiss))
+                    }
+                },
+            )
+        }
+
         // R2-A1: Sound toggle — top-right corner overlay.
         // iOS parity (AuthView.swift:106 `if AppTheme.Features.showSoundToggle`):
         // gate visibility on the same feature flag so platforms stay in sync.

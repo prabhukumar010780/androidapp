@@ -136,6 +136,11 @@ fun MainScreen(
     // is showing so the back event falls through to the OS when neither is active.
     BackHandler(enabled = showHistory) { showHistory = false }
     BackHandler(enabled = showProfile) { showProfile = false }
+    // Return to Home instead of exiting when Back is pressed on a non-Home tab.
+    // Mirrors the Chat back-chevron (onBack = { selectedTab = 0 }) and iOS tab-switch
+    // on back. Must be declared AFTER the overlay handlers above so History/Profile
+    // dismissal retains higher precedence (BackHandler enables are checked LIFO).
+    BackHandler(enabled = selectedTab != 0) { selectedTab = 0 }
 
     // Mirrors iOS @AppStorage("isGuest") — observe guest user state.
     val isGuestUser by viewModel.isGuestUser.collectAsState()
@@ -207,6 +212,13 @@ fun MainScreen(
             // reset selectedTab to 0 here. AppNav still owns the route push and
             // the NotificationRouter.consume() call.
             is NotificationDeepLink.Settings -> {
+                showHistory = false
+                showProfile = false
+                selectedTab = 0
+            }
+            // Subscription is consumed by AppNav.kt (navigates to Routes.SUBSCRIPTION).
+            // Reset to Home so returning from the paywall lands on the Home tab.
+            is NotificationDeepLink.Subscription -> {
                 showHistory = false
                 showProfile = false
                 selectedTab = 0

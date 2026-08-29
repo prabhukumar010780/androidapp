@@ -755,7 +755,13 @@ class ChatViewModel @Inject constructor(
                                         it.copy(
                                             isStreaming = false,
                                             showQuotaExhaustedAccountSheet = true,
-                                            quotaDetails = e.message ?: "",
+                                            // R5a fix: e.message carries the snake_case token
+                                            // ("upgrade_required") — never put it in quotaDetails
+                                            // or it defeats the localized fallback string rendered
+                                            // by ChatScreen (customMessage.ifBlank{...}).
+                                            // quotaReason holds the token for branching; details
+                                            // stays blank so the sheet shows the localized copy.
+                                            quotaDetails = "",
                                             quotaReason = if (e is UpgradeRequiredException) "upgrade_required" else "overall_limit_reached",
                                         )
                                     }

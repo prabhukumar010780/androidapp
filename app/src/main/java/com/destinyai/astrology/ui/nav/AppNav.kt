@@ -171,6 +171,12 @@ fun AppNav() {
                 navController.navigate(Routes.NOTIFICATION_PREFS) { launchSingleTop = true }
                 NotificationRouter.consume()
             }
+            // R8/B7 fix: subscription-expiring push deep-links to the paywall so the
+            // user has a direct path to renew instead of landing on Alerts.
+            NotificationDeepLink.Subscription -> {
+                navController.navigate(Routes.SUBSCRIPTION) { launchSingleTop = true }
+                NotificationRouter.consume()
+            }
             else -> Unit  // Home / Chat / Match handled by MainScreen.kt
         }
     }

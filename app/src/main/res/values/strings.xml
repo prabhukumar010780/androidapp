@@ -2915,4 +2915,8 @@ Until then: Use this period for strategic positioning.</string>
     <string name="notif_rationale_body" tools:ignore="MissingTranslation">Enable notifications to receive your daily astrological guidance, planetary transit alerts, and compatibility updates.</string>
     <string name="notif_rationale_enable" tools:ignore="MissingTranslation">Enable</string>
     <string name="notif_rationale_not_now" tools:ignore="MissingTranslation">Not now</string>
+    <string name="billing_error_generic">Purchase could not be completed. Please try again.</string>
+    <string name="merge_conflict_title">Account already exists</string>
+    <string name="merge_conflict_message">An account with these birth details already exists. Please sign in with the original method you used, or contact support.</string>
+    <string name="merge_conflict_dismiss">OK</string>
 </resources>

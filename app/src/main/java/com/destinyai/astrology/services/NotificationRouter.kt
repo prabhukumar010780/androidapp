@@ -18,6 +18,8 @@ sealed class NotificationDeepLink {
     ) : NotificationDeepLink()
     object Match : NotificationDeepLink()
     object Settings : NotificationDeepLink()
+    /** Routes a subscription-expiring push directly to the paywall screen. */
+    object Subscription : NotificationDeepLink()
 }
 
 object NotificationRouter {
@@ -37,7 +39,10 @@ object NotificationRouter {
             "TRANSIT_ALERT", "LIFE_ALERT", "CUSTOM_ALERT", "WELCOME" ->
                 NotificationDeepLink.Chat(prefill = prefill, autoSubmit = autoSubmit, newThread = newThread)
             "COMPATIBILITY_READY" -> NotificationDeepLink.Match
-            "SUBSCRIPTION_EXPIRING" -> NotificationDeepLink.Settings
+            // R8/B7 fix: route subscription-expiring push directly to the paywall
+            // so users have a one-tap path to renew. Settings is kept for genuine
+            // notification-preference deep links (e.g. a future NOTIF_PREFS type).
+            "SUBSCRIPTION_EXPIRING" -> NotificationDeepLink.Subscription
             else -> NotificationDeepLink.Home
         }
     }

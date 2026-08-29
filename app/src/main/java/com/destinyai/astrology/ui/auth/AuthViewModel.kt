@@ -93,7 +93,13 @@ class AuthViewModel @Inject constructor(
      */
     private fun friendlyAuthError(e: Throwable): String =
         when (e) {
-            is ConflictException, is AccountDeletedException -> e.message
+            // R5b fix: AccountDeletedException.message carries the raw token
+            // "account_deleted" — map it to the existing localized string instead
+            // of surfacing the token verbatim. ConflictException can carry a real
+            // human-readable server message, so keep e.message for that branch.
+            is AccountDeletedException ->
+                context.getString(R.string.account_deleted_error)
+            is ConflictException -> e.message
                 ?: context.getString(R.string.auth_generic_sign_in_failed)
             // Session mint failed (no id_token / rejected exchange) — retryable.
             is SessionMintFailedException ->
@@ -195,6 +201,17 @@ class AuthViewModel @Inject constructor(
 
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    /**
+     * Dismisses the merge-conflict dialog that appears when a guest user's birth
+     * data already belongs to an existing registered account. A full 3-way
+     * Keep/Merge/Cancel flow requires a confirmed backend merge endpoint; until
+     * that exists, dismissing the dialog is the safe fallback so the spinner does
+     * not vanish with no explanation (the silent dead-end described in B10/R5).
+     */
+    fun dismissMergeDialog() {
+        _uiState.update { it.copy(showMergeDialog = false) }
     }
 
     /**
