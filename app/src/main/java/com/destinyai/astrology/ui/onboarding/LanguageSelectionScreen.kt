@@ -423,7 +423,8 @@ private fun LanguageCard(
             // fixed short/wide tile. Was .aspectRatio(1f) → square tiles ~30% taller than
             // iOS, so 5 rows of 13 languages overflowed and the last tile clipped under the
             // "Select a language" CTA. Grid sets the width; height is fixed.
-            .height(72.dp)
+            // R2 fix: heightIn(min) so scalable text can grow at large fontScale.
+            .heightIn(min = 72.dp)
             .then(
                 if (isSelected) {
                     Modifier.shadow(

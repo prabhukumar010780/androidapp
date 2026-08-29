@@ -85,8 +85,10 @@ fun SynergyGaugeView(
             modifier = Modifier.size(size),
             contentAlignment = Alignment.Center,
         ) {
-            val strokeWidth = size.value * 0.08f
             androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+                // R3 fix: compute strokeWidth inside DrawScope where Dp.toPx() is available
+                // via the implicit Density receiver. (size * 0.08f) is Dp arithmetic.
+                val strokeWidth = (size * 0.08f).toPx()
                 val sweepAngle = 270f
                 val startAngle = 135f
                 val inset = strokeWidth / 2
@@ -120,7 +122,8 @@ fun SynergyGaugeView(
                     fontFamily = CanelaFontFamily,
                     fontWeight = FontWeight.Bold,
                     color = Gold,
-                    fontSize = (size.value * if (hasAdjustment) 0.28f else 0.32f).sp,
+                    // R2 fix: cap at 48sp so the score doesn't overlap the arc at fontScale 2.0.
+                    fontSize = (size.value * if (hasAdjustment) 0.28f else 0.32f).coerceAtMost(48f).sp,
                     modifier = Modifier.testTag("synergy_score_value"),
                 )
                 Text(

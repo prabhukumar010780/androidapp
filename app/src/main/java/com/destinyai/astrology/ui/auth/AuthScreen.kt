@@ -431,7 +431,7 @@ fun AuthScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(54.dp)
+                    .heightIn(min = 54.dp)
                     .testTag("google_sign_in_button")
                     .testTag("auth_google_button"),
                 shape = RoundedCornerShape(Radius.authButton),

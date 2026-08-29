@@ -27,28 +27,34 @@ fun NorthIndianChartView(
     gridSizeDp: Float = 340f,
 ) {
     val chartDesc = stringResource(R.string.a11y_north_indian_chart, ascendantSign ?: "")
-    Box(
-        modifier = Modifier
-            .size(gridSizeDp.dp)
-            .padding(8.dp)
-            .semantics { contentDescription = chartDesc }
-            // iOS parity: outer chart shadow + inner grid glow (issue 6)
-            .shadow(
-                elevation = 4.dp,
-                ambientColor = goldColor.copy(alpha = 0.1f),
-                spotColor = goldColor.copy(alpha = 0.1f),
+    // R2/A1 fix: shrink below 340dp on narrow phones, split-screen, or folded foldables.
+    // BoxWithConstraints supplies maxWidth; actualSize caps at gridSizeDp so large screens
+    // still honour the caller's intent while narrow screens are never clipped.
+    BoxWithConstraints {
+        val actualSize = minOf(maxWidth, gridSizeDp.dp)
+        Box(
+            modifier = Modifier
+                .size(actualSize)
+                .padding(8.dp)
+                .semantics { contentDescription = chartDesc }
+                // iOS parity: outer chart shadow + inner grid glow (issue 6)
+                .shadow(
+                    elevation = 4.dp,
+                    ambientColor = goldColor.copy(alpha = 0.1f),
+                    spotColor = goldColor.copy(alpha = 0.1f),
+                )
+                .shadow(
+                    elevation = 2.dp,
+                    ambientColor = goldColor.copy(alpha = 0.3f),
+                    spotColor = goldColor.copy(alpha = 0.3f),
+                ),
+        ) {
+            NorthIndianCanvas(
+                chartData = chartData,
+                ascendantSign = ascendantSign,
+                modifier = Modifier.fillMaxSize(),
             )
-            .shadow(
-                elevation = 2.dp,
-                ambientColor = goldColor.copy(alpha = 0.3f),
-                spotColor = goldColor.copy(alpha = 0.3f),
-            ),
-    ) {
-        NorthIndianCanvas(
-            chartData = chartData,
-            ascendantSign = ascendantSign,
-            modifier = Modifier.fillMaxSize(),
-        )
+        }
     }
 }
 
@@ -71,8 +77,10 @@ private fun NorthIndianCanvas(
             end = Offset(w, h),
         )
 
-        val medPx = 1.5f
-        val thinPx = 1.0f
+        // R3 fix: convert literal pixel floats to dp-derived pixels so strokes are
+        // density-independent (1.5f raw = ~0.4dp hairline on 4× screens).
+        val medPx = 1.5.dp.toPx()
+        val thinPx = 1.0.dp.toPx()
 
         // 1. Double outer border — gradient stroke (issue 1)
         drawRect(

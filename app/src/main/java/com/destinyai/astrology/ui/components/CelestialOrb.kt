@@ -221,12 +221,13 @@ fun CelestialOrb(
                 )
             }
 
-            // 5. Hairline gold rim
+            // 5. Hairline gold rim — dp.toPx() so 1.5dp renders at correct physical pixels on
+            // every density (R3 fix: raw 1.5f was ~0.4dp hairline on 4× screens).
             drawCircle(
                 color = Gold.copy(alpha = 0.50f),
                 radius = radius,
                 center = centre,
-                style = Stroke(width = 1.5f),
+                style = Stroke(width = 1.5.dp.toPx()),
             )
         }
 

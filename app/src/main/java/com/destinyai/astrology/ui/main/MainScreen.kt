@@ -50,6 +50,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -724,8 +725,10 @@ private fun DestinyTabBar(
                 ),
         )
 
-        // Row of 3 tab slots — fixed 76dp content height ABOVE the nav-bar inset, so the
+        // Row of 3 tab slots — min 76dp content height ABOVE the nav-bar inset, so the
         // navy background below (the inset region) stays painted like iOS's ignoresSafeArea.
+        // R2 fix: heightIn(min) allows the row to grow at large fontScale / long locales
+        // instead of clipping the icon+label stack.
         // Center slot is a transparent Spacer placeholder so layout/weights stay
         // consistent; the visible FAB is rendered separately above this Row.
         Row(
@@ -733,7 +736,7 @@ private fun DestinyTabBar(
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
                 .windowInsetsPadding(WindowInsets.navigationBars)
-                .height(76.dp)
+                .heightIn(min = 76.dp)
                 .padding(horizontal = 30.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -857,6 +860,10 @@ private fun TabBarItem(
             fontWeight = FontWeight.Normal,
             color = if (selected) CreamText else Gold,
             textAlign = TextAlign.Center,
+            // R2 fix: single-line with ellipsis so long translated labels don't wrap
+            // and blow out the heightIn(min=76dp) tab row.
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

@@ -797,7 +797,7 @@ private fun PremiumFieldButton(
 ) {
     Row(
         modifier = modifier
-            .height(48.dp)
+            .heightIn(min = TouchMin)
             .clip(RoundedCornerShape(12.dp))
             .background(if (enabled) NavyInput else NavyInput.copy(alpha = 0.5f))
             .border(

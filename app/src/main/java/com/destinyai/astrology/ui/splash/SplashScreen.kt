@@ -559,7 +559,7 @@ private fun OrbitalRing() {
             color = Gold.copy(alpha = 0.18f),
             radius = ringRadius,
             center = center,
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.2f),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.2.dp.toPx()),
         )
         repeat(3) { i ->
             val theta = Math.toRadians((angle + i * 120f).toDouble())

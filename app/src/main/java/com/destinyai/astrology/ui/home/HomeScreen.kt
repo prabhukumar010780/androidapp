@@ -1047,6 +1047,8 @@ private fun StoryOrb(
         }
 
         // 9. Uppercase label below — goldLight, 11sp semibold, letter-spacing 0.3
+        // R2 fix: maxLines=2 + widthIn(max) so localized/long names (e.g. "RELATIONSHIP"
+        // in de/hi) wrap to a second line instead of truncating to a few chars.
         Text(
             text = area.name.uppercase(),
             fontSize = AppType.caption,
@@ -1055,9 +1057,9 @@ private fun StoryOrb(
             color = GoldLight,
             letterSpacing = 0.3.sp,
             textAlign = TextAlign.Center,
-            maxLines = 1,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.width(orbSize + 8.dp),
+            modifier = Modifier.widthIn(max = orbSize + 8.dp),
         )
     }
 }

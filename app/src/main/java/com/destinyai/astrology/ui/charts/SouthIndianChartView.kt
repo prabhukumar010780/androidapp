@@ -38,28 +38,32 @@ fun SouthIndianChartView(
     gridSizeDp: Float = 340f,
 ) {
     val chartDesc = stringResource(R.string.a11y_south_indian_chart, ascendantSign ?: "")
-    Box(
-        modifier = Modifier
-            .size(gridSizeDp.dp)
-            .padding(8.dp)
-            .semantics { contentDescription = chartDesc }
-            .shadow(
-                elevation = 4.dp,
-                ambientColor = Gold.copy(alpha = 0.1f),
-                spotColor = Gold.copy(alpha = 0.1f),
+    // R2/A1 fix: shrink below 340dp on narrow phones, split-screen, or folded foldables.
+    BoxWithConstraints {
+        val actualSize = minOf(maxWidth, gridSizeDp.dp)
+        Box(
+            modifier = Modifier
+                .size(actualSize)
+                .padding(8.dp)
+                .semantics { contentDescription = chartDesc }
+                .shadow(
+                    elevation = 4.dp,
+                    ambientColor = Gold.copy(alpha = 0.1f),
+                    spotColor = Gold.copy(alpha = 0.1f),
+                )
+                .shadow(
+                    elevation = 2.dp,
+                    ambientColor = Gold.copy(alpha = 0.2f),
+                    spotColor = Gold.copy(alpha = 0.2f),
+                ),
+        ) {
+            SouthIndianCanvas(
+                chartData = chartData,
+                chartType = chartType,
+                ascendantSign = ascendantSign,
+                modifier = Modifier.fillMaxSize(),
             )
-            .shadow(
-                elevation = 2.dp,
-                ambientColor = Gold.copy(alpha = 0.2f),
-                spotColor = Gold.copy(alpha = 0.2f),
-            ),
-    ) {
-        SouthIndianCanvas(
-            chartData = chartData,
-            chartType = chartType,
-            ascendantSign = ascendantSign,
-            modifier = Modifier.fillMaxSize(),
-        )
+        }
     }
 }
 
@@ -101,8 +105,10 @@ private fun SouthIndianCanvas(
         val h = size.height
         val cell = w / 4f
 
-        val medPx = 1.5f
-        val thinPx = 1.0f
+        // R3 fix: convert literal pixel floats to dp-derived pixels so strokes are
+        // density-independent (1.5f raw = ~0.4dp hairline on 4× screens).
+        val medPx = 1.5.dp.toPx()
+        val thinPx = 1.0.dp.toPx()
 
         // Animated gold gradient brush — 3 stops, offset shifts for shimmer parity with iOS
         val animatedShift = gradientOffset * w
