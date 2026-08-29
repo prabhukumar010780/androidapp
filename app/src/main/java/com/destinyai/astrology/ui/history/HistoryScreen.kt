@@ -28,6 +28,8 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,6 +70,7 @@ import java.util.Locale
 // Mirrors iOS HistoryView.swift:380 — purple tint reserved for grouped match rows.
 private val GroupPurple = Color(red = 0.75f, green = 0.55f, blue = 0.95f)
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
     onBack: () -> Unit,
@@ -190,6 +193,14 @@ fun HistoryScreen(
                 return@Column
             }
 
+            // Lows: pull-to-refresh mirrors iOS HistoryView swipe-to-refresh.
+            val pullRefreshState = rememberPullToRefreshState()
+            PullToRefreshBox(
+                isRefreshing = state.isRefreshing,
+                onRefresh = { viewModel.loadHistory(manualRefresh = true) },
+                state = pullRefreshState,
+                modifier = Modifier.weight(1f),
+            ) {
             UnifiedHistoryList(
                 state = state,
                 viewModel = viewModel,
@@ -241,6 +252,7 @@ fun HistoryScreen(
                     pendingDelete = DeleteRequest(DeleteKind.COMPATIBILITY_GROUP, groupId, title)
                 },
             )
+            }  // PullToRefreshBox
         }
 
         // Confirmation dialog — mirrors iOS .alert("Delete", isPresented:) flow

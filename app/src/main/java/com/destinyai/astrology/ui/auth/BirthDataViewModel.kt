@@ -1,6 +1,7 @@
 package com.destinyai.astrology.ui.auth
 
 import android.content.Context
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.destinyai.astrology.R
@@ -75,6 +76,9 @@ class BirthDataViewModel @Inject constructor(
     private val locationSearchService: LocationSearchService,
     private val soundManager: SoundManager,
     private val chatRepository: ChatRepository,
+    // R6: SavedStateHandle persists the name draft typed into the form so it
+    // survives configuration changes and process death.
+    private val savedStateHandle: SavedStateHandle,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -84,6 +88,11 @@ class BirthDataViewModel @Inject constructor(
     private var locationSearchJob: Job? = null
 
     init {
+        // R6: restore the name draft that survived process death before any network
+        // load so the field is already populated when the screen recomposes.
+        savedStateHandle.get<String>("birth_draft_name")
+            ?.takeIf { it.isNotBlank() }
+            ?.let { name -> _uiState.update { it.copy(userName = name) } }
         // iOS parity (SoundManager.swift:19-29): observe the source-of-truth
         // flow so the toggle stays in sync with AuthScreen and SoundManager.
         viewModelScope.launch {
@@ -122,7 +131,11 @@ class BirthDataViewModel @Inject constructor(
                 s.gender.isNotEmpty()
         }
 
-    fun setUserName(name: String) = _uiState.update { it.copy(userName = name) }
+    fun setUserName(name: String) {
+        // R6: persist name draft so it survives process death.
+        savedStateHandle["birth_draft_name"] = name
+        _uiState.update { it.copy(userName = name) }
+    }
 
     fun setDateOfBirth(dob: String) = _uiState.update { it.copy(dateOfBirth = dob, isDateSelected = true) }
 

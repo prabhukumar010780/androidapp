@@ -137,6 +137,9 @@ data class HistoryUiState(
     val isCompatibilityLoading: Boolean = false,
     // Mirrors iOS HistoryView.historyDisabledView (HistoryView.swift:21-22, 73-107)
     val isHistoryEnabled: Boolean = true,
+    // Lows: true while a manual pull-to-refresh is in flight — drives the
+    // PullToRefreshBox indicator so it doesn't overlap the isLoading spinner.
+    val isRefreshing: Boolean = false,
 ) {
     val filteredThreads: List<ChatThread>
         get() = matchedThreads()
@@ -292,9 +295,13 @@ class HistoryViewModel @Inject constructor(
         _uiState.update { it.copy(error = null) }
     }
 
-    fun loadHistory() {
+    fun loadHistory(manualRefresh: Boolean = false) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            if (manualRefresh) {
+                _uiState.update { it.copy(isRefreshing = true, error = null) }
+            } else {
+                _uiState.update { it.copy(isLoading = true, error = null) }
+            }
             try {
                 // Cache the active email so the unified feed always pulls the
                 // matching compatibility list.
@@ -308,13 +315,14 @@ class HistoryViewModel @Inject constructor(
                     it.copy(
                         threads = threads,
                         isLoading = false,
+                        isRefreshing = false,
                         displayedThreadCount = threads.size,
                         // hasMore heuristic: a full page likely means more rows on disk.
                         hasMoreFromDataLayer = threads.size >= PAGE_SIZE,
                     )
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message ?: "Failed to load history") }
+                _uiState.update { it.copy(isLoading = false, isRefreshing = false, error = e.message ?: "Failed to load history") }
             }
         }
     }

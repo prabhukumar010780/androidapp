@@ -10,6 +10,7 @@ import com.destinyai.astrology.domain.model.ChatThread
 import com.destinyai.astrology.services.ProfileChangeBus
 import com.destinyai.astrology.services.ProfileContextManager
 import com.destinyai.astrology.services.QuotaManager
+import androidx.lifecycle.SavedStateHandle
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -70,6 +71,7 @@ class ChatViewModelExtendedTest {
             profileContextManager = mockk(relaxed = true),
             appStartupService = appStartup,
             networkMonitor = mockk(relaxed = true),
+            savedStateHandle = SavedStateHandle(),
             appContext = appContext,
         )
     }

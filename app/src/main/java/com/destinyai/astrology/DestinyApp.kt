@@ -9,6 +9,7 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import com.destinyai.astrology.data.billing.BillingManager
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.repository.AuthRepository
+import com.destinyai.astrology.services.HapticManager
 import com.destinyai.astrology.services.AppStartupService
 import com.destinyai.astrology.services.DestinyFirebaseMessagingService
 import com.destinyai.astrology.services.QuotaManager
@@ -17,6 +18,7 @@ import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -29,6 +31,9 @@ class DestinyApp : Application() {
     // iOS parity (AppRootView.swift:204-210): on account_deleted detection at foreground,
     // run the full sign-out teardown so the next Splash routes to Auth.
     @Inject lateinit var authRepository: AuthRepository
+    // B5: bind the app-scoped HapticManager.isEnabled to the persisted preference so
+    // semantic haptics fire immediately on first launch (pref defaults true).
+    @Inject lateinit var hapticManager: HapticManager
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -38,6 +43,14 @@ class DestinyApp : Application() {
         // Create all FCM notification channels before any lifecycle observer or
         // background message can arrive (R8b). Safe no-op on API < 26.
         DestinyFirebaseMessagingService.createAllChannels(this)
+        // B5: wire HapticManager.isEnabled to the persisted haptics preference so it
+        // is always non-false on first launch (pref defaults true) and respects the
+        // user's in-app toggle from that point on.
+        appScope.launch {
+            userPreferences.isHapticsEnabledFlow()
+                .distinctUntilChanged()
+                .collect { enabled -> hapticManager.isEnabled = enabled }
+        }
         Thread.setDefaultUncaughtExceptionHandler { t, e ->
             Log.e("DestinyApp", "Uncaught exception on thread ${t.name}: ${e.message}", e)
             // don't crash — let coroutine exception handler take over

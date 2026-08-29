@@ -10,14 +10,18 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.fillMaxSize
 import com.destinyai.astrology.ui.theme.CosmicBackground
+import android.provider.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import com.destinyai.astrology.ui.theme.LocalReduceMotion
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
@@ -127,8 +131,17 @@ fun AppNav() {
     // AnimatedVisibility, so the next screen is pre-warmed behind the splash.
     val splashViewModel: SplashViewModel = hiltViewModel()
     val splashDestination by splashViewModel.uiState.collectAsStateWithLifecycle()
-    var showSplash by remember { mutableStateOf(true) }
-    var hasNavigatedFromSplash by remember { mutableStateOf(false) }
+    var showSplash by rememberSaveable { mutableStateOf(true) }
+    var hasNavigatedFromSplash by rememberSaveable { mutableStateOf(false) }
+    // R10: read the system "Remove animations" setting once per composition.
+    // animatorDurationScale == 0f means the user has disabled animations.
+    val reduceMotion = remember(context) {
+        Settings.Global.getFloat(
+            context.contentResolver,
+            Settings.Global.ANIMATOR_DURATION_SCALE,
+            1f,
+        ) == 0f
+    }
 
     LaunchedEffect(Unit) { splashViewModel.navigate() }
 
@@ -163,7 +176,11 @@ fun AppNav() {
     //   • Without this split, AppNav and MainScreen both consumed the link and
     //     raced — Settings used to fire BOTH a NotificationPrefs push AND a
     //     selectedTab=0 reset.
-    LaunchedEffect(pendingDeepLink) {
+    LaunchedEffect(pendingDeepLink, hasNavigatedFromSplash) {
+        // A8: deep-link nav must wait until the splash → destination transition is
+        // complete; firing before that would race with popUpTo(SPLASH) and either
+        // get lost or land on a stale back stack.
+        if (!hasNavigatedFromSplash) return@LaunchedEffect
         val link = pendingDeepLink ?: return@LaunchedEffect
         when (link) {
             NotificationDeepLink.Settings -> {
@@ -199,6 +216,10 @@ fun AppNav() {
     // CosmicBackgroundView rendered once in AppRootView's ZStack root).
     // The pointerInput tap-to-dismiss keyboard lives here so it still fires
     // on any tap that child screens don't consume.
+    // R10: provide the reduce-motion flag to every composable in the tree so
+    // CosmicStarField, ShimmerButton, CelestialOrb, and SplashScreen can
+    // freeze their infinite animations without threading the value manually.
+    CompositionLocalProvider(LocalReduceMotion provides reduceMotion) {
     CosmicBackground(
         modifier = Modifier
             .fillMaxSize()
@@ -499,6 +520,7 @@ fun AppNav() {
             SplashScreen(soundManager = splashSoundManager)
         }
     }
+    }  // CompositionLocalProvider(LocalReduceMotion)
 }
 
 /**

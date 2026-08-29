@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -60,7 +61,9 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.destinyai.astrology.BuildConfig
+import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.services.HapticManager
+import com.destinyai.astrology.services.SoundManager
 import com.destinyai.astrology.R
 import com.destinyai.astrology.ui.auth.AuthViewModel
 import com.destinyai.astrology.ui.components.ShimmerButton
@@ -76,6 +79,10 @@ import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.launch
 
 // Gold→GoldDeep→Gold 3-stop avatar gradient
@@ -946,6 +953,73 @@ fun ProfileScreen(
                                 }
                             }
 
+                            // ── Sound & Haptics section ───────────────────────────────
+                            // B5: iOS parity — ProfileView.swift has a sound toggle inside
+                            // the preferences card. Android surfaces both sound and haptics
+                            // here so users have a single place to control audio/tactile
+                            // feedback without going to the Home tab header button.
+                            val profileSoundPrefs = remember(context) {
+                                EntryPointAccessors.fromApplication(
+                                    context.applicationContext,
+                                    ProfileSoundHapticsEntryPoint::class.java,
+                                )
+                            }
+                            val profileSoundManager = remember(context) { profileSoundPrefs.soundManager() }
+                            val profilePrefs = remember(context) { profileSoundPrefs.userPreferences() }
+                            val isSoundEnabled by produceState(initialValue = false, key1 = profileSoundManager) {
+                                profileSoundManager.isSoundEnabledFlow().collect { v -> value = v }
+                            }
+                            val isHapticsEnabled by produceState(initialValue = true, key1 = profilePrefs) {
+                                profilePrefs.isHapticsEnabledFlow().collect { v -> value = v }
+                            }
+                            val profilePrefsScope = rememberCoroutineScope()
+
+                            Text(
+                                text = stringResource(R.string.pref_sound_haptics_section),
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = CanelaFontFamily,
+                                color = Gold,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 4.dp),
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(Radius.card))
+                                    .background(NavySurface)
+                                    .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(Radius.card)),
+                            ) {
+                                Column {
+                                    PreferenceToggleRow(
+                                        label = stringResource(R.string.pref_sound_title),
+                                        subtitle = stringResource(
+                                            if (isSoundEnabled) R.string.sound_on_a11y else R.string.sound_off_a11y,
+                                        ),
+                                        leadingIcon = Icons.Filled.NotificationsActive,
+                                        checked = isSoundEnabled,
+                                        onCheckedChange = {
+                                            profilePrefsScope.launch {
+                                                profileSoundManager.toggleSound()
+                                            }
+                                        },
+                                    )
+                                    HorizontalDivider(color = Gold.copy(alpha = 0.08f))
+                                    PreferenceToggleRow(
+                                        label = stringResource(R.string.pref_haptics_title),
+                                        subtitle = stringResource(R.string.pref_haptics_subtitle),
+                                        leadingIcon = Icons.Filled.Vibration,
+                                        checked = isHapticsEnabled,
+                                        onCheckedChange = {
+                                            profilePrefsScope.launch {
+                                                profilePrefs.setHapticsEnabled(!isHapticsEnabled)
+                                            }
+                                        },
+                                    )
+                                }
+                            }
+
                             // (removed Spacer(weight(1f)): in a verticalScroll column it
                             // just inflated height and flung the footer down, leaving a
                             // mid-screen void. Content now flows naturally with the 16dp
@@ -1683,4 +1757,15 @@ private fun contentStyleDisplayLabel(style: String): String = when (style) {
     "guidance", "essentials" -> stringResource(R.string.content_style_essentials)
     "astrology", "complete", "completeChart" -> stringResource(R.string.content_style_complete)
     else -> stringResource(R.string.content_style_essentials)
+}
+
+/**
+ * Hilt EntryPoint exposing SoundManager and UserPreferences to ProfileScreen
+ * without adding them to ProfileViewModel's already-large constructor. (B5)
+ */
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface ProfileSoundHapticsEntryPoint {
+    fun soundManager(): SoundManager
+    fun userPreferences(): UserPreferences
 }

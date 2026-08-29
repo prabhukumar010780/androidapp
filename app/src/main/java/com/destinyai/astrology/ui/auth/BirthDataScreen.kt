@@ -271,6 +271,13 @@ fun BirthDataScreen(
                     placeholder = stringResource(R.string.enter_your_name),
                     icon = Icons.Default.Person,
                     contentDescription = "Your Name field",
+                    // Lows: tell the keyboard and Android autofill service this is a
+                    // personal name so the autofill dropdown offers saved contacts.
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Words,
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Text,
+                        autoCorrectEnabled = false,
+                    ),
                 )
 
                 Spacer(Modifier.height(12.dp))
@@ -561,7 +568,7 @@ fun BirthDataScreen(
         TimePickerSheetStyled(
             initialHour = initHour,
             initialMinute = initMinute,
-            is24Hour = true,
+            is24Hour = android.text.format.DateFormat.is24HourFormat(LocalContext.current),
             onTimeSelected = { hour, minute ->
                 viewModel.setTimeOfBirth("%02d:%02d".format(hour, minute))
                 viewModel.markTimeSelected()
@@ -752,6 +759,9 @@ private fun PremiumInputField(
     placeholder: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     contentDescription: String,
+    modifier: Modifier = Modifier,
+    keyboardOptions: androidx.compose.foundation.text.KeyboardOptions =
+        androidx.compose.foundation.text.KeyboardOptions.Default,
 ) {
     OutlinedTextField(
         value = value,
@@ -766,7 +776,8 @@ private fun PremiumInputField(
                 modifier = Modifier.size(18.dp),
             )
         },
-        modifier = Modifier
+        keyboardOptions = keyboardOptions,
+        modifier = modifier
             .fillMaxWidth()
             .semantics { this.contentDescription = contentDescription },
         shape = RoundedCornerShape(12.dp),

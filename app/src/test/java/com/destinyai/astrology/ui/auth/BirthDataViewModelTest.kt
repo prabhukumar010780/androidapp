@@ -1,6 +1,7 @@
 package com.destinyai.astrology.ui.auth
 
 import app.cash.turbine.test
+import androidx.lifecycle.SavedStateHandle
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.location.LocationSearchService
 import com.destinyai.astrology.data.location.LocationSearchResult
@@ -72,6 +73,7 @@ class BirthDataViewModelTest {
             locationSearchService,
             soundManager,
             mockk(relaxed = true), // ChatRepository
+            SavedStateHandle(), // R6: draft name persistence
             context,
         )
     }

@@ -72,6 +72,8 @@ class UserPreferences @Inject constructor(
         val FCM_TOKEN_REGISTERED = booleanPreferencesKey("fcm_token_registered")
         val IS_HISTORY_ENABLED = booleanPreferencesKey("isHistoryEnabled")
         val SOUND_ENABLED = booleanPreferencesKey("sound_enabled")
+        // B5: haptics preference — true by default so semantic haptics fire out of the box.
+        val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
         val AYANAMSA = stringPreferencesKey("ayanamsa")
         val HOUSE_SYSTEM = stringPreferencesKey("house_system")
         val BACKEND_DATA_REFRESHED = booleanPreferencesKey("backend_data_refreshed")
@@ -668,6 +670,18 @@ class UserPreferences @Inject constructor(
 
     suspend fun setSoundEnabled(enabled: Boolean) {
         store.edit { it[Keys.SOUND_ENABLED] = enabled }
+    }
+
+    // B5: Haptics preference — defaults true (semantic haptics on by default,
+    // matching iOS HapticManager opt-in intent but shipping enabled).
+    suspend fun isHapticsEnabled(): Boolean =
+        store.data.map { it[Keys.HAPTICS_ENABLED] ?: true }.first()
+
+    fun isHapticsEnabledFlow(): kotlinx.coroutines.flow.Flow<Boolean> =
+        store.data.map { it[Keys.HAPTICS_ENABLED] ?: true }
+
+    suspend fun setHapticsEnabled(enabled: Boolean) {
+        store.edit { it[Keys.HAPTICS_ENABLED] = enabled }
     }
 
     // Backend data refreshed banner — R2-A6

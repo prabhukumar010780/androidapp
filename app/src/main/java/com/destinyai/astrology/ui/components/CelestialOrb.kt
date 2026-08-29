@@ -47,6 +47,7 @@ import com.destinyai.astrology.ui.theme.AppTheme
 import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.GoldLight
+import com.destinyai.astrology.ui.theme.LocalReduceMotion
 import androidx.compose.ui.platform.testTag
 
 /**
@@ -79,6 +80,8 @@ fun CelestialOrb(
     status: String? = null,
     onClick: (() -> Unit)? = null,
 ) {
+    // R10: freeze the orb rotation when the system reduce-motion flag is set.
+    val reduceMotion = LocalReduceMotion.current
     val rotation = if (animateRotation) {
         val infiniteTransition = rememberInfiniteTransition(label = "orbRotation")
         val angle by infiniteTransition.animateFloat(
@@ -90,7 +93,7 @@ fun CelestialOrb(
             ),
             label = "orbAngle",
         )
-        angle
+        if (reduceMotion) 0f else angle
     } else {
         0f
     }

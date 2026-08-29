@@ -1,6 +1,7 @@
 package com.destinyai.astrology.ui.chat
 
 import android.content.Context
+import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AstroApiService
@@ -72,7 +73,7 @@ class ChatViewModelTest {
         // append + repository.sendMessage call site can be exercised. Tests that
         // specifically exercise the quota path stub canAccessFeature directly.
         coEvery { prefs.getUserEmail() } returns null
-        viewModel = ChatViewModel(repository, mockk(relaxed = true), authRepository, api, prefs, quotaManager, profileChangeBus, mockk(relaxed = true), appStartupService, mockk(relaxed = true), appContext)
+        viewModel = ChatViewModel(repository, mockk(relaxed = true), authRepository, api, prefs, quotaManager, profileChangeBus, mockk(relaxed = true), appStartupService, mockk(relaxed = true), SavedStateHandle(), appContext)
     }
 
     // --- Init ---

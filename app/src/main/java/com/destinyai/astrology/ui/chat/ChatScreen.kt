@@ -60,11 +60,16 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.destinyai.astrology.domain.model.ChatMessage
 import com.destinyai.astrology.R
+import com.destinyai.astrology.services.SoundManager
 import com.destinyai.astrology.ui.charts.ChartsViewModel
 import com.destinyai.astrology.ui.charts.PlanetaryPositionsSheet
 import com.destinyai.astrology.ui.components.OfflineBanner
 import com.destinyai.astrology.ui.theme.*
 import com.destinyai.astrology.ui.subscription.SubscriptionScreen
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -1543,7 +1548,21 @@ private fun ChatInputBar(
     // explicitly resigns first responder. Hide the IME and clear focus on send.
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
+    val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
+    // B5: get the app-scoped SoundManager so playSend() fires on every send tap,
+    // matching iOS ChatInputBar.swift sendAction → SoundManager.shared.playSend().
+    val soundManager = remember(context) {
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            ChatInputBarSoundEntryPoint::class.java,
+        ).soundManager()
+    }
     val dismissAndSend: () -> Unit = {
+        // B5: light haptic + send chime, matching iOS UIImpactFeedbackGenerator.light()
+        // + SoundManager.shared.playSend() in ChatView.sendAction.
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        soundManager.playSend()
         keyboardController?.hide()
         focusManager.clearFocus()
         onSend()
@@ -2071,4 +2090,15 @@ private fun QuotaExhaustedAccountSheet(
             Spacer(Modifier.height(8.dp))
         }
     }
+}
+
+/**
+ * Hilt EntryPoint that exposes the application-scoped SoundManager to ChatInputBar
+ * so the send-chime can fire without adding SoundManager to ChatViewModel's constructor.
+ * B5 parity: iOS ChatView.swift sendAction calls SoundManager.shared.playSend().
+ */
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface ChatInputBarSoundEntryPoint {
+    fun soundManager(): SoundManager
 }

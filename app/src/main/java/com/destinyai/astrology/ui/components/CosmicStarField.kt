@@ -40,6 +40,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.destinyai.astrology.ui.theme.AppTheme
 import com.destinyai.astrology.ui.theme.GoldLight
+import com.destinyai.astrology.ui.theme.LocalReduceMotion
 import kotlin.random.Random
 
 private const val STAR_MIN_SIZE_PX = 1f
@@ -194,6 +195,8 @@ fun CosmicStarField(
     // Pause the twinkle animation when not RESUMED — battery parity with iOS.
     val lifecycleOwner = LocalLifecycleOwner.current
     var isResumed by remember { mutableStateOf(true) }
+    // R10: freeze the star-field when the system "Remove animations" flag is set.
+    val reduceMotion = LocalReduceMotion.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
@@ -231,9 +234,9 @@ fun CosmicStarField(
             .blur(STAR_BLUR_RADIUS)
             .motionParallax(intensity = 0.5f),
     ) {
-        // When backgrounded, freeze the driver at 0 so we render a stable
-        // (non-animating) frame.
-        val effectiveDriver = if (isResumed) driver else 0f
+        // When backgrounded or reduce-motion is on, freeze the driver at 0 so
+        // we render a stable (non-animating) frame.
+        val effectiveDriver = if (isResumed && !reduceMotion) driver else 0f
         stars.forEach { star ->
             // Phase-shifted cosine twinkle: alpha varies between 0.15 and 1.0
             // before the iOS-parity STAR_BRIGHTNESS_FACTOR (0.7) trims peaks.

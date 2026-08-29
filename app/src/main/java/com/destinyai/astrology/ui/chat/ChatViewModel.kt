@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.destinyai.astrology.R
@@ -138,6 +139,9 @@ class ChatViewModel @Inject constructor(
     private val appStartupService: com.destinyai.astrology.services.AppStartupService,
     // Cat 10: connectivity for the Chat offline banner (parity with HomeViewModel).
     private val networkMonitor: com.destinyai.astrology.services.NetworkMonitor,
+    // R6: SavedStateHandle persists the in-progress message draft across process death
+    // and config changes so the user doesn't lose what they were typing.
+    private val savedStateHandle: SavedStateHandle,
     @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
 
@@ -247,6 +251,10 @@ class ChatViewModel @Inject constructor(
                 messages = listOf(welcomeMessage),
             )
         }
+        // R6: restore any in-progress draft that survived process death.
+        savedStateHandle.get<String>("input_draft")
+            ?.takeIf { it.isNotBlank() }
+            ?.let { draft -> updateInput(draft) }
         // Load the home-screen starter questions so the New-Chat empty state matches the
         // Home tab (same getSuggestedQuestions() source, server-personalized). Best-effort:
         // on failure the empty state keeps its static default starters.
@@ -460,6 +468,8 @@ class ChatViewModel @Inject constructor(
     }
 
     fun updateInput(text: String) {
+        // R6: persist draft so it survives process death.
+        savedStateHandle["input_draft"] = text
         _uiState.update { state ->
             state.copy(
                 inputText = text,

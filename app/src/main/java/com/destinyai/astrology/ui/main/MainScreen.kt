@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -112,7 +113,7 @@ fun MainScreen(
     onNavigateToAuth: () -> Unit = {},
     viewModel: MainScreenViewModel = hiltViewModel(),
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     // Scroll-to-top tick — incremented when the user re-taps the Home tab while
     // already on Home (parity with iOS UITabBar double-tap behavior).
     var homeScrollTopTick by remember { mutableIntStateOf(0) }
@@ -126,14 +127,14 @@ fun MainScreen(
     // Mirrors iOS hasVisitedChat / hasVisitedMatch — keeps inactive tabs alive
     // after first visit so scroll position, draft text, and form state survive
     // tab switches without re-creating composables.
-    var hasVisitedChat by remember { mutableStateOf(false) }
-    var hasVisitedMatch by remember { mutableStateOf(false) }
+    var hasVisitedChat by rememberSaveable { mutableStateOf(false) }
+    var hasVisitedMatch by rememberSaveable { mutableStateOf(false) }
 
     // Top-level overlays — History/Profile aren't tabs; they push over content.
-    var showHistory by remember { mutableStateOf(false) }
-    var showProfile by remember { mutableStateOf(false) }
+    var showHistory by rememberSaveable { mutableStateOf(false) }
+    var showProfile by rememberSaveable { mutableStateOf(false) }
     // Mirrors iOS @State showMatchResult — toggled by CompatibilityScreen.
-    var showMatchResult by remember { mutableStateOf(false) }
+    var showMatchResult by rememberSaveable { mutableStateOf(false) }
 
     // System back gesture/button dismisses History/Profile overlays (Cat 3 dead-end fix).
     // Mirrors BirthDataScreen.kt:106 BackHandler pattern. Enabled only when the overlay

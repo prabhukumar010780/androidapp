@@ -37,6 +37,7 @@ import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
+import com.destinyai.astrology.ui.theme.LocalReduceMotion
 import com.destinyai.astrology.ui.theme.NavyDeep
 import com.destinyai.astrology.ui.theme.Spacing
 import kotlin.math.cos
@@ -248,6 +249,11 @@ private fun LogoWithShimmerAndHeartbeat() {
         ),
         label = "shimmer",
     )
+    // R10: freeze heartbeat at neutral scale and push shimmer offscreen when
+    // the system "Remove animations" setting is enabled.
+    val reduceMotion = LocalReduceMotion.current
+    val effectiveHeartbeat = if (reduceMotion) 1f else heartbeat
+    val effectiveShimmer = if (reduceMotion) 200f else shimmerSweep
 
     Box(
         modifier = Modifier
@@ -255,8 +261,8 @@ private fun LogoWithShimmerAndHeartbeat() {
             .clip(CircleShape)
             .background(Gold)
             .graphicsLayer {
-                scaleX = heartbeat
-                scaleY = heartbeat
+                scaleX = effectiveHeartbeat
+                scaleY = effectiveHeartbeat
             },
         contentAlignment = Alignment.Center,
     ) {
@@ -271,7 +277,7 @@ private fun LogoWithShimmerAndHeartbeat() {
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    translationX = with(density) { shimmerSweep.dp.toPx() }
+                    translationX = with(density) { effectiveShimmer.dp.toPx() }
                 }
                 .background(
                     brush = Brush.linearGradient(
@@ -288,6 +294,8 @@ private fun LogoWithShimmerAndHeartbeat() {
 
 @Composable
 private fun AnimatedDots() {
+    // R10: freeze dots to fully-visible static state when reduce-motion is on.
+    val reduceMotion = LocalReduceMotion.current
     val infiniteTransition = rememberInfiniteTransition(label = "dots")
     val dot1Alpha by infiniteTransition.animateFloat(
         initialValue = 0.3f,
@@ -356,9 +364,9 @@ private fun AnimatedDots() {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         listOf(
-            dot1Alpha to dot1Scale,
-            dot2Alpha to dot2Scale,
-            dot3Alpha to dot3Scale,
+            (if (reduceMotion) 1f else dot1Alpha) to (if (reduceMotion) 1f else dot1Scale),
+            (if (reduceMotion) 1f else dot2Alpha) to (if (reduceMotion) 1f else dot2Scale),
+            (if (reduceMotion) 1f else dot3Alpha) to (if (reduceMotion) 1f else dot3Scale),
         ).forEach { (alphaVal, scaleVal) ->
             Box(
                 modifier = Modifier

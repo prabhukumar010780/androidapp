@@ -2772,6 +2772,12 @@ Until then: Use this period for strategic positioning.</string>
     <!-- Home parity additions (sound toggle, dasha card, yoga details). -->
     <string name="home_sound_on_cd">Sound on. Tap to mute.</string>
     <string name="home_sound_off_cd">Sound off. Tap to enable.</string>
+    <!-- B5: Sound & Haptics section in ProfileScreen. tools:ignore avoids forcing
+         manual translations into all 12 locales for this batch. -->
+    <string name="pref_sound_haptics_section" tools:ignore="MissingTranslation">Sound &amp; Haptics</string>
+    <string name="pref_sound_title" tools:ignore="MissingTranslation">Sound</string>
+    <string name="pref_haptics_title" tools:ignore="MissingTranslation">Haptics</string>
+    <string name="pref_haptics_subtitle" tools:ignore="MissingTranslation">Tactile feedback for interactions</string>
     <string name="home_dasha_theme_label">Theme</string>
     <string name="home_no_combinations_found">No combinations found in this category.</string>
     <string name="home_yoga_formation">Formation</string>

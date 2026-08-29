@@ -11,9 +11,6 @@ import com.destinyai.astrology.services.AppStartupService
 import com.destinyai.astrology.ui.auth.AccountDeletedException
 import com.destinyai.astrology.ui.auth.AccountDeletedError
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -155,15 +152,16 @@ class SplashViewModel @Inject constructor(
 
     fun navigate() {
         viewModelScope.launch {
-            // Run destination resolution and the minimum splash display window
-            // concurrently so the splash always lasts at least MIN_SPLASH_DISPLAY_MS,
-            // matching iOS's 2.5s scripted reveal even when resolution is instant.
-            val destination = coroutineScope {
-                val destDeferred = async { resolveDestination() }
-                val delayDeferred = async { delay(MIN_SPLASH_DISPLAY_MS) }
-                awaitAll(delayDeferred, destDeferred)
-                destDeferred.getCompleted()
-            }
+            val startMs = System.currentTimeMillis()
+            val destination = resolveDestination()
+            val elapsed = System.currentTimeMillis() - startMs
+            // B1: returning users (Main) only need a ~500ms floor so the brand reveal
+            // animation completes without making them wait 2.5s. First-run destinations
+            // (Onboarding, Auth, BirthData, etc.) still observe the full 2.5s so the
+            // scripted logo + dot reveal has time to play — matching iOS SplashView timing.
+            val floor = if (destination == SplashDestination.Main) 500L else MIN_SPLASH_DISPLAY_MS
+            val remaining = (floor - elapsed).coerceAtLeast(0L)
+            if (remaining > 0) delay(remaining)
             _uiState.value = destination
         }
     }

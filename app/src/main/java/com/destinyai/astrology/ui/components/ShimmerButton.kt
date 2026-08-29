@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.GoldLight
 import com.destinyai.astrology.ui.theme.GoldSoft
+import com.destinyai.astrology.ui.theme.LocalReduceMotion
 import com.destinyai.astrology.ui.theme.NavyDeep
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.alpha
@@ -61,6 +62,11 @@ fun ShimmerButton(
         label = "shimmerProgress",
     )
 
+    // R10: when reduce-motion is on, freeze the shimmer at the centre position
+    // (0.5f) so the button renders a stable gold gradient with no animation.
+    val reduceMotion = LocalReduceMotion.current
+    val effectiveProgress = if (reduceMotion) 0.5f else shimmerProgress
+
     // Palette: gold by default, red for destructive actions (sign out, delete)
     val baseColor = if (destructive) Color(0xFFB23535) else Gold
     val softColor = if (destructive) Color(0xFFD64545) else GoldSoft
@@ -71,15 +77,15 @@ fun ShimmerButton(
     // foldables). A hardcoded endX clamps to flat gold past its bound.
     var widthPx by remember { mutableFloatStateOf(0f) }
 
-    // Build a brush that places the bright highlight at `shimmerProgress`
+    // Build a brush that places the bright highlight at `effectiveProgress`
     // along the horizontal axis. The highlight band is ~20% of total width.
     val shimmerBrush = Brush.linearGradient(
         colorStops = arrayOf(
             0.00f to baseColor,
-            (shimmerProgress - 0.10f).coerceIn(0f, 1f) to baseColor,
-            shimmerProgress.coerceIn(0f, 1f) to softColor,
-            (shimmerProgress + 0.10f).coerceIn(0f, 1f) to lightColor,
-            (shimmerProgress + 0.20f).coerceIn(0f, 1f) to softColor,
+            (effectiveProgress - 0.10f).coerceIn(0f, 1f) to baseColor,
+            effectiveProgress.coerceIn(0f, 1f) to softColor,
+            (effectiveProgress + 0.10f).coerceIn(0f, 1f) to lightColor,
+            (effectiveProgress + 0.20f).coerceIn(0f, 1f) to softColor,
             1.00f to baseColor,
         ),
         start = Offset(0f, 0f),
