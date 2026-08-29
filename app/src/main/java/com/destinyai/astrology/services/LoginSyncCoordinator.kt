@@ -1,6 +1,7 @@
 package com.destinyai.astrology.services
 
 import android.util.Log
+import com.destinyai.astrology.BuildConfig
 import com.destinyai.astrology.data.local.db.ChatThreadDao
 import com.destinyai.astrology.data.local.db.PartnerDao
 import com.destinyai.astrology.data.local.prefs.UserPreferences
@@ -86,7 +87,7 @@ class LoginSyncCoordinator @Inject constructor(
         userEmail: String,
         previousGuestEmail: String? = null,
     ) = coroutineScope {
-        Log.d(TAG, "syncAll start for $userEmail (previousGuest=$previousGuestEmail)")
+        if (BuildConfig.DEBUG) Log.d(TAG, "syncAll start for $userEmail (previousGuest=$previousGuestEmail)")
 
         // 1. Drop stale guest rows BEFORE pulling server state, mirroring iOS
         //    DataManager.shared.deleteAllThreads(for: guestEmail) at AuthVM:208.
@@ -171,7 +172,7 @@ class LoginSyncCoordinator @Inject constructor(
         quotaSync.await()
         profileFetch.await()
         historySettingsSync.await()
-        Log.d(TAG, "syncAll essential sync complete for $userEmail")
+        if (BuildConfig.DEBUG) Log.d(TAG, "syncAll essential sync complete for $userEmail")
     }
 
     /**

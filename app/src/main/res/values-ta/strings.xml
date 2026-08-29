@@ -2824,4 +2824,25 @@ Until then: Use this period for strategic positioning.</string>
     <string name="a11y_picker_next_value">அடுத்த மதிப்பு</string>
     <string name="a11y_picker_prev_value">முந்தைய மதிப்பு</string>
     <string name="backend_data_refreshed_banner">உங்கள் சுயவிவரம் கிளவுட்டிலிருந்து புதுப்பிக்கப்பட்டது</string>
+    <string name="notification_channel_subscription">சந்தா</string>
+    <string name="birth_data_privacy_note_prefix">உங்கள் பிறப்பு விவரங்கள் பாதுகாப்பாக சேமிக்கப்படுகின்றன, விற்கப்படுவதில்லை. எங்கள் பார்க்கவும்</string>
+    <string name="birth_data_privacy_policy_link">தனியுரிமைக் கொள்கை</string>
+    <string name="analytics_on_manage_in_settings">பயன்பாட்டு பகுப்பாய்வு இயல்புநிலையில் இயக்கப்பட்டுள்ளது. அமைப்புகளில் நிர்வகிக்கலாம்.</string>
+    <string name="delete_account_bullet_sensitive_data">உங்கள் பிறந்த தேதி, நேரம், இடம், சேமித்த கூட்டாளர்கள் மற்றும் தனிப்பட்ட தரவு நிரந்தரமாக நீக்கப்படும்</string>
+    <string name="notif_delivery_time_section">டெலிவரி நேரம்</string>
+    <string name="notif_delivery_time_desc">தினசரி நுண்ணறிவுகள் எப்போது வழங்கப்பட வேண்டும் என்பதைத் தேர்வு செய்யவும் (உங்கள் உள்ளூர் நேரம்)</string>
+    <string name="notif_delivery_time_label">தினசரி அறிவிப்பு நேரம்</string>
+    <string name="notif_delivery_time_picker_title">டெலிவரி நேரம் தேர்வு செய்யவும்</string>
+    <string name="notif_categories_section">அறிவிப்பு வகைகள்</string>
+    <string name="notif_categories_desc">நீங்கள் பெறும் அறிவிப்பு வகைகளை தேர்வு செய்யவும்</string>
+    <string name="notif_category_daily_insight">தினசரி நுண்ணறிவுகள்</string>
+    <string name="notif_category_transits">கிரக வழித்தட அலர்ட்கள்</string>
+    <string name="notif_category_compatibility">பொருந்தும் தன்மை புதுப்பிப்புகள்</string>
+    <string name="notif_unsaved_changes_title">சேமிக்கப்படாத மாற்றங்கள்</string>
+    <string name="notif_unsaved_changes_message">சேமிக்கப்படாத அறிவிப்பு மாற்றங்கள் உள்ளன. நிராகரிக்கவா?</string>
+    <string name="notif_discard_changes">நிராகரி</string>
+    <string name="pref_sound_haptics_section">ஒலி மற்றும் ஹேப்டிக்ஸ்</string>
+    <string name="pref_sound_title">ஒலி</string>
+    <string name="pref_haptics_title">ஹேப்டிக்ஸ்</string>
+    <string name="pref_haptics_subtitle">தொடர்புகளுக்கான தொட்டுணர் கருத்து</string>
 </resources>

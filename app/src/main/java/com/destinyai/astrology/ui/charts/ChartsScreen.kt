@@ -43,6 +43,8 @@ import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.Radius
 import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.adaptiveContentWidth
+import com.destinyai.astrology.ui.components.SkeletonCard
+import com.destinyai.astrology.ui.components.SkeletonListRow
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -151,12 +153,13 @@ fun ChartsScreen(
 
             when {
                 state.isLoading -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(color = Gold, modifier = Modifier.size(40.dp))
-                            Spacer(Modifier.height(16.dp))
-                            Text(stringResource(R.string.calculating_chart), color = CreamDim, fontSize = 14.sp)
-                        }
+                    // Batch 6b fix #6: content-shaped skeleton instead of bare spinner.
+                    Column(
+                        modifier = Modifier.fillMaxSize().padding(top = 24.dp),
+                        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp),
+                    ) {
+                        SkeletonCard()
+                        repeat(5) { SkeletonListRow() }
                     }
                 }
                 state.errorMessage != null -> {

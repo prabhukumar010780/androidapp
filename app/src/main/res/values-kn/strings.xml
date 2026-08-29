@@ -2823,4 +2823,25 @@ Until then: Use this period for strategic positioning.</string>
     <string name="a11y_picker_next_value">ಮುಂದಿನ ಮೌಲ್ಯ</string>
     <string name="a11y_picker_prev_value">ಹಿಂದಿನ ಮೌಲ್ಯ</string>
     <string name="backend_data_refreshed_banner">ನಿಮ್ಮ ಪ್ರೊಫೈಲ್ ಕ್ಲೌಡ್‌ನಿಂದ ಅಪ್‌ಡೇಟ್ ಮಾಡಲಾಗಿದೆ</string>
+    <string name="notification_channel_subscription">ಚಂದಾದಾರಿಕೆ</string>
+    <string name="birth_data_privacy_note_prefix">ನಿಮ್ಮ ಜನ್ಮ ವಿವರಗಳನ್ನು ಸುರಕ್ಷಿತವಾಗಿ ಸಂಗ್ರಹಿಸಲಾಗುತ್ತದೆ ಮತ್ತು ಮಾರಾಟ ಮಾಡಲಾಗುವುದಿಲ್ಲ. ನಮ್ಮ ನೋಡಿ</string>
+    <string name="birth_data_privacy_policy_link">ಗೌಪ್ಯತಾ ನೀತಿ</string>
+    <string name="analytics_on_manage_in_settings">ಬಳಕೆ ವಿಶ್ಲೇಷಣೆ ಡಿಫಾಲ್ಟ್‌ನಲ್ಲಿ ಆನ್ ಆಗಿದೆ. ಸೆಟ್ಟಿಂಗ್‌ಗಳಲ್ಲಿ ನಿರ್ವಹಿಸಬಹುದು.</string>
+    <string name="delete_account_bullet_sensitive_data">ನಿಮ್ಮ ಜನ್ಮ ದಿನಾಂಕ, ಸಮಯ, ಸ್ಥಳ, ಉಳಿಸಿದ ಪಾಲುದಾರರು ಮತ್ತು ವೈಯಕ್ತಿಕ ಡೇಟಾ ಶಾಶ್ವತವಾಗಿ ಅಳಿಸಲ್ಪಡುತ್ತವೆ</string>
+    <string name="notif_delivery_time_section">ವಿತರಣಾ ಸಮಯ</string>
+    <string name="notif_delivery_time_desc">ದೈನಂದಿನ ಒಳನೋಟಗಳನ್ನು ಯಾವಾಗ ತಲುಪಿಸಬೇಕೆಂದು ಆಯ್ಕೆಮಾಡಿ (ನಿಮ್ಮ ಸ್ಥಳೀಯ ಸಮಯ)</string>
+    <string name="notif_delivery_time_label">ದೈನಂದಿನ ಅಧಿಸೂಚನಾ ಸಮಯ</string>
+    <string name="notif_delivery_time_picker_title">ವಿತರಣಾ ಸಮಯ ಆಯ್ಕೆಮಾಡಿ</string>
+    <string name="notif_categories_section">ಅಧಿಸೂಚನಾ ಪ್ರಕಾರಗಳು</string>
+    <string name="notif_categories_desc">ನೀವು ಯಾವ ಪ್ರಕಾರದ ಅಧಿಸೂಚನೆಗಳನ್ನು ಪಡೆಯಬೇಕೆಂದು ಆಯ್ಕೆಮಾಡಿ</string>
+    <string name="notif_category_daily_insight">ದೈನಂದಿನ ಒಳನೋಟಗಳು</string>
+    <string name="notif_category_transits">ಗ್ರಹ ಪಾರಗಮನ ಎಚ್ಚರಿಕೆಗಳು</string>
+    <string name="notif_category_compatibility">ಹೊಂದಾಣಿಕೆ ಅಪ್‌ಡೇಟ್‌ಗಳು</string>
+    <string name="notif_unsaved_changes_title">ಉಳಿಸಲಾಗದ ಬದಲಾವಣೆಗಳು</string>
+    <string name="notif_unsaved_changes_message">ನಿಮ್ಮಲ್ಲಿ ಉಳಿಸಲಾಗದ ಅಧಿಸೂಚನಾ ಬದಲಾವಣೆಗಳಿವೆ. ಅವುಗಳನ್ನು ತ್ಯಜಿಸುವುದೇ?</string>
+    <string name="notif_discard_changes">ತ್ಯಜಿಸಿ</string>
+    <string name="pref_sound_haptics_section">ಧ್ವನಿ ಮತ್ತು ಹ್ಯಾಪ್ಟಿಕ್ಸ್</string>
+    <string name="pref_sound_title">ಧ್ವನಿ</string>
+    <string name="pref_haptics_title">ಹ್ಯಾಪ್ಟಿಕ್ಸ್</string>
+    <string name="pref_haptics_subtitle">ಇಂಟರ್ಯಾಕ್ಷನ್‌ಗಳಿಗೆ ಸ್ಪರ್ಶ ಪ್ರತಿಕ್ರಿಯೆ</string>
 </resources>

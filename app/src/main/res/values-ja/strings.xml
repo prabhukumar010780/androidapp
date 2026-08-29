@@ -2821,4 +2821,25 @@ Until then: Use this period for strategic positioning.</string>
     <string name="a11y_picker_next_value">次の値</string>
     <string name="a11y_picker_prev_value">前の値</string>
     <string name="backend_data_refreshed_banner">プロフィールがクラウドから更新されました</string>
+    <string name="notification_channel_subscription">サブスクリプション</string>
+    <string name="birth_data_privacy_note_prefix">出生データは安全に保存され、販売されることはありません。</string>
+    <string name="birth_data_privacy_policy_link">プライバシーポリシー</string>
+    <string name="analytics_on_manage_in_settings">使用状況分析はデフォルトでオンです。設定で管理できます。</string>
+    <string name="delete_account_bullet_sensitive_data">生年月日、時間、場所、保存済みパートナー、個人データは完全に削除されます</string>
+    <string name="notif_delivery_time_section">配信時刻</string>
+    <string name="notif_delivery_time_desc">毎日の洞察を配信する時刻を選択してください（現地時間）</string>
+    <string name="notif_delivery_time_label">毎日の通知時刻</string>
+    <string name="notif_delivery_time_picker_title">配信時刻を選択</string>
+    <string name="notif_categories_section">通知の種類</string>
+    <string name="notif_categories_desc">受け取る通知の種類を選択してください</string>
+    <string name="notif_category_daily_insight">毎日の洞察</string>
+    <string name="notif_category_transits">トランジットアラート</string>
+    <string name="notif_category_compatibility">相性アップデート</string>
+    <string name="notif_unsaved_changes_title">未保存の変更</string>
+    <string name="notif_unsaved_changes_message">保存されていない通知の変更があります。破棄しますか？</string>
+    <string name="notif_discard_changes">破棄</string>
+    <string name="pref_sound_haptics_section">サウンドと触覚フィードバック</string>
+    <string name="pref_sound_title">サウンド</string>
+    <string name="pref_haptics_title">触覚フィードバック</string>
+    <string name="pref_haptics_subtitle">操作に対する触覚的なフィードバック</string>
 </resources>

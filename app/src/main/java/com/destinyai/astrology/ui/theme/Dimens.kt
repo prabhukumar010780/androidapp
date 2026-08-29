@@ -61,6 +61,19 @@ object Radius {
 val TouchMin = 48.dp
 
 /**
+ * Icon-size scale (Batch 6b).
+ * Use these instead of raw dp values so glyphs stay consistent app-wide.
+ * Snap call-sites in HomeScreen + MainScreen tab bar as reference examples;
+ * remaining sites tracked as tech-debt burn-down.
+ */
+object IconSize {
+    val sm = 16.dp
+    val md = 20.dp
+    val lg = 24.dp
+    val hero = 32.dp
+}
+
+/**
  * Type scale. Body floor is 14sp, caption floor 12sp — retire 6/8/9/10/11/13sp.
  * Multi-line text should set lineHeight ~1.4x (values baked in below).
  */

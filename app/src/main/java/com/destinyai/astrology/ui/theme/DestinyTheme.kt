@@ -110,7 +110,12 @@ val AccentColor = Gold                    // iOS AccentColor (empty universal â€
 // Status tokens (Issue 16)
 val SuccessGreen = Color(0xFF34C759)
 val WarningOrange = Color(0xFFFF9500)
+val DangerRed = Color(0xFFEB3830)    // Batch 6b: danger / error red (unified status helper)
 val InfoBlue = Color(0xFF007AFF)
+
+// Elevated navy surface â€” bottom-sheets / dialogs that sit above the base NavyDeep.
+// Previously inline as Color(0xFF0D0826); named here so all sheet containers share one token.
+val SurfaceElevated = Color(0xFF0D0826)
 
 // Tab bar tokens (Issue 17)
 val TabBarBackground = Color(0xFF0A0E1A)

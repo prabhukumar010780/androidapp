@@ -67,6 +67,11 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.destinyai.astrology.R
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import com.destinyai.astrology.services.HapticManager
 import com.destinyai.astrology.ui.components.GoldGradientText
 import com.destinyai.astrology.ui.components.ShimmerButton
@@ -471,6 +476,50 @@ fun BirthDataScreen(
                     }
                 }
                 }
+
+                // Batch 6b fix #13: US users — show a transparency note since the
+                // consent checkbox is hidden for US locale (analytics on by default).
+                if (isUsLocale) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.analytics_on_manage_in_settings),
+                        fontSize = 12.sp,
+                        color = CreamDim,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("birth_data_analytics_us_note"),
+                    )
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                // Batch 6b fix #12: Privacy footnote — one line with inline Privacy Policy link.
+                val uriHandler = LocalUriHandler.current
+                val privacyUrl = stringResource(R.string.privacy_url)
+                val privacyNote = buildAnnotatedString {
+                    append(stringResource(R.string.birth_data_privacy_note_prefix))
+                    append(" ")
+                    pushStringAnnotation(tag = "URL", annotation = privacyUrl)
+                    withStyle(SpanStyle(color = Gold, textDecoration = TextDecoration.Underline)) {
+                        append(stringResource(R.string.birth_data_privacy_policy_link))
+                    }
+                    pop()
+                    append(".")
+                }
+                androidx.compose.foundation.text.ClickableText(
+                    text = privacyNote,
+                    style = androidx.compose.ui.text.TextStyle(
+                        fontSize = 11.sp,
+                        color = CreamDim,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { offset ->
+                        privacyNote.getStringAnnotations("URL", offset, offset)
+                            .firstOrNull()?.let { uriHandler.openUri(it.item) }
+                    },
+                )
 
                 Spacer(Modifier.height(12.dp))
 

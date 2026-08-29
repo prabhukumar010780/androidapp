@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -155,6 +156,12 @@ fun DeleteAccountSheet(
                 DeleteBulletRow(
                     icon = Icons.Filled.Email,
                     text = stringResource(R.string.delete_account_bullet_history),
+                    iconTint = CreamDim,
+                )
+                // Batch 6b fix #14: explicitly enumerate the sensitive data erased.
+                DeleteBulletRow(
+                    icon = Icons.Filled.Lock,
+                    text = stringResource(R.string.delete_account_bullet_sensitive_data),
                     iconTint = CreamDim,
                 )
                 DeleteBulletRow(

@@ -2774,10 +2774,10 @@ Until then: Use this period for strategic positioning.</string>
     <string name="home_sound_off_cd">Sound off. Tap to enable.</string>
     <!-- B5: Sound & Haptics section in ProfileScreen. tools:ignore avoids forcing
          manual translations into all 12 locales for this batch. -->
-    <string name="pref_sound_haptics_section" tools:ignore="MissingTranslation">Sound &amp; Haptics</string>
-    <string name="pref_sound_title" tools:ignore="MissingTranslation">Sound</string>
-    <string name="pref_haptics_title" tools:ignore="MissingTranslation">Haptics</string>
-    <string name="pref_haptics_subtitle" tools:ignore="MissingTranslation">Tactile feedback for interactions</string>
+    <string name="pref_sound_haptics_section">Sound &amp; Haptics</string>
+    <string name="pref_sound_title">Sound</string>
+    <string name="pref_haptics_title">Haptics</string>
+    <string name="pref_haptics_subtitle">Tactile feedback for interactions</string>
     <string name="home_dasha_theme_label">Theme</string>
     <string name="home_no_combinations_found">No combinations found in this category.</string>
     <string name="home_yoga_formation">Formation</string>
@@ -3004,4 +3004,34 @@ Until then: Use this period for strategic positioning.</string>
         <item quantity="one">%d partner</item>
         <item quantity="other">%d partners</item>
     </plurals>
+    <!-- Batch 6b: notification channel for subscription expiry (fix #10) -->
+    <string name="notification_channel_subscription">Subscription</string>
+    <!-- Batch 6b fix #12: birth-data privacy footnote -->
+    <string name="birth_data_privacy_note_prefix">Your birth details are stored securely and never sold. See our</string>
+    <string name="birth_data_privacy_policy_link">Privacy Policy</string>
+
+    <!-- Batch 6b fix #13: US analytics transparency note -->
+    <string name="analytics_on_manage_in_settings">Usage analytics are on by default. You can manage this in Settings.</string>
+
+    <!-- Batch 6b fix #14: delete-account sensitive-data bullet -->
+    <string name="delete_account_bullet_sensitive_data">Your birth date, time, location, saved partners, and personal data will be permanently erased</string>
+
+    <!-- Batch 6b fix #7: notification delivery-time section -->
+    <string name="notif_delivery_time_section">DELIVERY TIME</string>
+    <string name="notif_delivery_time_desc">Choose when daily insights are delivered (your local time)</string>
+    <string name="notif_delivery_time_label">Daily notification time</string>
+    <string name="notif_delivery_time_picker_title">Choose delivery time</string>
+
+    <!-- Batch 6b fix #8: per-category toggles -->
+    <string name="notif_categories_section">NOTIFICATION TYPES</string>
+    <string name="notif_categories_desc">Choose which types of notifications you receive</string>
+    <string name="notif_category_daily_insight">Daily Insights</string>
+    <string name="notif_category_transits">Transit Alerts</string>
+    <string name="notif_category_compatibility">Compatibility Updates</string>
+
+    <!-- Batch 6b fix #9: unsaved-changes dialog -->
+    <string name="notif_unsaved_changes_title">Unsaved changes</string>
+    <string name="notif_unsaved_changes_message">You have unsaved notification changes. Discard them?</string>
+    <string name="notif_discard_changes">Discard</string>
+
 </resources>

@@ -2803,4 +2803,28 @@ Until then: Use this period for strategic positioning.</string>
     <string name="a11y_picker_next_value">अगला मान</string>
     <string name="a11y_picker_prev_value">पिछला मान</string>
     <string name="backend_data_refreshed_banner">आपकी प्रोफ़ाइल क्लाउड से अपडेट की गई</string>
+
+
+    <!-- Batch 6b translations (model-generated) -->
+    <string name="notification_channel_subscription">सदस्यता</string>
+    <string name="birth_data_privacy_note_prefix">आपके जन्म विवरण सुरक्षित रूप से संग्रहीत हैं और कभी नहीं बेचे जाते। हमारी देखें</string>
+    <string name="birth_data_privacy_policy_link">गोपनीयता नीति</string>
+    <string name="analytics_on_manage_in_settings">उपयोग विश्लेषण डिफ़ॉल्ट रूप से चालू है। आप इसे सेटिंग में प्रबंधित कर सकते हैं।</string>
+    <string name="delete_account_bullet_sensitive_data">आपकी जन्म तिथि, समय, स्थान, सहेजे गए साथी और व्यक्तिगत डेटा स्थायी रूप से मिटा दिए जाएंगे</string>
+    <string name="notif_delivery_time_section">डिलीवरी का समय</string>
+    <string name="notif_delivery_time_desc">चुनें कि दैनिक अंतर्दृष्टि कब दी जाए (आपका स्थानीय समय)</string>
+    <string name="notif_delivery_time_label">दैनिक अधिसूचना समय</string>
+    <string name="notif_delivery_time_picker_title">डिलीवरी समय चुनें</string>
+    <string name="notif_categories_section">अधिसूचना प्रकार</string>
+    <string name="notif_categories_desc">चुनें कि आपको किस प्रकार की अधिसूचनाएं मिलें</string>
+    <string name="notif_category_daily_insight">दैनिक अंतर्दृष्टि</string>
+    <string name="notif_category_transits">ग्रह पारगमन अलर्ट</string>
+    <string name="notif_category_compatibility">अनुकूलता अपडेट</string>
+    <string name="notif_unsaved_changes_title">असहेजे परिवर्तन</string>
+    <string name="notif_unsaved_changes_message">आपके पास असहेजे अधिसूचना परिवर्तन हैं। उन्हें छोड़ें?</string>
+    <string name="notif_discard_changes">छोड़ें</string>
+    <string name="pref_sound_haptics_section">ध्वनि और हैप्टिक्स</string>
+    <string name="pref_sound_title">ध्वनि</string>
+    <string name="pref_haptics_title">हैप्टिक्स</string>
+    <string name="pref_haptics_subtitle">इंटरैक्शन के लिए स्पर्श प्रतिक्रिया</string>
 </resources>

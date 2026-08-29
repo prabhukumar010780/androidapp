@@ -138,6 +138,9 @@ class DestinyFirebaseMessagingService : FirebaseMessagingService() {
     private fun channelForType(type: String): String = when (type.uppercase()) {
         "DAILY_PREDICTION", "DAILY_PREDICTION_READY", "WELCOME" -> CHANNEL_DAILY
         "TRANSIT_ALERT", "LIFE_ALERT", "CUSTOM_ALERT" -> CHANNEL_TRANSIT
+        // Batch 6b: give SUBSCRIPTION_EXPIRING its own channel so users can mute it
+        // independently at the OS level without silencing COMPATIBILITY_READY (fix #10).
+        "SUBSCRIPTION_EXPIRING", "SUBSCRIPTION_EXPIRED" -> CHANNEL_SUBSCRIPTION
         else -> CHANNEL_GENERAL
     }
 
@@ -148,6 +151,7 @@ class DestinyFirebaseMessagingService : FirebaseMessagingService() {
         val name = when (channelId) {
             CHANNEL_DAILY -> getString(R.string.notification_channel_daily)
             CHANNEL_TRANSIT -> getString(R.string.notification_channel_transit)
+            CHANNEL_SUBSCRIPTION -> getString(R.string.notification_channel_subscription)
             else -> getString(R.string.notification_channel_general)
         }
         // Transit/life alerts are time-sensitive — use HIGH importance so they
@@ -167,6 +171,9 @@ class DestinyFirebaseMessagingService : FirebaseMessagingService() {
         const val CHANNEL_DAILY = "daily_prediction"
         const val CHANNEL_TRANSIT = "transit_alert"
         const val CHANNEL_GENERAL = "general"
+        /** Batch 6b: dedicated channel for subscription expiry notices so they can be
+         *  muted independently of COMPATIBILITY_READY (which previously shared CHANNEL_GENERAL). */
+        const val CHANNEL_SUBSCRIPTION = "subscription_expiring"
         /** Manifest FCM default channel — must be created at app start so background
          *  notification-type messages land here rather than the SDK "Miscellaneous"
          *  fallback (R8b). */
@@ -190,6 +197,7 @@ class DestinyFirebaseMessagingService : FirebaseMessagingService() {
                 Spec(CHANNEL_DAILY, R.string.notification_channel_daily, NotificationManager.IMPORTANCE_DEFAULT),
                 Spec(CHANNEL_TRANSIT, R.string.notification_channel_transit, NotificationManager.IMPORTANCE_HIGH),
                 Spec(CHANNEL_GENERAL, R.string.notification_channel_general, NotificationManager.IMPORTANCE_DEFAULT),
+                Spec(CHANNEL_SUBSCRIPTION, R.string.notification_channel_subscription, NotificationManager.IMPORTANCE_DEFAULT),
                 Spec(CHANNEL_DEFAULT, R.string.notification_channel_default, NotificationManager.IMPORTANCE_DEFAULT),
             ).forEach { spec ->
                 if (manager.getNotificationChannel(spec.id) == null) {

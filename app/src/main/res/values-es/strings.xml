@@ -2823,4 +2823,28 @@ Until then: Use this period for strategic positioning.</string>
     <string name="a11y_picker_next_value">Siguiente valor</string>
     <string name="a11y_picker_prev_value">Valor anterior</string>
     <string name="backend_data_refreshed_banner">Tu perfil fue actualizado desde la nube</string>
+
+
+    <!-- Batch 6b translations (model-generated) -->
+    <string name="notification_channel_subscription">Suscripción</string>
+    <string name="birth_data_privacy_note_prefix">Sus datos de nacimiento se almacenan de forma segura y nunca se venden. Consulte nuestra</string>
+    <string name="birth_data_privacy_policy_link">Política de privacidad</string>
+    <string name="analytics_on_manage_in_settings">El análisis de uso está activado por defecto. Puede gestionarlo en Configuración.</string>
+    <string name="delete_account_bullet_sensitive_data">Su fecha de nacimiento, hora, lugar, parejas guardadas y datos personales se eliminarán permanentemente</string>
+    <string name="notif_delivery_time_section">HORA DE ENTREGA</string>
+    <string name="notif_delivery_time_desc">Elija cuándo se entregan las perspectivas diarias (su hora local)</string>
+    <string name="notif_delivery_time_label">Hora de notificación diaria</string>
+    <string name="notif_delivery_time_picker_title">Elegir hora de entrega</string>
+    <string name="notif_categories_section">TIPOS DE NOTIFICACIONES</string>
+    <string name="notif_categories_desc">Elija qué tipos de notificaciones recibe</string>
+    <string name="notif_category_daily_insight">Perspectivas diarias</string>
+    <string name="notif_category_transits">Alertas de tránsitos</string>
+    <string name="notif_category_compatibility">Actualizaciones de compatibilidad</string>
+    <string name="notif_unsaved_changes_title">Cambios sin guardar</string>
+    <string name="notif_unsaved_changes_message">Tiene cambios de notificación sin guardar. ¿Descartarlos?</string>
+    <string name="notif_discard_changes">Descartar</string>
+    <string name="pref_sound_haptics_section">Sonido y háptica</string>
+    <string name="pref_sound_title">Sonido</string>
+    <string name="pref_haptics_title">Háptica</string>
+    <string name="pref_haptics_subtitle">Respuesta táctil para interacciones</string>
 </resources>

@@ -2823,4 +2823,25 @@ Until then: Use this period for strategic positioning.</string>
     <string name="a11y_picker_next_value">తదుపరి విలువ</string>
     <string name="a11y_picker_prev_value">మునుపటి విలువ</string>
     <string name="backend_data_refreshed_banner">మీ ప్రొఫైల్ క్లౌడ్ నుండి నవీకరించబడింది</string>
+    <string name="notification_channel_subscription">సభ్యత్వం</string>
+    <string name="birth_data_privacy_note_prefix">మీ జన్మ వివరాలు సురక్షితంగా నిల్వ చేయబడతాయి మరియు అమ్మబడవు. మా చూడండి</string>
+    <string name="birth_data_privacy_policy_link">గోప్యతా విధానం</string>
+    <string name="analytics_on_manage_in_settings">వినియోగ విశ్లేషణ డిఫాల్ట్‌గా ఆన్ చేయబడి ఉంది. సెట్టింగ్‌లలో నిర్వహించవచ్చు.</string>
+    <string name="delete_account_bullet_sensitive_data">మీ జన్మ తేదీ, సమయం, స్థలం, సేవ్ చేసిన భాగస్వాములు మరియు వ్యక్తిగత డేటా శాశ్వతంగా తొలగించబడతాయి</string>
+    <string name="notif_delivery_time_section">డెలివరీ సమయం</string>
+    <string name="notif_delivery_time_desc">రోజువారీ అంతర్దృష్టులు ఎప్పుడు డెలివరీ చేయాలో ఎంచుకోండి (మీ స్థానిక సమయం)</string>
+    <string name="notif_delivery_time_label">రోజువారీ నోటిఫికేషన్ సమయం</string>
+    <string name="notif_delivery_time_picker_title">డెలివరీ సమయం ఎంచుకోండి</string>
+    <string name="notif_categories_section">నోటిఫికేషన్ రకాలు</string>
+    <string name="notif_categories_desc">మీరు ఏ నోటిఫికేషన్లు పొందాలో ఎంచుకోండి</string>
+    <string name="notif_category_daily_insight">రోజువారీ అంతర్దృష్టులు</string>
+    <string name="notif_category_transits">గ్రహ పరివహణ హెచ్చరికలు</string>
+    <string name="notif_category_compatibility">అనుకూలత అప్‌డేట్‌లు</string>
+    <string name="notif_unsaved_changes_title">సేవ్ చేయని మార్పులు</string>
+    <string name="notif_unsaved_changes_message">సేవ్ చేయని నోటిఫికేషన్ మార్పులు ఉన్నాయి. వాటిని విస్మరించాలా?</string>
+    <string name="notif_discard_changes">విస్మరించు</string>
+    <string name="pref_sound_haptics_section">ధ్వని మరియు హాప్టిక్స్</string>
+    <string name="pref_sound_title">ధ్వని</string>
+    <string name="pref_haptics_title">హాప్టిక్స్</string>
+    <string name="pref_haptics_subtitle">పరస్పర చర్యలకు స్పర్శ అభిప్రాయం</string>
 </resources>

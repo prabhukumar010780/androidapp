@@ -2821,4 +2821,28 @@ Until then: Use this period for strategic positioning.</string>
     <string name="a11y_picker_next_value">Nächster Wert</string>
     <string name="a11y_picker_prev_value">Vorheriger Wert</string>
     <string name="backend_data_refreshed_banner">Ihr Profil wurde aus der Cloud aktualisiert</string>
+
+
+    <!-- Batch 6b translations (model-generated) -->
+    <string name="notification_channel_subscription">Abonnement</string>
+    <string name="birth_data_privacy_note_prefix">Ihre Geburtsdaten werden sicher gespeichert und nie verkauft. Lesen Sie unsere</string>
+    <string name="birth_data_privacy_policy_link">Datenschutzerklärung</string>
+    <string name="analytics_on_manage_in_settings">Nutzungsanalysen sind standardmäßig aktiviert. Sie können dies in den Einstellungen verwalten.</string>
+    <string name="delete_account_bullet_sensitive_data">Ihr Geburtsdatum, Ihre Geburtszeit, Ihr Geburtsort, gespeicherte Partner und persönliche Daten werden dauerhaft gelöscht</string>
+    <string name="notif_delivery_time_section">LIEFERZEIT</string>
+    <string name="notif_delivery_time_desc">Wählen Sie, wann täglich Einblicke geliefert werden (Ihre Ortszeit)</string>
+    <string name="notif_delivery_time_label">Tägliche Benachrichtigungszeit</string>
+    <string name="notif_delivery_time_picker_title">Lieferzeit wählen</string>
+    <string name="notif_categories_section">BENACHRICHTIGUNGSTYPEN</string>
+    <string name="notif_categories_desc">Wählen Sie, welche Benachrichtigungstypen Sie erhalten</string>
+    <string name="notif_category_daily_insight">Tägliche Einblicke</string>
+    <string name="notif_category_transits">Transite</string>
+    <string name="notif_category_compatibility">Kompatibilitätsupdates</string>
+    <string name="notif_unsaved_changes_title">Nicht gespeicherte Änderungen</string>
+    <string name="notif_unsaved_changes_message">Sie haben nicht gespeicherte Benachrichtigungsänderungen. Verwerfen?</string>
+    <string name="notif_discard_changes">Verwerfen</string>
+    <string name="pref_sound_haptics_section">Ton &amp; Haptik</string>
+    <string name="pref_sound_title">Ton</string>
+    <string name="pref_haptics_title">Haptik</string>
+    <string name="pref_haptics_subtitle">Taktiles Feedback bei Interaktionen</string>
 </resources>

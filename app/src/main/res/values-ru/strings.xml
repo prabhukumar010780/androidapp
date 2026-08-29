@@ -2827,4 +2827,25 @@ Until then: Use this period for strategic positioning.</string>
     <string name="a11y_picker_next_value">Следующее значение</string>
     <string name="a11y_picker_prev_value">Предыдущее значение</string>
     <string name="backend_data_refreshed_banner">Ваш профиль обновлён из облака</string>
+    <string name="notification_channel_subscription">Подписка</string>
+    <string name="birth_data_privacy_note_prefix">Ваши данные о рождении хранятся в безопасности и никогда не продаются. Смотрите нашу</string>
+    <string name="birth_data_privacy_policy_link">Политику конфиденциальности</string>
+    <string name="analytics_on_manage_in_settings">Аналитика использования включена по умолчанию. Вы можете управлять ею в Настройках.</string>
+    <string name="delete_account_bullet_sensitive_data">Ваша дата, время и место рождения, сохранённые партнёры и личные данные будут удалены безвозвратно</string>
+    <string name="notif_delivery_time_section">ВРЕМЯ ДОСТАВКИ</string>
+    <string name="notif_delivery_time_desc">Выберите, когда доставлять ежедневные прогнозы (ваше местное время)</string>
+    <string name="notif_delivery_time_label">Время ежедневного уведомления</string>
+    <string name="notif_delivery_time_picker_title">Выбрать время доставки</string>
+    <string name="notif_categories_section">ТИПЫ УВЕДОМЛЕНИЙ</string>
+    <string name="notif_categories_desc">Выберите, какие типы уведомлений получать</string>
+    <string name="notif_category_daily_insight">Ежедневные прогнозы</string>
+    <string name="notif_category_transits">Оповещения о транзитах</string>
+    <string name="notif_category_compatibility">Обновления совместимости</string>
+    <string name="notif_unsaved_changes_title">Несохранённые изменения</string>
+    <string name="notif_unsaved_changes_message">Есть несохранённые изменения уведомлений. Отменить их?</string>
+    <string name="notif_discard_changes">Отменить</string>
+    <string name="pref_sound_haptics_section">Звук и тактильный отклик</string>
+    <string name="pref_sound_title">Звук</string>
+    <string name="pref_haptics_title">Тактильный отклик</string>
+    <string name="pref_haptics_subtitle">Тактильная обратная связь при взаимодействии</string>
 </resources>

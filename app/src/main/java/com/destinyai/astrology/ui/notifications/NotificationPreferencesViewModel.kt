@@ -33,6 +33,10 @@ data class NotificationPreferencesUiState(
     val isLoading: Boolean = false,
     val isSaved: Boolean = false,
     val error: String? = null,
+    // Batch 6b fix #9: true when channel-toggles or delivery-time differ from the
+    // last-loaded server state. Used to prompt the user on Back instead of silently
+    // discarding changes.
+    val hasUnsavedChanges: Boolean = false,
 ) {
     /** R2-S13g: true when fewer than 5 custom alerts exist. */
     val canAddMore: Boolean get() = alertItems.size < 5
@@ -46,6 +50,22 @@ class NotificationPreferencesViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(NotificationPreferencesUiState())
     val uiState: StateFlow<NotificationPreferencesUiState> = _uiState
+
+    // Batch 6b fix #9: snapshot of server state at load time used to compute hasUnsavedChanges.
+    private var loadedSnapshot: NotificationPreferencesUiState? = null
+
+    private fun markDirty() {
+        val snap = loadedSnapshot ?: return
+        val s = _uiState.value
+        val dirty = s.pushEnabled != snap.pushEnabled ||
+            s.emailEnabled != snap.emailEnabled ||
+            s.inAppEnabled != snap.inAppEnabled ||
+            s.dailyInsight != snap.dailyInsight ||
+            s.transits != snap.transits ||
+            s.compatibility != snap.compatibility ||
+            s.preferredTimeUtc != snap.preferredTimeUtc
+        _uiState.update { it.copy(hasUnsavedChanges = dirty) }
+    }
 
     fun loadPrefs() {
         viewModelScope.launch {
@@ -76,6 +96,8 @@ class NotificationPreferencesViewModel @Inject constructor(
                         isLoading = false,
                     )
                 }
+                // Snapshot server state so we can compute hasUnsavedChanges on back.
+                loadedSnapshot = _uiState.value
                 // Mirror the server truth into local prefs so offline reloads match.
                 prefs.setNotifPushEnabled(bool("push_enabled", true))
                 prefs.setNotifEmailEnabled(bool("email_enabled", true))
@@ -114,25 +136,43 @@ class NotificationPreferencesViewModel @Inject constructor(
 
     // ── Legacy channel methods ────────────────────────────────────────────────
 
-    fun setDailyInsight(enabled: Boolean) = _uiState.update { it.copy(dailyInsight = enabled) }
-    fun setTransits(enabled: Boolean) = _uiState.update { it.copy(transits = enabled) }
-    fun setCompatibility(enabled: Boolean) = _uiState.update { it.copy(compatibility = enabled) }
+    fun setDailyInsight(enabled: Boolean) {
+        _uiState.update { it.copy(dailyInsight = enabled) }
+        markDirty()
+    }
+    fun setTransits(enabled: Boolean) {
+        _uiState.update { it.copy(transits = enabled) }
+        markDirty()
+    }
+    fun setCompatibility(enabled: Boolean) {
+        _uiState.update { it.copy(compatibility = enabled) }
+        markDirty()
+    }
 
     // ── R2-S7 channel toggles ─────────────────────────────────────────────────
 
     fun setPushEnabled(enabled: Boolean) {
         _uiState.update { it.copy(pushEnabled = enabled) }
+        markDirty()
         viewModelScope.launch { prefs.setNotifPushEnabled(enabled) }
     }
 
     fun setEmailEnabled(enabled: Boolean) {
         _uiState.update { it.copy(emailEnabled = enabled) }
+        markDirty()
         viewModelScope.launch { prefs.setNotifEmailEnabled(enabled) }
     }
 
     fun setInAppEnabled(enabled: Boolean) {
         _uiState.update { it.copy(inAppEnabled = enabled) }
+        markDirty()
         viewModelScope.launch { prefs.setNotifInAppEnabled(enabled) }
+    }
+
+    // Batch 6b fix #7: delivery-time picker setter (UTC "HH:mm").
+    fun setPreferredTimeUtc(time: String) {
+        _uiState.update { it.copy(preferredTimeUtc = time) }
+        markDirty()
     }
 
     // ── R2-S8: permission state update ───────────────────────────────────────
@@ -225,7 +265,9 @@ class NotificationPreferencesViewModel @Inject constructor(
                     ),
                 )
                 prefs.saveAlertItems(s.alertItems)
-                _uiState.update { it.copy(isLoading = false, isSaved = true) }
+                // Batch 6b fix #8: update snapshot so hasUnsavedChanges resets after save.
+                loadedSnapshot = s
+                _uiState.update { it.copy(isLoading = false, isSaved = true, hasUnsavedChanges = false) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message ?: "Failed to save") }
             }

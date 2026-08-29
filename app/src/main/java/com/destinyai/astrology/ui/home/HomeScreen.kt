@@ -88,20 +88,29 @@ import com.destinyai.astrology.services.HapticManager
 import com.destinyai.astrology.services.SoundManager
 import com.destinyai.astrology.util.DoshaDescriptions
 import com.destinyai.astrology.ui.components.GoldGradientText
+import com.destinyai.astrology.ui.components.SkeletonCard
+import com.destinyai.astrology.ui.components.SkeletonOrbRow
 import com.destinyai.astrology.ui.profile.ProfileSwitcherViewModel
 import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.adaptiveContentWidth
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.Features
+import com.destinyai.astrology.ui.theme.DangerRed
+import com.destinyai.astrology.ui.theme.DarkNavyContrast
 import com.destinyai.astrology.ui.theme.Gold
+import com.destinyai.astrology.ui.theme.IconSize
+import com.destinyai.astrology.ui.theme.NavyDeep
 import com.destinyai.astrology.ui.theme.Radius
 import com.destinyai.astrology.ui.theme.Spacing
+import com.destinyai.astrology.ui.theme.SuccessGreen
+import com.destinyai.astrology.ui.theme.SurfaceElevated
 import com.destinyai.astrology.ui.theme.TouchMin
 import com.destinyai.astrology.ui.theme.GoldLight
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
+import com.destinyai.astrology.ui.theme.WarningOrange
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -345,36 +354,18 @@ fun HomeScreen(
                 state.dashaInfo == null &&
                 state.transits.isEmpty() && state.yogas.isEmpty()
             if (showHeroLoader) {
-                Box(
+                // Batch 6b fix #6: content-shaped skeleton instead of a bare centered spinner.
+                // Orb row + two cards mirror the real Home layout so the transition feels seamless.
+                Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .alpha(contentOpacity),
-                    contentAlignment = Alignment.Center,
+                        .alpha(contentOpacity)
+                        .padding(top = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.AutoAwesome,
-                            contentDescription = null,
-                            tint = Gold,
-                            modifier = Modifier.size(48.dp),
-                        )
-                        Text(
-                            text = stringResource(R.string.syncing_cosmic_data),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = CanelaFontFamily,
-                            color = Gold,
-                        )
-                        Text(
-                            text = stringResource(R.string.almost_there),
-                            fontSize = 13.sp,
-                            color = CreamDim,
-                        )
-                        CircularProgressIndicator(color = Gold, modifier = Modifier.size(24.dp))
-                    }
+                    SkeletonOrbRow()
+                    SkeletonCard()
+                    SkeletonCard()
                 }
                 return@Column
             }
@@ -656,7 +647,7 @@ private fun HomeHeader(
                     Icons.Filled.History,
                     contentDescription = stringResource(R.string.home_history_cd),
                     tint = Gold,
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier.size(IconSize.md), // Batch 6b: was 20.dp
                 )
             }
 
@@ -688,7 +679,7 @@ private fun HomeHeader(
                             },
                             contentDescription = stringResource(R.string.home_notifications_cd),
                             tint = Gold,
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(IconSize.md), // Batch 6b: was 18.dp
                         )
                     }
                     if (unreadCount > 0) {
@@ -1082,6 +1073,20 @@ private fun storyOrbIconFor(name: String): ImageVector {
     }
 }
 
+/**
+ * Batch 6b: single shared status→color mapping used by DashaInsightCard and
+ * TransitAlertCard so "caution" resolves to the same token on both surfaces.
+ *
+ * Mapping: good/positive → SuccessGreen · caution → WarningOrange ·
+ *          warning/danger → DangerRed · neutral/steady/unknown → Gold.
+ */
+private fun statusColorFor(key: String): Color = when (key.lowercase()) {
+    "good", "positive" -> SuccessGreen
+    "caution" -> WarningOrange
+    "warning", "danger", "bad" -> DangerRed
+    else -> Gold
+}
+
 @Composable
 private fun DashaInsightCard(dashaInfo: HomeDashaInfo, onClick: () -> Unit = {}) {
     // Compose port of iOS DashaInsightCard
@@ -1091,12 +1096,8 @@ private fun DashaInsightCard(dashaInfo: HomeDashaInfo, onClick: () -> Unit = {})
     //   layered as overlays over the main VStack.
     val periodText = localizedDashaPeriod(dashaInfo)
     val qualityKey = dashaInfo.quality?.lowercase().orEmpty()
-    val qColor = when (qualityKey) {
-        "good" -> Color(0xFF48BB78)
-        "steady" -> Gold
-        "caution" -> Color(0xFFED8936)
-        else -> Gold
-    }
+    // Batch 6b: use shared statusColorFor; "steady" stays Gold (not a status keyword).
+    val qColor = if (qualityKey == "steady") Gold else statusColorFor(qualityKey)
     val qLabel = when (qualityKey) {
         "good" -> stringResource(R.string.status_good)
         "steady" -> stringResource(R.string.status_steady)
@@ -1302,12 +1303,10 @@ private fun TransitAlertCard(transit: HomeTransit, onClick: () -> Unit = {}) {
     // compact orb + sign + arrow stack. The old card chrome (NavySurface card,
     // gold border, badge chip, description, house label) is intentionally
     // dropped to match the iOS layout.
-    val borderColor = when (transit.badgeType.lowercase()) {
-        "positive" -> Color(0xFF26D973)
-        "caution", "warning" -> Color(0xFFEB3830)
-        "neutral" -> Color(0xFFFFB800)
-        else -> Gold
-    }
+    // Batch 6b: use shared statusColorFor so "caution" resolves to WarningOrange here
+    // (was EB3830/red, diverging from DashaInsightCard's orange). "neutral" falls through
+    // to Gold which is close enough to the previous 0xFFFFB800 amber.
+    val borderColor = statusColorFor(transit.badgeType)
     val planetDrawable = planetDrawableFor(transit.planet)
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1893,7 +1892,7 @@ private fun LifeAreaQuestionsSheet(
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF0D0826),
+        containerColor = SurfaceElevated,
         dragHandle = {
             Box(
                 modifier = Modifier
@@ -1935,7 +1934,7 @@ private fun LifeAreaQuestionsSheet(
                         imageVector = Icons.Filled.Close,
                         contentDescription = stringResource(R.string.home_close_cd),
                         tint = CreamDim,
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(IconSize.md), // Batch 6b: was 18.dp
                     )
                 }
             }
@@ -2205,7 +2204,7 @@ private fun LifeAreaBriefPopup(
                         )
                         .clip(RoundedCornerShape(16.dp))
                         // Radial gold cosmic glow over solid navy (issues 8, 31).
-                        .background(Color(0xFF0D0826))
+                        .background(SurfaceElevated)
                         .background(
                             Brush.radialGradient(
                                 colors = listOf(
@@ -2683,7 +2682,7 @@ private fun ProfileSwitcherSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF0D0826),
+        containerColor = SurfaceElevated,
         dragHandle = {
             Box(
                 modifier = Modifier

@@ -2823,4 +2823,28 @@ Until then: Use this period for strategic positioning.</string>
     <string name="a11y_picker_next_value">Valeur suivante</string>
     <string name="a11y_picker_prev_value">Valeur précédente</string>
     <string name="backend_data_refreshed_banner">Votre profil a été mis à jour depuis le cloud</string>
+
+
+    <!-- Batch 6b translations (model-generated) -->
+    <string name="notification_channel_subscription">Abonnement</string>
+    <string name="birth_data_privacy_note_prefix">Vos données de naissance sont stockées en toute sécurité et ne sont jamais vendues. Consultez notre</string>
+    <string name="birth_data_privacy_policy_link">Politique de confidentialité</string>
+    <string name="analytics_on_manage_in_settings">Les analyses d\'utilisation sont activées par défaut. Vous pouvez les gérer dans les Paramètres.</string>
+    <string name="delete_account_bullet_sensitive_data">Votre date, heure et lieu de naissance, vos partenaires enregistrés et vos données personnelles seront définitivement supprimés</string>
+    <string name="notif_delivery_time_section">HEURE DE LIVRAISON</string>
+    <string name="notif_delivery_time_desc">Choisissez quand les aperçus quotidiens sont livrés (votre heure locale)</string>
+    <string name="notif_delivery_time_label">Heure de notification quotidienne</string>
+    <string name="notif_delivery_time_picker_title">Choisir l\'heure de livraison</string>
+    <string name="notif_categories_section">TYPES DE NOTIFICATIONS</string>
+    <string name="notif_categories_desc">Choisissez les types de notifications que vous recevez</string>
+    <string name="notif_category_daily_insight">Aperçus quotidiens</string>
+    <string name="notif_category_transits">Alertes de transits</string>
+    <string name="notif_category_compatibility">Mises à jour de compatibilité</string>
+    <string name="notif_unsaved_changes_title">Modifications non enregistrées</string>
+    <string name="notif_unsaved_changes_message">Vous avez des modifications de notification non enregistrées. Les ignorer?</string>
+    <string name="notif_discard_changes">Ignorer</string>
+    <string name="pref_sound_haptics_section">Son et haptique</string>
+    <string name="pref_sound_title">Son</string>
+    <string name="pref_haptics_title">Haptique</string>
+    <string name="pref_haptics_subtitle">Retour tactile pour les interactions</string>
 </resources>

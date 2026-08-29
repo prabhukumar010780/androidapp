@@ -2821,4 +2821,25 @@ Until then: Use this period for strategic positioning.</string>
     <string name="a11y_picker_next_value">下一个值</string>
     <string name="a11y_picker_prev_value">上一个值</string>
     <string name="backend_data_refreshed_banner">您的个人资料已从云端更新</string>
+    <string name="notification_channel_subscription">订阅</string>
+    <string name="birth_data_privacy_note_prefix">您的出生数据已安全存储，绝不出售。请查看我们的</string>
+    <string name="birth_data_privacy_policy_link">隐私政策</string>
+    <string name="analytics_on_manage_in_settings">使用分析默认开启，可在设置中管理。</string>
+    <string name="delete_account_bullet_sensitive_data">您的出生日期、时间、地点、已保存的伴侣及个人数据将被永久删除</string>
+    <string name="notif_delivery_time_section">发送时间</string>
+    <string name="notif_delivery_time_desc">选择每日洞见的发送时间（您的本地时间）</string>
+    <string name="notif_delivery_time_label">每日通知时间</string>
+    <string name="notif_delivery_time_picker_title">选择发送时间</string>
+    <string name="notif_categories_section">通知类型</string>
+    <string name="notif_categories_desc">选择您希望接收的通知类型</string>
+    <string name="notif_category_daily_insight">每日洞见</string>
+    <string name="notif_category_transits">行星过境提醒</string>
+    <string name="notif_category_compatibility">契合度更新</string>
+    <string name="notif_unsaved_changes_title">未保存的更改</string>
+    <string name="notif_unsaved_changes_message">您有未保存的通知更改，是否放弃？</string>
+    <string name="notif_discard_changes">放弃</string>
+    <string name="pref_sound_haptics_section">声音与触感</string>
+    <string name="pref_sound_title">声音</string>
+    <string name="pref_haptics_title">触感反馈</string>
+    <string name="pref_haptics_subtitle">交互操作的触觉反馈</string>
 </resources>

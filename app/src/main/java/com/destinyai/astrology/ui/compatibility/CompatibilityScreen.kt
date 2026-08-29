@@ -79,6 +79,7 @@ import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
 import com.destinyai.astrology.ui.theme.SuccessGreen
+import com.destinyai.astrology.ui.components.SkeletonCard
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -664,17 +665,13 @@ fun CompatibilityScreen(
                     }
                 }
                 if (state.isAnalyzing) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp),
-                        contentAlignment = Alignment.Center,
+                    // Batch 6b fix #6: skeleton cards while analysis runs (perceived perf).
+                    Column(
+                        modifier = Modifier.padding(top = 8.dp),
+                        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp),
                     ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = Gold,
-                            strokeWidth = 2.dp,
-                        )
+                        SkeletonCard()
+                        SkeletonCard()
                     }
                 } else {
                     ShimmerButton(

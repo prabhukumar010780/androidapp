@@ -2823,4 +2823,25 @@ Until then: Use this period for strategic positioning.</string>
     <string name="a11y_picker_next_value">അടുത്ത മൂല്യം</string>
     <string name="a11y_picker_prev_value">മുൻ മൂല്യം</string>
     <string name="backend_data_refreshed_banner">നിങ്ങളുടെ പ്രൊഫൈൽ ക്ലൗഡിൽ നിന്ന് അപ്‌ഡേറ്റ് ചെയ്‌തു</string>
+    <string name="notification_channel_subscription">സബ്‌സ്‌ക്രിപ്‌ഷൻ</string>
+    <string name="birth_data_privacy_note_prefix">നിങ്ങളുടെ ജനന വിവരങ്ങൾ സുരക്ഷിതമായി സൂക്ഷിക്കുകയും ഒരിക്കലും വിൽക്കുകയും ചെയ്യില്ല. ഞങ്ങളുടെ കാണുക</string>
+    <string name="birth_data_privacy_policy_link">സ്വകാര്യതാ നയം</string>
+    <string name="analytics_on_manage_in_settings">ഉപയോഗ വിശകലനം ഡിഫോൾട്ടായി ഓണാണ്. ക്രമീകരണങ്ങളിൽ നിരുത്സാഹപ്പെടുത്താം.</string>
+    <string name="delete_account_bullet_sensitive_data">നിങ്ങളുടെ ജനന തീയതി, സമയം, സ്ഥലം, സൂക്ഷിച്ച പങ്കാളികൾ, വ്യക്തിഗത ഡേറ്റ എന്നിവ സ്ഥിരമായി ഇല്ലാതാകും</string>
+    <string name="notif_delivery_time_section">ഡെലിവറി സമയം</string>
+    <string name="notif_delivery_time_desc">ദൈനംദിന ഉൾക്കാഴ്ചകൾ എപ്പോൾ നൽകണം എന്ന് തിരഞ്ഞെടുക്കുക (നിങ്ങളുടെ പ്രാദേശിക സമയം)</string>
+    <string name="notif_delivery_time_label">ദൈനംദിന അറിയിപ്പ് സമയം</string>
+    <string name="notif_delivery_time_picker_title">ഡെലിവറി സമയം തിരഞ്ഞെടുക്കുക</string>
+    <string name="notif_categories_section">അറിയിപ്പ് തരങ്ങൾ</string>
+    <string name="notif_categories_desc">നിങ്ങൾക്ക് ഏത് തരം അറിയിപ്പുകൾ ലഭിക്കണമെന്ന് തിരഞ്ഞെടുക്കുക</string>
+    <string name="notif_category_daily_insight">ദൈനംദിന ഉൾക്കാഴ്ചകൾ</string>
+    <string name="notif_category_transits">ഗ്രഹ സംക്രമണ അലേർട്ടുകൾ</string>
+    <string name="notif_category_compatibility">അനുയോജ്യത അപ്‌ഡേറ്റുകൾ</string>
+    <string name="notif_unsaved_changes_title">സേവ് ചെയ്യാത്ത മാറ്റങ്ങൾ</string>
+    <string name="notif_unsaved_changes_message">സേവ് ചെയ്യാത്ത അറിയിപ്പ് മാറ്റങ്ങൾ ഉണ്ട്. ഉപേക്ഷിക്കണോ?</string>
+    <string name="notif_discard_changes">ഉപേക്ഷിക്കുക</string>
+    <string name="pref_sound_haptics_section">ശബ്ദവും ഹാപ്റ്റിക്‌സും</string>
+    <string name="pref_sound_title">ശബ്ദം</string>
+    <string name="pref_haptics_title">ഹാപ്റ്റിക്‌സ്</string>
+    <string name="pref_haptics_subtitle">ഇടപെടലുകൾക്കുള്ള സ്പർശ പ്രതിക്രിയ</string>
 </resources>

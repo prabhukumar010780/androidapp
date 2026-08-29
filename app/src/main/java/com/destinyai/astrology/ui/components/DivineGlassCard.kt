@@ -19,6 +19,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
+import com.destinyai.astrology.ui.theme.Radius
+import com.destinyai.astrology.ui.theme.Spacing
 
 /**
  * Frosted glass-morphism card.
@@ -29,12 +31,16 @@ import com.destinyai.astrology.ui.theme.NavySurface
  *
  * Mirrors iOS `DivineGlassCard`.
  *
+ * Batch 6b: default [cornerRadius] changed from the retired 24dp to [Radius.hero]
+ * (20dp) per the design-token contract. Internal padding now reads from
+ * [Spacing.cardPadding] so the token is the single source of truth.
+ *
  * @param active Reserved for future animation parity with iOS `active` flag.
  */
 @Composable
 fun DivineGlassCard(
     modifier: Modifier = Modifier,
-    cornerRadius: Dp = 24.dp,
+    cornerRadius: Dp = Radius.hero,
     active: Boolean = true,
     content: @Composable BoxScope.() -> Unit,
 ) {
@@ -77,8 +83,8 @@ fun DivineGlassCard(
                     style = Stroke(width = 1.5.dp.toPx()),
                 )
             }
-            // Internal 16dp content padding mirroring iOS .padding(16) on content
-            .padding(16.dp),
+            // Internal content padding — tokenized via Spacing.cardPadding
+            .padding(Spacing.cardPadding),
         content = content,
     )
 }

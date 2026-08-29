@@ -130,12 +130,12 @@ fun AuthScreen(
     val legacySignInLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult(),
     ) { result ->
-        android.util.Log.i("AuthScreen", "Legacy launcher result: resultCode=${result.resultCode} data=${result.data}")
+        if (BuildConfig.DEBUG) android.util.Log.i("AuthScreen", "Legacy launcher result: resultCode=${result.resultCode} data=${result.data}")
         if (result.resultCode == Activity.RESULT_OK) {
             val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
             try {
                 val account = task.getResult(ApiException::class.java)
-                android.util.Log.i("AuthScreen", "Legacy account: email=${account.email} id=${account.id} idToken=${account.idToken?.take(20)} authCode=${account.serverAuthCode?.take(20)}")
+                if (BuildConfig.DEBUG) android.util.Log.i("AuthScreen", "Legacy account: email=${account.email} id=${account.id} idToken=${account.idToken?.take(20)} authCode=${account.serverAuthCode?.take(20)}")
                 val email = account.email
                 val googleId = account.id
                 val name = account.displayName
@@ -153,7 +153,7 @@ fun AuthScreen(
                     )
                 }
             } catch (e: ApiException) {
-                android.util.Log.e("AuthScreen", "Legacy GoogleSignIn ApiException code=${e.statusCode} msg=${e.message}", e)
+                if (BuildConfig.DEBUG) android.util.Log.e("AuthScreen", "Legacy GoogleSignIn ApiException code=${e.statusCode} msg=${e.message}", e)
                 if (e.statusCode == com.google.android.gms.common.api.CommonStatusCodes.CANCELED) {
                     // User cancelled — silent. Clear the loading overlay so the
                     // auth screen becomes interactive again (iOS parity).
@@ -165,7 +165,7 @@ fun AuthScreen(
                 }
             }
         } else {
-            android.util.Log.w("AuthScreen", "Legacy launcher non-OK result: resultCode=${result.resultCode}")
+            if (BuildConfig.DEBUG) android.util.Log.w("AuthScreen", "Legacy launcher non-OK result: resultCode=${result.resultCode}")
             // Result wasn't OK — most commonly the user dismissed the chooser.
             // Clear the loading overlay (iOS parity user-cancel behavior).
             viewModel.cancelGoogleSignIn()
@@ -175,7 +175,7 @@ fun AuthScreen(
                 try {
                     task.getResult(ApiException::class.java)
                 } catch (e: ApiException) {
-                    android.util.Log.e("AuthScreen", "Legacy non-OK ApiException code=${e.statusCode}", e)
+                    if (BuildConfig.DEBUG) android.util.Log.e("AuthScreen", "Legacy non-OK ApiException code=${e.statusCode}", e)
                 }
             }
         }
@@ -224,7 +224,7 @@ fun AuthScreen(
                     val googleIdTokenCredential =
                         GoogleIdTokenCredential.createFrom(credential.data)
                     val idToken = googleIdTokenCredential.idToken
-                    android.util.Log.i("AuthScreen", "Got idToken len=${idToken.length} preview=${idToken.take(20)}...")
+                    if (BuildConfig.DEBUG) android.util.Log.i("AuthScreen", "Got idToken len=${idToken.length} preview=${idToken.take(20)}...")
                     // iOS parity (ProfileService.registerUser): backend
                     // /subscription/register requires `email` and looks up users
                     // by `google_id`. Decode the JWT `sub` claim for the stable

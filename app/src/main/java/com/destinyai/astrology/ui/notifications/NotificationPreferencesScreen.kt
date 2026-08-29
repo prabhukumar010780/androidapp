@@ -106,6 +106,7 @@ private fun isNotificationsEffectivelyEnabled(context: android.content.Context):
     return runtimeOk && NotificationManagerCompat.from(context).areNotificationsEnabled()
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationPreferencesScreen(
     onBack: () -> Unit,
@@ -123,6 +124,8 @@ fun NotificationPreferencesScreen(
     var editingAlert by remember { mutableStateOf<AlertItem?>(null) }
     // iOS parity (NotificationPreferencesSheet.swift:225-239): require explicit confirm before deleting an alert.
     var alertToDelete by remember { mutableStateOf<AlertItem?>(null) }
+    // Batch 6b fix #9: confirm dialog when user presses Back with unsaved channel/time changes.
+    var showUnsavedDialog by remember { mutableStateOf(false) }
     // iOS parity (NotificationPreferencesSheet.swift:43-46): the body is hidden behind a
     // full-screen ProgressView during the first load. Once the first load completes,
     // subsequent isLoading flips (e.g. during save) drive the in-toolbar spinner only.
@@ -263,6 +266,38 @@ fun NotificationPreferencesScreen(
                         color = Gold,
                         fontWeight = FontWeight.Bold,
                     )
+                }
+            },
+        )
+    }
+
+    // Batch 6b fix #9: intercept Back when there are unsaved channel/time changes.
+    // Prompt instead of silently discarding (server-only approach: no auto-persist on toggle).
+    androidx.activity.compose.BackHandler(enabled = state.hasUnsavedChanges) {
+        showUnsavedDialog = true
+    }
+
+    // Unsaved-changes dialog
+    if (showUnsavedDialog) {
+        AlertDialog(
+            onDismissRequest = { showUnsavedDialog = false },
+            title = { Text(stringResource(R.string.notif_unsaved_changes_title)) },
+            text = { Text(stringResource(R.string.notif_unsaved_changes_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showUnsavedDialog = false
+                    onBack()
+                }) {
+                    Text(
+                        stringResource(R.string.notif_discard_changes),
+                        color = Color(0xFFFF8A80),
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showUnsavedDialog = false }) {
+                    Text(stringResource(R.string.cancel_action))
                 }
             },
         )
@@ -423,6 +458,148 @@ fun NotificationPreferencesScreen(
                             onCheckedChange = {
                                 haptic.light()
                                 viewModel.setInAppEnabled(it)
+                            },
+                        )
+                    }
+
+                    // ── Batch 6b fix #8: Per-category toggles ────────────────
+                    NotifSectionCard(
+                        title = stringResource(R.string.notif_categories_section),
+                        description = stringResource(R.string.notif_categories_desc),
+                    ) {
+                        NotifChannelToggleRow(
+                            label = stringResource(R.string.notif_category_daily_insight),
+                            checked = state.dailyInsight,
+                            onCheckedChange = {
+                                haptic.light()
+                                viewModel.setDailyInsight(it)
+                            },
+                        )
+                        HorizontalDivider(color = Gold.copy(alpha = 0.08f), thickness = 0.5.dp)
+                        NotifChannelToggleRow(
+                            label = stringResource(R.string.notif_category_transits),
+                            checked = state.transits,
+                            onCheckedChange = {
+                                haptic.light()
+                                viewModel.setTransits(it)
+                            },
+                        )
+                        HorizontalDivider(color = Gold.copy(alpha = 0.08f), thickness = 0.5.dp)
+                        NotifChannelToggleRow(
+                            label = stringResource(R.string.notif_category_compatibility),
+                            checked = state.compatibility,
+                            onCheckedChange = {
+                                haptic.light()
+                                viewModel.setCompatibility(it)
+                            },
+                        )
+                    }
+
+                    // ── Batch 6b fix #7: Delivery-time picker ────────────────
+                    // Convert stored UTC "HH:mm" to/from local for display.
+                    // Full timezone-aware round-trip: display in device-local time;
+                    // convert back to UTC on change using the timezone already sent in save().
+                    val localTimeLabel = remember(state.preferredTimeUtc) {
+                        runCatching {
+                            val parts = state.preferredTimeUtc.split(":")
+                            val utcHour = parts[0].toInt()
+                            val utcMin = parts[1].toInt()
+                            val utcCal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply {
+                                set(java.util.Calendar.HOUR_OF_DAY, utcHour)
+                                set(java.util.Calendar.MINUTE, utcMin)
+                            }
+                            val localCal = java.util.Calendar.getInstance().apply {
+                                timeInMillis = utcCal.timeInMillis
+                            }
+                            String.format(
+                                java.util.Locale.getDefault(),
+                                "%02d:%02d",
+                                localCal.get(java.util.Calendar.HOUR_OF_DAY),
+                                localCal.get(java.util.Calendar.MINUTE),
+                            )
+                        }.getOrDefault(state.preferredTimeUtc)
+                    }
+                    var showTimePicker by remember { mutableStateOf(false) }
+                    NotifSectionCard(
+                        title = stringResource(R.string.notif_delivery_time_section),
+                        description = stringResource(R.string.notif_delivery_time_desc),
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { haptic.light(); showTimePicker = true }
+                                .padding(vertical = 14.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = stringResource(R.string.notif_delivery_time_label),
+                                fontSize = 15.sp,
+                                color = CreamText,
+                            )
+                            Text(
+                                text = localTimeLabel,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Gold,
+                            )
+                        }
+                    }
+                    if (showTimePicker) {
+                        val timePickerState = androidx.compose.material3.rememberTimePickerState(
+                            initialHour = runCatching {
+                                val parts = state.preferredTimeUtc.split(":")
+                                val utcH = parts[0].toInt()
+                                val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply {
+                                    set(java.util.Calendar.HOUR_OF_DAY, utcH)
+                                    set(java.util.Calendar.MINUTE, parts[1].toInt())
+                                }
+                                java.util.Calendar.getInstance().also { it.timeInMillis = cal.timeInMillis }
+                                    .get(java.util.Calendar.HOUR_OF_DAY)
+                            }.getOrDefault(0),
+                            initialMinute = runCatching {
+                                val parts = state.preferredTimeUtc.split(":")
+                                val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply {
+                                    set(java.util.Calendar.HOUR_OF_DAY, parts[0].toInt())
+                                    set(java.util.Calendar.MINUTE, parts[1].toInt())
+                                }
+                                java.util.Calendar.getInstance().also { it.timeInMillis = cal.timeInMillis }
+                                    .get(java.util.Calendar.MINUTE)
+                            }.getOrDefault(30),
+                            is24Hour = true,
+                        )
+                        AlertDialog(
+                            onDismissRequest = { showTimePicker = false },
+                            title = { Text(stringResource(R.string.notif_delivery_time_picker_title)) },
+                            text = {
+                                androidx.compose.material3.TimePicker(state = timePickerState)
+                            },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    // Convert chosen local time back to UTC HH:mm.
+                                    val localCal = java.util.Calendar.getInstance().apply {
+                                        set(java.util.Calendar.HOUR_OF_DAY, timePickerState.hour)
+                                        set(java.util.Calendar.MINUTE, timePickerState.minute)
+                                    }
+                                    val utcCal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply {
+                                        timeInMillis = localCal.timeInMillis
+                                    }
+                                    val utcTime = String.format(
+                                        java.util.Locale.US,
+                                        "%02d:%02d",
+                                        utcCal.get(java.util.Calendar.HOUR_OF_DAY),
+                                        utcCal.get(java.util.Calendar.MINUTE),
+                                    )
+                                    viewModel.setPreferredTimeUtc(utcTime)
+                                    showTimePicker = false
+                                }) {
+                                    Text(stringResource(R.string.ok_action), color = Gold, fontWeight = FontWeight.Bold)
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showTimePicker = false }) {
+                                    Text(stringResource(R.string.cancel_action))
+                                }
                             },
                         )
                     }
