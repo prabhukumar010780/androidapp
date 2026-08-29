@@ -60,7 +60,6 @@ import com.destinyai.astrology.ui.theme.TouchMin
 import com.destinyai.astrology.ui.theme.adaptiveContentWidth
 import kotlin.math.cos
 import kotlin.math.sin
-import androidx.compose.ui.platform.testTag
 
 @Composable
 fun LanguageSelectionScreen(
@@ -247,7 +246,7 @@ fun LanguageSelectionScreen(
                                 )
                             } else Modifier,
                         )
-                        .testTag("language_continue_button"),
+                        .semantics { contentDescription = "language_continue_button" },
                     shape = RoundedCornerShape(14.dp),
                     contentPadding = PaddingValues(0.dp),
                     colors = ButtonDefaults.buttonColors(

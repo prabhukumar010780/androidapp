@@ -2754,12 +2754,6 @@ Until then: Use this period for strategic positioning.</string>
     <string name="merge_conflict_dismiss">ശരി</string>
     <string name="notification_channel_default">Destiny അറിയിപ്പുകൾ</string>
     <string name="notification_channel_chat_streaming">പശ്ചാത്തല സ്‌ട്രീമിംഗ്</string>
-    <string name="a11y_north_indian_chart">ഉത്തര ഇന്ത്യൻ ജന്മ ജാതകം, ലഗ്നം %1$s</string>
-    <string name="a11y_south_indian_chart">ദക്ഷിണ ഇന്ത്യൻ ജന്മ ജാതകം, ലഗ്നം %1$s</string>
-    <string name="a11y_synergy_gauge">അനുയോജ്യത %2$s-ൽ %1$s, %3$s</string>
-    <string name="a11y_synergy_quality_excellent">മികച്ചത്</string>
-    <string name="a11y_synergy_quality_good">നല്ലത്</string>
-    <string name="a11y_synergy_quality_challenging">വെല്ലുവിളിക്കുന്നത്</string>
     <string name="error_request_timeout">അഭ്യർഥനയ്ക്ക് സമയം കഴിഞ്ഞു. വീണ്ടും ശ്രമിക്കൂ.</string>
     <string name="error_network_unavailable">നെറ്റ്‌വർക്ക് ലഭ്യമല്ല. നിങ്ങളുടെ കണക്ഷൻ പരിശോധിക്കൂ.</string>
     <string name="error_session_expired">സെഷൻ കാലഹരണപ്പെട്ടു. വീണ്ടും സൈൻ ഇൻ ചെയ്യൂ.</string>
@@ -2820,8 +2814,6 @@ Until then: Use this period for strategic positioning.</string>
     </plurals>
 
 
-    <string name="a11y_picker_next_value">അടുത്ത മൂല്യം</string>
-    <string name="a11y_picker_prev_value">മുൻ മൂല്യം</string>
     <string name="backend_data_refreshed_banner">നിങ്ങളുടെ പ്രൊഫൈൽ ക്ലൗഡിൽ നിന്ന് അപ്‌ഡേറ്റ് ചെയ്‌തു</string>
     <string name="notification_channel_subscription">സബ്‌സ്‌ക്രിപ്‌ഷൻ</string>
     <string name="birth_data_privacy_note_prefix">നിങ്ങളുടെ ജനന വിവരങ്ങൾ സുരക്ഷിതമായി സൂക്ഷിക്കുകയും ഒരിക്കലും വിൽക്കുകയും ചെയ്യില്ല. ഞങ്ങളുടെ കാണുക</string>

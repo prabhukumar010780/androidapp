@@ -308,7 +308,8 @@ fun CompatibilityScreen(
             Column(modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .testTag("compat_screen"),
+                .testTag("compat_screen")
+                .semantics(mergeDescendants = false) { contentDescription = "compat_screen" },
                 horizontalAlignment = Alignment.CenterHorizontally) {
             CompatibilityHeader(
                 onNavigateToPartners = onNavigateToPartners,
@@ -457,7 +458,8 @@ fun CompatibilityScreen(
                             isPlaceholder = state.partnerDob.isEmpty(),
                             modifier = Modifier
                                 .weight(1f)
-                                .testTag("compat_person2_dob"),
+                                .testTag("compat_person2_dob")
+                                .semantics { contentDescription = "compat_person2_dob" },
                             onClick = { viewModel.setShowDatePicker(true) },
                         )
                         PickerField(
@@ -894,7 +896,8 @@ private fun CompatibilityHeader(
                 .clip(CircleShape)
                 .border(1.dp, Gold.copy(alpha = 0.3f), CircleShape)
                 .clickable(onClick = onHistory)
-                .testTag("compat_history_button"),
+                .testTag("compat_history_button")
+                .semantics { contentDescription = "compat_history_button" },
             contentAlignment = Alignment.Center,
         ) {
             Icon(

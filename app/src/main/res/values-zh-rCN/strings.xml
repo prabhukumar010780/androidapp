@@ -2754,12 +2754,6 @@ Until then: Use this period for strategic positioning.</string>
     <string name="merge_conflict_dismiss">确定</string>
     <string name="notification_channel_default">Destiny通知</string>
     <string name="notification_channel_chat_streaming">后台流式传输</string>
-    <string name="a11y_north_indian_chart">北印度式出生星盘，上升星座%1$s</string>
-    <string name="a11y_south_indian_chart">南印度式出生星盘，上升星座%1$s</string>
-    <string name="a11y_synergy_gauge">缘分匹配 %1$s/%2$s，%3$s</string>
-    <string name="a11y_synergy_quality_excellent">卓越</string>
-    <string name="a11y_synergy_quality_good">良好</string>
-    <string name="a11y_synergy_quality_challenging">挑战</string>
     <string name="error_request_timeout">请求超时。请再试一次。</string>
     <string name="error_network_unavailable">网络不可用。请检查您的连接。</string>
     <string name="error_session_expired">会话已过期。请重新登录。</string>
@@ -2818,8 +2812,6 @@ Until then: Use this period for strategic positioning.</string>
     </plurals>
 
 
-    <string name="a11y_picker_next_value">下一个值</string>
-    <string name="a11y_picker_prev_value">上一个值</string>
     <string name="backend_data_refreshed_banner">您的个人资料已从云端更新</string>
     <string name="notification_channel_subscription">订阅</string>
     <string name="birth_data_privacy_note_prefix">您的出生数据已安全存储，绝不出售。请查看我们的</string>

@@ -15,10 +15,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import com.destinyai.astrology.R
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontWeight
@@ -37,7 +33,6 @@ fun SouthIndianChartView(
     personName: String = "",
     gridSizeDp: Float = 340f,
 ) {
-    val chartDesc = stringResource(R.string.a11y_south_indian_chart, ascendantSign ?: "")
     // R2/A1 fix: shrink below 340dp on narrow phones, split-screen, or folded foldables.
     BoxWithConstraints {
         val actualSize = minOf(maxWidth, gridSizeDp.dp)
@@ -45,7 +40,6 @@ fun SouthIndianChartView(
             modifier = Modifier
                 .size(actualSize)
                 .padding(8.dp)
-                .semantics { contentDescription = chartDesc }
                 .shadow(
                     elevation = 4.dp,
                     ambientColor = Gold.copy(alpha = 0.1f),

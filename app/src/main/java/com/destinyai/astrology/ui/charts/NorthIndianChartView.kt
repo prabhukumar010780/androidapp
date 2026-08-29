@@ -7,10 +7,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import com.destinyai.astrology.R
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontWeight
@@ -26,7 +22,6 @@ fun NorthIndianChartView(
     ascendantSign: String?,
     gridSizeDp: Float = 340f,
 ) {
-    val chartDesc = stringResource(R.string.a11y_north_indian_chart, ascendantSign ?: "")
     // R2/A1 fix: shrink below 340dp on narrow phones, split-screen, or folded foldables.
     // BoxWithConstraints supplies maxWidth; actualSize caps at gridSizeDp so large screens
     // still honour the caller's intent while narrow screens are never clipped.
@@ -36,7 +31,6 @@ fun NorthIndianChartView(
             modifier = Modifier
                 .size(actualSize)
                 .padding(8.dp)
-                .semantics { contentDescription = chartDesc }
                 // iOS parity: outer chart shadow + inner grid glow (issue 6)
                 .shadow(
                     elevation = 4.dp,

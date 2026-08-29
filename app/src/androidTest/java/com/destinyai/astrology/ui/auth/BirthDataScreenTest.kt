@@ -186,10 +186,9 @@ class BirthDataScreenTest {
     @Test
     fun continue_button_is_disabled_when_form_is_empty() {
         renderScreen()
-        // The Continue CTA (ShimmerButton) is located by testTag, not
-        // contentDescription — it exposes no content-description.
+        // The Continue CTA (ShimmerButton) is located by contentDescription.
         composeTestRule
-            .onNodeWithTag("birth_data_continue")
+            .onNodeWithContentDescription("birth_data_continue")
             .assertIsNotEnabled()
     }
 }

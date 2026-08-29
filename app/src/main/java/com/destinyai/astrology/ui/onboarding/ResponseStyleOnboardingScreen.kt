@@ -49,7 +49,6 @@ import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.Radius
 import com.destinyai.astrology.ui.theme.Spacing
-import androidx.compose.ui.platform.testTag
 
 private data class ResponseStyleOption(
     val key: String,
@@ -227,7 +226,7 @@ fun ResponseStyleOnboardingScreen(
                     } else {
                         stringResource(R.string.response_style_continue_action)
                     },
-                    modifier = Modifier.testTag("response_style_continue"),
+                    modifier = Modifier.semantics { contentDescription = "response_style_continue" },
                     onClick = {
                         haptic.premiumContinue()
                         viewModel.persistSelection()

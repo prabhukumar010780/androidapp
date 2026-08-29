@@ -45,7 +45,6 @@ import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
-import androidx.compose.ui.platform.testTag
 
 // iOS parity (ProfileSetupLoadingView.SetupPhase): each of the 4 setup phases has
 // a localized title + subtitle pair backed by string resources (required for
@@ -215,7 +214,7 @@ fun ProfileSetupLoadingScreen(
                         .height(8.dp)
                         .clip(RoundedCornerShape(4.dp))
                         .background(Color.White.copy(alpha = 0.2f))
-                        .testTag("profile_setup_progress_bar"),
+                        .semantics { contentDescription = "profile_setup_progress_bar" },
                 ) {
                     Box(
                         modifier = Modifier

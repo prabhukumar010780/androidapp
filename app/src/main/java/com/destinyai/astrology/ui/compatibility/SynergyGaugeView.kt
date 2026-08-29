@@ -35,7 +35,6 @@ import com.destinyai.astrology.ui.theme.AppTheme
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.Gold
-import androidx.compose.ui.platform.testTag
 
 @Composable
 fun SynergyGaugeView(
@@ -68,17 +67,9 @@ fun SynergyGaugeView(
         label = "arc_progress",
     )
 
-    val qualityLabel = when {
-        progress >= 0.75 -> stringResource(R.string.a11y_synergy_quality_excellent)
-        progress >= 0.5 -> stringResource(R.string.a11y_synergy_quality_good)
-        else -> stringResource(R.string.a11y_synergy_quality_challenging)
-    }
-    val gaugeDesc = stringResource(R.string.a11y_synergy_gauge, score, maxScore, qualityLabel)
-
     Column(
         modifier = modifier
-            .testTag("synergy_gauge_view")
-            .semantics { contentDescription = gaugeDesc },
+            .semantics { contentDescription = "synergy_gauge_view" },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
@@ -124,7 +115,7 @@ fun SynergyGaugeView(
                     color = Gold,
                     // R2 fix: cap at 48sp so the score doesn't overlap the arc at fontScale 2.0.
                     fontSize = (size.value * if (hasAdjustment) 0.28f else 0.32f).coerceAtMost(48f).sp,
-                    modifier = Modifier.testTag("synergy_score_value"),
+                    modifier = Modifier.semantics { contentDescription = "synergy_score_value" },
                 )
                 Text(
                     // Matches iOS literal "/ N"
@@ -170,15 +161,6 @@ fun SynergyGaugeView(
                     fontSize = (size.value * 0.05f).sp,
                     letterSpacing = 1.sp,
                 )
-                // Visible quality tier label so tier is not color-only (A4 accessibility fix)
-                Text(
-                    text = qualityLabel.uppercase(),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = synergyArcColor(progress.toDouble()).copy(alpha = 0.9f),
-                    fontSize = (size.value * 0.05f).sp,
-                    letterSpacing = 1.sp,
-                )
             }
 
             // Issue 4 + 16: SF-Symbol-equivalent icon + localized hint key
@@ -187,7 +169,7 @@ fun SynergyGaugeView(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier
                     .offset(y = size * 0.48f)
-                    .testTag("tap_orbs_hint"),
+                    .semantics { contentDescription = "tap_orbs_hint" },
             ) {
                 Icon(
                     imageVector = Icons.Outlined.TouchApp,

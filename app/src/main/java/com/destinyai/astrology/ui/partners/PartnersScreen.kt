@@ -171,7 +171,8 @@ fun PartnersScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .testTag("partners_screen"),
+                .testTag("partners_screen")
+                .semantics(mergeDescendants = false) { contentDescription = "partners_screen" },
         ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -214,7 +215,8 @@ fun PartnersScreen(
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                     modifier = Modifier
                         .heightIn(min = TouchMin)
-                        .testTag("add_partner_button"),
+                        .testTag("add_partner_button")
+                        .semantics { contentDescription = "add_partner_button" },
                 ) {
                     Text(
                         stringResource(R.string.partner_form_add_button),
@@ -330,7 +332,7 @@ fun PartnersScreen(
                                     if (partner.isProtected) viewModel.showProtectionAlert(partner)
                                     else viewModel.beginEditPartner(partner)
                                 }
-                                .testTag("partner_list_item")
+                                .semantics { contentDescription = "partner_list_item" }
                                 .padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {

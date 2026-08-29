@@ -166,7 +166,7 @@ fun PartnerPickerSheet(
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(NavySurface)
                                 .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
-                                .testTag("compat_saved_partner_row")
+                                .semantics { contentDescription = "compat_saved_partner_row" }
                                 .clickable {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     viewModel.selectSavedPartner(partner)

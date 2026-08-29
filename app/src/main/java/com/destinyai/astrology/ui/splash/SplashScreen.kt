@@ -44,7 +44,6 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 import kotlinx.coroutines.launch
-import androidx.compose.ui.platform.testTag
 
 /**
  * Splash overlay — pure presentational composable. Mirrors iOS SplashView, which is
@@ -114,7 +113,7 @@ fun SplashScreen(soundManager: SoundManager? = null) {
     Box(modifier = Modifier
         .fillMaxSize()
         .background(NavyDeep)
-        .testTag("splash_screen")) {
+        .semantics(mergeDescendants = false) { contentDescription = "splash_screen" }) {
         // Layer 1: Liquid Gold animated fluid background (iOS parity: FluidBackground.swift:15-69)
         LiquidGoldBackground()
 

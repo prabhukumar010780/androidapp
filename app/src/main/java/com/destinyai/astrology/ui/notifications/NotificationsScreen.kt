@@ -39,7 +39,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -274,7 +273,7 @@ fun NotificationsScreen(
                 .fillMaxSize()
                 .semantics(mergeDescendants = false) {
                     testTagsAsResourceId = true
-                    testTag = "notifications_screen"
+                    contentDescription = "notifications_screen"
                 }
                 .testTag("notifications_screen"),
         ) {
@@ -350,7 +349,7 @@ fun NotificationsScreen(
                         },
                         modifier = Modifier
                             .size(TouchMin)
-                            .testTag("mark_all_read_button"),
+                            .semantics { contentDescription = "mark_all_read_button" },
                     ) {
                         Box(
                             modifier = Modifier
@@ -615,7 +614,7 @@ private fun NotificationRowItem(
             .clickable { onClick() }
             .semantics {
                 testTagsAsResourceId = true
-                testTag = "notification_item"
+                contentDescription = "notification_item"
             }
             .testTag("notification_row"),
         verticalAlignment = Alignment.Top,

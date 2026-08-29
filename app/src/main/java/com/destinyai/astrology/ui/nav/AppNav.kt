@@ -26,9 +26,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.testTagsAsResourceId
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.zIndex
@@ -70,7 +67,6 @@ import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun AppNav() {
     val navController = rememberNavController()
@@ -223,12 +219,6 @@ fun AppNav() {
     CosmicBackground(
         modifier = Modifier
             .fillMaxSize()
-            // Expose Compose testTags as Android resource-ids globally so the
-            // Appium E2E suite can locate elements with
-            // AppiumBy.ID("com.destinyai.astrology:id/<tag>").
-            // Mirrors NotificationsScreen.kt's per-screen usage — applied here
-            // once so every route inherits it automatically.
-            .semantics { testTagsAsResourceId = true }
             .pointerInput(Unit) {
                 detectTapGestures(onTap = {
                     focusManager.clearFocus(force = true)
@@ -249,11 +239,6 @@ fun AppNav() {
             NavHost(
                 navController = navController,
                 startDestination = Routes.SPLASH,
-                // Expose Compose testTags as Android resource-ids for the Appium
-                // E2E suite. Set on the NavHost (direct ancestor of every route)
-                // because the flag does not reliably propagate from the outer
-                // CosmicBackground across the NavHost's AnimatedContent boundary.
-                modifier = Modifier.semantics { testTagsAsResourceId = true },
                 enterTransition = {
                     slideInHorizontally(
                         animationSpec = tween(navEnterDurationMs, easing = FastOutSlowInEasing),

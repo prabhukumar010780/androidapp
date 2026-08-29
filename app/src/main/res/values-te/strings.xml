@@ -2754,12 +2754,6 @@ Until then: Use this period for strategic positioning.</string>
     <string name="merge_conflict_dismiss">సరే</string>
     <string name="notification_channel_default">Destiny నోటిఫికేషన్‌లు</string>
     <string name="notification_channel_chat_streaming">నేపథ్య స్ట్రీమింగ్</string>
-    <string name="a11y_north_indian_chart">ఉత్తర భారత జన్మ జాతకం, లగ్నం %1$s</string>
-    <string name="a11y_south_indian_chart">దక్షిణ భారత జన్మ జాతకం, లగ్నం %1$s</string>
-    <string name="a11y_synergy_gauge">అనుకూలత %2$s లో %1$s, %3$s</string>
-    <string name="a11y_synergy_quality_excellent">అద్భుతమైనది</string>
-    <string name="a11y_synergy_quality_good">మంచిది</string>
-    <string name="a11y_synergy_quality_challenging">సవాలు</string>
     <string name="error_request_timeout">అభ్యర్థన సమయం ముగిసింది. మళ్ళీ ప్రయత్నించండి.</string>
     <string name="error_network_unavailable">నెట్‌వర్క్ అందుబాటులో లేదు. మీ కనెక్షన్ తనిఖీ చేయండి.</string>
     <string name="error_session_expired">సెషన్ గడువు ముగిసింది. మళ్ళీ సైన్ ఇన్ చేయండి.</string>
@@ -2820,8 +2814,6 @@ Until then: Use this period for strategic positioning.</string>
     </plurals>
 
 
-    <string name="a11y_picker_next_value">తదుపరి విలువ</string>
-    <string name="a11y_picker_prev_value">మునుపటి విలువ</string>
     <string name="backend_data_refreshed_banner">మీ ప్రొఫైల్ క్లౌడ్ నుండి నవీకరించబడింది</string>
     <string name="notification_channel_subscription">సభ్యత్వం</string>
     <string name="birth_data_privacy_note_prefix">మీ జన్మ వివరాలు సురక్షితంగా నిల్వ చేయబడతాయి మరియు అమ్మబడవు. మా చూడండి</string>

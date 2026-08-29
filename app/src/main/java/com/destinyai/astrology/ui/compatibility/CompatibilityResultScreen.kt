@@ -744,7 +744,7 @@ fun RecommendationBanner(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = CreamText,
-                modifier = Modifier.testTag("compat_result_score"),
+                modifier = Modifier.semantics { contentDescription = "compat_result_score" },
             )
         }
 

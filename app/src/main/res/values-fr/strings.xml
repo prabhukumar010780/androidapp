@@ -2754,12 +2754,6 @@ Until then: Use this period for strategic positioning.</string>
     <string name="merge_conflict_dismiss">OK</string>
     <string name="notification_channel_default">Notifications Destiny</string>
     <string name="notification_channel_chat_streaming">Diffusion en arrière-plan</string>
-    <string name="a11y_north_indian_chart">Thème natal style indien du nord, ascendant %1$s</string>
-    <string name="a11y_south_indian_chart">Thème natal style indien du sud, ascendant %1$s</string>
-    <string name="a11y_synergy_gauge">Compatibilité %1$s sur %2$s, %3$s</string>
-    <string name="a11y_synergy_quality_excellent">Excellent</string>
-    <string name="a11y_synergy_quality_good">Bon</string>
-    <string name="a11y_synergy_quality_challenging">Difficile</string>
     <string name="error_request_timeout">Délai d\'attente dépassé. Veuillez réessayer.</string>
     <string name="error_network_unavailable">Réseau indisponible. Vérifiez votre connexion.</string>
     <string name="error_session_expired">Session expirée. Veuillez vous reconnecter.</string>
@@ -2820,8 +2814,6 @@ Until then: Use this period for strategic positioning.</string>
     </plurals>
 
 
-    <string name="a11y_picker_next_value">Valeur suivante</string>
-    <string name="a11y_picker_prev_value">Valeur précédente</string>
     <string name="backend_data_refreshed_banner">Votre profil a été mis à jour depuis le cloud</string>
 
 

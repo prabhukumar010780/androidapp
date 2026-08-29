@@ -2928,17 +2928,6 @@ Until then: Use this period for strategic positioning.</string>
     <string name="merge_conflict_title">Account already exists</string>
     <string name="merge_conflict_message">An account with these birth details already exists. Please sign in with the original method you used, or contact support.</string>
     <string name="merge_conflict_dismiss">OK</string>
-    <!-- Accessibility labels for chart canvas views (TalkBack) -->
-    <string name="a11y_north_indian_chart">North Indian birth chart, ascendant %1$s</string>
-    <string name="a11y_south_indian_chart">South Indian birth chart, ascendant %1$s</string>
-    <!-- Synergy gauge: "Compatibility N of M, Quality" -->
-    <string name="a11y_synergy_gauge">Compatibility %1$s of %2$s, %3$s</string>
-    <string name="a11y_synergy_quality_excellent">Excellent</string>
-    <string name="a11y_synergy_quality_good">Good</string>
-    <string name="a11y_synergy_quality_challenging">Challenging</string>
-    <!-- Date picker wheel accessibility actions -->
-    <string name="a11y_picker_next_value">Next value</string>
-    <string name="a11y_picker_prev_value">Previous value</string>
     <!-- Friendly error messages — ViewModel friendlyError() mappers (R4/R5) -->
     <string name="error_request_timeout">Request timed out. Please try again.</string>
     <string name="error_network_unavailable">Network unavailable. Check your connection.</string>

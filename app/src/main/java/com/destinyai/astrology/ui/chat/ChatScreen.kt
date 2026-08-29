@@ -47,8 +47,6 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
@@ -235,7 +233,7 @@ fun ChatScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .testTag("chat_screen"),
+                .semantics(mergeDescendants = false) { contentDescription = "chat_screen" },
             // Cat 4 adaptability: center children so adaptiveContentWidth() caps the
             // message list + input bar to a readable column on tablets/foldables
             // instead of stretching full-bleed. No-op on phones.
@@ -335,7 +333,7 @@ fun ChatScreen(
                             // E2E: loading_indicator marker — present ONLY while the
                             // list-level cosmic-progress pill is shown (isStreaming, before
                             // the streaming bubble exists). Tests wait for this to disappear.
-                            Box(modifier = Modifier.testTag("loading_indicator")) {
+                            Box(modifier = Modifier.semantics { contentDescription = "loading_indicator" }) {
                                 ThinkingPill(cosmicStep = pillLabel)
                             }
                         }
@@ -545,7 +543,7 @@ private fun ChatHeader(
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(50),
                     )
                     .padding(horizontal = 12.dp, vertical = 6.dp)
-                    .testTag("profile_context_indicator"),
+                    .semantics { contentDescription = "profile_context_indicator" },
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -574,7 +572,7 @@ private fun ChatHeader(
             if (onBack != null) {
                 IconButton(
                     onClick = onBack,
-                    modifier = Modifier.testTag("chat_back_button"),
+                    modifier = Modifier.semantics { contentDescription = "chat_back_button" },
                 ) {
                     Icon(
                         Icons.Default.ChevronLeft,
@@ -586,7 +584,7 @@ private fun ChatHeader(
             }
             IconButton(
                 onClick = onHistoryTap,
-                modifier = Modifier.testTag("chat_history_button"),
+                modifier = Modifier.semantics { contentDescription = "chat_history_button" },
             ) {
                 // iOS uses clock.arrow.circlepath — Material's Restore is the
                 // closest visual equivalent (clock + counter-clockwise arrow).
@@ -609,7 +607,7 @@ private fun ChatHeader(
             )
             IconButton(
                 onClick = onChartTap,
-                modifier = Modifier.testTag("chat_chart_button"),
+                modifier = Modifier.semantics { contentDescription = "chat_chart_button" },
             ) {
                 // DES-161 D3b: use a chart glyph, not a globe. Icons.Default.Public
                 // (a globe) was a poor stand-in for the birth-chart button; PieChart
@@ -623,7 +621,7 @@ private fun ChatHeader(
             }
             IconButton(
                 onClick = onNewChatTap,
-                modifier = Modifier.testTag("new_chat_button"),
+                modifier = Modifier.semantics { contentDescription = "new_chat_button" },
             ) {
                 // iOS uses square.and.pencil — Material's Edit (compose pencil)
                 // is the closest equivalent. Replaces the previous Add (+) glyph.
@@ -757,23 +755,18 @@ fun MessageBubbleView(
         // E2E: chat_message_assistant marker on the assistant bubble. Wraps the bubble
         // Column (which already carries the human a11y label aiContentDesc) so the E2E id
         // is added WITHOUT clobbering the spoken "Destiny said…" label. Multiple instances.
-        Box(modifier = Modifier.testTag("chat_message_assistant")) {
+        Box(modifier = Modifier.semantics { contentDescription = "chat_message_assistant" }) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .semantics {
-                    contentDescription = aiContentDesc
-                    // Announce settled reply via TalkBack (liveRegion). Applied only
-                    // when streaming is complete so we don't spam on every token push.
-                    if (!message.isStreaming) liveRegion = LiveRegionMode.Polite
-                },
+                .semantics { contentDescription = aiContentDesc },
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (message.isStreaming && message.content.isEmpty()) {
                 // E2E: loading_indicator marker — the inline thinking pill shown while a
                 // streaming assistant bubble has no content yet. Present ONLY during
                 // streaming; disappears once content arrives / streaming completes.
-                Box(modifier = Modifier.testTag("loading_indicator")) {
+                Box(modifier = Modifier.semantics { contentDescription = "loading_indicator" }) {
                     ThinkingPill()
                 }
             } else if (message.content.isNotEmpty()) {
@@ -786,7 +779,7 @@ fun MessageBubbleView(
                         content = message.content,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .testTag("reading_body_text"),
+                            .semantics { contentDescription = "reading_body_text" },
                     )
                 }
 
@@ -843,7 +836,7 @@ fun MessageBubbleView(
                             // E2E: copy_message_button marker wraps the clickable copy Box
                             // (which keeps its existing copy_button id) so the new E2E id is
                             // added without clobbering the existing contentDescription.
-                            Box(modifier = Modifier.testTag("copy_message_button")) {
+                            Box(modifier = Modifier.semantics { contentDescription = "copy_message_button" }) {
                             Box(
                                 modifier = Modifier
                                     .size(TouchMin)
@@ -857,7 +850,7 @@ fun MessageBubbleView(
                                         onCopy()
                                         showCopied = true
                                     }
-                                    .testTag("copy_button"),
+                                    .semantics { contentDescription = "copy_button" },
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Icon(
@@ -1068,7 +1061,7 @@ private fun ToolCallsChips(tools: List<String>) {
     Row(
         modifier = Modifier
             .padding(top = 4.dp)
-            .testTag("tool_calls_chips"),
+            .semantics { contentDescription = "tool_calls_chips" },
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -1094,7 +1087,7 @@ private fun SourcesChips(sources: List<String>) {
     Row(
         modifier = Modifier
             .padding(top = 4.dp)
-            .testTag("sources_chips"),
+            .semantics { contentDescription = "sources_chips" },
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -1124,7 +1117,7 @@ private fun DepthLayersView(whyContent: String?, timingContent: String? = null) 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .testTag("depth_layers_view"),
+            .semantics { contentDescription = "depth_layers_view" },
     ) {
         Box(
             modifier = Modifier
@@ -1240,7 +1233,7 @@ private fun MessageRatingRow(rating: Int, onRate: (Int) -> Unit) {
         targetState = hasSubmitted,
         transitionSpec = { fadeIn(tween(250)) togetherWith fadeOut(tween(250)) },
         label = "rating_state",
-        modifier = Modifier.testTag("message_rating_row"),
+        modifier = Modifier.semantics { contentDescription = "message_rating_row" },
     ) { submitted ->
         Row(
             horizontalArrangement = Arrangement.spacedBy(2.dp),
@@ -1329,7 +1322,7 @@ private fun LoadEarlierMessagesButton(isLoading: Boolean, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .testTag("load_earlier_messages_button"),
+            .semantics { contentDescription = "load_earlier_messages_button" },
         contentAlignment = Alignment.Center,
     ) {
         TextButton(onClick = onClick, enabled = !isLoading) {
@@ -1614,7 +1607,7 @@ private fun ChatInputBar(
                     onClick = onStyleTap,
                     modifier = Modifier
                         .size(TouchMin)
-                        .testTag("style_selector_button"),
+                        .semantics { contentDescription = "style_selector_button" },
                 ) {
                     Icon(Icons.Default.Tune, contentDescription = null, tint = Gold, modifier = Modifier.size(18.dp))
                 }
@@ -1645,7 +1638,7 @@ private fun ChatInputBar(
                             isFocused = it.isFocused
                             onInputFocusChanged(it.isFocused)
                         }
-                        .testTag("chat_input"),
+                        .semantics { contentDescription = "chat_input" },
                     decorationBox = { inner ->
                         // DES-161 B1: overlay placeholder and input in a Box so the
                         // decoration height stays constant. Previously they stacked
@@ -1783,7 +1776,7 @@ private fun ResponseLengthSheet(
                 .padding(horizontal = 20.dp, vertical = 12.dp)
                 // Issue 73 — pin to ~280dp like iOS presentationDetents.
                 .heightIn(min = 280.dp)
-                .testTag("response_length_sheet"),
+                .semantics { contentDescription = "response_length_sheet" },
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // Issue 65/69/111 — explicit close (X) IconButton in the header for parity with iOS.
@@ -1801,7 +1794,7 @@ private fun ResponseLengthSheet(
                 )
                 IconButton(
                     onClick = onDismiss,
-                    modifier = Modifier.testTag("response_length_close"),
+                    modifier = Modifier.semantics { contentDescription = "response_length_close" },
                 ) {
                     Icon(Icons.Default.Close, contentDescription = null, tint = CreamDim)
                 }
@@ -1873,7 +1866,7 @@ private fun QuotaExhaustedGuestSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp, vertical = 16.dp)
-                .testTag("quota_exhausted_guest_sheet"),
+                .semantics { contentDescription = "quota_exhausted_guest_sheet" },
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -1928,7 +1921,7 @@ private fun QuotaExhaustedGuestSheet(
                 colors = ButtonDefaults.buttonColors(containerColor = Gold),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .testTag("sign_in_button"),
+                    .semantics { contentDescription = "sign_in_button" },
             ) {
                 Text(
                     stringResource(R.string.sign_up_button),
@@ -1974,7 +1967,7 @@ private fun QuotaExhaustedAccountSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 16.dp)
-                .testTag("quota_exhausted_account_sheet"),
+                .semantics { contentDescription = "quota_exhausted_account_sheet" },
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -2032,7 +2025,7 @@ private fun QuotaExhaustedAccountSheet(
                     colors = ButtonDefaults.buttonColors(containerColor = Gold),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .testTag("fair_use_contact_support_button"),
+                        .semantics { contentDescription = "fair_use_contact_support_button" },
                 ) {
                     Text(
                         stringResource(R.string.fair_use_contact_support),
@@ -2075,7 +2068,7 @@ private fun QuotaExhaustedAccountSheet(
                     colors = ButtonDefaults.buttonColors(containerColor = Gold),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .testTag("quota_exhausted_upgrade_button"),
+                        .semantics { contentDescription = "quota_exhausted_upgrade_button" },
                 ) {
                     Text(
                         stringResource(if (isSubscriptionExpired) R.string.subscription_expired_cta else R.string.choose_plan_button),

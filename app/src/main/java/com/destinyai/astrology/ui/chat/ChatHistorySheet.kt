@@ -61,7 +61,7 @@ fun ChatHistorySheet(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .testTag("history_screen"),
+                    .semantics(mergeDescendants = false) { contentDescription = "history_screen" },
             ) {
                 // Toolbar
                 Row(
@@ -73,7 +73,7 @@ fun ChatHistorySheet(
                 ) {
                     IconButton(
                         onClick = { viewModel.startNewChat(); onDismiss() },
-                        modifier = Modifier.testTag("new_chat_button"),
+                        modifier = Modifier.semantics { contentDescription = "new_chat_button" },
                     ) {
                         Icon(Icons.Default.EditNote, contentDescription = null, tint = Gold)
                     }
@@ -88,7 +88,7 @@ fun ChatHistorySheet(
                     )
                     TextButton(
                         onClick = onDismiss,
-                        modifier = Modifier.testTag("sheet_close_button"),
+                        modifier = Modifier.semantics { contentDescription = "sheet_close_button" },
                     ) {
                         Text(stringResource(R.string.done), color = Gold)
                     }
@@ -145,7 +145,7 @@ fun ChatHistorySheet(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier
                                 .padding(horizontal = 32.dp)
-                                .testTag("history_disabled_empty_state"),
+                                .semantics { contentDescription = "history_disabled_empty_state" },
                         ) {
                             Icon(
                                 Icons.Default.History,
@@ -185,7 +185,7 @@ fun ChatHistorySheet(
                                     ),
                                     modifier = Modifier
                                         .testTag("history_open_settings_button")
-                                        .testTag("history_open_settings_button"),
+                                        .semantics { contentDescription = "history_open_settings_button" },
                                 ) {
                                     Icon(
                                         Icons.Default.Settings,
@@ -338,7 +338,7 @@ fun HistoryThreadRow(
         state = dismissState,
         modifier = Modifier
             .testTag("history_thread_row_swipe")
-            .testTag("history_thread_row_swipe"),
+            .semantics { contentDescription = "history_thread_row_swipe" },
         backgroundContent = {
             // iOS parity: only paint the swipe background WHILE the row is being swiped.
             // SwiftUI's `.swipeActions` shows actions only during the gesture; M3
@@ -404,7 +404,7 @@ fun HistoryThreadRow(
                         showMenu = true
                     },
                 )
-                .testTag("history_thread_row")
+                .semantics { contentDescription = "history_thread_row" }
                 .testTag("history_thread_row")
                 .padding(horizontal = 20.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -462,7 +462,7 @@ fun HistoryThreadRow(
                         },
                         modifier = Modifier
                             .testTag("history_pin_action")
-                            .testTag("history_pin_action"),
+                            .semantics { contentDescription = "history_pin_action" },
                     )
                     DropdownMenuItem(
                         text = {
@@ -481,7 +481,7 @@ fun HistoryThreadRow(
                         },
                         modifier = Modifier
                             .testTag("history_delete_action")
-                            .testTag("history_delete_action"),
+                            .semantics { contentDescription = "history_delete_action" },
                     )
                 }
             }

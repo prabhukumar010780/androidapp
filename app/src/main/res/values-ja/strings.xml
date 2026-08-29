@@ -2754,12 +2754,6 @@ Until then: Use this period for strategic positioning.</string>
     <string name="merge_conflict_dismiss">OK</string>
     <string name="notification_channel_default">Destiny通知</string>
     <string name="notification_channel_chat_streaming">バックグラウンドストリーミング</string>
-    <string name="a11y_north_indian_chart">北インド式出生ホロスコープ、アセンダント %1$s</string>
-    <string name="a11y_south_indian_chart">南インド式出生ホロスコープ、アセンダント %1$s</string>
-    <string name="a11y_synergy_gauge">相性 %2$s点中 %1$s点、%3$s</string>
-    <string name="a11y_synergy_quality_excellent">素晴らしい</string>
-    <string name="a11y_synergy_quality_good">良好</string>
-    <string name="a11y_synergy_quality_challenging">困難</string>
     <string name="error_request_timeout">リクエストがタイムアウトしました。もう一度お試しください。</string>
     <string name="error_network_unavailable">ネットワークが利用できません。接続を確認してください。</string>
     <string name="error_session_expired">セッションが期限切れです。再度サインインしてください。</string>
@@ -2818,8 +2812,6 @@ Until then: Use this period for strategic positioning.</string>
     </plurals>
 
 
-    <string name="a11y_picker_next_value">次の値</string>
-    <string name="a11y_picker_prev_value">前の値</string>
     <string name="backend_data_refreshed_banner">プロフィールがクラウドから更新されました</string>
     <string name="notification_channel_subscription">サブスクリプション</string>
     <string name="birth_data_privacy_note_prefix">出生データは安全に保存され、販売されることはありません。</string>

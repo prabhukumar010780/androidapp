@@ -2755,12 +2755,6 @@ Until then: Use this period for strategic positioning.</string>
     <string name="merge_conflict_dismiss">சரி</string>
     <string name="notification_channel_default">Destiny அறிவிப்புகள்</string>
     <string name="notification_channel_chat_streaming">பின்னணி ஸ்ட்ரீமிங்</string>
-    <string name="a11y_north_indian_chart">வட இந்திய ஜாதகம், லக்னம் %1$s</string>
-    <string name="a11y_south_indian_chart">தென் இந்திய ஜாதகம், லக்னம் %1$s</string>
-    <string name="a11y_synergy_gauge">இணக்கம் %2$s-இல் %1$s, %3$s</string>
-    <string name="a11y_synergy_quality_excellent">சிறந்தது</string>
-    <string name="a11y_synergy_quality_good">நல்லது</string>
-    <string name="a11y_synergy_quality_challenging">சவாலான</string>
     <string name="error_request_timeout">கோரிக்கை நேரம் முடிந்தது. மீண்டும் முயற்சிக்கவும்.</string>
     <string name="error_network_unavailable">நெட்வொர்க் கிடைக்கவில்லை. உங்கள் இணைப்பை சரிபாருங்கள்.</string>
     <string name="error_session_expired">அமர்வு காலாவதியானது. மீண்டும் உள்நுழையுங்கள்.</string>
@@ -2821,8 +2815,6 @@ Until then: Use this period for strategic positioning.</string>
     </plurals>
 
 
-    <string name="a11y_picker_next_value">அடுத்த மதிப்பு</string>
-    <string name="a11y_picker_prev_value">முந்தைய மதிப்பு</string>
     <string name="backend_data_refreshed_banner">உங்கள் சுயவிவரம் கிளவுட்டிலிருந்து புதுப்பிக்கப்பட்டது</string>
     <string name="notification_channel_subscription">சந்தா</string>
     <string name="birth_data_privacy_note_prefix">உங்கள் பிறப்பு விவரங்கள் பாதுகாப்பாக சேமிக்கப்படுகின்றன, விற்கப்படுவதில்லை. எங்கள் பார்க்கவும்</string>

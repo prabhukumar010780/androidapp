@@ -123,7 +123,7 @@ fun BirthDetailsScreen(
                         onClick = onBack,
                         modifier = Modifier
                             .testTag("birth_details_back")
-                            .testTag("birth_details_back"),
+                            .semantics { contentDescription = "birth_details_back" },
                     ) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
@@ -141,7 +141,7 @@ fun BirthDetailsScreen(
                         enabled = state.hasChanges && state.name.isNotBlank() && !state.isSaving,
                         modifier = Modifier
                             .testTag("birth_details_save")
-                            .testTag("birth_details_save"),
+                            .semantics { contentDescription = "birth_details_save" },
                     ) {
                         Text(
                             text = stringResource(com.destinyai.astrology.R.string.save),
@@ -295,7 +295,7 @@ fun BirthDetailsScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .testTag("birth_details_contact_support")
-                                .testTag("birth_details_contact_support"),
+                                .semantics { contentDescription = "birth_details_contact_support" },
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Gold,
@@ -365,7 +365,7 @@ fun BirthDetailsScreen(
                     },
                     modifier = Modifier
                         .testTag("birth_details_save_ok")
-                        .testTag("birth_details_save_ok"),
+                        .semantics { contentDescription = "birth_details_save_ok" },
                 ) {
                     Text(
                         text = stringResource(com.destinyai.astrology.R.string.ok),
@@ -515,7 +515,7 @@ private fun GenderSelectorRow(
             .background(AppTheme.colors.inputBackground)
             .border(1.dp, Gold.copy(alpha = 0.15f), RoundedCornerShape(10.dp))
             .testTag("birth_details_gender_row")
-            .testTag("birth_details_gender_row")
+            .semantics { contentDescription = "birth_details_gender_row" }
             .padding(horizontal = 12.dp, vertical = 12.dp)
             .clickable(onClick = onClick),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -550,7 +550,7 @@ private fun BirthDetailField(
         modifier = Modifier
             .fillMaxWidth()
             .testTag("birth_details_name_field")
-            .testTag("birth_details_name_field"),
+            .semantics { contentDescription = "birth_details_name_field" },
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = Gold,

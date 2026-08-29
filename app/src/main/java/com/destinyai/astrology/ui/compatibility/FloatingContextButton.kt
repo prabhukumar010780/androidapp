@@ -50,7 +50,7 @@ fun FloatingContextButton(
     )
 
     Box(
-        modifier = modifier.testTag("ask_destiny_button"),
+        modifier = modifier.semantics { contentDescription = "ask_destiny_button" },
         contentAlignment = Alignment.Center,
     ) {
         // Glow aura behind button (blurred halo to match iOS)

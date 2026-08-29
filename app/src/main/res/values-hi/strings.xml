@@ -2734,12 +2734,6 @@ Until then: Use this period for strategic positioning.</string>
     <string name="merge_conflict_dismiss">ठीक है</string>
     <string name="notification_channel_default">Destiny सूचनाएं</string>
     <string name="notification_channel_chat_streaming">पृष्ठभूमि स्ट्रीमिंग</string>
-    <string name="a11y_north_indian_chart">उत्तर भारतीय जन्म कुंडली, लग्न %1$s</string>
-    <string name="a11y_south_indian_chart">दक्षिण भारतीय जन्म कुंडली, लग्न %1$s</string>
-    <string name="a11y_synergy_gauge">अनुकूलता %2$s में से %1$s, %3$s</string>
-    <string name="a11y_synergy_quality_excellent">उत्कृष्ट</string>
-    <string name="a11y_synergy_quality_good">अच्छा</string>
-    <string name="a11y_synergy_quality_challenging">चुनौतीपूर्ण</string>
     <string name="error_request_timeout">अनुरोध का समय समाप्त। पुनः प्रयास करें।</string>
     <string name="error_network_unavailable">नेटवर्क अनुपलब्ध। अपना कनेक्शन जांचें।</string>
     <string name="error_session_expired">सत्र समाप्त। कृपया पुनः साइन इन करें।</string>
@@ -2800,8 +2794,6 @@ Until then: Use this period for strategic positioning.</string>
     </plurals>
 
 
-    <string name="a11y_picker_next_value">अगला मान</string>
-    <string name="a11y_picker_prev_value">पिछला मान</string>
     <string name="backend_data_refreshed_banner">आपकी प्रोफ़ाइल क्लाउड से अपडेट की गई</string>
 
 

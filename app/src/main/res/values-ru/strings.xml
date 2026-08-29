@@ -2754,12 +2754,6 @@ Until then: Use this period for strategic positioning.</string>
     <string name="merge_conflict_dismiss">OK</string>
     <string name="notification_channel_default">Уведомления Destiny</string>
     <string name="notification_channel_chat_streaming">Фоновая трансляция</string>
-    <string name="a11y_north_indian_chart">Натальная карта в северно-индийском стиле, асцендент %1$s</string>
-    <string name="a11y_south_indian_chart">Натальная карта в южно-индийском стиле, асцендент %1$s</string>
-    <string name="a11y_synergy_gauge">Совместимость %1$s из %2$s, %3$s</string>
-    <string name="a11y_synergy_quality_excellent">Отлично</string>
-    <string name="a11y_synergy_quality_good">Хорошо</string>
-    <string name="a11y_synergy_quality_challenging">Сложно</string>
     <string name="error_request_timeout">Время запроса истекло. Попробуйте ещё раз.</string>
     <string name="error_network_unavailable">Сеть недоступна. Проверьте соединение.</string>
     <string name="error_session_expired">Сессия истекла. Войдите снова.</string>
@@ -2824,8 +2818,6 @@ Until then: Use this period for strategic positioning.</string>
     </plurals>
 
 
-    <string name="a11y_picker_next_value">Следующее значение</string>
-    <string name="a11y_picker_prev_value">Предыдущее значение</string>
     <string name="backend_data_refreshed_banner">Ваш профиль обновлён из облака</string>
     <string name="notification_channel_subscription">Подписка</string>
     <string name="birth_data_privacy_note_prefix">Ваши данные о рождении хранятся в безопасности и никогда не продаются. Смотрите нашу</string>
