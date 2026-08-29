@@ -93,9 +93,9 @@ fun LocationSearchSheet(
             Box(
                 modifier = Modifier
                     .padding(vertical = 8.dp)
-                    .size(36.dp, 4.dp)
+                    .size(40.dp, 4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(Gold.copy(alpha = 0.3f)),
+                    .background(Gold.copy(alpha = 0.4f)),
             )
         },
     ) {

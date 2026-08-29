@@ -213,7 +213,7 @@ fun SubscriptionScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = Spacing.xs, vertical = Spacing.sm),
+                    .padding(horizontal = Spacing.screenH, vertical = Spacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(
@@ -518,7 +518,7 @@ fun SubscriptionScreen(
                                         color = if (isCurrentPlan) Gold else if (isYearly) Gold else Gold.copy(alpha = 0.3f),
                                         shape = RoundedCornerShape(Radius.card),
                                     )
-                                    .padding(16.dp)
+                                    .padding(Spacing.heroCardPadding)
                                     .semantics {
                                         contentDescription = "subscription_plan_card"
                                     },
@@ -708,7 +708,8 @@ fun SubscriptionScreen(
                                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                                         Text(
                                                             text = feature.displayName,
-                                                            fontSize = 13.sp,
+                                                            fontSize = AppType.secondary,
+                                                            lineHeight = AppType.secondaryLh,
                                                             color = CreamText,
                                                             fontWeight = FontWeight.Bold,
                                                         )
@@ -909,7 +910,7 @@ fun SubscriptionScreen(
                             Text(
                                 text = stringResource(R.string.restore_purchases),
                                 color = CreamDim,
-                                fontSize = 13.sp,
+                                fontSize = AppType.secondary,
                             )
                         }
                     }
@@ -946,7 +947,7 @@ fun SubscriptionScreen(
                                 Text(
                                     text = stringResource(R.string.manage_subscription_action),
                                     color = Gold,
-                                    fontSize = 13.sp,
+                                    fontSize = AppType.secondary,
                                 )
                             }
                         }

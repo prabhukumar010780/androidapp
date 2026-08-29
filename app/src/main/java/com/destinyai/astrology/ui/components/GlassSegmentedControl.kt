@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.destinyai.astrology.ui.theme.AppTheme
+import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.TouchMin
@@ -145,8 +146,8 @@ private fun SegmentItem(
         Text(
             text = label,
             color = if (selected) Gold else CreamText.copy(alpha = 0.55f),
-            fontSize = 15.sp,
-            fontWeight = if (selected) FontWeight.Normal else FontWeight.Normal,
+            fontSize = AppType.secondary,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
         )
     }
 }

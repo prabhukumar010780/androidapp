@@ -37,6 +37,8 @@ import androidx.compose.ui.unit.sp
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
+import com.destinyai.astrology.ui.theme.Spacing
+import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.TouchMin
 
 /**
@@ -60,7 +62,7 @@ fun PremiumTabBar(
     Row(
         modifier = modifier
             .horizontalScroll(scrollState)
-            .padding(horizontal = 20.dp, vertical = 10.dp),
+            .padding(horizontal = Spacing.screenH, vertical = Spacing.sm),
     ) {
         tabs.forEachIndexed { index, tab ->
             if (index > 0) Spacer(modifier = Modifier.width(12.dp))
@@ -135,7 +137,7 @@ private fun PremiumTabPill(
         ) {
             Text(
                 text = label,
-                fontSize = 13.sp,
+                fontSize = AppType.secondary,
                 fontWeight = FontWeight.Normal,
                 color = if (isSelected) Gold else Color.White.copy(alpha = 0.8f),
             )

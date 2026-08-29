@@ -37,6 +37,8 @@ import com.destinyai.astrology.domain.model.DestinyTileType
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.AppType
+import com.destinyai.astrology.ui.theme.Radius
+import com.destinyai.astrology.ui.theme.Spacing
 
 /**
  * Weighted-Row tab bar — mirrors iOS Compatibility/Components/MagicTabbar.swift.
@@ -60,13 +62,13 @@ internal fun MagicTabbar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(18.dp))
+            .padding(horizontal = Spacing.screenH)
+            .clip(RoundedCornerShape(Radius.card))
             .background(Color.White.copy(alpha = 0.03f))
-            .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(18.dp))
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(Radius.card))
+            .padding(horizontal = Spacing.sm, vertical = Spacing.xs)
             .semantics { contentDescription = "magic_tabbar" },
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         tabs.forEach { tab ->
@@ -97,13 +99,13 @@ internal fun MagicTabbar(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(Radius.chip))
                     .background(backgroundColor)
                     .clickable {
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         onSelect(tab)
                     }
-                    .padding(top = 8.dp, bottom = 6.dp, start = 2.dp, end = 2.dp)
+                    .padding(vertical = Spacing.sm, horizontal = Spacing.xs)
                     .semantics { contentDescription = tab.semanticsId() },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp),

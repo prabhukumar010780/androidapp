@@ -47,6 +47,7 @@ import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
+import com.destinyai.astrology.ui.theme.IconSize
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.TextTertiary
@@ -92,7 +93,7 @@ fun PremiumMenuRow(
                 imageVector = icon,
                 contentDescription = null,
                 tint = Gold,
-                modifier = Modifier.size(14.dp),
+                modifier = Modifier.size(IconSize.sm),
             )
             Spacer(Modifier.width(4.dp))
             Text(
@@ -132,7 +133,7 @@ fun PremiumMenuRow(
                         imageVector = Icons.Filled.KeyboardArrowRight,
                         contentDescription = null,
                         tint = Gold,
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(IconSize.sm),
                     )
                 }
             }
@@ -244,7 +245,8 @@ fun PremiumListItem(
                     Text(
                         text = subtitle,
                         color = CreamDim,
-                        fontSize = 13.sp,
+                        fontSize = AppType.secondary,
+                        lineHeight = AppType.secondaryLh,
                     )
                 }
             }
@@ -268,7 +270,7 @@ fun PremiumListItem(
                         imageVector = Icons.Filled.WorkspacePremium,
                         contentDescription = null,
                         tint = premiumBadgeColor,
-                        modifier = Modifier.size(10.dp),
+                        modifier = Modifier.size(IconSize.xs),
                     )
                     Text(
                         text = premiumBadgeText,
@@ -285,7 +287,7 @@ fun PremiumListItem(
                     imageVector = Icons.Filled.KeyboardArrowRight,
                     contentDescription = null,
                     tint = TextTertiary,
-                    modifier = Modifier.size(14.dp),
+                    modifier = Modifier.size(IconSize.sm),
                 )
             }
         }

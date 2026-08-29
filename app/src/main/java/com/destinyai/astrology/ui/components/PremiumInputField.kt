@@ -41,6 +41,7 @@ import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavyInput
+import com.destinyai.astrology.ui.theme.Radius
 import com.destinyai.astrology.ui.theme.TextTertiary
 
 /**
@@ -103,8 +104,8 @@ fun PremiumInputField(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = 52.dp)
-                .background(NavyInput, RoundedCornerShape(12.dp))
-                .border(borderWidth, borderColor, RoundedCornerShape(12.dp))
+                .background(NavyInput, RoundedCornerShape(Radius.button))
+                .border(borderWidth, borderColor, RoundedCornerShape(Radius.button))
                 .padding(horizontal = 16.dp),
         ) {
             if (icon != null) {

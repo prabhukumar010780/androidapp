@@ -61,6 +61,7 @@ import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
+import com.destinyai.astrology.ui.theme.Radius
 import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.TouchMin
 import com.destinyai.astrology.ui.theme.adaptiveContentWidth
@@ -856,7 +857,7 @@ private fun NotifSectionCard(
         if (title != null) {
             // iOS parity (NotificationPreferencesSheet.swift:454-463): section header is
             // a two-line stack — gold title + tertiary description subtitle.
-            Column(modifier = Modifier.padding(bottom = 6.dp)) {
+            Column(modifier = Modifier.padding(bottom = Spacing.sm)) {
                 Text(
                     text = title,
                     fontSize = AppType.secondary,
@@ -876,9 +877,9 @@ private fun NotifSectionCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
+                .clip(RoundedCornerShape(Radius.card))
                 .background(NavySurface)
-                .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(14.dp))
+                .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(Radius.card))
                 .padding(horizontal = 16.dp),
             content = content,
         )
@@ -898,7 +899,7 @@ private fun NotifChannelToggleRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text = label, fontSize = 15.sp, fontWeight = FontWeight.Normal, color = CreamText)
+        Text(text = label, fontSize = AppType.body, lineHeight = AppType.bodyLh, fontWeight = FontWeight.Normal, color = CreamText)
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,

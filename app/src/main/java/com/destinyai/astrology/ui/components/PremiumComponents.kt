@@ -52,6 +52,7 @@ import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
+import com.destinyai.astrology.ui.theme.Radius
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -189,7 +190,7 @@ fun FloatingIcon(
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
-    cornerRadius: Dp = 20.dp,
+    cornerRadius: Dp = Radius.hero,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val shape = RoundedCornerShape(cornerRadius)
@@ -211,7 +212,7 @@ fun GlassCard(
                     brush = rim,
                     size = size,
                     cornerRadius = CornerRadius(cornerRadius.toPx(), cornerRadius.toPx()),
-                    style = Stroke(width = 1.2.dp.toPx()),
+                    style = Stroke(width = 1.5.dp.toPx()),
                 )
             },
         content = content,

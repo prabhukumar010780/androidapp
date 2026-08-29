@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,7 +29,9 @@ import androidx.compose.ui.unit.sp
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
+import com.destinyai.astrology.ui.theme.IconSize
 import com.destinyai.astrology.ui.theme.Spacing
+import com.destinyai.astrology.ui.theme.TouchMin
 
 /**
  * iOS parity (SharedThemeComponents.swift:396-440 PremiumSelectionRow).
@@ -49,15 +52,16 @@ fun PremiumSelectionRow(
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .heightIn(min = TouchMin)
             .clickable(onClick = onClick)
-            .padding(vertical = 6.dp),
+            .padding(vertical = Spacing.sm),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 tint = Gold,
-                modifier = Modifier.size(14.dp),
+                modifier = Modifier.size(IconSize.sm),
             )
             Spacer(Modifier.width(4.dp))
             Text(
@@ -96,7 +100,7 @@ fun PremiumSelectionRow(
                     imageVector = Icons.Filled.KeyboardArrowDown,
                     contentDescription = null,
                     tint = Gold,
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(IconSize.sm),
                 )
             }
         }

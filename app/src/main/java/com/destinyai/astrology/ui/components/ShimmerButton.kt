@@ -32,6 +32,7 @@ import com.destinyai.astrology.ui.theme.GoldLight
 import com.destinyai.astrology.ui.theme.GoldSoft
 import com.destinyai.astrology.ui.theme.LocalReduceMotion
 import com.destinyai.astrology.ui.theme.NavyDeep
+import com.destinyai.astrology.ui.theme.Radius
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.alpha
 
@@ -97,7 +98,7 @@ fun ShimmerButton(
             .fillMaxWidth()
             .height(56.dp)
             .onSizeChanged { widthPx = it.width.toFloat() }
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(Radius.authButton))
             .background(if (enabled) shimmerBrush else Brush.horizontalGradient(listOf(baseColor.copy(alpha = 0.4f), baseColor.copy(alpha = 0.4f))))
             .clickable(enabled = enabled, onClick = onClick)
             .alpha(if (enabled) 1f else 0.5f),
