@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -718,7 +719,7 @@ private fun GroupHistoryRow(
             val partnerNames = if (knownPartners.isNotEmpty()) {
                 knownPartners.joinToString(", ")
             } else {
-                "${group.items.size} partners"
+                pluralStringResource(R.plurals.partners_count, group.items.size, group.items.size)
             }
             Text(
                 text = if (group.userName.isBlank()) {

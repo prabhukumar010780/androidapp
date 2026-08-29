@@ -1,9 +1,11 @@
 package com.destinyai.astrology.ui.charts
 
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.destinyai.astrology.BuildConfig
+import com.destinyai.astrology.R
 import com.destinyai.astrology.data.local.db.AstroDataCacheDao
 import com.destinyai.astrology.data.local.db.AstroDataCacheEntity
 import com.destinyai.astrology.data.local.prefs.UserPreferences
@@ -11,6 +13,7 @@ import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.remote.BirthProfileDto
 import com.google.gson.Gson
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -38,6 +41,7 @@ data class ChartsUiState(
 
 @HiltViewModel
 class ChartsViewModel @Inject constructor(
+    @ApplicationContext private val appContext: Context,
     private val prefs: UserPreferences,
     private val api: AstroApiService,
     // iOS parity (UserChartService reads AstroDataCache before the network): the cache
@@ -148,7 +152,7 @@ class ChartsViewModel @Inject constructor(
                 loadDashaAndTransits(profile, ayanamsa, houseSystem)
             } catch (e: Exception) {
                 _uiState.update {
-                    it.copy(isLoading = false, errorMessage = e.message ?: "Failed to load chart")
+                    it.copy(isLoading = false, errorMessage = appContext.getString(R.string.error_chart_load_failed))
                 }
             }
         }

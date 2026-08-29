@@ -297,7 +297,7 @@ private fun MinimalBirthInfoRow(
 private fun formatSheetBirthDate(dob: String): String =
     try {
         val d = LocalDate.parse(dob, DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-        d.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"))
+        d.format(DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.LONG).withLocale(java.util.Locale.getDefault()))
     } catch (_: Exception) { dob }
 
 private fun formatSheetBirthTime(time: String): String =

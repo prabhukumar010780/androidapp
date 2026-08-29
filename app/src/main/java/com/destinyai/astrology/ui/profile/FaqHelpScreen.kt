@@ -32,39 +32,24 @@ import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.Spacing
 
-private val faqItems = listOf(
-    "How accurate are Destiny's insights?" to
-        "By combining the precision of our proprietary AI algorithm with traditional astrological expertise, Destiny's insights have been highly accurate.",
-    "How is AI astrology different from consulting a human astrologer?" to
-        "AI astrology provides objective insights quickly using sophisticated algorithms and extensive databases. In contrast, traditional astrologers offer personalized interpretations based on their experience and manual analysis of astrological charts.",
-    "How do I update my birth details?" to
-        "Go to Profile → Birth Details. You can edit your name and gender directly. For date, time, or place changes, please contact support as these affect all your readings.",
-    "What information is required to start using Destiny?" to
-        "To use Destiny, you'll need to provide your birth date, time, and place. This information allows us to provide highly accurate and personalized astrological advice.",
-    "What astrological systems are supported?" to
-        "We use Vedic (Jyotish) astrology with Lahiri Ayanamsa and Whole Sign house system for accurate calculations.",
-    "What's the difference between chart styles?" to
-        "North Indian style uses a diamond layout where houses are fixed and signs rotate. South Indian style uses a grid layout where signs are fixed and houses rotate.",
-    "Is my data safe with Destiny?" to
-        "Absolutely. Destiny employs robust security measures to ensure that your personal information is protected and kept confidential.",
-    "Can I ask any question on Destiny?" to
-        "Yes, Destiny is equipped to handle a broad range of questions, whether they are about personal relationships, career choices, or daily life decisions.",
-    "Why should I consider astrology as a decision-making tool?" to
-        "Astrology provides valuable insights into personality traits and life patterns, helping you to better prepare for future opportunities and challenges.",
-    "How often is the astrological data updated?" to
-        "The astrological data used by the AI Astrologer is regularly updated to reflect current cosmic movements and planetary alignments, ensuring that your readings are always up-to-date and relevant.",
-    "Can astrology predict my future?" to
-        "While astrology does not provide definitive predictions, it offers insights into potential life trends and upcoming opportunities, assisting you in making proactive and informed decisions.",
-    "Are the astrological insights provided in real-time?" to
-        "Yes, Destiny delivers astrological insights in real-time, enabling you to make informed decisions swiftly based on the latest astrological conditions.",
-    "How do I cancel my subscription?" to
-        "You can manage your subscription through Google Play. Go to Play Store → Account → Subscriptions on your device.",
-    "Are there any terms and conditions I should be aware of?" to
-        "Prior to utilizing Destiny AI Astrology services, please ensure you have reviewed our Privacy Policy and Terms of Service.",
-)
-
 @Composable
 fun FaqHelpScreen(onBack: () -> Unit) {
+    val faqItems = listOf(
+        stringResource(R.string.faq_q_1) to stringResource(R.string.faq_a_1),
+        stringResource(R.string.faq_q_2) to stringResource(R.string.faq_a_2),
+        stringResource(R.string.faq_q_3) to stringResource(R.string.faq_a_3),
+        stringResource(R.string.faq_q_4) to stringResource(R.string.faq_a_4),
+        stringResource(R.string.faq_q_5) to stringResource(R.string.faq_a_5),
+        stringResource(R.string.faq_q_6) to stringResource(R.string.faq_a_6),
+        stringResource(R.string.faq_q_7) to stringResource(R.string.faq_a_7),
+        stringResource(R.string.faq_q_8) to stringResource(R.string.faq_a_8),
+        stringResource(R.string.faq_q_9) to stringResource(R.string.faq_a_9),
+        stringResource(R.string.faq_q_10) to stringResource(R.string.faq_a_10),
+        stringResource(R.string.faq_q_11) to stringResource(R.string.faq_a_11),
+        stringResource(R.string.faq_q_12) to stringResource(R.string.faq_a_12),
+        stringResource(R.string.faq_q_13) to stringResource(R.string.faq_a_13),
+        stringResource(R.string.faq_q_14) to stringResource(R.string.faq_a_14),
+    )
     CosmicBackground {
         Column(modifier = Modifier.fillMaxSize()) {
             Row(

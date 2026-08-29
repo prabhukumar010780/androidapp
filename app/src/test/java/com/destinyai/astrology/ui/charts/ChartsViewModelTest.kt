@@ -41,7 +41,7 @@ class ChartsViewModelTest {
     fun setUp() {
         prefs = mockk(relaxed = true)
         coEvery { prefs.getChartStyle() } returns "north_indian"
-        vm = ChartsViewModel(prefs, mockk(relaxed = true), mockk(relaxed = true))
+        vm = ChartsViewModel(mockk(relaxed = true), prefs, mockk(relaxed = true), mockk(relaxed = true))
     }
 
     @Test

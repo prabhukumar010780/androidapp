@@ -433,15 +433,15 @@ fun BadgeLegend() {
     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             ChartBadge("R", Color.Red)
-            Text("Retrograde", fontSize = 12.sp, color = CreamDim.copy(alpha = 0.6f))
+            Text(stringResource(R.string.chart_badge_retrograde), fontSize = 12.sp, color = CreamDim.copy(alpha = 0.6f))
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             ChartBadge("C", Color(0xFFFF8C00))
-            Text("Combust", fontSize = 12.sp, color = CreamDim.copy(alpha = 0.6f))
+            Text(stringResource(R.string.chart_badge_combust), fontSize = 12.sp, color = CreamDim.copy(alpha = 0.6f))
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             ChartBadge("V", Color(0xFF9C27B0))
-            Text("Vargottama", fontSize = 12.sp, color = CreamDim.copy(alpha = 0.6f))
+            Text(stringResource(R.string.chart_badge_vargottama), fontSize = 12.sp, color = CreamDim.copy(alpha = 0.6f))
         }
     }
 }
@@ -451,7 +451,7 @@ fun BadgeLegend() {
 private fun formatBirthDate(dob: String): String =
     try {
         val d = LocalDate.parse(dob, DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-        d.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"))
+        d.format(DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.LONG).withLocale(java.util.Locale.getDefault()))
     } catch (_: Exception) { dob }
 
 private fun formatBirthTime(time: String): String =

@@ -2,6 +2,7 @@ package com.destinyai.astrology.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.destinyai.astrology.R
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.remote.BirthProfileDto
@@ -458,17 +459,17 @@ class HomeViewModel @Inject constructor(
         // / no-data / session-expired before the generic fallback so users get actionable text.
         val msg = e.message?.lowercase().orEmpty()
         return when {
-            e is java.net.SocketTimeoutException -> "Request timed out. Please try again."
-            e is java.io.IOException -> "Network unavailable. Check your connection."
+            e is java.net.SocketTimeoutException -> appContext.getString(R.string.error_request_timeout)
+            e is java.io.IOException -> appContext.getString(R.string.error_network_unavailable)
             msg.contains("401") || msg.contains("session") || msg.contains("unauthor") ->
-                "Session expired. Please sign in again."
+                appContext.getString(R.string.error_session_expired)
             msg.contains("invalid") && msg.contains("email") ->
-                "Your account email looks invalid. Please sign in again."
+                appContext.getString(R.string.error_invalid_account_email)
             msg.contains("validation") ->
-                "Please check your birth details and try again."
+                appContext.getString(R.string.error_check_birth_details)
             msg.contains("no data") || msg.contains("empty") ->
-                "No reading available yet. Please try again shortly."
-            else -> "Couldn't load home data. Please retry."
+                appContext.getString(R.string.error_no_reading_yet)
+            else -> appContext.getString(R.string.error_home_load_failed)
         }
     }
 
@@ -704,7 +705,7 @@ class HomeViewModel @Inject constructor(
 
         fun formatRenewalDate(isoDate: String): String {
             val date = LocalDate.parse(isoDate)
-            val formatter = DateTimeFormatter.ofPattern("MMM d", Locale.ENGLISH)
+            val formatter = DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.MEDIUM).withLocale(java.util.Locale.getDefault())
             return date.format(formatter)
         }
     }

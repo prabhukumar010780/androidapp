@@ -1365,8 +1365,11 @@ class CompatibilityComponentLogicTest {
 
     private fun intensityContext(): android.content.Context {
         val ctx = mockk<android.content.Context>(relaxed = true)
-        every { ctx.getString(com.destinyai.astrology.R.string.intensifying_factor_singular) } returns "intensifying factor"
-        every { ctx.getString(com.destinyai.astrology.R.string.intensifying_factor_plural) } returns "intensifying factors"
+        val res = mockk<android.content.res.Resources>(relaxed = true)
+        every { ctx.resources } returns res
+        every { res.getQuantityString(com.destinyai.astrology.R.plurals.intensifying_factor, 1, 1) } returns "1 intensifying factor"
+        every { res.getQuantityString(com.destinyai.astrology.R.plurals.intensifying_factor, 3, 3) } returns "3 intensifying factors"
+        every { res.getQuantityString(com.destinyai.astrology.R.plurals.intensifying_factor, 0, 0) } returns "0 intensifying factors"
         return ctx
     }
 

@@ -747,7 +747,7 @@ class ChatViewModel @Inject constructor(
                                     _uiState.update {
                                         it.copy(
                                             isStreaming = false,
-                                            errorMessage = it.errorMessage ?: "Unable to reach the prediction service. Please try again.",
+                                            errorMessage = it.errorMessage ?: appContext.getString(R.string.error_follow_up_failed),
                                             interruptedQuestion = lastSentQuery,
                                             messages = it.messages.filterNot { m -> m.id == assistantId },
                                         )
@@ -1458,13 +1458,13 @@ class ChatViewModel @Inject constructor(
     private fun friendlyError(e: Throwable): String {
         val msg = e.message?.lowercase().orEmpty()
         return when {
-            e is java.net.SocketTimeoutException -> "Request timed out. Please try again."
-            e is java.io.IOException -> "Network unavailable. Check your connection."
+            e is java.net.SocketTimeoutException -> appContext.getString(R.string.error_request_timeout)
+            e is java.io.IOException -> appContext.getString(R.string.error_network_unavailable)
             msg.contains("401") || msg.contains("session") || msg.contains("unauthor") ->
-                "Session expired. Please sign in again."
-            msg.contains("timeout") || msg.contains("timed out") -> "Request timed out. Please try again."
-            msg.contains("cancel") -> "Request was interrupted. Please try again."
-            else -> "Unable to reach the prediction service. Please try again."
+                appContext.getString(R.string.error_session_expired)
+            msg.contains("timeout") || msg.contains("timed out") -> appContext.getString(R.string.error_request_timeout)
+            msg.contains("cancel") -> appContext.getString(R.string.error_request_timeout)
+            else -> appContext.getString(R.string.error_follow_up_failed)
         }
     }
 }

@@ -46,7 +46,7 @@ class ChartsViewModelExtendedTest {
         api = mockk(relaxed = true)
         coEvery { prefs.getChartStyle() } returns "north_indian"
         coEvery { prefs.getBirthProfile() } returns null
-        vm = ChartsViewModel(prefs, api, mockk(relaxed = true))
+        vm = ChartsViewModel(mockk(relaxed = true), prefs, api, mockk(relaxed = true))
     }
 
     // ── Initial state ─────────────────────────────────────────────────────────
@@ -215,7 +215,7 @@ class ChartsViewModelExtendedTest {
         // cacheDao.get returns null so the network path is taken
         coEvery { cacheDao.get(any(), any(), any(), any(), any()) } returns null
 
-        val vmWithCache = ChartsViewModel(prefs, api, cacheDao)
+        val vmWithCache = ChartsViewModel(mockk(relaxed = true), prefs, api, cacheDao)
         vmWithCache.loadChartData()
 
         // The upsert must have been called with profileId = email, NOT ""
@@ -247,7 +247,7 @@ class ChartsViewModelExtendedTest {
         coEvery { api.getChartData(any()) } returns makeChartApiResponse()
         coEvery { cacheDao.get(any(), any(), any(), any(), any()) } returns null
 
-        val vmWithCache = ChartsViewModel(prefs, api, cacheDao)
+        val vmWithCache = ChartsViewModel(mockk(relaxed = true), prefs, api, cacheDao)
         vmWithCache.loadChartData()
 
         coVerify {

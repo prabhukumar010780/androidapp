@@ -67,8 +67,9 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStream
-import java.text.SimpleDateFormat
-import java.util.Date
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.util.Locale
 import androidx.compose.ui.platform.testTag
 
@@ -337,7 +338,7 @@ private fun BrandedHeaderCard(result: CompatibilityResult) {
     val stars = starCount(result)
     val rating = stringResource(ratingTextResId(result))
     val reportDate = remember {
-        SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()).format(Date())
+        LocalDate.now().format(DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).withLocale(Locale.getDefault()))
     }
 
     Column(

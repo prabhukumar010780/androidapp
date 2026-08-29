@@ -835,7 +835,7 @@ class CompatibilityViewModel @Inject constructor(
                                     it.copy(
                                         isAnalyzing = false,
                                         showStreamingView = false,
-                                        error = "Failed to parse compatibility response: ${e.message ?: e.javaClass.simpleName}",
+                                        error = appContext.getString(R.string.error_compat_parse_failed),
                                     )
                                 }
                                 return@collect
@@ -1103,7 +1103,7 @@ class CompatibilityViewModel @Inject constructor(
                     _followUpQuotaIsGuest.value = isGuestEmail(email)
                     _showFollowUpQuotaSheet.value = true
                 } else {
-                    _followUpError.value = "Failed to get response. Please try again."
+                    _followUpError.value = appContext.getString(R.string.error_follow_up_failed)
                 }
             } finally {
                 _isFollowUpLoading.value = false
@@ -1238,7 +1238,7 @@ class CompatibilityViewModel @Inject constructor(
         } catch (e: Exception) {
             _followUpMessages.update {
                 it + FollowUpMessage(
-                    text = "Failed to get individual analysis: ${e.message ?: "unknown error"}",
+                    text = appContext.getString(R.string.error_individual_analysis_failed),
                     isUser = false,
                     isInfo = true,
                 )

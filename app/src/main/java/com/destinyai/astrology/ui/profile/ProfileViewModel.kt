@@ -2,6 +2,7 @@ package com.destinyai.astrology.ui.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.destinyai.astrology.R
 import com.destinyai.astrology.data.billing.BillingManager
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AnalyticsConsentRequest
@@ -263,14 +264,14 @@ class ProfileViewModel @Inject constructor(
                 // iOS parity (QuotaManager.swift:903-922 subscriptionStatusDisplayText):
                 // per-status capsule label instead of a static "Active".
                 val statusText = when (statusLower) {
-                    "active" -> "Active"
-                    "canceled", "cancelled" -> if (expiryMs != null && expiryMs > System.currentTimeMillis()) "Active" else "Expired"
-                    "expired" -> "Expired"
-                    "grace_period" -> "Grace Period"
-                    "billing_retry" -> "Payment Failed"
-                    "revoked" -> "Subscription Revoked"
-                    "refunded" -> "Refunded"
-                    else -> if (status.isPremium) "Active" else null
+                    "active" -> appContext.getString(R.string.subscription_status_label_active)
+                    "canceled", "cancelled" -> if (expiryMs != null && expiryMs > System.currentTimeMillis()) appContext.getString(R.string.subscription_status_label_active) else appContext.getString(R.string.subscription_status_label_expired)
+                    "expired" -> appContext.getString(R.string.subscription_status_label_expired)
+                    "grace_period" -> appContext.getString(R.string.subscription_status_label_grace_period)
+                    "billing_retry" -> appContext.getString(R.string.subscription_status_label_payment_failed)
+                    "revoked" -> appContext.getString(R.string.subscription_status_label_revoked)
+                    "refunded" -> appContext.getString(R.string.subscription_status_label_refunded)
+                    else -> if (status.isPremium) appContext.getString(R.string.subscription_status_label_active) else null
                 }
                 // iOS parity (ProfileView.showPaidCard :620-639): a lapsed-paid user still
                 // sees the paid card (with Renew/Manage CTA), not the generic upgrade card.

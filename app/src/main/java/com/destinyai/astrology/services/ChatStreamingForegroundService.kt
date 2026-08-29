@@ -34,8 +34,8 @@ class ChatStreamingForegroundService : Service() {
         }
         ensureChannel()
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Destiny is thinking…")
-            .setContentText("Your response will be ready when you return.")
+            .setContentTitle(getString(R.string.fgs_notification_title))
+            .setContentText(getString(R.string.fgs_notification_body))
             .setSmallIcon(android.R.drawable.ic_popup_sync)
             .setOngoing(true)
             .setSilent(true)

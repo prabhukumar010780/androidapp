@@ -669,11 +669,5 @@ internal fun localizeExceptionKeysInText(text: String): String {
 }
 
 internal fun intensityFactorCountLabel(context: android.content.Context, count: Int): String {
-    // iOS parity: localized noun (intensifying_factor_singular/plural), count prefixed.
-    val noun = if (count == 1) {
-        context.getString(R.string.intensifying_factor_singular)
-    } else {
-        context.getString(R.string.intensifying_factor_plural)
-    }
-    return "$count $noun"
+    return context.resources.getQuantityString(R.plurals.intensifying_factor, count, count)
 }

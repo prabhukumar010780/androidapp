@@ -7,7 +7,7 @@
     <string name="cancel">Cancel</string>
     <string name="save">Save</string>
     <string name="close">Close</string>
-    <string name="loading">Loading...</string>
+    <string name="loading">Loading…</string>
     <string name="error">Error</string>
     <string name="retry">Retry</string>
     <string name="ok">OK</string>
@@ -91,7 +91,7 @@
     <string name="time_of_birth">Time of Birth</string>
     <string name="birth_time_unknown">Birth time unknown</string>
     <string name="place_of_birth">Place of Birth</string>
-    <string name="search_city">Search city...</string>
+    <string name="search_city">Search city…</string>
     <string name="gender">Gender</string>
     <string name="male">Male</string>
     <string name="female">Female</string>
@@ -120,7 +120,7 @@
     <string name="sign_in_save">Sign in to save your birth chart and chats</string>
     <string name="continue_as_guest">Continue as Guest</string>
     <string name="by_continuing">By continuing, you agree to our</string>
-    <string name="signing_in">Signing in...</string>
+    <string name="signing_in">Signing in…</string>
     <!-- iOS parity (AuthView.swift loadingOverlay): shown after sign-in completes
          while LoginSyncCoordinator.syncAll fetches chat history, quota, profile. -->
     <string name="syncing_your_data">Syncing your data...</string>
@@ -135,20 +135,20 @@ chart and personalize your insights</string>
     <string name="cancel_anytime">Cancel anytime</string>
     <string name="restore_purchases">Restore Purchases</string>
     <string name="subscription_terms">Subscription automatically renews unless canceled at least 24 hours before the end of the current period.</string>
-    <string name="billing_best_value" tools:ignore="MissingTranslation">Best Value</string>
-    <string name="billing_free_trial" tools:ignore="MissingTranslation">7-day free trial</string>
-    <string name="billing_subscribe" tools:ignore="MissingTranslation">Subscribe</string>
-    <string name="billing_loading_purchase" tools:ignore="MissingTranslation">Processing purchase…</string>
-    <string name="billing_conflict_title" tools:ignore="MissingTranslation">Subscription Conflict</string>
-    <string name="billing_conflict_message" tools:ignore="MissingTranslation">Multiple active subscriptions detected. Please manage your subscriptions in Google Play.</string>
-    <string name="billing_conflict_dismiss" tools:ignore="MissingTranslation">Dismiss</string>
-    <string name="billing_yearly_save_label" tools:ignore="MissingTranslation">Save over 15%%</string>
-    <string name="restore_success" tools:ignore="MissingTranslation">Purchases restored successfully.</string>
-    <string name="restore_no_purchases" tools:ignore="MissingTranslation">No purchases to restore.</string>
-    <string name="restore_failed" tools:ignore="MissingTranslation">Could not restore purchases. Please try again.</string>
-    <string name="billing_purchase_pending" tools:ignore="MissingTranslation">Your purchase is pending approval. We will activate your subscription as soon as it completes.</string>
-    <string name="billing_already_owned" tools:ignore="MissingTranslation">Activating your subscription…</string>
-    <string name="billing_plan_changed" tools:ignore="MissingTranslation">Your %1$s subscription is now active.</string>
+    <string name="billing_best_value">Best Value</string>
+    <string name="billing_free_trial">7-day free trial</string>
+    <string name="billing_subscribe">Subscribe</string>
+    <string name="billing_loading_purchase">Processing purchase…</string>
+    <string name="billing_conflict_title">Subscription Conflict</string>
+    <string name="billing_conflict_message">Multiple active subscriptions detected. Please manage your subscriptions in Google Play.</string>
+    <string name="billing_conflict_dismiss">Dismiss</string>
+    <string name="billing_yearly_save_label">Save over 15%%</string>
+    <string name="restore_success">Purchases restored successfully.</string>
+    <string name="restore_no_purchases">No purchases to restore.</string>
+    <string name="restore_failed">Could not restore purchases. Please try again.</string>
+    <string name="billing_purchase_pending">Your purchase is pending approval. We will activate your subscription as soon as it completes.</string>
+    <string name="billing_already_owned">Activating your subscription…</string>
+    <string name="billing_plan_changed">Your %1$s subscription is now active.</string>
     <string name="terms_url" tools:ignore="MissingTranslation">https://www.destinyaiastrology.com/terms-of-service/</string>
     <string name="privacy_url" tools:ignore="MissingTranslation">https://www.destinyaiastrology.com/privacy-policy/</string>
     <string name="aligning_stars">Aligning the stars...</string>
@@ -196,7 +196,7 @@ history will appear here.</string>
     <string name="i_dont_know_birth_time">I don\'t know my birth time</string>
     <string name="analytics_consent_label">Help improve Destiny AI by sharing anonymised usage</string>
     <string name="analytics_consent_description">Help us improve Destiny by sharing anonymized usage analytics. You can change this anytime in Settings.</string>
-    <string name="backend_data_refreshed_banner" tools:ignore="MissingTranslation">Your profile was updated from the cloud</string>
+    <string name="backend_data_refreshed_banner">Your profile was updated from the cloud</string>
     <string name="profile_data_refreshed">Your profile data was refreshed on the server. Please re-enter your birth details.</string>
     <string name="sign_up">Sign up</string>
     <string name="account_deleted_error">This account has been permanently deleted and can no longer be used. The email associated with this account cannot be reused. If you believe this is an error, please contact support.</string>
@@ -434,7 +434,7 @@ history will appear here.</string>
     <string name="tail_of_serpent">Tail of Serpent</string>
     <string name="analysis_notes">Analysis Notes</string>
     <string name="no_kalsarpa_data">No Kalsarpa data available</string>
-    <string name="processing">Processing...</string>
+    <string name="processing">Processing…</string>
     <string name="analyzing_match">Analyzing Compatibility</string>
     <string name="factors_reduce_severity">factors reduce dosha severity</string>
     <string name="factors_increase_severity">factors increase dosha severity</string>
@@ -1402,8 +1402,8 @@ history will appear here.</string>
     <string name="planets_label">PLANETS</string>
     <string name="houses_label">HOUSES</string>
     <string name="chat_welcome_subtitle">Your personal astrology guide. Ask about your day, relationships, career, or path ahead.</string>
-    <string name="thinking">Thinking...</string>
-    <string name="analyzing_chart">Analyzing your chart...</string>
+    <string name="thinking">Thinking…</string>
+    <string name="analyzing_chart">Analyzing your chart…</string>
     <string name="analyzing_label">Analyzing</string>
     <string name="rate_this_response">Rate this response</string>
     <string name="thanks_for_feedback">Thanks for your feedback!</string>
@@ -1510,8 +1510,8 @@ history will appear here.</string>
     <string name="current_plan">Current</string>
     <string name="scheduled_plan">Scheduled</string>
     <string name="per_month">/ month</string>
-    <string name="per_year_short_suffix" tools:ignore="MissingTranslation">yr</string>
-    <string name="per_month_short_suffix" tools:ignore="MissingTranslation">mo</string>
+    <string name="per_year_short_suffix">yr</string>
+    <string name="per_month_short_suffix">mo</string>
     <string name="everything_in_core_plus">Everything in Core, plus:</string>
     <string name="coming_soon">(coming soon)</string>
     <string name="chart_style">Chart Style</string>
@@ -2211,7 +2211,7 @@ Please share deeper insights on how this transit influences my life and any prac
     <string name="choose_plus_label">Choose Plus</string>
     <string name="choose_core_label">Choose Core</string>
     <string name="product_not_available_error">Product not available. Please try again later.</string>
-    <string name="already_subscribed_other_store" tools:ignore="MissingTranslation">You\'re already subscribed on another store. This account is unlocked — manage billing where you originally subscribed (App Store or Google Play).</string>
+    <string name="already_subscribed_other_store">You\'re already subscribed on another store. This account is unlocked — manage billing where you originally subscribed (App Store or Google Play).</string>
     <string name="notification_action_transit">View Transit Alert</string>
     <string name="notification_action_life_alert">View Alert</string>
     <string name="notification_action_compat">View Compatibility</string>
@@ -2323,12 +2323,12 @@ Until then: Use this period for strategic positioning.</string>
     <string name="sign_context_life_area_question" tools:ignore="MissingTranslation">In today\'s forecast: \'%1$s\' was mentioned for my %2$s. Can you explain what this means for me?</string>
 
     <!-- Navigation tabs -->
-    <string name="tab_home" tools:ignore="MissingTranslation">Home</string>
-    <string name="tab_chat" tools:ignore="MissingTranslation">Chat</string>
-    <string name="tab_match" tools:ignore="MissingTranslation">Match</string>
+    <string name="tab_home">Home</string>
+    <string name="tab_chat">Chat</string>
+    <string name="tab_match">Match</string>
 
     <!-- Onboarding -->
-    <string name="onboarding_subtitle" tools:ignore="MissingTranslation">Your cosmic guide</string>
+    <string name="onboarding_subtitle">Your cosmic guide</string>
 
     <!-- Home screen labels -->
     <string name="home_your_life_areas">Your life areas</string>
@@ -2622,15 +2622,15 @@ Until then: Use this period for strategic positioning.</string>
     <!-- iOS parity (AuthViewModel.swift:621-637 crossIdpCollision): shown when /auth/exchange
          returns cross_idp_collision — the email is bound to a different sign-in provider.
          %1$s is the capitalized provider name (e.g. "Google", "Apple"). -->
-    <string name="auth_cross_idp_collision_with_provider" tools:ignore="MissingTranslation">This email is already linked to %1$s. Please sign in with %1$s instead.</string>
+    <string name="auth_cross_idp_collision_with_provider">This email is already linked to %1$s. Please sign in with %1$s instead.</string>
     <!-- Fallback when bound_idp is absent from the server response. -->
-    <string name="auth_cross_idp_collision_generic" tools:ignore="MissingTranslation">This email is already linked to a different sign-in method. Please use your original sign-in provider.</string>
+    <string name="auth_cross_idp_collision_generic">This email is already linked to a different sign-in method. Please use your original sign-in provider.</string>
     <!-- iOS parity (delete_guest_not_allowed_message): guest accounts must register before
          deleting. Shown on 403 detail.code == "guest_not_allowed" on DELETE /account. -->
-    <string name="delete_guest_not_allowed_message" tools:ignore="MissingTranslation">Guest accounts cannot be deleted. Please register with Google to create an account before requesting deletion.</string>
+    <string name="delete_guest_not_allowed_message">Guest accounts cannot be deleted. Please register with Google to create an account before requesting deletion.</string>
     <!-- iOS parity (ProfileService.swift:628 active-subscription block): fallback message
          shown on 403/409 without a parseable detail.code or when code is unrecognised. -->
-    <string name="delete_subscription_block_message" tools:ignore="MissingTranslation">Please cancel your subscription before deleting your account.</string>
+    <string name="delete_subscription_block_message">Please cancel your subscription before deleting your account.</string>
     <string name="birth_data_save_failed">We couldn\'t save your profile right now. Please try again.</string>
     <string name="birth_data_please_select_city">Please select your city of birth</string>
     <string name="birth_data_please_select_valid_city">Please select a valid city from the search</string>
@@ -2715,21 +2715,21 @@ Until then: Use this period for strategic positioning.</string>
     <!-- Quota-exhausted guest sheet (mirrors iOS QuotaExhaustedView guest path). -->
     <string name="guest_question_limit_reached">Question limit reached</string>
     <string name="sign_in_to_continue_chat">Sign in to keep your chat history and unlock more questions. Your birth data is preserved.</string>
-    <string name="guest_sign_up_header" tools:ignore="MissingTranslation">Sign up to continue!</string>
-    <string name="guest_sign_up_body" tools:ignore="MissingTranslation">Create an account to keep going and save your progress.</string>
+    <string name="guest_sign_up_header">Sign up to continue!</string>
+    <string name="guest_sign_up_body">Create an account to keep going and save your progress.</string>
     <!-- Feature list items for guest sign-up sheet -->
-    <string name="feature_ask_more_questions" tools:ignore="MissingTranslation">Ask more questions</string>
-    <string name="feature_save_birth_chart" tools:ignore="MissingTranslation">Save your birth chart</string>
-    <string name="feature_get_daily_insights" tools:ignore="MissingTranslation">Get daily insights</string>
-    <string name="feature_unlock_destiny_matching" tools:ignore="MissingTranslation">Unlock Destiny Matching™ (compatibility matching)</string>
-    <string name="feature_follow_up_match_report" tools:ignore="MissingTranslation">Ask follow-up questions after your match report</string>
+    <string name="feature_ask_more_questions">Ask more questions</string>
+    <string name="feature_save_birth_chart">Save your birth chart</string>
+    <string name="feature_get_daily_insights">Get daily insights</string>
+    <string name="feature_unlock_destiny_matching">Unlock Destiny Matching™ (compatibility matching)</string>
+    <string name="feature_follow_up_match_report">Ask follow-up questions after your match report</string>
     <!-- Quota-exhausted upgrade sheet — header + feature list -->
-    <string name="quota_upgrade_header" tools:ignore="MissingTranslation">You\'ve reached your limit</string>
-    <string name="choose_plan_button" tools:ignore="MissingTranslation">Choose a plan</string>
-    <string name="feature_unlimited_questions" tools:ignore="MissingTranslation">Unlimited questions</string>
-    <string name="feature_unlimited_matching" tools:ignore="MissingTranslation">Unlimited Destiny Matching™</string>
-    <string name="feature_multiple_profiles" tools:ignore="MissingTranslation">Multiple birth charts/profiles</string>
-    <string name="feature_daily_personalized_insights" tools:ignore="MissingTranslation">Daily personalized insights</string>
+    <string name="quota_upgrade_header">You\'ve reached your limit</string>
+    <string name="choose_plan_button">Choose a plan</string>
+    <string name="feature_unlimited_questions">Unlimited questions</string>
+    <string name="feature_unlimited_matching">Unlimited Destiny Matching™</string>
+    <string name="feature_multiple_profiles">Multiple birth charts/profiles</string>
+    <string name="feature_daily_personalized_insights">Daily personalized insights</string>
     <!-- Astrology Settings screen (parity with iOS AstrologySettingsSheet) -->
     <string name="astrology_settings_back_cd">Back</string>
     <string name="ayanamsa_lahiri_default">Lahiri (Default)</string>
@@ -2913,12 +2913,11 @@ Until then: Use this period for strategic positioning.</string>
     <string name="yoga_token_yoga_reduced">yoga reduced</string>
     <string name="yoga_token_yoga_cancelled">yoga cancelled</string>
     <!-- Notification permission rationale dialog — shown in-context after onboarding/auth,
-         before the OS system prompt. tools:ignore avoids MissingTranslation CI gate;
-         these strings will be localized in a follow-up translation pass. -->
-    <string name="notif_rationale_title" tools:ignore="MissingTranslation">Stay in cosmic sync</string>
-    <string name="notif_rationale_body" tools:ignore="MissingTranslation">Enable notifications to receive your daily astrological guidance, planetary transit alerts, and compatibility updates.</string>
-    <string name="notif_rationale_enable" tools:ignore="MissingTranslation">Enable</string>
-    <string name="notif_rationale_not_now" tools:ignore="MissingTranslation">Not now</string>
+         before the OS system prompt. -->
+    <string name="notif_rationale_title">Stay in cosmic sync</string>
+    <string name="notif_rationale_body">Enable notifications to receive your daily astrological guidance, planetary transit alerts, and compatibility updates.</string>
+    <string name="notif_rationale_enable">Enable</string>
+    <string name="notif_rationale_not_now">Not now</string>
     <string name="billing_error_generic">Purchase could not be completed. Please try again.</string>
     <string name="merge_conflict_title">Account already exists</string>
     <string name="merge_conflict_message">An account with these birth details already exists. Please sign in with the original method you used, or contact support.</string>
@@ -2931,7 +2930,72 @@ Until then: Use this period for strategic positioning.</string>
     <string name="a11y_synergy_quality_excellent">Excellent</string>
     <string name="a11y_synergy_quality_good">Good</string>
     <string name="a11y_synergy_quality_challenging">Challenging</string>
-    <!-- Wheel picker adjustable actions -->
+    <!-- Date picker wheel accessibility actions -->
     <string name="a11y_picker_next_value">Next value</string>
     <string name="a11y_picker_prev_value">Previous value</string>
+    <!-- Friendly error messages — ViewModel friendlyError() mappers (R4/R5) -->
+    <string name="error_request_timeout">Request timed out. Please try again.</string>
+    <string name="error_network_unavailable">Network unavailable. Check your connection.</string>
+    <string name="error_session_expired">Session expired. Please sign in again.</string>
+    <string name="error_invalid_account_email">Your account email looks invalid. Please sign in again.</string>
+    <string name="error_check_birth_details">Please check your birth details and try again.</string>
+    <string name="error_no_reading_yet">No reading available yet. Please try again shortly.</string>
+    <string name="error_home_load_failed">Couldn\'t load home data. Please retry.</string>
+    <string name="error_compat_parse_failed">Compatibility response could not be loaded. Please try again.</string>
+    <string name="error_follow_up_failed">Failed to get response. Please try again.</string>
+    <string name="error_individual_analysis_failed">Could not load individual analysis. Please try again.</string>
+    <string name="error_chart_load_failed">Failed to load chart. Please retry.</string>
+    <!-- ChatStreamingForegroundService notification text (A6/R4) -->
+    <string name="fgs_notification_title">Destiny is thinking…</string>
+    <string name="fgs_notification_body">Your response will be ready when you return.</string>
+    <!-- Chart badge legend labels (A6) -->
+    <string name="chart_badge_retrograde">Retrograde</string>
+    <string name="chart_badge_combust">Combust</string>
+    <string name="chart_badge_vargottama">Vargottama</string>
+    <!-- Profile subscription status display labels (R4) -->
+    <string name="subscription_status_label_active">Active</string>
+    <string name="subscription_status_label_expired">Expired</string>
+    <string name="subscription_status_label_grace_period">Grace Period</string>
+    <string name="subscription_status_label_payment_failed">Payment Failed</string>
+    <string name="subscription_status_label_revoked">Subscription Revoked</string>
+    <string name="subscription_status_label_refunded">Refunded</string>
+    <!-- FAQ questions and answers (B8/R4) — "Is my data safe" answer updated per audit -->
+    <string name="faq_q_1">How accurate are Destiny\'s insights?</string>
+    <string name="faq_a_1">By combining the precision of our proprietary AI algorithm with traditional astrological expertise, Destiny\'s insights have been highly accurate.</string>
+    <string name="faq_q_2">How is AI astrology different from consulting a human astrologer?</string>
+    <string name="faq_a_2">AI astrology provides objective insights quickly using sophisticated algorithms and extensive databases. In contrast, traditional astrologers offer personalized interpretations based on their experience and manual analysis of astrological charts.</string>
+    <string name="faq_q_3">How do I update my birth details?</string>
+    <string name="faq_a_3">Go to Profile → Birth Details. You can edit your name and gender directly. For date, time, or place changes, please contact support as these affect all your readings.</string>
+    <string name="faq_q_4">What information is required to start using Destiny?</string>
+    <string name="faq_a_4">To use Destiny, you\'ll need to provide your birth date, time, and place. This information allows us to provide highly accurate and personalized astrological advice.</string>
+    <string name="faq_q_5">What astrological systems are supported?</string>
+    <string name="faq_a_5">We use Vedic (Jyotish) astrology with Lahiri Ayanamsa and Whole Sign house system for accurate calculations.</string>
+    <string name="faq_q_6">What\'s the difference between chart styles?</string>
+    <string name="faq_a_6">North Indian style uses a diamond layout where houses are fixed and signs rotate. South Indian style uses a grid layout where signs are fixed and houses rotate.</string>
+    <string name="faq_q_7">Is my data safe with Destiny?</string>
+    <string name="faq_a_7">Your data is stored securely and used to generate your astrological readings. Questions you ask are processed by third-party AI providers to produce your responses. We do not sell your personal information. You can review our full Privacy Policy for details on how your data is handled.</string>
+    <string name="faq_q_8">Can I ask any question on Destiny?</string>
+    <string name="faq_a_8">Yes, Destiny is equipped to handle a broad range of questions, whether they are about personal relationships, career choices, or daily life decisions.</string>
+    <string name="faq_q_9">Why should I consider astrology as a decision-making tool?</string>
+    <string name="faq_a_9">Astrology provides valuable insights into personality traits and life patterns, helping you to better prepare for future opportunities and challenges.</string>
+    <string name="faq_q_10">How often is the astrological data updated?</string>
+    <string name="faq_a_10">The astrological data used by the AI Astrologer is regularly updated to reflect current cosmic movements and planetary alignments, ensuring that your readings are always up-to-date and relevant.</string>
+    <string name="faq_q_11">Can astrology predict my future?</string>
+    <string name="faq_a_11">While astrology does not provide definitive predictions, it offers insights into potential life trends and upcoming opportunities, assisting you in making proactive and informed decisions.</string>
+    <string name="faq_q_12">Are the astrological insights provided in real-time?</string>
+    <string name="faq_a_12">Yes, Destiny delivers astrological insights in real-time, enabling you to make informed decisions swiftly based on the latest astrological conditions.</string>
+    <string name="faq_q_13">How do I cancel my subscription?</string>
+    <string name="faq_a_13">You can manage your subscription through Google Play. Go to Play Store → Account → Subscriptions on your device.</string>
+    <string name="faq_q_14">Are there any terms and conditions I should be aware of?</string>
+    <string name="faq_a_14">Prior to utilizing Destiny AI Astrology services, please ensure you have reviewed our Privacy Policy and Terms of Service.</string>
+
+    <!-- Plurals (A6 — proper plural forms, incl. Russian few/many) -->
+    <plurals name="intensifying_factor">
+        <item quantity="one">%d intensifying factor</item>
+        <item quantity="other">%d intensifying factors</item>
+    </plurals>
+    <plurals name="partners_count">
+        <item quantity="one">%d partner</item>
+        <item quantity="other">%d partners</item>
+    </plurals>
 </resources>

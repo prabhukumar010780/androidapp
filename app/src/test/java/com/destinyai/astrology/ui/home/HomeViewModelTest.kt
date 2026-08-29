@@ -265,7 +265,10 @@ class HomeViewModelTest {
     @Test
     fun `renewalDateString formats as MMM d`() {
         val formatted = HomeViewModel.formatRenewalDate("2026-06-01")
-        assertEquals("Jun 1", formatted)
+        val expected = java.time.LocalDate.parse("2026-06-01")
+            .format(java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.MEDIUM)
+                .withLocale(java.util.Locale.getDefault()))
+        assertEquals(expected, formatted)
     }
 
     // --- Rich home data ---
