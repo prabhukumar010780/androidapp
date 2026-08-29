@@ -249,6 +249,11 @@ fun AppNav() {
             NavHost(
                 navController = navController,
                 startDestination = Routes.SPLASH,
+                // Expose Compose testTags as Android resource-ids for the Appium
+                // E2E suite. Set on the NavHost (direct ancestor of every route)
+                // because the flag does not reliably propagate from the outer
+                // CosmicBackground across the NavHost's AnimatedContent boundary.
+                modifier = Modifier.semantics { testTagsAsResourceId = true },
                 enterTransition = {
                     slideInHorizontally(
                         animationSpec = tween(navEnterDurationMs, easing = FastOutSlowInEasing),

@@ -93,7 +93,6 @@ fun OnboardingScreen(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .testTag("onboarding_screen")
                 .testTag("onboarding_screen"),
         ) {
             // Skip button — iOS parity (OnboardingView.swift:43-61): pinned to leading edge.
