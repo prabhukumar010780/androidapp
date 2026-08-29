@@ -58,7 +58,7 @@ fun SettingsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                    .padding(horizontal = Spacing.screenH, vertical = Spacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onBack) {
@@ -83,7 +83,7 @@ fun SettingsScreen(
                     .fillMaxHeight()
                     .adaptiveContentWidth()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = Spacing.xl)
+                    .padding(horizontal = Spacing.screenH)
                     .navigationBarsPadding()
                     .padding(top = Spacing.xs, bottom = Spacing.xl),
                 verticalArrangement = Arrangement.spacedBy(16.dp),

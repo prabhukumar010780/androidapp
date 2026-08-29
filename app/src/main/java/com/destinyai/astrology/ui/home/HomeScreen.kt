@@ -616,7 +616,7 @@ private fun HomeHeader(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            // 16dp edge margin — matches all content below (was 12dp, misaligned).
+            // 16dp edge margin — matches all content below (Spacing.screenH = HomeLayout.GUTTER_DP).
             .padding(horizontal = Spacing.screenH, vertical = Spacing.sm),
     ) {
         // Centered logo

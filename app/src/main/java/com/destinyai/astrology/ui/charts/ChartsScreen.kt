@@ -86,7 +86,7 @@ fun ChartsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                    .padding(horizontal = Spacing.screenH, vertical = Spacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(

@@ -746,7 +746,7 @@ private fun NotificationDetailSheetContent(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = Spacing.screenH)
                 .padding(bottom = 16.dp),
             verticalAlignment = Alignment.Top,
         ) {
@@ -801,7 +801,7 @@ private fun NotificationDetailSheetContent(
                 lineHeight = 22.sp,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                    .padding(horizontal = Spacing.screenH, vertical = 16.dp),
             )
         }
 
@@ -811,7 +811,7 @@ private fun NotificationDetailSheetContent(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = Spacing.screenH)
                 .padding(top = 14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {

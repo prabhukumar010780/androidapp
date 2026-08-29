@@ -114,7 +114,7 @@ fun AddEditAlertSheet(
                 .verticalScroll(rememberScrollState())
                 .imePadding()
                 .navigationBarsPadding()
-                .padding(horizontal = 24.dp)
+                .padding(horizontal = Spacing.screenH)
                 .padding(bottom = 24.dp)
                 .testTag("add_edit_alert_sheet"),
             verticalArrangement = Arrangement.spacedBy(16.dp),

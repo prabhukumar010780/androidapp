@@ -77,7 +77,7 @@ fun AstrologySettingsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                    .padding(horizontal = Spacing.screenH, vertical = Spacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = {
@@ -114,7 +114,7 @@ fun AstrologySettingsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = Spacing.xl)
+                    .padding(horizontal = Spacing.screenH)
                     .navigationBarsPadding()
                     .padding(top = Spacing.xs, bottom = Spacing.xl),
                 verticalArrangement = Arrangement.spacedBy(16.dp),

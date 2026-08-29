@@ -7,8 +7,8 @@ import org.junit.jupiter.api.Test
 class HomeLayoutTest {
 
     @Test
-    fun `home horizontal gutter is 8dp`() {
-        assertEquals(8, HomeLayout.GUTTER_DP)
+    fun `home horizontal gutter matches screenH token 16dp`() {
+        assertEquals(16, HomeLayout.GUTTER_DP)
     }
 
     @Test

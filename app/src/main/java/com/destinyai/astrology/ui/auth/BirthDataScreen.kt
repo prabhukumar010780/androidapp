@@ -169,7 +169,7 @@ fun BirthDataScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                    .padding(horizontal = Spacing.screenH, vertical = Spacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 // iOS parity (BirthDataView.swift:88-109): back chevron only
@@ -256,7 +256,7 @@ fun BirthDataScreen(
                     // last fields stay reachable.
                     .imePadding()
                     .navigationBarsPadding()
-                    .padding(horizontal = 32.dp),
+                    .padding(horizontal = Spacing.screenH),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
 

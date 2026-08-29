@@ -314,7 +314,7 @@ fun NotificationPreferencesScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .statusBarsPadding()
-                        .padding(horizontal = Spacing.xl, vertical = Spacing.sm),
+                        .padding(horizontal = Spacing.screenH, vertical = Spacing.sm),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     IconButton(onClick = {
@@ -398,7 +398,7 @@ fun NotificationPreferencesScreen(
                             .adaptiveContentWidth()
                             .verticalScroll(rememberScrollState())
                             .navigationBarsPadding()
-                            .padding(horizontal = 24.dp),
+                            .padding(horizontal = Spacing.screenH),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                         Spacer(Modifier.height(4.dp))
