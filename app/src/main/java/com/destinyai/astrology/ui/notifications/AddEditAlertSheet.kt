@@ -386,7 +386,8 @@ private fun WeekdayChipPicker(
                 val isSelected = selected == index
                 Box(
                     modifier = Modifier
-                        .size(TouchMin)
+                        .weight(1f)
+                        .heightIn(min = TouchMin)
                         .clickable { onSelect(index) }
                         .testTag("weekday_$index"),
                     contentAlignment = Alignment.Center,

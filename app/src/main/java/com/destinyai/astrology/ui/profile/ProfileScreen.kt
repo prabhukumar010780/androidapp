@@ -1506,7 +1506,8 @@ private fun PreferenceArrowRow(
                     it
                 }
             }
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .heightIn(min = 56.dp)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // iOS parity (PremiumListItem.swift:48-63): 36×36 circular gold-tinted
@@ -1591,7 +1592,8 @@ private fun PreferenceToggleRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .heightIn(min = 56.dp)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // iOS parity (ProfileView.swift:493-501): 36×36 gold-tinted leading

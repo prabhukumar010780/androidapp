@@ -631,7 +631,7 @@ fun SubscriptionScreen(
                                         ) {
                                             Text(
                                                 text = "$formattedPrice$periodSuffix",
-                                                fontSize = 17.sp,
+                                                fontSize = 24.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = Gold,
                                                 maxLines = 1,

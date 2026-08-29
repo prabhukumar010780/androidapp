@@ -223,8 +223,6 @@ fun ChartsScreen(
                             .padding(horizontal = Spacing.screenH),
                         verticalArrangement = Arrangement.spacedBy(Spacing.sectionGap),
                     ) {
-                        Spacer(Modifier.height(4.dp))
-
                         // Minimal birth info line
                         MinimalBirthInfo(
                             dob = state.dateOfBirth,
@@ -234,20 +232,28 @@ fun ChartsScreen(
                             timeUnknown = state.timeUnknown,
                         )
 
-                        // Chart visualization (North or South)
+                        // Chart visualization (North or South) — centered so it
+                        // doesn't hug the left edge on wide screens (parity with
+                        // PlanetaryPositionsSheet / ChartComparisonSheet which both
+                        // wrap the same chart in Box(..., Center)).
                         val chartData = mapToChartData(chart)
                         AnimatedVisibility(visible = true) {
-                            if (state.chartStyle == "north") {
-                                NorthIndianChartView(
-                                    chartData = chartData,
-                                    ascendantSign = state.ascendantSign,
-                                )
-                            } else {
-                                SouthIndianChartView(
-                                    chartData = chartData,
-                                    chartType = ChartType.D1,
-                                    ascendantSign = state.ascendantSign,
-                                )
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                if (state.chartStyle == "north") {
+                                    NorthIndianChartView(
+                                        chartData = chartData,
+                                        ascendantSign = state.ascendantSign,
+                                    )
+                                } else {
+                                    SouthIndianChartView(
+                                        chartData = chartData,
+                                        chartType = ChartType.D1,
+                                        ascendantSign = state.ascendantSign,
+                                    )
+                                }
                             }
                         }
 
@@ -281,8 +287,6 @@ fun ChartsScreen(
                         // (iOS PlanetaryPositionsSheet.swift:50-73 only shows minimalBirthInfo +
                         // chartVisualSection + planetaryGrid + badgeLegend). Dasha and Transits
                         // are surfaced on Home (HomeScreen) where iOS also surfaces them.
-
-                        Spacer(Modifier.height(Spacing.lg))
                     }
                 }
             }

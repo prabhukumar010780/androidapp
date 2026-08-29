@@ -279,7 +279,7 @@ fun ChatScreen(
                     .nestedScroll(keyboardDismissNestedScroll)
                     .alpha(chatAlphaAnim)
                     .testTag("chat_messages_list"),
-                verticalArrangement = Arrangement.spacedBy(Spacing.xl),
+                verticalArrangement = Arrangement.spacedBy(Spacing.messageGap),
                 contentPadding = PaddingValues(vertical = Spacing.xl),
             ) {
                 if (isNewChat && !state.isLoading && !state.isStreaming) {
@@ -806,8 +806,7 @@ fun MessageBubbleView(
                     // [time • exec] ←spacer→ [Copy] [Rating]. Compact, premium, no crowding.
                     Row(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 6.dp),
+                            .fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -1060,7 +1059,6 @@ internal fun sanitizeForInlineParsing(input: String): String {
 private fun ToolCallsChips(tools: List<String>) {
     Row(
         modifier = Modifier
-            .padding(top = 4.dp)
             .semantics { contentDescription = "tool_calls_chips" },
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
