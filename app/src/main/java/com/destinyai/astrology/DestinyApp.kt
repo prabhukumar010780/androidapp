@@ -10,6 +10,7 @@ import com.destinyai.astrology.data.billing.BillingManager
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.repository.AuthRepository
 import com.destinyai.astrology.services.AppStartupService
+import com.destinyai.astrology.services.DestinyFirebaseMessagingService
 import com.destinyai.astrology.services.QuotaManager
 import com.destinyai.astrology.ui.auth.AccountDeletedError
 import dagger.hilt.android.HiltAndroidApp
@@ -34,6 +35,9 @@ class DestinyApp : Application() {
     override fun onCreate() {
         super.onCreate()
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
+        // Create all FCM notification channels before any lifecycle observer or
+        // background message can arrive (R8b). Safe no-op on API < 26.
+        DestinyFirebaseMessagingService.createAllChannels(this)
         Thread.setDefaultUncaughtExceptionHandler { t, e ->
             Log.e("DestinyApp", "Uncaught exception on thread ${t.name}: ${e.message}", e)
             // don't crash — let coroutine exception handler take over

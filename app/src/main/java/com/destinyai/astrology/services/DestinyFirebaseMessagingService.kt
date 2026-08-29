@@ -3,6 +3,7 @@ package com.destinyai.astrology.services
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
@@ -82,6 +83,14 @@ class DestinyFirebaseMessagingService : FirebaseMessagingService() {
 
         ensureChannel(channelId)
 
+        // Stable per-message tray id: prefer payload notification_id, then FCM messageId
+        // hash, then type.hashCode() — prevents same-type notifications from overwriting
+        // each other in the tray (R8c/R8d).
+        val notifId = message.data["notification_id"]?.hashCode()
+            ?: message.messageId?.hashCode()
+            ?: type.hashCode()
+        val groupKey = "destiny_$channelId"
+
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             putExtra("notification_type", type)
@@ -94,7 +103,7 @@ class DestinyFirebaseMessagingService : FirebaseMessagingService() {
                 ?.let { putExtra("notification_prefill", it) }
         }
         val pendingIntent = PendingIntent.getActivity(
-            this, 0, intent,
+            this, notifId, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
@@ -106,10 +115,21 @@ class DestinyFirebaseMessagingService : FirebaseMessagingService() {
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setGroup(groupKey)
             .build()
 
         val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        manager.notify(type.hashCode(), notification)
+        manager.notify(notifId, notification)
+
+        // Silent group summary so same-category notifications stack in the tray
+        // instead of overwriting each other (R8d).
+        val summary = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(R.drawable.ic_stat_notify)
+            .setGroup(groupKey)
+            .setGroupSummary(true)
+            .setAutoCancel(true)
+            .build()
+        manager.notify(groupKey.hashCode(), summary)
     }
 
     // Mirrors iOS NotificationRouter type-string set — matches both UPPER_SNAKE_CASE
@@ -147,8 +167,37 @@ class DestinyFirebaseMessagingService : FirebaseMessagingService() {
         const val CHANNEL_DAILY = "daily_prediction"
         const val CHANNEL_TRANSIT = "transit_alert"
         const val CHANNEL_GENERAL = "general"
+        /** Manifest FCM default channel — must be created at app start so background
+         *  notification-type messages land here rather than the SDK "Miscellaneous"
+         *  fallback (R8b). */
+        const val CHANNEL_DEFAULT = "destiny_default"
         private const val REGISTER_RETRY_MAX_ATTEMPTS = 3
         private const val REGISTER_RETRY_INITIAL_DELAY_MS = 2_000L
         private const val REGISTER_RETRY_MAX_DELAY_MS = 30_000L
+
+        /**
+         * Create all FCM notification channels eagerly (R8b).
+         * Call from Application.onCreate() so channels exist before any background
+         * FCM message arrives. Safe to call multiple times — skips already-created
+         * channels. The chat_streaming channel is managed by
+         * ChatStreamingForegroundService.ensureChannel() separately.
+         */
+        fun createAllChannels(context: Context) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+            val manager = context.getSystemService(NotificationManager::class.java)
+            data class Spec(val id: String, val nameRes: Int, val importance: Int)
+            listOf(
+                Spec(CHANNEL_DAILY, R.string.notification_channel_daily, NotificationManager.IMPORTANCE_DEFAULT),
+                Spec(CHANNEL_TRANSIT, R.string.notification_channel_transit, NotificationManager.IMPORTANCE_HIGH),
+                Spec(CHANNEL_GENERAL, R.string.notification_channel_general, NotificationManager.IMPORTANCE_DEFAULT),
+                Spec(CHANNEL_DEFAULT, R.string.notification_channel_default, NotificationManager.IMPORTANCE_DEFAULT),
+            ).forEach { spec ->
+                if (manager.getNotificationChannel(spec.id) == null) {
+                    manager.createNotificationChannel(
+                        NotificationChannel(spec.id, context.getString(spec.nameRes), spec.importance)
+                    )
+                }
+            }
+        }
     }
 }

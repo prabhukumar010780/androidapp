@@ -2595,6 +2595,10 @@ Until then: Use this period for strategic positioning.</string>
     <string name="notification_channel_daily">Daily Insights</string>
     <string name="notification_channel_transit">Transit Alerts</string>
     <string name="notification_channel_general">General</string>
+    <!-- destiny_default: manifest FCM fallback channel — created at app start (R8b) -->
+    <string name="notification_channel_default">Destiny Notifications</string>
+    <!-- chat_streaming FGS channel name — shown in system Settings > Notifications (R8b/A6) -->
+    <string name="notification_channel_chat_streaming">Background Streaming</string>
 
     <!-- Settings screen (parity with iOS Settings sheets) -->
     <string name="settings_title">Settings</string>

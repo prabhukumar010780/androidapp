@@ -74,9 +74,15 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="destiny_default" />
+        <!-- Monochrome silhouette drawable — renders correctly in the status bar.
+             ic_launcher (full-colour) tints to a white/grey blob on API 21+ (R8a). -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
-            android:resource="@mipmap/ic_launcher" />
+            android:resource="@drawable/ic_stat_notify" />
+        <!-- Brand gold accent for system-displayed notifications (R8a). -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/notification_accent_gold" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import com.destinyai.astrology.R
 
 /**
  * Keeps the process alive while a chat stream is in flight so the user can
@@ -39,7 +40,14 @@ class ChatStreamingForegroundService : Service() {
             .setOngoing(true)
             .setSilent(true)
             .build()
-        startForeground(NOTIFICATION_ID, notification)
+        // Defensive catch: ForegroundServiceStartNotAllowedException (API 31+) or
+        // ForegroundServiceStartNotAllowedException on type-enforcement (API 34) if the
+        // service is somehow started from background — matches the R12 guard in ChatViewModel.
+        try {
+            startForeground(NOTIFICATION_ID, notification)
+        } catch (e: Exception) {
+            android.util.Log.w("ChatStreamingFGS", "startForeground skipped: ${e.message}")
+        }
         return START_NOT_STICKY
     }
 
@@ -50,7 +58,7 @@ class ChatStreamingForegroundService : Service() {
         mgr.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_ID,
-                "Background streaming",
+                getString(R.string.notification_channel_chat_streaming),
                 NotificationManager.IMPORTANCE_LOW,
             ).apply { setShowBadge(false) },
         )

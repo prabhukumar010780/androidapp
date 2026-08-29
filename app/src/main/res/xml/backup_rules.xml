@@ -1,13 +1,20 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample backup rules file; uncomment and customize as necessary.
-   See https://developer.android.com/guide/topics/data/autobackup
-   for details.
-   Note: This file is ignored for devices older than API 31
-   See https://developer.android.com/about/versions/12/backup-restore
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Auto-backup exclusion rules (API < 31, fullBackupContent attribute).
+  See https://developer.android.com/guide/topics/data/autobackup
+
+  Excluded:
+  - destiny_secure_prefs.xml  — EncryptedSharedPreferences holding auth_token,
+      refresh_token, email, user_id, and Apple/Google credentials. The Keystore
+      master key is device-bound and is NOT included in backups; restoring this
+      file onto another device causes EncryptedSharedPreferences.create() to fail
+      to decrypt, resulting in a crash or forced sign-out.
+  - datastore/destiny_prefs.preferences_pb  — DataStore Preferences holding FCM
+      token, user email, birth PII (DOB/time/city/lat/lng), authentication flags,
+      and scoped per-user data. None of these should leave the device or be
+      silently restored from a different account's backup.
 -->
 <full-backup-content>
-    <!--
-   <include domain="sharedpref" path="."/>
-   <exclude domain="sharedpref" path="device.xml"/>
--->
+    <exclude domain="sharedpref" path="destiny_secure_prefs.xml" />
+    <exclude domain="file" path="datastore/destiny_prefs.preferences_pb" />
 </full-backup-content>

@@ -1,19 +1,24 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Data extraction rules (API 31+, dataExtractionRules attribute).
+  See https://developer.android.com/about/versions/12/backup-restore#xml-changes
+
+  Excluded from BOTH cloud-backup and device-transfer:
+  - destiny_secure_prefs.xml  — EncryptedSharedPreferences; Keystore master key
+      is device-bound and never backed up. Restoring these bytes to a new device
+      (or new Keystore) causes decryption failure → crash / forced sign-out.
+      Also holds auth tokens, email, and Apple/Google provider credentials.
+  - datastore/destiny_prefs.preferences_pb  — DataStore Preferences holding FCM
+      token, user email, birth PII, authentication and session flags, and scoped
+      per-user data. Must not transfer to another device or account.
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <exclude domain="sharedpref" path="destiny_secure_prefs.xml" />
+        <exclude domain="file" path="datastore/destiny_prefs.preferences_pb" />
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <exclude domain="sharedpref" path="destiny_secure_prefs.xml" />
+        <exclude domain="file" path="datastore/destiny_prefs.preferences_pb" />
     </device-transfer>
-    -->
 </data-extraction-rules>

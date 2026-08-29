@@ -479,7 +479,14 @@ class ChatViewModel @Inject constructor(
         currentIdempotencyKey = UUID.randomUUID().toString()
         // iOS parity: start a foreground service so the stream survives backgrounding.
         // invokeOnCompletion stops it for any outcome (success / error / cancellation).
-        com.destinyai.astrology.services.ChatStreamingForegroundService.start(appContext)
+        // runCatching guards against ForegroundServiceStartNotAllowedException (API 31+)
+        // on a background-start race (OEM battery managers / auto-resend) — R12.
+        // The stream coroutine below runs regardless; the FGS is a keep-alive only.
+        runCatching {
+            com.destinyai.astrology.services.ChatStreamingForegroundService.start(appContext)
+        }.onFailure { e ->
+            android.util.Log.w("ChatViewModel", "FGS start skipped (background race): ${e.message}")
+        }
 
         streamJob = viewModelScope.launch {
             // Pre-flight quota check before invoking streaming prediction (mirrors iOS canAsk).
