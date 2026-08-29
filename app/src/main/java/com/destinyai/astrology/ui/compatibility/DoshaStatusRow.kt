@@ -29,6 +29,7 @@ import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.AppType
+import com.destinyai.astrology.ui.theme.Spacing
 
 @Composable
 fun DoshaStatusRow(
@@ -54,7 +55,7 @@ fun DoshaStatusRow(
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onClick()
             })
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = Spacing.screenH, vertical = Spacing.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -137,7 +138,7 @@ fun DoshaStatusRowLabel(
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White.copy(alpha = 0.03f))
             .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(16.dp))
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = Spacing.screenH, vertical = Spacing.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(

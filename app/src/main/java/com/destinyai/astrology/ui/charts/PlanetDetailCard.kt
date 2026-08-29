@@ -26,6 +26,9 @@ import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
+import com.destinyai.astrology.ui.theme.IconSize
+import com.destinyai.astrology.ui.theme.Radius
+import com.destinyai.astrology.ui.theme.Spacing
 
 // ── PlanetDetailCard ──────────────────────────────────────────────────────────
 
@@ -39,11 +42,11 @@ fun PlanetDetailCard(planet: PlanetDisplayInfo, signAbbrev: String?, modifier: M
             .fillMaxWidth()
             .shadow(
                 elevation = 4.dp,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(Radius.chip),
                 ambientColor = Color.Black.copy(alpha = 0.3f),
                 spotColor = Color.Black.copy(alpha = 0.3f),
             )
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(Radius.chip))
             .background(
                 Brush.linearGradient(
                     listOf(
@@ -55,10 +58,10 @@ fun PlanetDetailCard(planet: PlanetDisplayInfo, signAbbrev: String?, modifier: M
             .border(
                 0.8.dp,
                 Brush.linearGradient(listOf(Gold.copy(alpha = 0.3f), Gold.copy(alpha = 0.05f), Color.White.copy(alpha = 0.05f))),
-                RoundedCornerShape(12.dp),
+                RoundedCornerShape(Radius.chip),
             )
-            .padding(8.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+            .padding(Spacing.sm),
+        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
     ) {
         // Header: symbol + code + badges
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -78,7 +81,7 @@ fun PlanetDetailCard(planet: PlanetDisplayInfo, signAbbrev: String?, modifier: M
         // Sign
         if (signAbbrev != null) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Icon(Icons.Default.Home, contentDescription = null, modifier = Modifier.size(8.dp), tint = Gold.copy(alpha = 0.8f))
+                Icon(Icons.Default.Home, contentDescription = null, modifier = Modifier.size(IconSize.xs), tint = Gold.copy(alpha = 0.8f))
                 Text(stringResource(getSignNameRes(signAbbrev)), fontSize = AppType.caption, lineHeight = AppType.captionLh, color = CreamText, maxLines = 1)
             }
         }
@@ -86,7 +89,7 @@ fun PlanetDetailCard(planet: PlanetDisplayInfo, signAbbrev: String?, modifier: M
         // Nakshatra
         if (planet.nakshatra != null) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(8.dp), tint = Gold.copy(alpha = 0.8f))
+                Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(IconSize.xs), tint = Gold.copy(alpha = 0.8f))
                 Text(
                     buildString {
                         append(planet.nakshatra)

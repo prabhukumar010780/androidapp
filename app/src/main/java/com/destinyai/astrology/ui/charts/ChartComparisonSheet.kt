@@ -219,7 +219,6 @@ private fun PersonChartSection(
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     color = Gold.copy(alpha = 0.9f),
-                    modifier = Modifier.padding(horizontal = 4.dp),
                 )
                 PlanetCardsGrid(chartData = chartData, chartType = chartType)
             }

@@ -36,6 +36,7 @@ import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.Gold
+import com.destinyai.astrology.ui.theme.IconSize
 
 @Composable
 fun SynergyGaugeView(
@@ -176,7 +177,7 @@ fun SynergyGaugeView(
                     imageVector = Icons.Outlined.TouchApp,
                     contentDescription = null,
                     tint = Gold.copy(alpha = 0.6f),
-                    modifier = Modifier.size(11.dp),
+                    modifier = Modifier.size(IconSize.sm),
                 )
                 Text(
                     text = stringResource(R.string.tap_orbs_hint),

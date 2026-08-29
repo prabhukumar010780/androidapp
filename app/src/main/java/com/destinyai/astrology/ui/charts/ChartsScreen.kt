@@ -39,6 +39,7 @@ import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
+import com.destinyai.astrology.ui.theme.IconSize
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.Radius
 import com.destinyai.astrology.ui.theme.Spacing
@@ -155,28 +156,28 @@ fun ChartsScreen(
                 state.isLoading -> {
                     // Batch 6b fix #6: content-shaped skeleton instead of bare spinner.
                     Column(
-                        modifier = Modifier.fillMaxSize().padding(top = 24.dp),
-                        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxSize().padding(top = Spacing.xl),
+                        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(Spacing.md),
                     ) {
                         SkeletonCard()
                         repeat(5) { SkeletonListRow() }
                     }
                 }
                 state.errorMessage != null -> {
-                    Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+                    Box(Modifier.fillMaxSize().padding(Spacing.xl), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.Warning, contentDescription = null, tint = Color.Red.copy(alpha = 0.8f), modifier = Modifier.size(40.dp))
-                            Spacer(Modifier.height(12.dp))
+                            Icon(Icons.Default.Warning, contentDescription = null, tint = Color.Red.copy(alpha = 0.8f), modifier = Modifier.size(IconSize.hero))
+                            Spacer(Modifier.height(Spacing.md))
                             Text(stringResource(R.string.failed_to_load_chart), color = CreamText, fontWeight = FontWeight.Bold)
-                            Spacer(Modifier.height(4.dp))
-                            Text(state.errorMessage.orEmpty(), color = CreamDim, fontSize = 12.sp)
-                            Spacer(Modifier.height(16.dp))
+                            Spacer(Modifier.height(Spacing.xs))
+                            Text(state.errorMessage.orEmpty(), color = CreamDim, fontSize = AppType.caption)
+                            Spacer(Modifier.height(Spacing.lg))
                             Button(
                                 onClick = { viewModel.retry() },
                                 colors = ButtonDefaults.buttonColors(containerColor = Gold),
                             ) {
                                 Icon(Icons.Default.Refresh, contentDescription = null)
-                                Spacer(Modifier.width(6.dp))
+                                Spacer(Modifier.width(Spacing.sm))
                                 Text(stringResource(R.string.retry), color = Color(0xFF0D0D1A))
                             }
                         }
@@ -186,28 +187,28 @@ fun ChartsScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(24.dp)
+                            .padding(Spacing.xl)
                             .clip(RoundedCornerShape(Radius.card))
                             .background(NavySurface)
                             .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(Radius.card))
-                            .padding(24.dp),
+                            .padding(Spacing.xl),
                         contentAlignment = Alignment.Center,
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("🪐", fontSize = 48.sp)
-                            Spacer(Modifier.height(12.dp))
+                            Spacer(Modifier.height(Spacing.md))
                             Text(
                                 stringResource(R.string.no_birth_chart_yet),
                                 fontFamily = CanelaFontFamily,
-                                fontSize = 18.sp,
+                                fontSize = AppType.sectionHeader,
                                 fontWeight = FontWeight.Bold,
                                 color = Gold,
                             )
-                            Spacer(Modifier.height(6.dp))
+                            Spacer(Modifier.height(Spacing.sm))
                             Text(
                                 stringResource(R.string.no_birth_chart_yet_desc),
                                 color = CreamDim,
-                                fontSize = 14.sp,
+                                fontSize = AppType.secondary,
                             )
                         }
                     }
@@ -385,17 +386,17 @@ fun PremiumPlanetRow(
 
         // Name + badges + sign/degree
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), verticalAlignment = Alignment.CenterVertically) {
                 val localizedName = premiumPlanetNameResMap[name]?.let { stringResource(it) } ?: name
                 Text(localizedName, fontSize = AppType.body, lineHeight = AppType.bodyLh, fontWeight = FontWeight.Bold, color = CreamText)
                 if (data.isRetrograde == true) ChartBadge("R", Color.Red)
                 if (data.isCombust == true) ChartBadge("C", Color(0xFFFF8C00))
                 if (data.vargottama == true) ChartBadge("V", Color(0xFF9C27B0))
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(stringResource(getSignNameRes(data.sign)), fontSize = 14.sp, color = Gold)
-                Text("•", color = CreamDim.copy(alpha = 0.5f), fontSize = 10.sp)
-                Text(ChartConstants.formatDegree(data.degree), fontSize = 13.sp, color = CreamDim)
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                Text(stringResource(getSignNameRes(data.sign)), fontSize = AppType.secondary, color = Gold)
+                Text("•", color = CreamDim.copy(alpha = 0.5f), fontSize = AppType.caption)
+                Text(ChartConstants.formatDegree(data.degree), fontSize = AppType.secondary, color = CreamDim)
             }
         }
 
@@ -437,18 +438,18 @@ fun ChartBadge(text: String, color: Color) {
 
 @Composable
 fun BadgeLegend() {
-    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.lg)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             ChartBadge("R", Color.Red)
-            Text(stringResource(R.string.chart_badge_retrograde), fontSize = 12.sp, color = CreamDim.copy(alpha = 0.6f))
+            Text(stringResource(R.string.chart_badge_retrograde), fontSize = AppType.caption, color = CreamDim.copy(alpha = 0.6f))
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             ChartBadge("C", Color(0xFFFF8C00))
-            Text(stringResource(R.string.chart_badge_combust), fontSize = 12.sp, color = CreamDim.copy(alpha = 0.6f))
+            Text(stringResource(R.string.chart_badge_combust), fontSize = AppType.caption, color = CreamDim.copy(alpha = 0.6f))
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             ChartBadge("V", Color(0xFF9C27B0))
-            Text(stringResource(R.string.chart_badge_vargottama), fontSize = 12.sp, color = CreamDim.copy(alpha = 0.6f))
+            Text(stringResource(R.string.chart_badge_vargottama), fontSize = AppType.caption, color = CreamDim.copy(alpha = 0.6f))
         }
     }
 }

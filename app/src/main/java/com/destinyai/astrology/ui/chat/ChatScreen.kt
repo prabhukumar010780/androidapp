@@ -578,7 +578,7 @@ private fun ChatHeader(
                         Icons.Default.ChevronLeft,
                         contentDescription = null,
                         tint = Gold,
-                        modifier = Modifier.size(28.dp),
+                        modifier = Modifier.size(IconSize.lg),
                     )
                 }
             }
@@ -592,7 +592,7 @@ private fun ChatHeader(
                     Icons.Default.Restore,
                     contentDescription = null,
                     tint = Gold,
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(IconSize.lg),
                 )
             }
             // Gap 104 — centered destiny_home logo replaces the "Ask Destiny" title text,
@@ -616,7 +616,7 @@ private fun ChatHeader(
                     Icons.Outlined.PieChart,
                     contentDescription = null,
                     tint = Gold,
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(IconSize.lg),
                 )
             }
             IconButton(
@@ -629,7 +629,7 @@ private fun ChatHeader(
                     Icons.Default.Edit,
                     contentDescription = null,
                     tint = Gold,
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(IconSize.lg),
                 )
             }
         }
@@ -674,21 +674,21 @@ private fun StarterQuestionsView(questions: List<String>, onQuestionTap: (String
         Column(
             modifier = Modifier.padding(top = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
             questions.forEach { q ->
                 Box(
                     modifier = Modifier
                         .wrapContentWidth()
-                        .clip(RoundedCornerShape(20.dp))
+                        .clip(RoundedCornerShape(Radius.chip))
                         .background(Gold.copy(alpha = 0.1f))
-                        .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
+                        .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(Radius.chip))
                         .clickable { onQuestionTap(q) }
                         .heightIn(min = TouchMin)
                         .padding(horizontal = 20.dp, vertical = 10.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(q, fontSize = 13.sp, color = Gold, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    Text(q, fontSize = AppType.secondary, color = Gold, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 }
             }
         }
@@ -736,7 +736,7 @@ fun MessageBubbleView(
                     .background(
                         Brush.linearGradient(listOf(Gold, Gold.copy(alpha = 0.85f)))
                     )
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                    .padding(horizontal = Spacing.md, vertical = Spacing.sm),
             ) {
                 Text(
                     message.content,
@@ -1067,7 +1067,7 @@ private fun ToolCallsChips(tools: List<String>) {
             Icons.Default.AutoAwesome,
             contentDescription = null,
             tint = Gold,
-            modifier = Modifier.size(10.dp),
+            modifier = Modifier.size(IconSize.sm),
         )
         tools.forEach { tool ->
             Text(
@@ -1084,7 +1084,6 @@ private fun ToolCallsChips(tools: List<String>) {
 private fun SourcesChips(sources: List<String>) {
     Row(
         modifier = Modifier
-            .padding(top = 4.dp)
             .semantics { contentDescription = "sources_chips" },
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1093,7 +1092,7 @@ private fun SourcesChips(sources: List<String>) {
             Icons.Default.MenuBook,
             contentDescription = null,
             tint = Gold,
-            modifier = Modifier.size(10.dp),
+            modifier = Modifier.size(IconSize.sm),
         )
         sources.forEach { source ->
             Text(
@@ -1277,7 +1276,7 @@ private fun MessageRatingRow(rating: Int, onRate: (Int) -> Unit) {
                     // glyph stays a compact 18dp so the cluster reads tight, not scattered.
                     Box(
                         modifier = Modifier
-                            .size(width = 32.dp, height = 44.dp)
+                            .size(width = 32.dp, height = TouchMin)
                             .alpha(if (isSubmitting) 0.5f else 1f)
                             .clickable(enabled = !isSubmitting) {
                                 // Issue 54 — light haptic on tap.
@@ -1368,9 +1367,9 @@ fun ThinkingPill(cosmicStep: String? = null) {
     }
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(Radius.hero))
             .background(NavySurface)
-            .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
+            .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(Radius.hero))
             .padding(horizontal = 16.dp, vertical = 12.dp)
             .semantics { contentDescription = a11yLabel },
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -1569,7 +1568,7 @@ private fun ChatInputBar(
             // keyboard is down. Without these it clipped behind the gesture nav.
             .imePadding()
             .navigationBarsPadding()
-            .padding(horizontal = 12.dp, vertical = 10.dp)
+            .padding(horizontal = Spacing.screenH, vertical = Spacing.md)
             .padding(bottom = 4.dp),
         verticalAlignment = Alignment.Bottom,
     ) {
@@ -1590,12 +1589,12 @@ private fun ChatInputBar(
         Row(
             modifier = Modifier
                 .weight(1f)
-                .clip(RoundedCornerShape(24.dp))
+                .clip(RoundedCornerShape(Radius.hero))
                 .background(NavyInput)
                 .border(
                     width = focusBorderWidth.dp,
                     color = Gold.copy(alpha = focusBorderAlpha),
-                    shape = RoundedCornerShape(24.dp),
+                    shape = RoundedCornerShape(Radius.hero),
                 ),
             verticalAlignment = Alignment.Bottom,
         ) {
@@ -1607,7 +1606,7 @@ private fun ChatInputBar(
                         .size(TouchMin)
                         .semantics { contentDescription = "style_selector_button" },
                 ) {
-                    Icon(Icons.Default.Tune, contentDescription = null, tint = Gold, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.Tune, contentDescription = null, tint = Gold, modifier = Modifier.size(IconSize.md))
                 }
             }
 

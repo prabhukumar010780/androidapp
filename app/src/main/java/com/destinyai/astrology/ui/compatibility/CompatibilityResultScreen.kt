@@ -91,6 +91,7 @@ import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
+import com.destinyai.astrology.ui.theme.IconSize
 import com.destinyai.astrology.ui.theme.NavyDeep
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
@@ -468,7 +469,7 @@ private fun ResultHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 8.dp),
+            .padding(horizontal = Spacing.screenH, vertical = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // Back button
@@ -477,7 +478,7 @@ private fun ResultHeader(
                 Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = stringResource(R.string.compat_back_a11y),
                 tint = Gold,
-                modifier = Modifier.size(22.dp),
+                modifier = Modifier.size(IconSize.lg),
             )
         }
         // History button
@@ -512,7 +513,7 @@ private fun ResultHeader(
             Image(
                 painter = painterResource(R.drawable.match_icon),
                 contentDescription = null,
-                modifier = Modifier.size(22.dp),
+                modifier = Modifier.size(IconSize.lg),
                 contentScale = ContentScale.Fit,
             )
             Text(
@@ -544,7 +545,7 @@ private fun ResultHeader(
                     Icons.Filled.EditNote,
                     contentDescription = stringResource(R.string.compat_new_analysis_a11y),
                     tint = Gold,
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(IconSize.lg),
                 )
             }
         }

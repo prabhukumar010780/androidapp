@@ -33,6 +33,7 @@ import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
+import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.Spacing
 import java.time.LocalDate
 import java.time.LocalTime
@@ -110,7 +111,7 @@ fun PlanetaryPositionsSheet(
                 Text(
                     stringResource(R.string.planetary_positions),
                     fontFamily = CanelaFontFamily,
-                    fontSize = 18.sp,
+                    fontSize = AppType.sectionHeader,
                     fontWeight = FontWeight.Bold,
                     color = CreamText,
                     modifier = Modifier.weight(1f),
@@ -137,7 +138,7 @@ fun PlanetaryPositionsSheet(
                         Text(
                             stringResource(R.string.no_birth_profile_found),
                             color = CreamDim,
-                            fontSize = 14.sp,
+                            fontSize = AppType.secondary,
                         )
                     }
                 }
@@ -154,7 +155,7 @@ fun PlanetaryPositionsSheet(
                             Text(
                                 stringResource(R.string.calculating_chart),
                                 color = CreamDim,
-                                fontSize = 14.sp,
+                                fontSize = AppType.secondary,
                             )
                         }
                     }
@@ -262,17 +263,17 @@ private fun MinimalBirthInfoRow(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Text(formatSheetBirthDate(dob), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = CreamText, maxLines = 1)
+        Text(formatSheetBirthDate(dob), fontSize = AppType.secondary, fontWeight = FontWeight.Bold, color = CreamText, maxLines = 1)
         if (!timeUnknown) {
             Text("•", color = Gold.copy(alpha = 0.6f))
-            Text(formatSheetBirthTime(time), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = CreamText, maxLines = 1)
+            Text(formatSheetBirthTime(time), fontSize = AppType.secondary, fontWeight = FontWeight.Bold, color = CreamText, maxLines = 1)
         }
         if (city.isNotEmpty()) {
             Text("•", color = Gold.copy(alpha = 0.6f))
             // city gets remaining space and ellipsises — keeps ascendant always visible
             Text(
                 city,
-                fontSize = 14.sp,
+                fontSize = AppType.secondary,
                 color = CreamDim,
                 maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
@@ -285,7 +286,7 @@ private fun MinimalBirthInfoRow(
             Text("•", color = Gold.copy(alpha = 0.6f))
             Text(
                 stringResource(R.string.ascendant_short_fmt, ascendantSign),
-                fontSize = 14.sp,
+                fontSize = AppType.secondary,
                 fontWeight = FontWeight.Bold,
                 color = Gold,
                 maxLines = 1,

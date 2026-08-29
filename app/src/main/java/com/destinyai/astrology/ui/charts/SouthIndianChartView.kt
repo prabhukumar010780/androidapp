@@ -47,8 +47,8 @@ fun SouthIndianChartView(
                 )
                 .shadow(
                     elevation = 2.dp,
-                    ambientColor = Gold.copy(alpha = 0.2f),
-                    spotColor = Gold.copy(alpha = 0.2f),
+                    ambientColor = Gold.copy(alpha = 0.3f),
+                    spotColor = Gold.copy(alpha = 0.3f),
                 ),
         ) {
             SouthIndianCanvas(

@@ -37,6 +37,9 @@ import com.destinyai.astrology.domain.model.KutaDetail
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.NavySurface
+import com.destinyai.astrology.ui.theme.AppType
+import com.destinyai.astrology.ui.theme.IconSize
+import com.destinyai.astrology.ui.theme.Radius
 import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.TouchMin
 import androidx.compose.ui.platform.testTag
@@ -64,12 +67,12 @@ fun AshtakootGlassGrid(
             fontWeight = FontWeight.Bold,
             fontSize = 16.sp,
             color = CreamText,
-            modifier = Modifier.padding(start = 4.dp, bottom = 16.dp),
+            modifier = Modifier.padding(bottom = Spacing.headerToContent),
         )
         kutas.chunked(2).forEach { row ->
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                modifier = Modifier.padding(bottom = Spacing.sm),
             ) {
                 row.forEach { kuta ->
                     GlassPill(
@@ -215,18 +218,18 @@ fun GlassPill(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = TouchMin) // 48.dp — meet interactive touch-target floor
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(Radius.chip))
             // iOS uses .ultraThinMaterial (frosted glass). Compose has no true backdrop-blur,
             // so this APPROXIMATES it: a faint translucent white overlay over the navy surface
             // to mimic the light frosted sheen of ultraThinMaterial in dark mode.
             .background(Color.White.copy(alpha = 0.08f))
-            .border(borderWidth, borderColor, RoundedCornerShape(12.dp))
+            .border(borderWidth, borderColor, RoundedCornerShape(Radius.chip))
             .clickable {
                 // iOS triggers HapticManager.play(.light) — closest Android equivalent is TextHandleMove.
                 haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onClick()
             }
-            .padding(horizontal = 10.dp, vertical = Spacing.sm)
+            .padding(horizontal = Spacing.sm, vertical = Spacing.sm)
             .semantics { contentDescription = "kuta_pill_${kuta.key}" },
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -236,23 +239,23 @@ fun GlassPill(
                 .clip(CircleShape)
                 .background(statusColor),
         )
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(Spacing.xs))
         // iOS parity: tinted SF Symbol — Android draws the matching vector tinted with statusColor.
         kutaVectorIcons[kuta.key]?.let { vector ->
             Icon(
                 imageVector = vector,
                 contentDescription = null,
                 tint = CreamDim,
-                modifier = Modifier.size(14.dp),
+                modifier = Modifier.size(IconSize.sm),
             )
         }
-        Spacer(Modifier.width(5.dp))
+        Spacer(Modifier.width(Spacing.xs))
         Text(
             text = kuta.label,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Normal,
             color = CreamText,
-            fontSize = 11.sp,
+            fontSize = AppType.caption,
             modifier = Modifier.weight(1f),
         )
         Text(
@@ -260,7 +263,7 @@ fun GlassPill(
             style = MaterialTheme.typography.labelSmall,
             color = statusColor,
             fontWeight = FontWeight.Bold,
-            fontSize = 11.sp,
+            fontSize = AppType.caption,
         )
     }
 }

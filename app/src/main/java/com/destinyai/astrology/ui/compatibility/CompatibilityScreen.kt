@@ -429,7 +429,7 @@ fun CompatibilityScreen(
                             onClick = { viewModel.showPartnerPicker() },
                             modifier = Modifier
                                 .size(48.dp)
-                                .border(1.dp, Gold.copy(alpha = 0.4f), RoundedCornerShape(10.dp)),
+                                .border(1.dp, Gold.copy(alpha = 0.4f), RoundedCornerShape(Radius.button)),
                         ) {
                             Icon(
                                 Icons.Filled.PersonAdd,

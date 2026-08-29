@@ -433,7 +433,6 @@ fun HomeScreen(
                 // "tap to explore" guide text. The header strip above intentionally
                 // contains only the logo + side buttons, not the greeting.
                 item {
-                    Spacer(Modifier.height(4.dp))
                     Column(modifier = Modifier.padding(horizontal = HomeLayout.GUTTER_DP.dp)) {
                         Text(
                             text = stringResource(
@@ -447,7 +446,7 @@ fun HomeScreen(
                             color = Gold,
                         )
                         if (state.ascendantSign.isNotBlank()) {
-                            Spacer(Modifier.height(2.dp))
+                            Spacer(Modifier.height(Spacing.xs))
                             Text(
                                 text = stringResource(
                                     R.string.home_ascendant_subtitle,
@@ -459,7 +458,7 @@ fun HomeScreen(
                             )
                         }
                     }
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(Spacing.headerToContent))
                     LifeAreaOrbs(
                         lifeAreas = state.lifeAreas,
                         onAreaTap = { area ->
@@ -471,7 +470,7 @@ fun HomeScreen(
                             onNavigateToCharts()
                         },
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(Spacing.sm))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Center,
@@ -528,11 +527,11 @@ fun HomeScreen(
                         GoldGradientText(
                             text = stringResource(R.string.home_current_dasha),
                             modifier = Modifier.padding(horizontal = HomeLayout.GUTTER_DP.dp),
-                            fontSize = 18.sp,
+                            fontSize = AppType.sectionHeader,
                             fontWeight = FontWeight.Bold,
                             fontFamily = CanelaFontFamily,
                         )
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(Spacing.headerToContent))
                         state.dashaInfo?.let {
                             DashaInsightCard(
                                 dashaInfo = it,
@@ -551,11 +550,11 @@ fun HomeScreen(
                         GoldGradientText(
                             text = stringResource(R.string.home_current_transits),
                             modifier = Modifier.padding(horizontal = HomeLayout.GUTTER_DP.dp),
-                            fontSize = 18.sp,
+                            fontSize = AppType.sectionHeader,
                             fontWeight = FontWeight.Bold,
                             fontFamily = CanelaFontFamily,
                         )
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(Spacing.headerToContent))
                         TransitAlertsRow(
                             transits = state.transits,
                             onTransitTap = { transit ->
@@ -728,7 +727,7 @@ private fun HomeHeader(
                                 if (isSoundEnabled) R.string.home_sound_on_cd else R.string.home_sound_off_cd,
                             ),
                             tint = Gold,
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(IconSize.md),
                         )
                     }
                 }
@@ -1221,7 +1220,7 @@ private fun DashaInsightCard(dashaInfo: HomeDashaInfo, onClick: () -> Unit = {})
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(bottom = 12.dp, end = 12.dp)
-                .size(18.dp)
+                .size(IconSize.md)
                 .clip(CircleShape)
                 .background(Brush.linearGradient(listOf(GoldLight, Gold))),
             contentAlignment = Alignment.Center,
@@ -1230,7 +1229,7 @@ private fun DashaInsightCard(dashaInfo: HomeDashaInfo, onClick: () -> Unit = {})
                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                 contentDescription = null,
                 tint = Color(red = 0.15f, green = 0.15f, blue = 0.2f),
-                modifier = Modifier.size(12.dp),
+                modifier = Modifier.size(IconSize.xs),
             )
         }
     }
@@ -1289,7 +1288,7 @@ private fun TransitAlertsRow(
 ) {
     LazyRow(
         contentPadding = PaddingValues(horizontal = HomeLayout.GUTTER_DP.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
         items(transits, key = { it.planet }) { transit ->
             TransitAlertCard(transit = transit, onClick = { onTransitTap(transit) })
@@ -1396,7 +1395,7 @@ private fun TransitAlertCard(transit: HomeTransit, onClick: () -> Unit = {}) {
         // Gold-gradient arrow indicator (parity with arrow.forward.circle.fill).
         Box(
             modifier = Modifier
-                .size(14.dp)
+                .size(IconSize.sm)
                 .clip(CircleShape)
                 .background(Brush.linearGradient(listOf(GoldLight, Gold))),
             contentAlignment = Alignment.Center,
@@ -1405,7 +1404,7 @@ private fun TransitAlertCard(transit: HomeTransit, onClick: () -> Unit = {}) {
                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                 contentDescription = null,
                 tint = Color(red = 0.15f, green = 0.15f, blue = 0.2f),
-                modifier = Modifier.size(10.dp),
+                modifier = Modifier.size(IconSize.xs),
             )
         }
     }
@@ -1466,15 +1465,15 @@ private fun YogaHighlightRow(
     Column(modifier = Modifier.padding(horizontal = HomeLayout.GUTTER_DP.dp)) {
         GoldGradientText(
             text = stringResource(R.string.yoga_positive_negative),
-            fontSize = 18.sp,
+            fontSize = AppType.sectionHeader,
             fontWeight = FontWeight.Bold,
             fontFamily = CanelaFontFamily,
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(Spacing.headerToContent))
         // Filter chips row (parity with iOS YogaHighlightCard.swift:62-87 filterButton row).
         // 11 categories matching iOS FilterType enum.
         LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
             modifier = Modifier.testTag("home_yoga_filter_row"),
         ) {
             items(YogaFilter.displayFilters) { filter ->
@@ -1485,7 +1484,7 @@ private fun YogaHighlightRow(
                 )
             }
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(Spacing.md))
         val filteredYogas = if (selectedFilter == YogaFilter.All) {
             yogas
         } else {
@@ -1505,7 +1504,7 @@ private fun YogaHighlightRow(
             // Hints that the row is horizontally scrollable. Pointer-events ignored so
             // the overlay never eats taps on the rightmost yoga card.
             Box {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(Spacing.cardGap)) {
                     items(count = filteredYogas.size, key = { i -> filteredYogas[i].name }) { index ->
                         val yoga = filteredYogas[index]
                         PremiumYogaCard(
@@ -1668,7 +1667,7 @@ private fun PremiumYogaCard(
             .clickable(onClick = onClick)
             .testTag("yoga_card_$index")
             .semantics { contentDescription = "yoga_highlight_card" }
-            .padding(14.dp),
+            .padding(Spacing.cardPadding),
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Header: circle-wrapped icon (left) + status badge pushed FAR RIGHT.
@@ -1863,9 +1862,9 @@ private fun DoshaStatusRow(doshas: HomeDoshaStatus) {
 private fun DoshaChip(label: String, severity: String, color: Color) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(Radius.chip))
             .background(color.copy(alpha = 0.12f))
-            .border(0.5.dp, color.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+            .border(0.5.dp, color.copy(alpha = 0.5f), RoundedCornerShape(Radius.chip))
             .padding(horizontal = 10.dp, vertical = 6.dp),
     ) {
         Column {
@@ -1941,7 +1940,7 @@ private fun LifeAreaQuestionsSheet(
             Spacer(Modifier.height(6.dp))
             Text(
                 text = stringResource(R.string.home_tap_a_question),
-                fontSize = 13.sp,
+                fontSize = AppType.secondary,
                 color = CreamDim,
             )
             Spacer(Modifier.height(16.dp))
@@ -1950,9 +1949,9 @@ private fun LifeAreaQuestionsSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 5.dp)
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(Radius.chip))
                         .background(NavySurface)
-                        .border(0.5.dp, Gold.copy(alpha = 0.15f), RoundedCornerShape(10.dp))
+                        .border(0.5.dp, Gold.copy(alpha = 0.15f), RoundedCornerShape(Radius.chip))
                         .clickable { onQuestionTap(question) }
                         .padding(horizontal = 14.dp, vertical = 12.dp),
                 ) {
@@ -2018,9 +2017,9 @@ private fun QuickActionCard(
 ) {
     Card(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(Radius.chip))
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(Radius.chip),
         colors = CardDefaults.cardColors(containerColor = NavySurface),
     ) {
         Column(
@@ -2049,9 +2048,9 @@ private fun SuggestedQuestion(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(Radius.chip))
             .background(NavySurface)
-            .border(0.5.dp, Gold.copy(alpha = 0.15f), RoundedCornerShape(10.dp))
+            .border(0.5.dp, Gold.copy(alpha = 0.15f), RoundedCornerShape(Radius.chip))
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
@@ -2273,7 +2272,7 @@ private fun LifeAreaBriefPopup(
                                     imageVector = Icons.Filled.Close,
                                     contentDescription = stringResource(R.string.home_close_cd),
                                     tint = CreamDim,
-                                    modifier = Modifier.size(18.dp),
+                                    modifier = Modifier.size(IconSize.md),
                                 )
                             }
                         }
@@ -2287,7 +2286,7 @@ private fun LifeAreaBriefPopup(
                             Spacer(Modifier.height(10.dp))
                             Text(
                                 text = lifeArea.briefDescription,
-                                fontSize = 13.sp,
+                                fontSize = AppType.secondary,
                                 color = CreamDim,
                                 lineHeight = 18.sp,
                             )
@@ -2303,12 +2302,12 @@ private fun LifeAreaBriefPopup(
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 modifier = Modifier
                                     .heightIn(min = TouchMin)
-                                    .clip(RoundedCornerShape(10.dp))
+                                    .clip(RoundedCornerShape(Radius.chip))
                                     .background(Gold.copy(alpha = 0.18f))
                                     .border(
                                         0.5.dp,
                                         Gold.copy(alpha = 0.5f),
-                                        RoundedCornerShape(10.dp),
+                                        RoundedCornerShape(Radius.chip),
                                     )
                                     .clickable {
                                         // Medium haptic to match iOS .play(.medium) (issues 13, 36).
@@ -2397,7 +2396,7 @@ private fun YogaDetailPopup(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
+                            .clip(RoundedCornerShape(Radius.chip))
                             .background(Gold.copy(alpha = 0.15f))
                             .padding(horizontal = 8.dp, vertical = 3.dp),
                     ) {
@@ -2410,7 +2409,7 @@ private fun YogaDetailPopup(
                     }
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
+                            .clip(RoundedCornerShape(Radius.chip))
                             .background(CreamDim.copy(alpha = 0.12f))
                             .padding(horizontal = 8.dp, vertical = 3.dp),
                     ) {
@@ -2426,7 +2425,7 @@ private fun YogaDetailPopup(
                     Spacer(Modifier.height(12.dp))
                     Text(
                         text = DoshaDescriptions.localizedYogaOutcome(ctx, yoga.yogaKey, yoga.description),
-                        fontSize = 13.sp,
+                        fontSize = AppType.secondary,
                         color = CreamText,
                         lineHeight = 19.sp,
                     )
@@ -2475,22 +2474,22 @@ private fun YogaDetailPopup(
                     horizontalArrangement = Arrangement.End,
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text(text = stringResource(R.string.home_close), color = CreamDim, fontSize = 13.sp)
+                        Text(text = stringResource(R.string.home_close), color = CreamDim, fontSize = AppType.secondary)
                     }
                     Spacer(Modifier.width(8.dp))
                     Box(
                         modifier = Modifier
                             .heightIn(min = TouchMin)
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(RoundedCornerShape(Radius.chip))
                             .background(Gold.copy(alpha = 0.18f))
-                            .border(0.5.dp, Gold.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                            .border(0.5.dp, Gold.copy(alpha = 0.5f), RoundedCornerShape(Radius.chip))
                             .clickable(onClick = onAskMore)
                             .padding(horizontal = 14.dp, vertical = 8.dp),
                     ) {
                         Text(
                             text = stringResource(R.string.home_ask_more),
                             color = Gold,
-                            fontSize = 13.sp,
+                            fontSize = AppType.secondary,
                             fontWeight = FontWeight.Bold,
                         )
                     }
@@ -2518,17 +2517,17 @@ private fun WhatsInMyMindGrid(
     Column(modifier = Modifier.padding(horizontal = HomeLayout.GUTTER_DP.dp)) {
         GoldGradientText(
             text = stringResource(R.string.home_what_in_my_mind),
-            fontSize = 18.sp,
+            fontSize = AppType.sectionHeader,
             fontWeight = FontWeight.Bold,
             fontFamily = CanelaFontFamily,
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(Spacing.headerToContent))
         questions.chunked(2).forEach { row ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(IntrinsicSize.Min),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.cardGap),
             ) {
                 row.forEach { question ->
                     QuickQuestionCard(
@@ -2544,7 +2543,7 @@ private fun WhatsInMyMindGrid(
                     Spacer(modifier = Modifier.weight(1f))
                 }
             }
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(Spacing.cardGap))
         }
     }
 }
@@ -2642,7 +2641,7 @@ private fun OfflineBanner(modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .padding(horizontal = 16.dp, vertical = 6.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(Radius.card))
             .background(Color(0xFFED8936).copy(alpha = 0.9f))
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -2652,7 +2651,7 @@ private fun OfflineBanner(modifier: Modifier = Modifier) {
             imageVector = Icons.Filled.WifiOff,
             contentDescription = null,
             tint = Color.White,
-            modifier = Modifier.size(14.dp),
+            modifier = Modifier.size(IconSize.sm),
         )
         Text(
             text = stringResource(R.string.home_offline_message),
@@ -2840,7 +2839,7 @@ private fun YogaDetailRow(label: String, value: String) {
         )
         Text(
             text = value,
-            fontSize = 13.sp,
+            fontSize = AppType.secondary,
             color = CreamText,
             lineHeight = 18.sp,
         )

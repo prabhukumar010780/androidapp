@@ -20,7 +20,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.destinyai.astrology.R
+import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.Gold
+import com.destinyai.astrology.ui.theme.IconSize
+import com.destinyai.astrology.ui.theme.Radius
+import com.destinyai.astrology.ui.theme.Spacing
 
 // R2-C8: map sign abbreviations to string resource IDs
 fun getSignNameRes(sign: String): Int = when (sign) {
@@ -59,24 +63,24 @@ fun TransitsView(transitResponse: TransitResponse?) {
         modifier = Modifier
             .fillMaxWidth()
             .semantics { contentDescription = "chart_tab_transits" }
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(Radius.card))
             .background(Color.White)
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .padding(Spacing.lgPlus),
+        verticalArrangement = Arrangement.spacedBy(Spacing.lg),
     ) {
         // Header: loop icon + year
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(Icons.Default.Loop, contentDescription = null, tint = Gold, modifier = Modifier.size(16.dp))
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            Icon(Icons.Default.Loop, contentDescription = null, tint = Gold, modifier = Modifier.size(IconSize.sm))
             Text(
                 stringResource(R.string.transits_year_fmt, transitResponse?.year ?: 2024),
-                fontSize = 14.sp,
+                fontSize = AppType.secondary,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF0B0F19),
             )
         }
 
         if (transitResponse?.transits != null) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
                 transitResponse.transits.keys.sorted().forEach { planet ->
                     val events = transitResponse.transits[planet] ?: return@forEach
                     TransitPlanetSection(
@@ -86,7 +90,7 @@ fun TransitsView(transitResponse: TransitResponse?) {
                 }
             }
         } else {
-            Text(stringResource(R.string.select_year_transits), fontSize = 14.sp, color = Color.Gray)
+            Text(stringResource(R.string.select_year_transits), fontSize = AppType.secondary, color = Color.Gray)
         }
     }
 }
@@ -96,12 +100,12 @@ private fun TransitPlanetSection(
     planet: String,
     events: List<TransitEvent>,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         // iOS parity: TransitsView.swift:48 — planet name header (no toggle)
         val planetLabel = transitPlanetNameResMap[planet]?.let { stringResource(it) } ?: planet
         Text(
             planetLabel,
-            fontSize = 14.sp,
+            fontSize = AppType.secondary,
             fontWeight = FontWeight.Bold,
             color = Color(0xFF0B0F19),
         )
@@ -109,7 +113,7 @@ private fun TransitPlanetSection(
         events.forEach { event ->
             TransitEventRow(event = event)
         }
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(Spacing.xs))
     }
 }
 
@@ -117,23 +121,23 @@ private fun TransitPlanetSection(
 private fun TransitEventRow(event: TransitEvent) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(start = 8.dp),
+        modifier = Modifier.padding(horizontal = Spacing.sm),
     ) {
         // R2-C7: monospace date
         Text(
             event.date,
-            fontSize = 12.sp,
+            fontSize = AppType.caption,
             fontFamily = FontFamily.Monospace,
             color = Color.Gray,
         )
-        Spacer(Modifier.width(8.dp))
-        Icon(Icons.Default.ArrowForward, contentDescription = null, modifier = Modifier.size(10.dp), tint = Color.Gray)
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(Spacing.sm))
+        Icon(Icons.Default.ArrowForward, contentDescription = null, modifier = Modifier.size(IconSize.xs), tint = Color.Gray)
+        Spacer(Modifier.width(Spacing.sm))
         // R2-C8: localised sign name
         val signName = stringResource(getSignNameRes(event.sign))
         Text(
             "$signName (${stringResource(R.string.house_short_fmt, event.houseFromLagna)})",
-            fontSize = 13.sp,
+            fontSize = AppType.secondary,
             color = Color(0xFF0B0F19),
         )
     }
