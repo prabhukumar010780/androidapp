@@ -1271,9 +1271,9 @@ private fun SupportLinksSection(context: android.content.Context, onNavigateToFa
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(Radius.card))
             .background(NavySurface)
-            .border(0.5.dp, Gold.copy(alpha = 0.15f), RoundedCornerShape(14.dp)),
+            .border(0.5.dp, Gold.copy(alpha = 0.15f), RoundedCornerShape(Radius.card)),
     ) {
         // FAQ & Help — mirrors iOS supportSection (ProfileView.swift:730-739) which
         // groups FAQ + Contact + Privacy + Terms together as four support entries.

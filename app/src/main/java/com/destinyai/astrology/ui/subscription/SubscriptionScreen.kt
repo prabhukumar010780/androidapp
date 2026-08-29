@@ -338,7 +338,7 @@ fun SubscriptionScreen(
                             textAlign = TextAlign.Center,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 4.dp)
+                                .padding(vertical = 4.dp)
                                 .semantics { testTag = "subscription_subheader" },
                         )
                     }
@@ -962,8 +962,7 @@ fun SubscriptionScreen(
                                 color = CreamDim.copy(alpha = 0.6f),
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
+                                    .fillMaxWidth(),
                             )
                         }
 
@@ -979,7 +978,7 @@ fun SubscriptionScreen(
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                                    .padding(vertical = 4.dp),
                             )
                         }
                     }
@@ -997,7 +996,7 @@ fun SubscriptionScreen(
                             textAlign = TextAlign.Center,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                                .padding(vertical = 4.dp),
                         )
                     }
 
