@@ -22,6 +22,9 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.zIndex
@@ -63,6 +66,7 @@ import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun AppNav() {
     val navController = rememberNavController()
@@ -198,6 +202,12 @@ fun AppNav() {
     CosmicBackground(
         modifier = Modifier
             .fillMaxSize()
+            // Expose Compose testTags as Android resource-ids globally so the
+            // Appium E2E suite can locate elements with
+            // AppiumBy.ID("com.destinyai.astrology:id/<tag>").
+            // Mirrors NotificationsScreen.kt's per-screen usage — applied here
+            // once so every route inherits it automatically.
+            .semantics { testTagsAsResourceId = true }
             .pointerInput(Unit) {
                 detectTapGestures(onTap = {
                     focusManager.clearFocus(force = true)

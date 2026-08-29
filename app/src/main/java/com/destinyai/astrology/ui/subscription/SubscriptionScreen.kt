@@ -206,7 +206,6 @@ fun SubscriptionScreen(
                 .fillMaxSize()
                 .semantics(mergeDescendants = false) {
                     testTag = "subscription_screen"
-                    contentDescription = "subscription_screen"
                 },
         ) {
             // Header
@@ -522,7 +521,6 @@ fun SubscriptionScreen(
                                     .padding(16.dp)
                                     .semantics {
                                         testTag = "subscription_plan_card"
-                                        contentDescription = "subscription_plan_card"
                                     },
                             ) {
                                 Column {

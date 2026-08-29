@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.destinyai.astrology.R
 import com.destinyai.astrology.ui.theme.Gold
+import androidx.compose.ui.platform.testTag
 
 // R2-C6: map planet names to string resource IDs
 private val planetNameResMap: Map<String, Int> = mapOf(
@@ -45,7 +46,7 @@ fun DashaView(dashaResponse: DashaResponse?) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .semantics { contentDescription = "chart_tab_dasha" }
+            .testTag("chart_tab_dasha")
             .shadow(elevation = 10.dp, shape = RoundedCornerShape(16.dp))
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White)

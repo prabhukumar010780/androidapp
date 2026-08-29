@@ -39,6 +39,7 @@ import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.TouchMin
+import androidx.compose.ui.platform.testTag
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,7 +54,7 @@ fun AshtakootGlassGrid(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
     Column(
-        modifier = modifier.semantics { contentDescription = "ashtakoot_glass_grid" },
+        modifier = modifier.testTag("ashtakoot_glass_grid"),
     ) {
         // iOS parity (AshtakootGlassGrid.swift:128-131): title uses the analysis title key,
         // 16pt title font, textPrimary color, 4pt horizontal padding.
@@ -101,7 +102,7 @@ fun AshtakootGlassGrid(
                         .height(4.dp)
                         .clip(RoundedCornerShape(2.dp))
                         .background(Color.White.copy(alpha = 0.30f))
-                        .semantics { contentDescription = "kuta_sheet_drag_handle" },
+                        .testTag("kuta_sheet_drag_handle"),
                 )
             },
         ) {
@@ -123,7 +124,7 @@ private fun KutaDetailSheetContent(kuta: KutaDetail) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 16.dp)
-            .semantics { contentDescription = "kuta_detail_sheet" },
+            .testTag("kuta_detail_sheet"),
         verticalArrangement = Arrangement.spacedBy(10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

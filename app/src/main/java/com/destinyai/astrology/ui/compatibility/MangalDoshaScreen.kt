@@ -42,6 +42,7 @@ import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.adaptiveContentWidth
 import com.destinyai.astrology.util.DoshaDescriptions
+import androidx.compose.ui.platform.testTag
 
 private enum class MarsScenario { SAFE, CANCELLED, EFFECTIVE }
 
@@ -86,7 +87,7 @@ fun MangalDoshaScreen(
                     modifier = Modifier
                         .weight(1f)
                         .padding(end = 48.dp)
-                        .semantics { contentDescription = "mars_compatibility_nav_title" },
+                        .testTag("mars_compatibility_nav_title"),
                     textAlign = TextAlign.Center,
                 )
             }
@@ -147,7 +148,7 @@ private fun SafeScenarioView(boyName: String, girlName: String) {
                     .clip(CircleShape)
                     .background(successColor.copy(alpha = 0.15f))
                     .border(1.dp, successColor.copy(alpha = 0.5f), CircleShape)
-                    .semantics { contentDescription = "safe_hero_shield" },
+                    .testTag("safe_hero_shield"),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
@@ -248,7 +249,7 @@ private fun CancelledScenarioView(
                     .size(100.dp)
                     .clip(CircleShape)
                     .background(cancelBlue.copy(alpha = 0.15f))
-                    .semantics { contentDescription = "cancelled_hero_icon" },
+                    .testTag("cancelled_hero_icon"),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
@@ -357,7 +358,7 @@ private fun EffectiveScenarioView(
                     .size(100.dp)
                     .clip(CircleShape)
                     .background(warningOrange.copy(alpha = 0.15f))
-                    .semantics { contentDescription = "effective_hero_icon" },
+                    .testTag("effective_hero_icon"),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(

@@ -3,14 +3,36 @@
 Page objects for Android E2E tests.
 Mirrors ios_app/e2e/helpers/screens.py.
 
-Android elements use content-description (accessibility label) — same IDs as iOS
-to keep the test layer platform-agnostic where possible.
+Android elements are located by Compose testTag (exposed as resource-id via
+`testTagsAsResourceId = true` at the root composable). Because UiAutomator2 may
+report that id either bare (`home_screen`) or package-qualified, and a few
+legacy nodes are still only reachable by content-description, `find`/`finds`
+try each strategy in order — see `_locator_strategies`.
 """
 
 import os
 from appium.webdriver.common.appiumby import AppiumBy
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+
+_APP_PKG = "com.destinyai.astrology"
+
+
+def _locator_strategies(aid: str):
+    """Ordered (by, value) strategies for a Compose testTag / legacy locator.
+
+    Compose `testTagsAsResourceId = true` exposes the testTag as the node's
+    resource-id. Depending on the UiAutomator2 / Appium version this is reported
+    either as the BARE tag (`home_screen`) or package-qualified
+    (`com.destinyai.astrology:id/home_screen`). A few legacy locators may still
+    only be reachable via content-description (ACCESSIBILITY_ID). We try each in
+    order and use the first that resolves, so the suite is robust to all three.
+    """
+    return (
+        (AppiumBy.ID, aid),
+        (AppiumBy.ID, f"{_APP_PKG}:id/{aid}"),
+        (AppiumBy.ACCESSIBILITY_ID, aid),
+    )
 
 
 class _Base:
@@ -19,10 +41,21 @@ class _Base:
         self._wait = WebDriverWait(driver, 20)
 
     def find(self, aid):
-        return self.d.find_element(AppiumBy.ACCESSIBILITY_ID, aid)
+        last = None
+        for by, value in _locator_strategies(aid):
+            els = self.d.find_elements(by, value)
+            if els:
+                return els[0]
+            last = (by, value)
+        # Nothing matched — raise the canonical NoSuchElement via find_element.
+        return self.d.find_element(*last)
 
     def finds(self, aid):
-        return self.d.find_elements(AppiumBy.ACCESSIBILITY_ID, aid)
+        for by, value in _locator_strategies(aid):
+            els = self.d.find_elements(by, value)
+            if els:
+                return els
+        return []
 
     def tap(self, aid):
         """Tap an element by accessibility id.
@@ -50,12 +83,10 @@ class _Base:
         self.d.save_screenshot(f"android_app/e2e/screenshots/{name}.png")
 
     def wait_for(self, aid, timeout=20):
-        self._wait.until(EC.presence_of_element_located((AppiumBy.ACCESSIBILITY_ID, aid)))
+        WebDriverWait(self.d, timeout).until(lambda _: self.present(aid))
 
     def wait_gone(self, aid, timeout=90):
-        WebDriverWait(self.d, timeout).until_not(
-            EC.presence_of_element_located((AppiumBy.ACCESSIBILITY_ID, aid))
-        )
+        WebDriverWait(self.d, timeout).until_not(lambda _: self.present(aid))
 
 
 class OnboardingScreen(_Base):
@@ -72,11 +103,7 @@ class OnboardingScreen(_Base):
 
         # 1. Language selection — tap English card, then continue.
         try:
-            WebDriverWait(self.d, 20).until(
-                EC.presence_of_element_located(
-                    (AppiumBy.ACCESSIBILITY_ID, "language_card_en")
-                )
-            )
+            self.wait_for("language_card_en", timeout=20)
             self.tap("language_card_en")
             self.tap("language_continue_button")
         except (TimeoutException, WebDriverException):
@@ -87,11 +114,7 @@ class OnboardingScreen(_Base):
         #    sits inside the status-bar padding zone and isn't reliably tappable,
         #    so we advance with Continue, which also exercises the real slide flow.
         try:
-            WebDriverWait(self.d, 15).until(
-                EC.presence_of_element_located(
-                    (AppiumBy.ACCESSIBILITY_ID, "onboarding_screen")
-                )
-            )
+            self.wait_for("onboarding_screen", timeout=15)
             import time
             for _ in range(6):
                 if self.present("auth_screen"):
@@ -104,31 +127,19 @@ class OnboardingScreen(_Base):
             pass
 
         # 3. Auth — continue as guest (mints a guest session against the backend).
-        WebDriverWait(self.d, 20).until(
-            EC.presence_of_element_located(
-                (AppiumBy.ACCESSIBILITY_ID, "continue_as_guest_button")
-            )
-        )
+        self.wait_for("continue_as_guest_button", timeout=20)
         self.tap("continue_as_guest_button")
 
         # 4. Birth-data — E2EBirthDataOverrides auto-fills the form so isValid is
         #    true; just tap Continue. Wait for the button (guest mint is async).
-        WebDriverWait(self.d, 30).until(
-            EC.presence_of_element_located(
-                (AppiumBy.ACCESSIBILITY_ID, "birth_data_continue")
-            )
-        )
+        self.wait_for("birth_data_continue", timeout=30)
         self.tap("birth_data_continue")
 
         # 5. Response-style sheet — a successful save presents the response-style
         #    picker; its Continue triggers onSaved() → profile-setup. Wait for it
         #    (the save round-trips the backend) then continue with the default style.
         try:
-            WebDriverWait(self.d, 30).until(
-                EC.presence_of_element_located(
-                    (AppiumBy.ACCESSIBILITY_ID, "response_style_continue")
-                )
-            )
+            self.wait_for("response_style_continue", timeout=30)
             self.tap("response_style_continue")
         except (TimeoutException, WebDriverException):
             pass  # some flows may skip straight to profile-setup
@@ -146,9 +157,7 @@ class OnboardingScreen(_Base):
             time.sleep(3)
         # Final explicit wait so the failure message points here if still not Home.
         self._grant_notification_permission_if_present()
-        WebDriverWait(self.d, 15).until(
-            EC.presence_of_element_located((AppiumBy.ACCESSIBILITY_ID, "home_screen"))
-        )
+        self.wait_for("home_screen", timeout=15)
 
     def _grant_notification_permission_if_present(self):
         """Grant the Android 13+ POST_NOTIFICATIONS system dialog if it is up.

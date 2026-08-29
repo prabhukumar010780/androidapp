@@ -44,6 +44,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -741,8 +744,7 @@ private fun DestinyTabBar(
                 onClick = { onTabSelected(0) },
                 modifier = Modifier
                     .weight(1f)
-                    .testTag("tab_home")
-                    .semantics { contentDescription = "tab_home" },
+                    .testTag("tab_home"),
             )
 
             // Transparent placeholder — preserves layout for the center FAB.
@@ -755,8 +757,7 @@ private fun DestinyTabBar(
                 onClick = { onTabSelected(2) },
                 modifier = Modifier
                     .weight(1f)
-                    .testTag("tab_match")
-                    .semantics { contentDescription = "tab_match" },
+                    .testTag("tab_match"),
             )
         }
 
@@ -776,8 +777,7 @@ private fun DestinyTabBar(
                 onClick = { onTabSelected(1) },
                 modifier = Modifier
                     .zIndex(1f)
-                    .testTag("tab_chat")
-                    .semantics { contentDescription = "tab_chat" },
+                    .testTag("tab_chat"),
             )
         }
     }
@@ -829,7 +829,11 @@ private fun TabBarItem(
                     onClick()
                 },
             )
-            .semantics { contentDescription = label }
+            .semantics {
+                contentDescription = label
+                role = Role.Tab
+                this.selected = selected
+            }
             .padding(vertical = Spacing.sm),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -888,7 +892,11 @@ private fun AskFabButton(
                     onClick()
                 },
             )
-            .semantics { contentDescription = label },
+            .semantics {
+                contentDescription = label
+                role = Role.Tab
+                this.selected = isSelected
+            },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(

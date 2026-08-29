@@ -119,7 +119,7 @@ fun LocationSearchSheet(
                     modifier = Modifier
                         .align(Alignment.CenterStart)
                         .testTag("location_search_cancel")
-                        .semantics { contentDescription = "location_search_cancel" },
+                        .testTag("location_search_cancel"),
                 ) {
                     Text(text = stringResource(R.string.cancel_action), color = CreamText, fontSize = 15.sp)
                 }

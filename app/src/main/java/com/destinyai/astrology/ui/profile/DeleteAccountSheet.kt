@@ -104,7 +104,7 @@ fun DeleteAccountSheet(
                     .padding(horizontal = Spacing.xl)
                     .navigationBarsPadding()
                     .testTag("delete_account_sheet")
-                    .semantics { contentDescription = "delete_account_sheet" },
+                    .testTag("delete_account_sheet"),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
             // Warning icon
@@ -191,7 +191,7 @@ fun DeleteAccountSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("delete_account_confirm_input")
-                    .semantics { contentDescription = "delete_account_confirm_input" },
+                    .testTag("delete_account_confirm_input"),
                 shape = RoundedCornerShape(12.dp),
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.Characters,
@@ -295,7 +295,7 @@ fun DeleteAccountSheet(
                     .fillMaxWidth()
                     .height(52.dp)
                     .testTag("delete_account_confirm_button")
-                    .semantics { contentDescription = "delete_account_confirm_button" },
+                    .testTag("delete_account_confirm_button"),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFFFF5252),
@@ -328,7 +328,7 @@ fun DeleteAccountSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("delete_account_cancel_button")
-                    .semantics { contentDescription = "delete_account_cancel_button" },
+                    .testTag("delete_account_cancel_button"),
             ) {
                 Text(stringResource(R.string.delete_account_cancel), color = CreamDim, fontSize = 15.sp)
             }

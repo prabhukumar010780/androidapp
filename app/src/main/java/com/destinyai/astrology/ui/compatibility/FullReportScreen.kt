@@ -70,6 +70,7 @@ import java.io.OutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.ui.platform.testTag
 
 internal data class ReportSection(val emoji: String, val title: String, val content: String)
 
@@ -245,7 +246,7 @@ fun FullReportScreen(
                             .background(NavySurface)
                             .border(1.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(Radius.button))
                             .clickable(onClick = { shareWithImage() })
-                            .semantics { contentDescription = "compat_share_report_row" }
+                            .testTag("compat_share_report_row")
                             .padding(horizontal = 16.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -263,7 +264,7 @@ fun FullReportScreen(
                             .background(NavySurface)
                             .border(1.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(Radius.button))
                             .clickable(onClick = { savePdfToFiles() })
-                            .semantics { contentDescription = "compat_save_pdf_row" }
+                            .testTag("compat_save_pdf_row")
                             .padding(horizontal = 16.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {

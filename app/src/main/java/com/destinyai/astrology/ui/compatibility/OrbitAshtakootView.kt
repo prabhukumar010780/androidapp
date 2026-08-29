@@ -70,6 +70,7 @@ import com.destinyai.astrology.ui.theme.TouchMin
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import androidx.compose.ui.platform.testTag
 
 // Canonical ordering for the 8 ashtakoot bubbles — mirrors iOS
 // OrbitAshtakootView.orbitItems which iterates a fixed order array and uses
@@ -192,7 +193,7 @@ fun OrbitAshtakootView(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .semantics { contentDescription = "orbit_ashtakoot_view" },
+            .testTag("orbit_ashtakoot_view"),
         contentAlignment = Alignment.Center,
     ) {
         // Responsive orbit: derive the radius from the available width so the
@@ -687,7 +688,7 @@ private fun OrbitTooltipCard(
                 onClick = onDismiss,
                 modifier = Modifier
                     .size(TouchMin) // 48.dp — compliant tap target; glyph stays 16.dp below
-                    .semantics { contentDescription = "orbit_tooltip_close" },
+                    .testTag("orbit_tooltip_close"),
             ) {
                 Icon(
                     imageVector = Icons.Filled.Close,
@@ -749,7 +750,7 @@ private fun OrbitTooltipCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(4.dp)
-                .semantics { contentDescription = "orbit_tooltip_classical_cta" },
+                .testTag("orbit_tooltip_classical_cta"),
         ) {
             Text(
                 text = stringResource(R.string.see_classical_analysis),

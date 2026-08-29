@@ -37,6 +37,7 @@ import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
 import com.destinyai.astrology.ui.theme.Spacing
+import androidx.compose.ui.platform.testTag
 
 /**
  * Mirrors iOS PartnerPickerSheet.swift — filters saved partners by gender,
@@ -165,7 +166,7 @@ fun PartnerPickerSheet(
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(NavySurface)
                                 .border(0.5.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
-                                .semantics { contentDescription = "compat_saved_partner_row" }
+                                .testTag("compat_saved_partner_row")
                                 .clickable {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     viewModel.selectSavedPartner(partner)

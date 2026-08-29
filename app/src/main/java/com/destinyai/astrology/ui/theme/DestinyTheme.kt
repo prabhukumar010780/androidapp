@@ -81,6 +81,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.util.Locale
 import java.time.format.TextStyle as JavaTextStyle
+import androidx.compose.ui.platform.testTag
 
 val Gold = Color(0xFFD4AF37)
 val GoldDim = Color(0xFF8A7638)
@@ -767,7 +768,7 @@ fun PremiumWheelPicker(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxSize()
-                            .semantics { contentDescription = "premium_wheel_picker_component" },
+                            .testTag("premium_wheel_picker_component"),
                     ) {
                         items(centerOffset) { Spacer(Modifier.height(rowHeight)) }
 
@@ -1077,7 +1078,7 @@ fun DatePickerSheet(
                     .padding(end = 20.dp, top = 20.dp)
                     .heightIn(min = TouchMin)
                     .widthIn(min = TouchMin)
-                    .semantics { contentDescription = "date_picker_done_button" },
+                    .testTag("date_picker_done_button"),
             ) {
                 Text(
                     text = resolvedDoneLabel,

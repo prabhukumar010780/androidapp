@@ -74,9 +74,9 @@ fun ChartsScreen(
     }
 
     CosmicBackground {
-        Box(modifier = Modifier.fillMaxSize().semantics(mergeDescendants = false) { contentDescription = "charts_screen" }) {
+        Box(modifier = Modifier.fillMaxSize().testTag("charts_screen")) {
         Column(
-            modifier = Modifier.fillMaxSize().semantics(mergeDescendants = false) { contentDescription = "chart_screen" },
+            modifier = Modifier.fillMaxSize().testTag("chart_screen"),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // Navigation bar
@@ -92,7 +92,7 @@ fun ChartsScreen(
                         haptic.light()
                         onBack()
                     },
-                    modifier = Modifier.testTag("charts_back_button").semantics { contentDescription = "charts_close_button" },
+                    modifier = Modifier.testTag("charts_back_button").testTag("charts_close_button"),
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
@@ -257,7 +257,7 @@ fun ChartsScreen(
                                 fontSize = AppType.sectionHeader,
                                 lineHeight = AppType.sectionHeaderLh,
                                 color = CreamText,
-                                modifier = Modifier.semantics { contentDescription = "chart_tab_planets" },
+                                modifier = Modifier.testTag("chart_tab_planets"),
                             )
                             planetOrder.forEach { name ->
                                 val pData = chart.planets[name]
@@ -344,7 +344,7 @@ fun PremiumPlanetRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .semantics { contentDescription = "planet_position_row" }
+            .testTag("planet_position_row")
             .clip(RoundedCornerShape(Radius.card))
             .background(
                 androidx.compose.ui.graphics.Brush.linearGradient(

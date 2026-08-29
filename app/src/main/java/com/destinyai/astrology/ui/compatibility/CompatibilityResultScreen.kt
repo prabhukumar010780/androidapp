@@ -115,6 +115,7 @@ import java.util.Date
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import androidx.compose.ui.platform.testTag
 
 @Composable
 fun CompatibilityResultScreen(
@@ -483,7 +484,7 @@ private fun ResultHeader(
         if (onHistoryTap != null) {
             IconButton(
                 onClick = onHistoryTap,
-                modifier = Modifier.semantics { contentDescription = "compat_history_button" },
+                modifier = Modifier.testTag("compat_history_button"),
             ) {
                 Icon(
                     Icons.Filled.History,
@@ -743,7 +744,7 @@ fun RecommendationBanner(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = CreamText,
-                modifier = Modifier.semantics { contentDescription = "compat_result_score" },
+                modifier = Modifier.testTag("compat_result_score"),
             )
         }
 
@@ -1212,7 +1213,7 @@ fun AskDestinyDialog(
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color(0xFFC53030).copy(alpha = 0.85f))
                         .clickable { viewModel.dismissFollowUpError() }
-                        .semantics { contentDescription = "compat_error_banner" }
+                        .testTag("compat_error_banner")
                         .padding(horizontal = 12.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -1255,7 +1256,7 @@ fun AskDestinyDialog(
                     enabled = !isLoading,
                     modifier = Modifier
                         .size(TouchMin)
-                        .semantics { contentDescription = "compat_response_length_button" },
+                        .testTag("compat_response_length_button"),
                 ) {
                     Icon(
                         Icons.Filled.Tune,
@@ -1301,7 +1302,7 @@ fun AskDestinyDialog(
                         .size(TouchMin)
                         .clip(CircleShape)
                         .background(if (inputText.isNotBlank() && !isLoading) Gold else NavyVariant)
-                        .semantics { contentDescription = "compat_send_button" },
+                        .testTag("compat_send_button"),
                 ) {
                     Text(
                         "↑",
@@ -1361,7 +1362,7 @@ private fun CompatCosmicProgressView(stepResId: Int) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 4.dp, vertical = 4.dp)
-            .semantics { contentDescription = "compat_cosmic_progress" },
+            .testTag("compat_cosmic_progress"),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -1418,7 +1419,7 @@ private fun CompatResponseLengthSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 12.dp)
-                .semantics { contentDescription = "compat_response_length_sheet" },
+                .testTag("compat_response_length_sheet"),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
@@ -1659,7 +1660,7 @@ private fun AskChatBubble(
                         },
                         modifier = Modifier
                             .size(TouchMin)
-                            .semantics { contentDescription = "compat_copy_button" },
+                            .testTag("compat_copy_button"),
                     ) {
                         Icon(
                             imageVector = if (copied) Icons.Filled.Check else Icons.Filled.ContentCopy,
@@ -1674,7 +1675,7 @@ private fun AskChatBubble(
                 }
                 if (showRating) {
                     Row(
-                        modifier = Modifier.semantics { contentDescription = "compat_inline_rating" },
+                        modifier = Modifier.testTag("compat_inline_rating"),
                         horizontalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
                         for (star in 1..5) {

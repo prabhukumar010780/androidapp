@@ -14,7 +14,7 @@ from selenium.webdriver.support import expected_conditions as EC
 
 def _wait(driver, aid, timeout=20):
     WebDriverWait(driver, timeout).until(
-        EC.presence_of_element_located((AppiumBy.ACCESSIBILITY_ID, aid))
+        EC.presence_of_element_located((AppiumBy.ID, f"com.destinyai.astrology:id/{aid}"))
     )
 
 

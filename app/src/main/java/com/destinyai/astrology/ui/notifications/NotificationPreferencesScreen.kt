@@ -332,7 +332,7 @@ fun NotificationPreferencesScreen(
                             enabled = !state.isLoading,
                             modifier = Modifier
                                 .testTag("notif_save_button")
-                                .semantics { contentDescription = "notif_save_button" },
+                                .testTag("notif_save_button"),
                         ) {
                             Text(
                                 text = stringResource(R.string.save_action),
@@ -351,7 +351,7 @@ fun NotificationPreferencesScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .testTag("notif_initial_loader")
-                            .semantics { contentDescription = "notif_initial_loader" },
+                            .testTag("notif_initial_loader"),
                         contentAlignment = Alignment.Center,
                     ) {
                         CircularProgressIndicator(color = Gold, strokeWidth = 2.dp)
@@ -495,7 +495,7 @@ fun NotificationPreferencesScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(vertical = 20.dp)
-                                    .semantics { contentDescription = "notif_empty_alerts" },
+                                    .testTag("notif_empty_alerts"),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {

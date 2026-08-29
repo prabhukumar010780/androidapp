@@ -94,7 +94,7 @@ fun OnboardingScreen(
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .testTag("onboarding_screen")
-                .semantics(mergeDescendants = false) { contentDescription = "onboarding_screen" },
+                .testTag("onboarding_screen"),
         ) {
             // Skip button — iOS parity (OnboardingView.swift:43-61): pinned to leading edge.
             if (!isLastSlide) {
@@ -111,7 +111,7 @@ fun OnboardingScreen(
                         .align(Alignment.TopStart)
                         .padding(top = 16.dp, start = 24.dp)
                         .testTag("onboarding_skip")
-                        .semantics { contentDescription = "onboarding_skip" },
+                        .testTag("onboarding_skip"),
                 ) {
                     Text(
                         text = stringResource(R.string.skip),
@@ -200,7 +200,7 @@ fun OnboardingScreen(
                         else stringResource(R.string.action_continue),
                         modifier = Modifier
                             .testTag("onboarding_continue")
-                            .semantics { contentDescription = "onboarding_continue" },
+                            .testTag("onboarding_continue"),
                         onClick = {
                             scope.launch {
                                 if (isLastSlide) {
@@ -249,7 +249,7 @@ private fun OnboardingPage(slide: OnboardingSlide, modifier: Modifier = Modifier
         // fallback tinted with the premium gold gradient.
         SlideIcon(
             slide = slide,
-            modifier = Modifier.semantics { contentDescription = "onboarding_slide_icon" },
+            modifier = Modifier.testTag("onboarding_slide_icon"),
         )
 
         Spacer(Modifier.height(32.dp))

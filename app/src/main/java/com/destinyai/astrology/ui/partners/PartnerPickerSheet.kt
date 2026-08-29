@@ -179,7 +179,7 @@ fun PartnerPickerSheet(
                     .navigationBarsPadding()
                     .padding(horizontal = 20.dp)
                     .padding(bottom = 40.dp)
-                    .semantics { contentDescription = "partner_picker_sheet" },
+                    .testTag("partner_picker_sheet"),
             ) {
             // iOS parity (PartnerPickerSheet.swift:91-97): top-bar Cancel button so users
             // have a visible text affordance to dismiss instead of relying on drag/scrim.
@@ -274,7 +274,7 @@ fun PartnerPickerSheet(
                         .fillMaxWidth()
                         .padding(vertical = 24.dp)
                         .testTag("partner_picker_empty")
-                        .semantics { contentDescription = "partner_picker_empty_state" },
+                        .testTag("partner_picker_empty_state"),
                     contentAlignment = Alignment.Center,
                 ) {
                     Column(
@@ -327,9 +327,7 @@ fun PartnerPickerSheet(
                                 }
                                 .padding(horizontal = Spacing.md, vertical = 12.dp)
                                 .testTag("partner_picker_row_${partner.id}")
-                                .semantics {
-                                    contentDescription = "partner_picker_row"
-                                },
+                                .testTag("partner_picker_row"),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(14.dp),
                         ) {

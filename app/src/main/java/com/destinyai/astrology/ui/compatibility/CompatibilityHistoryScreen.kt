@@ -55,6 +55,7 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
+import androidx.compose.ui.platform.testTag
 
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -146,7 +147,7 @@ fun CompatibilityHistoryScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .semantics(mergeDescendants = true) { contentDescription = "history_screen" },
+                .testTag("history_screen"),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // Delete confirmation dialog
@@ -449,7 +450,7 @@ private fun HistoryItemRow(
                 onLongClick = { showContextMenu = true },
             )
             .padding(horizontal = Spacing.md, vertical = Spacing.md)
-            .semantics { contentDescription = "history_item_row" },
+            .testTag("history_item_row"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // Pin indicator — iOS parity: leading, before the score badge (size 10, gold).
@@ -655,7 +656,7 @@ private fun GroupHistoryRow(
                 onLongClick = { showContextMenu = true },
             )
             .padding(horizontal = Spacing.md, vertical = Spacing.md)
-            .semantics { contentDescription = "history_group_row" },
+            .testTag("history_group_row"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // R2-CM16: Long-press context menu (Pin/Unpin + Delete) — group parity
@@ -669,7 +670,7 @@ private fun GroupHistoryRow(
                     showContextMenu = false
                     onPin()
                 },
-                modifier = Modifier.semantics { contentDescription = "history_group_pin_action" },
+                modifier = Modifier.testTag("history_group_pin_action"),
             )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.delete_action), color = Color(0xFFFC8181)) },
@@ -677,7 +678,7 @@ private fun GroupHistoryRow(
                     showContextMenu = false
                     onDeleteRequest()
                 },
-                modifier = Modifier.semantics { contentDescription = "history_group_delete_action" },
+                modifier = Modifier.testTag("history_group_delete_action"),
             )
         }
         // iOS parity: 3-person icon with stacked count inside the circle (no badge overlay).

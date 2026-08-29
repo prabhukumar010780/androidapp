@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.GoldChampagne
 import com.destinyai.astrology.ui.theme.NavyDeep
+import androidx.compose.ui.platform.testTag
 
 @Composable
 fun FloatingContextButton(
@@ -49,7 +50,7 @@ fun FloatingContextButton(
     )
 
     Box(
-        modifier = modifier.semantics { contentDescription = "ask_destiny_button" },
+        modifier = modifier.testTag("ask_destiny_button"),
         contentAlignment = Alignment.Center,
     ) {
         // Glow aura behind button (blurred halo to match iOS)

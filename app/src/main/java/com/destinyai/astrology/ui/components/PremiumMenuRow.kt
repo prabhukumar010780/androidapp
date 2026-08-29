@@ -50,6 +50,7 @@ import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.TextTertiary
+import androidx.compose.ui.platform.testTag
 
 /**
  * iOS parity (SharedThemeComponents.swift:442-469 PremiumMenuRow).
@@ -75,7 +76,7 @@ fun PremiumMenuRow(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .semantics { contentDescription = "premium_menu_row" }
+            .testTag("premium_menu_row")
             .clickable {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 if (onClick != null) {

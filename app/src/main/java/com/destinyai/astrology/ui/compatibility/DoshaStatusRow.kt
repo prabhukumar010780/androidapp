@@ -19,7 +19,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -43,7 +46,11 @@ fun DoshaStatusRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .semantics { contentDescription = doshaRowContentDescription(title) }
+            .testTag(doshaRowContentDescription(title))
+            .semantics {
+                contentDescription = "$title, ${statusText.uppercase()}"
+                role = Role.Button
+            }
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White.copy(alpha = 0.03f))
             .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(16.dp))

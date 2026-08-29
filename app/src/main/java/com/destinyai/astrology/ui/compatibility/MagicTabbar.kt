@@ -26,6 +26,9 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -36,6 +39,7 @@ import com.destinyai.astrology.R
 import com.destinyai.astrology.domain.model.DestinyTileType
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.Gold
+import androidx.compose.ui.platform.testTag
 
 /**
  * Weighted-Row tab bar — mirrors iOS Compatibility/Components/MagicTabbar.swift.
@@ -64,12 +68,15 @@ internal fun MagicTabbar(
             .background(Color.White.copy(alpha = 0.03f))
             .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(18.dp))
             .padding(horizontal = 8.dp, vertical = 4.dp)
-            .semantics { contentDescription = "magic_tabbar" },
+            .testTag("magic_tabbar"),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         tabs.forEach { tab ->
             val isSelected = selectedTab == tab
+            // Hoist out of semantics{} — stringResource is @Composable and
+            // cannot be called from the non-composable semantics lambda.
+            val tabLabel = stringResource(id = tab.labelResource())
             val backgroundColor by animateColorAsState(
                 targetValue = if (isSelected) Color.White.copy(alpha = 0.07f) else Color.Transparent,
                 animationSpec = tween(durationMillis = 300),
@@ -101,7 +108,12 @@ internal fun MagicTabbar(
                         onSelect(tab)
                     }
                     .padding(top = 8.dp, bottom = 6.dp, start = 2.dp, end = 2.dp)
-                    .semantics { contentDescription = tab.semanticsId() },
+                    .testTag(tab.semanticsId())
+                    .semantics {
+                        role = Role.Tab
+                        this.selected = isSelected
+                        contentDescription = tabLabel
+                    },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
@@ -219,7 +231,7 @@ internal fun ProfileSwitcher(
             .background(Color.White.copy(alpha = 0.05f))
             .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(24.dp))
             .padding(4.dp)
-            .semantics { contentDescription = "profile_switcher" },
+            .testTag("profile_switcher"),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

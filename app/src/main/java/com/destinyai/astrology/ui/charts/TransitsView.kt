@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.destinyai.astrology.R
 import com.destinyai.astrology.ui.theme.Gold
+import androidx.compose.ui.platform.testTag
 
 // R2-C8: map sign abbreviations to string resource IDs
 fun getSignNameRes(sign: String): Int = when (sign) {
@@ -58,7 +59,7 @@ fun TransitsView(transitResponse: TransitResponse?) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .semantics { contentDescription = "chart_tab_transits" }
+            .testTag("chart_tab_transits")
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White)
             .padding(20.dp),

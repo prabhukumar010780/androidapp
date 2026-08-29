@@ -70,6 +70,7 @@ import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.platform.testTag
 
 private val SuccessColor = Color(0xFF48BB78)
 private val ErrorColor = Color(0xFFFC8181)
@@ -256,7 +257,7 @@ fun ComparisonOverviewView(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .semantics(mergeDescendants = false) { contentDescription = "comparison_overview_screen" },
+                .testTag("comparison_overview_screen"),
         ) {
             // Header
             ComparisonHeader(userName = userName, onBack = onBack, onShare = sharePdfWithText)
@@ -373,7 +374,7 @@ fun ComparisonOverviewView(
                         .border(1.dp, Gold.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
                         .clickable(enabled = !isGeneratingPDF, onClick = saveToFiles)
                         .padding(horizontal = 16.dp, vertical = 14.dp)
-                        .semantics { contentDescription = "comparison_save_pdf_button" },
+                        .testTag("comparison_save_pdf_button"),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
@@ -446,7 +447,7 @@ private fun ComparisonHeader(userName: String, onBack: () -> Unit, onShare: () -
                     contentDescription = null,
                     modifier = Modifier
                         .size(32.dp)
-                        .semantics { contentDescription = "comparison_header_icon" },
+                        .testTag("comparison_header_icon"),
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(

@@ -47,7 +47,7 @@ class TestChat:
         screens.chat.tap("send_button")
         # loading_indicator should appear during streaming
         try:
-            driver.find_element(AppiumBy.ACCESSIBILITY_ID, "loading_indicator")
+            driver.find_element(AppiumBy.ID, "com.destinyai.astrology:id/loading_indicator")
         except Exception:
             pass  # may have already disappeared — timing dependent
 

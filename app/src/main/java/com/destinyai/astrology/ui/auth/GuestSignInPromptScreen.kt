@@ -276,7 +276,7 @@ fun GuestSignInPromptScreen(
                         translationY = contentOffsetY
                     }
                     .testTag("guest_prompt_google_button")
-                    .semantics { contentDescription = "guest_prompt_google_button" },
+                    .testTag("guest_prompt_google_button"),
                 shape = RoundedCornerShape(Radius.authButton),
                 enabled = !isSigningIn,
                 border = ButtonDefaults.outlinedButtonBorder(enabled = !isSigningIn).copy(
@@ -337,7 +337,7 @@ fun GuestSignInPromptScreen(
                             translationY = contentOffsetY
                         }
                         .testTag("guest_prompt_apple_support_button")
-                        .semantics { contentDescription = "guest_prompt_apple_support_button" },
+                        .testTag("guest_prompt_apple_support_button"),
                     shape = RoundedCornerShape(Radius.authButton),
                     enabled = !isSigningIn,
                     border = ButtonDefaults.outlinedButtonBorder(enabled = !isSigningIn).copy(
@@ -373,7 +373,7 @@ fun GuestSignInPromptScreen(
                     modifier = Modifier
                         .graphicsLayer { alpha = contentOpacity }
                         .testTag("guest_prompt_back")
-                        .semantics { contentDescription = "guest_prompt_back" },
+                        .testTag("guest_prompt_back"),
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,

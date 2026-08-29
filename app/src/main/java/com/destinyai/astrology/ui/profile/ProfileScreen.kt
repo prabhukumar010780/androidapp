@@ -356,7 +356,7 @@ fun ProfileScreen(
                         .fillMaxSize()
                         // E2E: Appium accessibility-id root marker. mergeDescendants=false
                         // so child rows/inputs stay individually addressable.
-                        .semantics(mergeDescendants = false) { contentDescription = "profile_screen" },
+                        .testTag("profile_screen"),
                     // Center the capped content on tablets/foldables; no-op on phones.
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {

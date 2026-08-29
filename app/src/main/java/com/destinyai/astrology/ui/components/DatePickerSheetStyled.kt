@@ -41,7 +41,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Velocity
@@ -148,6 +155,7 @@ fun DatePickerSheetStyled(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier
                         .clip(RoundedCornerShape(Radius.button))
+                        .semantics { role = Role.Button }
                         .clickable {
                             onDateSelected(selectedYear, selectedMonth, selectedDay)
                         }
@@ -200,6 +208,7 @@ internal fun WheelColumn(
     onSelectionChanged: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
     val rowHeight = 44.dp
     val visibleRows = 7
     val halfRows = visibleRows / 2
@@ -247,7 +256,30 @@ internal fun WheelColumn(
         }
     }
 
-    Box(modifier = modifier.height(rowHeight * visibleRows), contentAlignment = Alignment.Center) {
+    Box(
+        modifier = modifier
+            .height(rowHeight * visibleRows)
+            .semantics {
+                stateDescription = items.getOrNull(centeredIndex) ?: ""
+                customActions = listOf(
+                    CustomAccessibilityAction(
+                        label = context.getString(R.string.a11y_picker_next_value),
+                        action = {
+                            val next = (centeredIndex + 1).coerceAtMost(items.lastIndex)
+                            if (next != centeredIndex) { onSelectionChanged(next); true } else false
+                        }
+                    ),
+                    CustomAccessibilityAction(
+                        label = context.getString(R.string.a11y_picker_prev_value),
+                        action = {
+                            val prev = (centeredIndex - 1).coerceAtLeast(0)
+                            if (prev != centeredIndex) { onSelectionChanged(prev); true } else false
+                        }
+                    ),
+                )
+            },
+        contentAlignment = Alignment.Center,
+    ) {
         // Gold tint on the centre row — no hairline dividers.
         Box(
             modifier = Modifier

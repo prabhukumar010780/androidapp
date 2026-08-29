@@ -219,7 +219,7 @@ fun ProfileSwitcherSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(120.dp)
-                        .semantics { contentDescription = "profile_switcher_loading" },
+                        .testTag("profile_switcher_loading"),
                     contentAlignment = Alignment.Center,
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -309,7 +309,7 @@ fun ProfileSwitcherSheet(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 20.dp)
-                            .semantics { contentDescription = "profile_switcher_empty_state" },
+                            .testTag("profile_switcher_empty_state"),
                         contentAlignment = Alignment.Center,
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -424,7 +424,7 @@ fun ProfileSwitcherSheet(
                         }
                         .padding(horizontal = 16.dp, vertical = 14.dp)
                         .testTag("profile_switcher_manage_link")
-                        .semantics { contentDescription = "manage_birth_charts_link" },
+                        .testTag("manage_birth_charts_link"),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
@@ -587,7 +587,7 @@ private fun ActiveProfileCard(profile: ProfileEntry) {
             .background(NavySurface)
             .border(1.dp, Gold.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
             .padding(20.dp)
-            .semantics { contentDescription = "active_profile_card" },
+            .testTag("active_profile_card"),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {

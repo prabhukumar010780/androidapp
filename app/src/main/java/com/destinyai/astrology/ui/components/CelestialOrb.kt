@@ -47,6 +47,7 @@ import com.destinyai.astrology.ui.theme.AppTheme
 import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.GoldLight
+import androidx.compose.ui.platform.testTag
 
 /**
  * Reusable celestial glass orb representing a life area.
@@ -259,7 +260,7 @@ fun SparkleDecoration(
         tint = AppTheme.colors.goldLight.copy(alpha = 0.80f),
         modifier = modifier
             .size(size)
-            .semantics { contentDescription = "sparkle_decoration" },
+            .testTag("sparkle_decoration"),
     )
 }
 

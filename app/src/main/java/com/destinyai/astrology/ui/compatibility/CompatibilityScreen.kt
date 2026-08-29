@@ -82,6 +82,7 @@ import com.destinyai.astrology.ui.theme.SuccessGreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import androidx.compose.ui.platform.testTag
 
 @Composable
 fun CompatibilityScreen(
@@ -306,7 +307,7 @@ fun CompatibilityScreen(
             Column(modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .semantics(mergeDescendants = true) { contentDescription = "compat_screen" },
+                .testTag("compat_screen"),
                 horizontalAlignment = Alignment.CenterHorizontally) {
             CompatibilityHeader(
                 onNavigateToPartners = onNavigateToPartners,
@@ -455,7 +456,7 @@ fun CompatibilityScreen(
                             isPlaceholder = state.partnerDob.isEmpty(),
                             modifier = Modifier
                                 .weight(1f)
-                                .semantics { contentDescription = "compat_person2_dob" },
+                                .testTag("compat_person2_dob"),
                             onClick = { viewModel.setShowDatePicker(true) },
                         )
                         PickerField(
@@ -578,7 +579,7 @@ fun CompatibilityScreen(
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .semantics { contentDescription = "compat_save_partner_checkbox" }
+                            .testTag("compat_save_partner_checkbox")
                             .let { m ->
                                 if (savePartnerEnabled) {
                                     m.clickable {
@@ -720,7 +721,7 @@ fun CompatibilityScreen(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(top = 72.dp)
-                    .semantics { contentDescription = "compat_history_loaded_toast" },
+                    .testTag("compat_history_loaded_toast"),
             ) {
                 Row(
                     modifier = Modifier
@@ -896,7 +897,7 @@ private fun CompatibilityHeader(
                 .clip(CircleShape)
                 .border(1.dp, Gold.copy(alpha = 0.3f), CircleShape)
                 .clickable(onClick = onHistory)
-                .semantics { contentDescription = "compat_history_button" },
+                .testTag("compat_history_button"),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -921,7 +922,7 @@ private fun CompatibilityHeader(
                 .clip(CircleShape)
                 .border(1.dp, Gold.copy(alpha = 0.3f), CircleShape)
                 .clickable(onClick = onReset)
-                .semantics { contentDescription = "compat_reset_button" },
+                .testTag("compat_reset_button"),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -1186,7 +1187,7 @@ private fun PartnerTabStrip(
                         Gold.copy(alpha = if (canAddMore) 0.4f else 0.2f),
                         RoundedCornerShape(8.dp),
                     )
-                    .semantics { contentDescription = "compat_add_partner" },
+                    .testTag("compat_add_partner"),
                 contentAlignment = Alignment.Center,
             ) {
                 IconButton(

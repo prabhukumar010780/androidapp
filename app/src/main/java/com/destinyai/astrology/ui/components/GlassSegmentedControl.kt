@@ -36,6 +36,7 @@ import com.destinyai.astrology.ui.theme.AppTheme
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.TouchMin
+import androidx.compose.ui.platform.testTag
 
 /**
  * Segmented control with an animated gold-tinted glass background and a
@@ -66,7 +67,7 @@ fun GlassSegmentedControl(
     Box(
         modifier = modifier
             .height(height)
-            .semantics { contentDescription = "glass_segmented_control" }
+            .testTag("glass_segmented_control")
             .clip(RoundedCornerShape(cornerRadius))
             .background(
                 color = Color.Black.copy(alpha = 0.3f),

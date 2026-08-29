@@ -129,7 +129,7 @@ fun HistoryScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .testTag("history_screen")
-                .semantics(mergeDescendants = false) { contentDescription = "history_screen" },
+                .testTag("history_screen"),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // Header
@@ -167,7 +167,7 @@ fun HistoryScreen(
                     },
                     modifier = Modifier
                         .testTag("history_done_button")
-                        .semantics { contentDescription = "history_done_button" },
+                        .testTag("history_done_button"),
                 ) {
                     Text(
                         text = stringResource(R.string.done_action),
@@ -284,7 +284,7 @@ fun HistoryScreen(
                 hostState = snackbarHostState,
                 modifier = Modifier
                     .testTag("history_error_snackbar")
-                    .semantics { contentDescription = "history_error_snackbar" },
+                    .testTag("history_error_snackbar"),
             )
         }
     }
@@ -694,7 +694,7 @@ private fun ChatThreadRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .semantics { contentDescription = "history_thread_item" }
+                .testTag("history_thread_item")
                 .clip(RoundedCornerShape(16.dp))
                 .background(NavySurface)
                 // Mirrors iOS HistoryView.swift:297-300 — gold-border for pinned rows.

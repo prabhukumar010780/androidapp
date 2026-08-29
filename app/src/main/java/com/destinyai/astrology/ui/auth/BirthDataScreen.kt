@@ -57,6 +57,8 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -310,7 +312,8 @@ fun BirthDataScreen(
                         fontSize = 12.sp,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 4.dp, start = 4.dp),
+                            .padding(top = 4.dp, start = 4.dp)
+                            .semantics { liveRegion = LiveRegionMode.Polite },
                     )
                 }
 
@@ -405,7 +408,9 @@ fun BirthDataScreen(
                         color = MaterialTheme.colorScheme.error,
                         fontSize = AppType.secondary,
                         lineHeight = AppType.secondaryLh,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics { liveRegion = LiveRegionMode.Polite },
                     )
                 }
 
@@ -476,7 +481,7 @@ fun BirthDataScreen(
                         .fillMaxWidth()
                         .height(54.dp)
                         .testTag("birth_data_continue")
-                        .semantics { contentDescription = "birth_data_continue" },
+                        .testTag("birth_data_continue"),
                 )
 
                 Spacer(Modifier.height(24.dp))
@@ -964,7 +969,7 @@ private fun LocationSearchSheet(
                     modifier = Modifier
                         .align(Alignment.CenterStart)
                         .testTag("location_search_cancel")
-                        .semantics { contentDescription = "location_search_cancel" },
+                        .testTag("location_search_cancel"),
                 ) {
                     Text(
                         text = stringResource(R.string.cancel_action),

@@ -171,7 +171,7 @@ fun PartnersScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .semantics(mergeDescendants = false) { contentDescription = "partners_screen" },
+                .testTag("partners_screen"),
         ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -214,7 +214,7 @@ fun PartnersScreen(
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                     modifier = Modifier
                         .heightIn(min = TouchMin)
-                        .semantics { contentDescription = "add_partner_button" },
+                        .testTag("add_partner_button"),
                 ) {
                     Text(
                         stringResource(R.string.partner_form_add_button),
@@ -234,7 +234,7 @@ fun PartnersScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier
-                            .semantics { contentDescription = "partners_loading_indicator" },
+                            .testTag("partners_loading_indicator"),
                     ) {
                         CircularProgressIndicator(color = Gold, modifier = Modifier.size(28.dp))
                         Text(
@@ -330,7 +330,7 @@ fun PartnersScreen(
                                     if (partner.isProtected) viewModel.showProtectionAlert(partner)
                                     else viewModel.beginEditPartner(partner)
                                 }
-                                .semantics { contentDescription = "partner_list_item" }
+                                .testTag("partner_list_item")
                                 .padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -1023,7 +1023,7 @@ internal fun PartnerFormSheet(
                 label = stringResource(R.string.partner_form_name_label),
                 modifier = Modifier
                     .focusRequester(nameFocusRequester)
-                    .semantics { contentDescription = "partner_form_name_field" },
+                    .testTag("partner_form_name_field"),
             )
             // iOS parity (PartnerFormView.swift:120-128): tappable selection row that
             // opens a ModalBottomSheet hosting the four gender options (Issues 2, 3).
@@ -1165,7 +1165,7 @@ internal fun PartnerFormSheet(
                         .weight(1f)
                         .heightIn(min = TouchMin)
                         .testTag("partner_form_save")
-                        .semantics { contentDescription = "partner_form_save_button" },
+                        .testTag("partner_form_save_button"),
                     shape = RoundedCornerShape(10.dp),
                     contentPadding = PaddingValues(horizontal = 0.dp),
                     // iOS parity (PartnerFormView.swift:252-256 ShimmerButton): leading
@@ -1405,7 +1405,7 @@ private fun GenderModalSheet(
                 .navigationBarsPadding()
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 32.dp)
-                .semantics { contentDescription = "partner_form_gender_sheet" },
+                .testTag("partner_form_gender_sheet"),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(

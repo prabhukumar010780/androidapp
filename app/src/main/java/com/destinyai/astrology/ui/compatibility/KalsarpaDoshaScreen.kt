@@ -54,6 +54,7 @@ import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.TextTertiary
 import com.destinyai.astrology.ui.theme.adaptiveContentWidth
 import kotlin.random.Random
+import androidx.compose.ui.platform.testTag
 
 private enum class KalsarpaScenario { NONE, ONE_BOY, ONE_GIRL, BOTH }
 
@@ -94,7 +95,7 @@ fun KalsarpaDoshaScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .semantics(mergeDescendants = false) { contentDescription = "kalsarpa_dosha_screen" },
+                .testTag("kalsarpa_dosha_screen"),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // Issue 2: render localized title alongside the back arrow (iOS navigationTitle parity).
@@ -102,12 +103,12 @@ fun KalsarpaDoshaScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 4.dp, vertical = 8.dp)
-                    .semantics { contentDescription = "kalsarpa_top_bar" },
+                    .testTag("kalsarpa_top_bar"),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(
                     onClick = onBack,
-                    modifier = Modifier.semantics { contentDescription = "kalsarpa_back_button" },
+                    modifier = Modifier.testTag("kalsarpa_back_button"),
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
@@ -120,7 +121,7 @@ fun KalsarpaDoshaScreen(
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
                     color = CreamText,
-                    modifier = Modifier.semantics { contentDescription = "kalsarpa_analysis_title" },
+                    modifier = Modifier.testTag("kalsarpa_analysis_title"),
                 )
             }
 
@@ -197,7 +198,7 @@ private fun StarFieldOverlay() {
     Canvas(
         modifier = Modifier
             .fillMaxSize()
-            .semantics { contentDescription = "kalsarpa_star_field" },
+            .testTag("kalsarpa_star_field"),
     ) {
         stars.forEach { (xRatio, yRatio, sizeAlpha) ->
             val (radius, alpha) = sizeAlpha
@@ -218,7 +219,7 @@ private fun KalsarpaLoadingView() {
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = Spacing.xl, vertical = Spacing.xxl)
-            .semantics { contentDescription = "kalsarpa_loading_view" },
+            .testTag("kalsarpa_loading_view"),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -238,7 +239,7 @@ private fun KalsarpaErrorView(message: String) {
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = Spacing.xl, vertical = Spacing.xxl)
-            .semantics { contentDescription = "kalsarpa_error_view" },
+            .testTag("kalsarpa_error_view"),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -275,7 +276,7 @@ private fun KalsarpaNoDataView() {
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = Spacing.xl, vertical = Spacing.xxl)
-            .semantics { contentDescription = "kalsarpa_no_data_view" },
+            .testTag("kalsarpa_no_data_view"),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

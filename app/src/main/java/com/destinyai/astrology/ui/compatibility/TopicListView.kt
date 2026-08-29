@@ -46,6 +46,7 @@ import com.destinyai.astrology.ui.theme.NavyDeep
 import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.util.DoshaDescriptions
+import androidx.compose.ui.platform.testTag
 
 private val SuccessGreen = Color(0xFF48BB78)
 private val ErrorRed = Color(0xFFFF5252)
@@ -97,7 +98,7 @@ fun TopicListView(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 12.dp)
-                    .semantics { contentDescription = "topic_header" },
+                    .testTag("topic_header"),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -168,7 +169,7 @@ fun TopicListView(
                     color = tile.accentColor,
                     modifier = Modifier
                         .background(NavyDeep)
-                        .semantics { contentDescription = "active_section_header" },
+                        .testTag("active_section_header"),
                 )
             }
             items(activeItems, key = { "active_${it.id}" }) { yoga ->
@@ -198,7 +199,7 @@ fun TopicListView(
                     color = AppTheme.colors.textTertiary,
                     modifier = Modifier
                         .background(NavyDeep)
-                        .semantics { contentDescription = "inactive_section_header" },
+                        .testTag("inactive_section_header"),
                 )
             }
             items(blockedItems, key = { "blocked_${it.id}" }) { yoga ->
@@ -224,7 +225,7 @@ fun TopicListView(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(40.dp)
-                        .semantics { contentDescription = "topic_empty_state" },
+                        .testTag("topic_empty_state"),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {

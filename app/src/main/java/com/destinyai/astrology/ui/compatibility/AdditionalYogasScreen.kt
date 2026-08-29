@@ -36,6 +36,7 @@ import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.NavySurface
+import androidx.compose.ui.platform.testTag
 
 @Composable
 fun AdditionalYogasScreen(
@@ -106,7 +107,7 @@ fun AdditionalYogasScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .semantics { contentDescription = "yoga_empty_state" },
+                        .testTag("yoga_empty_state"),
                     contentAlignment = Alignment.Center,
                 ) {
                     Column(

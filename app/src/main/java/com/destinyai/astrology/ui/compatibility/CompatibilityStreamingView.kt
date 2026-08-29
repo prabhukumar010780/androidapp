@@ -41,6 +41,7 @@ import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
 import com.destinyai.astrology.ui.theme.GoldDim
+import androidx.compose.ui.platform.testTag
 
 // Pure helpers — unit testable
 internal fun stepIsCompleted(step: AnalysisStep, current: AnalysisStep): Boolean =
@@ -73,7 +74,7 @@ fun CompatibilityStreamingView(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = 0.7f))
-                .semantics { contentDescription = "compatibility_streaming_overlay" },
+                .testTag("compatibility_streaming_overlay"),
             contentAlignment = Alignment.Center,
         ) {
             Column(
@@ -87,7 +88,7 @@ fun CompatibilityStreamingView(
                         shape = RoundedCornerShape(20.dp),
                     )
                     .heightIn(max = 460.dp)
-                    .semantics { contentDescription = "compatibility_streaming_card" },
+                    .testTag("compatibility_streaming_card"),
             ) {
                 // Header
                 Row(
@@ -244,7 +245,7 @@ private fun StreamingTextBox(text: String, modifier: Modifier = Modifier) {
             .background(AppTheme.colors.inputBackground)
             .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
             .padding(12.dp)
-            .semantics { contentDescription = "streaming_text_box" },
+            .testTag("streaming_text_box"),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             // Issue 4: vector icon replaces brain emoji.
