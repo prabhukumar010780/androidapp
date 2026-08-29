@@ -52,6 +52,7 @@ import com.destinyai.astrology.data.remote.NotificationDto
 import com.destinyai.astrology.services.HapticManager
 import com.destinyai.astrology.services.NotificationRouter
 import com.destinyai.astrology.ui.theme.adaptiveContentWidth
+import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
@@ -685,7 +686,7 @@ private fun NotificationRowItem(
                 ) {
                     Text(
                         text = chip,
-                        fontSize = 11.sp,
+                        fontSize = AppType.caption,
                         fontWeight = FontWeight.Bold,
                         color = accent,
                         modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),

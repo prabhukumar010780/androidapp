@@ -34,6 +34,7 @@ import com.destinyai.astrology.R
 import com.destinyai.astrology.data.local.prefs.AlertItem
 import com.destinyai.astrology.services.HapticManager
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
+import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
 import com.destinyai.astrology.ui.theme.Gold
@@ -195,7 +196,7 @@ fun AddEditAlertSheet(
                     Text(
                         text = stringResource(R.string.notif_char_count_format, text.length, MAX_CHARS),
                         color = CreamDim,
-                        fontSize = 11.sp,
+                        fontSize = AppType.caption,
                     )
                 },
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
@@ -212,7 +213,7 @@ fun AddEditAlertSheet(
             // Frequency picker
             Text(
                 text = stringResource(R.string.notif_frequency),
-                fontSize = 13.sp,
+                fontSize = AppType.secondary,
                 fontWeight = FontWeight.Bold,
                 color = Gold.copy(alpha = 0.7f),
             )
@@ -222,6 +223,7 @@ fun AddEditAlertSheet(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .heightIn(min = TouchMin)
                             .selectable(
                                 selected = frequency == key,
                                 onClick = {
@@ -280,7 +282,7 @@ fun AddEditAlertSheet(
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
                             text = stringResource(R.string.suggestions_label),
-                            fontSize = 13.sp,
+                            fontSize = AppType.secondary,
                             fontWeight = FontWeight.Normal,
                             color = Gold,
                         )
@@ -370,7 +372,7 @@ private fun WeekdayChipPicker(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             text = stringResource(R.string.notif_weekday_picker_label),
-            fontSize = 13.sp,
+            fontSize = AppType.secondary,
             fontWeight = FontWeight.Bold,
             color = Gold.copy(alpha = 0.7f),
         )
@@ -427,7 +429,7 @@ private fun MonthDayDropdown(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             text = stringResource(R.string.notif_monthly_picker_label),
-            fontSize = 13.sp,
+            fontSize = AppType.secondary,
             fontWeight = FontWeight.Bold,
             color = Gold.copy(alpha = 0.7f),
         )

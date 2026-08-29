@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.destinyai.astrology.R
 import com.destinyai.astrology.ui.theme.AppTheme
+import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.Gold
@@ -130,7 +131,7 @@ fun SynergyGaugeView(
                             text = "$rawScore",
                             style = MaterialTheme.typography.labelSmall,
                             color = CreamDim.copy(alpha = 0.7f),
-                            fontSize = (size.value * 0.065f).sp,
+                            fontSize = (size.value * 0.065f).coerceAtLeast(AppType.caption.value).sp,
                             textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough,
                         )
                         Text(
@@ -138,7 +139,7 @@ fun SynergyGaugeView(
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color = Gold.copy(alpha = 0.8f),
-                            fontSize = (size.value * 0.065f).sp,
+                            fontSize = (size.value * 0.065f).coerceAtLeast(AppType.caption.value).sp,
                         )
                     }
                 }
@@ -151,14 +152,14 @@ fun SynergyGaugeView(
                     },
                     style = MaterialTheme.typography.labelSmall,
                     color = Gold.copy(alpha = 0.7f),
-                    fontSize = (size.value * 0.05f).sp,
+                    fontSize = AppType.caption,
                     letterSpacing = 1.sp,
                 )
                 Text(
                     text = stringResource(R.string.score).uppercase(),
                     style = MaterialTheme.typography.labelSmall,
                     color = Gold.copy(alpha = 0.7f),
-                    fontSize = (size.value * 0.05f).sp,
+                    fontSize = AppType.caption,
                     letterSpacing = 1.sp,
                 )
             }
@@ -181,7 +182,7 @@ fun SynergyGaugeView(
                     text = stringResource(R.string.tap_orbs_hint),
                     style = MaterialTheme.typography.labelSmall.copy(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic),
                     color = CreamDim.copy(alpha = 0.8f),
-                    fontSize = 11.sp,
+                    fontSize = AppType.caption,
                 )
             }
         }

@@ -1381,7 +1381,7 @@ private fun TransitAlertCard(transit: HomeTransit, onClick: () -> Unit = {}) {
             ) {
                 Text(
                     text = transit.planet,
-                    fontSize = 9.sp,
+                    fontSize = AppType.caption,
                     fontWeight = FontWeight.Bold,
                     color = Gold,
                 )
@@ -1390,7 +1390,7 @@ private fun TransitAlertCard(transit: HomeTransit, onClick: () -> Unit = {}) {
         // Full sign name (e.g. "Taurus", "Capricorn") — 10sp dim cream.
         Text(
             text = localizedSignFromAbbrev(transit.sign),
-            fontSize = 10.sp,
+            fontSize = AppType.caption,
             color = CreamDim,
         )
         // Gold-gradient arrow indicator (parity with arrow.forward.circle.fill).
@@ -1874,7 +1874,7 @@ private fun DoshaChip(label: String, severity: String, color: Color) {
                 // Issue 44: tracked uppercase caption to match iOS (e.g. 'MILD','SEVERE').
                 Text(
                     text = severity.uppercase(),
-                    fontSize = 10.sp,
+                    fontSize = AppType.caption,
                     color = color.copy(alpha = 0.8f),
                     letterSpacing = 1.sp,
                 )
@@ -1927,7 +1927,7 @@ private fun LifeAreaQuestionsSheet(
                 IconButton(
                     onClick = onDismiss,
                     modifier = Modifier
-                        .size(28.dp)
+                        .sizeIn(minWidth = TouchMin, minHeight = TouchMin)
                         .testTag("home_life_area_close_button"),
                 ) {
                     Icon(
@@ -2266,7 +2266,7 @@ private fun LifeAreaBriefPopup(
                                     onDismiss()
                                 },
                                 modifier = Modifier
-                                    .size(28.dp)
+                                    .sizeIn(minWidth = TouchMin, minHeight = TouchMin)
                                     .testTag("home_brief_close_button"),
                             ) {
                                 Icon(
@@ -2302,6 +2302,7 @@ private fun LifeAreaBriefPopup(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 modifier = Modifier
+                                    .heightIn(min = TouchMin)
                                     .clip(RoundedCornerShape(10.dp))
                                     .background(Gold.copy(alpha = 0.18f))
                                     .border(
@@ -2381,7 +2382,7 @@ private fun YogaDetailPopup(
                     IconButton(
                         onClick = onDismiss,
                         modifier = Modifier
-                            .size(28.dp)
+                            .sizeIn(minWidth = TouchMin, minHeight = TouchMin)
                             .testTag("home_yoga_close_button"),
                     ) {
                         Icon(
@@ -2402,7 +2403,7 @@ private fun YogaDetailPopup(
                     ) {
                         Text(
                             text = DoshaDescriptions.localizedYogaCategory(ctx, yoga.category),
-                            fontSize = 11.sp,
+                            fontSize = AppType.caption,
                             color = Gold,
                             fontWeight = FontWeight.Bold,
                         )
@@ -2415,7 +2416,7 @@ private fun YogaDetailPopup(
                     ) {
                         Text(
                             text = statusLabel,
-                            fontSize = 11.sp,
+                            fontSize = AppType.caption,
                             color = CreamDim,
                             fontWeight = FontWeight.Bold,
                         )
@@ -2479,6 +2480,7 @@ private fun YogaDetailPopup(
                     Spacer(Modifier.width(8.dp))
                     Box(
                         modifier = Modifier
+                            .heightIn(min = TouchMin)
                             .clip(RoundedCornerShape(10.dp))
                             .background(Gold.copy(alpha = 0.18f))
                             .border(0.5.dp, Gold.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
@@ -2831,7 +2833,7 @@ private fun YogaDetailRow(label: String, value: String) {
     Column(modifier = Modifier.padding(top = 8.dp)) {
         Text(
             text = label.uppercase(),
-            fontSize = 10.sp,
+            fontSize = AppType.caption,
             color = Gold.copy(alpha = 0.7f),
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.sp,

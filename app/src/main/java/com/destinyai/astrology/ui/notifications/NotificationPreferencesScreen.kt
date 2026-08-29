@@ -55,6 +55,7 @@ import com.destinyai.astrology.data.local.prefs.AlertItem
 import com.destinyai.astrology.services.FcmTokenManager
 import com.destinyai.astrology.services.HapticManager
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
+import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.CosmicBackground
 import com.destinyai.astrology.ui.theme.CreamDim
 import com.destinyai.astrology.ui.theme.CreamText
@@ -624,7 +625,7 @@ fun NotificationPreferencesScreen(
                             )
                             Text(
                                 text = stringResource(R.string.notif_blocked_in_settings),
-                                fontSize = 13.sp,
+                                fontSize = AppType.secondary,
                                 color = Color(0xFFFF8A80),
                                 modifier = Modifier.weight(1f),
                             )
@@ -655,7 +656,7 @@ fun NotificationPreferencesScreen(
                                         }
                                 },
                             ) {
-                                Text(stringResource(R.string.notif_enable), color = Gold, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Text(stringResource(R.string.notif_enable), color = Gold, fontWeight = FontWeight.Bold, fontSize = AppType.secondary)
                             }
                         }
                     }
@@ -751,7 +752,7 @@ fun NotificationPreferencesScreen(
                     if (filteredSuggestions.isNotEmpty()) {
                         Text(
                             text = stringResource(R.string.notif_suggestions),
-                            fontSize = 11.sp,
+                            fontSize = AppType.secondary,
                             fontWeight = FontWeight.Bold,
                             color = Gold.copy(alpha = 0.5f),
                             modifier = Modifier.padding(top = 4.dp),
@@ -858,7 +859,7 @@ private fun NotifSectionCard(
             Column(modifier = Modifier.padding(bottom = 6.dp)) {
                 Text(
                     text = title,
-                    fontSize = 11.sp,
+                    fontSize = AppType.secondary,
                     fontWeight = FontWeight.Bold,
                     color = Gold.copy(alpha = 0.5f),
                 )
@@ -955,7 +956,7 @@ private fun AlertItemRow(
             ) {
                 Text(
                     text = item.frequency,
-                    fontSize = 11.sp,
+                    fontSize = AppType.caption,
                     color = Gold,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),

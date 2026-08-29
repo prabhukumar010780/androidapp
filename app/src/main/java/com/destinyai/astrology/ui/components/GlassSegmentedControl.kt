@@ -54,7 +54,7 @@ fun GlassSegmentedControl(
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    height: Dp = 44.dp,
+    height: Dp = TouchMin,
     cornerRadius: Dp = 22.dp,
 ) {
     if (options.isEmpty()) return
@@ -66,7 +66,7 @@ fun GlassSegmentedControl(
 
     Box(
         modifier = modifier
-            .height(height)
+            .heightIn(min = height)
             .testTag("glass_segmented_control")
             .clip(RoundedCornerShape(cornerRadius))
             .background(
