@@ -17,14 +17,22 @@ import androidx.compose.ui.unit.sp
  * Rule of thumb: choose ONE source of spacing per container. Let a Column/
  * LazyColumn `verticalArrangement = Arrangement.spacedBy(...)` own inter-sibling
  * rhythm; do NOT also add leading/trailing Spacers.
+ *
+ * Full spacing ramp: xs=4 / sm=8 / md=12 / lg=16 / lgPlus=20 / xl=24 / xxl=32 / xxxl=40
  */
 object Spacing {
     val xs = 4.dp
     val sm = 8.dp
     val md = 12.dp
     val lg = 16.dp
+
+    /** Between lg (16) and xl (24). Use for hero-card padding and auth-form gutters. */
+    val lgPlus = 20.dp
     val xl = 24.dp
     val xxl = 32.dp
+
+    /** Hero / large-break token above xxl. Use for full-bleed section padding. */
+    val xxxl = 40.dp
 
     /** The one horizontal screen-edge margin for BOTH headers and body content. */
     val screenH = 16.dp
@@ -43,7 +51,9 @@ object Spacing {
 
     /** Card internal padding (use [heroCardPadding] only for plan/hero cards). */
     val cardPadding = 16.dp
-    val heroCardPadding = 20.dp
+
+    /** Hero/plan card internal padding — alias of [lgPlus] (20 dp). */
+    val heroCardPadding = lgPlus
 }
 
 /** Corner-radius family. Retire ad-hoc 10/14/24dp. */
@@ -61,12 +71,25 @@ object Radius {
 val TouchMin = 48.dp
 
 /**
- * Icon-size scale (Batch 6b).
- * Use these instead of raw dp values so glyphs stay consistent app-wide.
- * Snap call-sites in HomeScreen + MainScreen tab bar as reference examples;
- * remaining sites tracked as tech-debt burn-down.
+ * Elevation tiers for differentiated depth. Use these for shadow/elevation params
+ * rather than hardcoding raw dp. card < hero < sheet < dialog.
+ */
+object Elevation {
+    val card = 2.dp
+    val hero = 6.dp
+    val sheet = 12.dp
+    val dialog = 24.dp
+}
+
+/**
+ * Icon-size scale. Snap `.size(N.dp)` on icons to this scale — do NOT hardcode
+ * raw dp at call sites. Scale: xs=12 / sm=16 / md=20 / lg=24 / hero=32.
+ * Off-scale sizes 18 and 22 should round to sm (16) or md (20) / lg (24)
+ * respectively. Remaining call-site burn-down tracked as tech-debt.
  */
 object IconSize {
+    /** Small badge / decorative glyph (e.g. inline crown badge). */
+    val xs = 12.dp
     val sm = 16.dp
     val md = 20.dp
     val lg = 24.dp
