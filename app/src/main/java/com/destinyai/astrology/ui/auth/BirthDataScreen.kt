@@ -536,7 +536,6 @@ fun BirthDataScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(54.dp)
-                        .testTag("birth_data_continue")
                         .testTag("birth_data_continue"),
                 )
 

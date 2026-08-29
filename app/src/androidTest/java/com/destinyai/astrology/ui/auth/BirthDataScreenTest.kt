@@ -42,6 +42,7 @@ class BirthDataScreenTest {
             mockk(relaxed = true), // LocationSearchService
             mockk(relaxed = true), // SoundManager
             mockk(relaxed = true), // ChatRepository
+            androidx.lifecycle.SavedStateHandle(), // SavedStateHandle
             mockk(relaxed = true), // ApplicationContext
         ).also(block)
         composeTestRule.setContent {
@@ -66,8 +67,10 @@ class BirthDataScreenTest {
     @Test
     fun header_subtitle_is_displayed() {
         renderScreen()
-        // Contains "birth details" anywhere in the visible text
-        composeTestRule.onNodeWithText("birth details", substring = true, ignoreCase = true)
+        // "birth details" now appears in both the header subtitle and the privacy
+        // footnote — assert the (first) header subtitle node is displayed.
+        composeTestRule.onAllNodesWithText("birth details", substring = true, ignoreCase = true)
+            .onFirst()
             .assertIsDisplayed()
     }
 
@@ -183,8 +186,10 @@ class BirthDataScreenTest {
     @Test
     fun continue_button_is_disabled_when_form_is_empty() {
         renderScreen()
+        // The Continue CTA (ShimmerButton) is located by testTag, not
+        // contentDescription — it exposes no content-description.
         composeTestRule
-            .onNodeWithContentDescription("Continue", substring = true, ignoreCase = true)
+            .onNodeWithTag("birth_data_continue")
             .assertIsNotEnabled()
     }
 }
