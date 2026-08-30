@@ -283,7 +283,13 @@ class AuthRepositoryImpl @Inject constructor(
 
         // Best-effort backend register; ignore failures so offline guests still proceed.
         try {
-            val resp = api.register(RegisterRequest(email = guestEmail, isGeneratedEmail = true))
+            val resp = api.register(
+                RegisterRequest(
+                    email = guestEmail,
+                    isGeneratedEmail = true,
+                    language = runCatching { prefs.getSelectedLanguage() }.getOrNull(),
+                )
+            )
             // Reconcile with backend canonical values when reachable.
             secure.saveEmail(resp.userEmail)
             prefs.setUserEmail(resp.userEmail)

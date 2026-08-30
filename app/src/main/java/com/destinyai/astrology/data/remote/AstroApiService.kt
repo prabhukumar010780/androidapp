@@ -14,6 +14,9 @@ data class RegisterRequest(
     // when the email is a placeholder ("Hide My Email" / lookup-by-id flows).
     @SerializedName("apple_id") val appleId: String? = null,
     @SerializedName("name") val name: String? = null,
+    // Optional: user's selected app language (BCP-47). Backend normalises to one of
+    // 13 supported codes and uses it for the welcome email locale. Null = server default.
+    @SerializedName("language") val language: String? = null,
 )
 
 // Mirrors backend RegisterRequest (subscription_router.py:46-51) — backend
@@ -90,6 +93,9 @@ data class ProfileRequest(
     // Backend ProfileRequest also accepts apple_id/google_id for user lookup by SSO ID
     @SerializedName("apple_id") val appleId: String? = null,
     @SerializedName("google_id") val googleId: String? = null,
+    // Optional: user's selected app language (BCP-47). Backend normalises to one of
+    // 13 supported codes and uses it for the welcome email locale. Null = server default.
+    @SerializedName("language") val language: String? = null,
 )
 
 data class BirthProfileDto(

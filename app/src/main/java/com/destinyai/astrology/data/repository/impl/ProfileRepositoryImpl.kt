@@ -70,6 +70,7 @@ class ProfileRepositoryImpl @Inject constructor(
                     birthProfile = birthProfile,
                     appleId = appleId?.takeIf { it.isNotBlank() },
                     googleId = googleId?.takeIf { it.isNotBlank() },
+                    language = runCatching { prefs.getSelectedLanguage() }.getOrNull(),
                 )
             )
         } catch (e: HttpException) {
