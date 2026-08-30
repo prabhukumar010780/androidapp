@@ -25,10 +25,19 @@ class HapticManager @Inject constructor(
 ) {
     /**
      * Master switch to enable/disable ALL haptics app-wide.
-     * Defaults to `false` to match iOS (all haptics silenced until user opts in).
+     *
+     * Haptics/vibration are GLOBALLY DISABLED. The setter ignores enable requests
+     * (e.g. DestinyApp binding the persisted "Haptics" preference), so no code path
+     * can turn manager-driven vibration back on. Compose `performHapticFeedback`
+     * calls are separately neutralised by a no-op LocalHapticFeedback at the app root
+     * (MainActivity).
      */
     @Volatile
     var isEnabled: Boolean = false
+        set(value) {
+            // Ignore enable requests — haptics stay globally disabled.
+            field = false
+        }
 
     private val mainHandler = Handler(Looper.getMainLooper())
 

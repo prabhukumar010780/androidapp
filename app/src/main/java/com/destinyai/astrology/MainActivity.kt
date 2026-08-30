@@ -8,6 +8,10 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import android.graphics.Color
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.lifecycle.lifecycleScope
 import com.destinyai.astrology.services.FcmTokenManager
 import com.destinyai.astrology.services.NotificationRouter
@@ -70,8 +74,12 @@ class MainActivity : ComponentActivity() {
             Log.w("MainActivity", "FCM unavailable", e)
         }
         setContent {
-            DestinyTheme {
-                AppNav()
+            // Haptics/vibration globally disabled: provide a no-op HapticFeedback so
+            // every Compose `performHapticFeedback` call across the app is a no-op.
+            CompositionLocalProvider(LocalHapticFeedback provides NoOpHapticFeedback) {
+                DestinyTheme {
+                    AppNav()
+                }
             }
         }
     }
@@ -117,5 +125,12 @@ class MainActivity : ComponentActivity() {
             autoSubmit = autoSubmit,
             newThread = newThread,
         )
+    }
+}
+
+/** No-op HapticFeedback — haptics/vibration are globally disabled app-wide. */
+private val NoOpHapticFeedback = object : HapticFeedback {
+    override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) {
+        // intentionally does nothing
     }
 }
