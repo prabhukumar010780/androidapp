@@ -473,49 +473,9 @@ fun BirthDataScreen(
                 }
                 }
 
-                // Batch 6b fix #13: US users — show a transparency note since the
-                // consent checkbox is hidden for US locale (analytics on by default).
-                if (isUsLocale) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = stringResource(R.string.analytics_on_manage_in_settings),
-                        fontSize = 12.sp,
-                        color = CreamDim,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("birth_data_analytics_us_note"),
-                    )
-                }
-
-                Spacer(Modifier.height(12.dp))
-
-                // Batch 6b fix #12: Privacy footnote — one line with inline Privacy Policy link.
-                val uriHandler = LocalUriHandler.current
-                val privacyUrl = stringResource(R.string.privacy_url)
-                val privacyNote = buildAnnotatedString {
-                    append(stringResource(R.string.birth_data_privacy_note_prefix))
-                    append(" ")
-                    pushStringAnnotation(tag = "URL", annotation = privacyUrl)
-                    withStyle(SpanStyle(color = Gold, textDecoration = TextDecoration.Underline)) {
-                        append(stringResource(R.string.birth_data_privacy_policy_link))
-                    }
-                    pop()
-                    append(".")
-                }
-                androidx.compose.foundation.text.ClickableText(
-                    text = privacyNote,
-                    style = androidx.compose.ui.text.TextStyle(
-                        fontSize = 11.sp,
-                        color = CreamDim,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = { offset ->
-                        privacyNote.getStringAnnotations("URL", offset, offset)
-                            .firstOrNull()?.let { uriHandler.openUri(it.item) }
-                    },
-                )
+                // iOS parity: no US-locale analytics note and no privacy footnote here —
+                // iOS BirthDataView shows only the non-US consent checkbox above. (The
+                // privacy link lives in Settings/onboarding, not on this screen.)
 
                 Spacer(Modifier.height(12.dp))
 

@@ -96,6 +96,10 @@ interface ChatRepository {
      */
     suspend fun persistRating(messageId: String, rating: Int)
 
+    /** Persist follow-up suggestions onto an assistant message row so a reopened
+     *  thread restores its follow-up pills (iOS parity). */
+    suspend fun persistFollowUps(messageId: String, followUps: List<String>)
+
     /**
      * Mirrors iOS WindowManager.loadOlderMessages — fetches the next page of
      * older messages BEFORE the current head of the message list for the

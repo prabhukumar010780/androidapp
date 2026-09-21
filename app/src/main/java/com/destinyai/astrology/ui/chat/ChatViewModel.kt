@@ -291,7 +291,24 @@ class ChatViewModel @Inject constructor(
                         val unique = ev.suggestions
                             .distinctBy { it.trim().lowercase() }
                             .filterNot { askedTexts.contains(it.trim().lowercase()) }
-                        _uiState.update { it.copy(suggestedQuestions = unique) }
+                        // Patch the last assistant message's followUps AND persist them
+                        // (iOS parity — ChatViewModel patches messages[idx].followUps on the
+                        // final answer). Suggestions arrive after the assistant row is saved
+                        // (streamed responses skip the answer-event insert), so without this
+                        // the row keeps follow_ups=null and a reopened thread shows no pills.
+                        var patchedId: String? = null
+                        _uiState.update { state ->
+                            val msgs = state.messages.toMutableList()
+                            val idx = msgs.indexOfLast { it.role == ChatMessage.Role.ASSISTANT }
+                            if (idx >= 0) {
+                                msgs[idx] = msgs[idx].copy(followUps = unique)
+                                patchedId = msgs[idx].id
+                            }
+                            state.copy(messages = msgs, suggestedQuestions = unique)
+                        }
+                        patchedId?.let { id ->
+                            runCatching { repository.persistFollowUps(id, unique) }
+                        }
                     }
                     is ChatStreamEvent.ProgressStep -> {
                         // FIX D: iOS parity (ChatViewModel.swift:1332-1344) — map the backend

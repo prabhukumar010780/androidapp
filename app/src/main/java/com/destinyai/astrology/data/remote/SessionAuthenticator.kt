@@ -24,6 +24,7 @@ class SessionAuthenticator(
     private val exchangeClient: Provider<AuthExchangeClient>,
     private val prefs: UserPreferences,
 ) : Authenticator {
+    @Synchronized
     override fun authenticate(route: Route?, response: Response): Request? {
         // Only retry once.
         if (responseCount(response) >= 2) return null
@@ -31,10 +32,21 @@ class SessionAuthenticator(
         // to the UI's re-auth flow, not be silently refreshed+retried.
         if (response.request.header(SKIP_REAUTH_HEADER) != null) return null
 
-        val staleJwt = store.currentSessionJwt() ?: return null
-        val sentBearer = response.request.header("Authorization")
-        // Only act if the failing request actually used the session JWT.
-        if (sentBearer != "Bearer $staleJwt") return null
+        val sentBearer = response.request.header("Authorization") ?: return null
+        val currentJwt = store.currentSessionJwt() ?: return null
+
+        // Single-flight (authenticate() is @Synchronized): on a cold-start burst of
+        // authenticated requests, several 401 at once. Without this, each thread would
+        // call refresh() with the SAME refresh token — the server rotates on the first
+        // and flags the rest as `refresh_reused`, revoking the whole session (the
+        // "signed out after a couple of days" bug; iOS avoids it via serial async/await).
+        // If another thread already refreshed while we held for the lock, the stored JWT
+        // differs from the one we sent — just retry with it, do NOT refresh again.
+        if (sentBearer != "Bearer $currentJwt") {
+            return response.request.newBuilder()
+                .header("Authorization", "Bearer $currentJwt")
+                .build()
+        }
 
         // Peek the 401 body's detail.code. A time-expired session JWT is
         // refreshable; anything in REAUTH_CODES is not. The server historically

@@ -531,7 +531,12 @@ data class UpdateChatThreadRequest(
 )
 
 data class ChatMessageDto(
-    @SerializedName("message_id") val messageId: String,
+    // The thread-detail endpoint (get_thread) returns each message id as "id"
+    // (chat_history/service.py:195), matching iOS MessageResponse. Reading only
+    // "message_id" left this null on the server-fetch path, so messages failed to
+    // insert and a reopened thread showed empty — the bug after a guest→registered
+    // upgrade wipes local rows and forces the server fetch. Accept both keys.
+    @SerializedName(value = "id", alternate = ["message_id"]) val messageId: String,
     @SerializedName("role") val role: String,
     @SerializedName("content") val content: String,
     @SerializedName("created_at") val createdAt: String,

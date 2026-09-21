@@ -253,6 +253,12 @@ interface ChatMessageDao {
     // stored rating so filled stars survive a thread reopen.
     @Query("UPDATE chat_messages SET rating = :rating WHERE id = :messageId")
     suspend fun updateRating(messageId: String, rating: Int)
+
+    // Follow-up suggestions arrive after the assistant row is saved (streamed
+    // responses skip the answer-event insert), so patch them onto the row by id
+    // — otherwise a reopened thread shows no follow-up pills.
+    @Query("UPDATE chat_messages SET follow_ups = :json WHERE id = :messageId")
+    suspend fun updateFollowUps(messageId: String, json: String?)
 }
 
 @Dao

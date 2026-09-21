@@ -676,6 +676,11 @@ class ChatRepositoryImpl @Inject constructor(
         runCatching { messageDao.updateRating(messageId, rating) }
     }
 
+    override suspend fun persistFollowUps(messageId: String, followUps: List<String>) {
+        val json = followUps.takeIf { it.isNotEmpty() }?.let { com.google.gson.Gson().toJson(it) }
+        runCatching { messageDao.updateFollowUps(messageId, json) }
+    }
+
     override suspend fun loadOlderMessages(
         threadId: String,
         beforeMs: Long,
