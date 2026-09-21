@@ -16,8 +16,10 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -292,6 +294,47 @@ class BillingManagerTest {
         advanceUntilIdle()
 
         verify(exactly = 0) { billingClient.acknowledgePurchase(any(), any()) }
+    }
+
+    @Test
+    fun `concurrent reconcile and purchase acknowledge the purchase exactly once`() = runTest(testDispatcher) {
+        // Reproduces the reported money bug's exact sequence: a purchase completes
+        // while a foreground reconcile is already verifying the SAME token. The
+        // verifyInFlight de-dup lets only one call reach the backend; the loser
+        // returns false. Before the fix, acknowledgement lived only in the purchase
+        // path, so when reconcile won the race the purchase was entitled but never
+        // acknowledged → Play auto-refunded ("Developer hasn't acknowledged...").
+        // Now acknowledgement is centralized in the verify-success branch, so the
+        // race-winner acknowledges regardless of which path wins.
+        val purchase = mockPurchase("tok_race", "com.daa.plus.monthly", acknowledged = false)
+        stubQueryPurchases(listOf(purchase))
+        stubAcknowledgeOk()
+
+        // Gate the backend verify so the reconcile path parks mid-verify — AFTER it
+        // has registered the token in verifyInFlight — letting the purchase path race in.
+        val verifyGate = CompletableDeferred<Unit>()
+        coEvery { api.verifyPurchase(any()) } coAnswers {
+            verifyGate.await()
+            VerifyResponse(success = true, planId = "plus", isPremium = true)
+        }
+
+        // Reconcile wins: runs until it suspends awaiting the gate (token now in-flight).
+        val reconcileJob = launch { manager.reconcileEntitlements() }
+
+        // Purchase path loses: its verify sees the in-flight token and returns false.
+        // It must NOT independently acknowledge (that was never the bug), and must not
+        // leave the purchase unacknowledged either — the winner handles the ack.
+        manager.processPurchases(listOf(purchase))
+        advanceUntilIdle()
+
+        // Release the winner → verify succeeds → single acknowledgement.
+        verifyGate.complete(Unit)
+        advanceUntilIdle()
+        reconcileJob.join()
+
+        verify(exactly = 1) { billingClient.acknowledgePurchase(any(), any()) }
+        coVerify(exactly = 1) { prefs.setSubscription(true, "plus") }
+        assertTrue(manager.purchasedProductIds.value.contains("com.daa.plus.monthly"))
     }
 
     // ── SubscriptionConflict ───────────────────────────────────────────────────
