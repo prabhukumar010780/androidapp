@@ -195,22 +195,13 @@ fun CompatibilityResultScreen(
                 }
             }.getOrNull()
 
-            val pdfUri: Uri? = runCatching {
-                withContext(Dispatchers.IO) {
-                    val sections = parseSections(result.summary)
-                    val bytes = buildCompatibilityPdfBytes(result, sections)
-                    val file = File(context.cacheDir, "compat-$sessionTag.pdf")
-                    FileOutputStream(file).use { it.write(bytes) }
-                    FileProvider.getUriForFile(context, authority, file)
-                }
-            }.getOrNull()
-
+            // Share a single image + caption. Attaching the PDF too would force
+            // ACTION_SEND_MULTIPLE + EXTRA_TEXT, which WhatsApp mishandles (drops
+            // files, keeps only text — the reported failure). The full PDF stays
+            // available via the report screen's Save-to-Files action.
             val attachments = buildList {
                 pngUri?.let {
                     add(ShareAttachment(uri = it, mimeType = "image/png", label = "Compatibility score card"))
-                }
-                pdfUri?.let {
-                    add(ShareAttachment(uri = it, mimeType = "application/pdf", label = "Compatibility PDF report"))
                 }
             }
 

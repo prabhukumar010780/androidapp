@@ -840,9 +840,10 @@ private fun PremiumInputField(
 }
 
 // ── Premium field button (date / time / location / gender) ─────────────────────
-
+// internal so the Add-Birth-Chart form (PartnersScreen) can reuse the exact same
+// field styling for consistency with this initial birth-data screen.
 @Composable
-private fun PremiumFieldButton(
+internal fun PremiumFieldButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     text: String,
     isPlaceholder: Boolean,

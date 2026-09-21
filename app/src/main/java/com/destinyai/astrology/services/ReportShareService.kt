@@ -147,11 +147,14 @@ internal fun shareUsesSendMultiple(attachments: List<ShareAttachment>): Boolean 
     attachments.size > 1
 
 /**
- * WhatsApp turns EXTRA_TEXT into a link preview when it contains a URL and then
- * drops attached files. Keep the score copy; drop URL lines if anything is attached.
+ * A single-item ACTION_SEND (one image or one document) renders EXTRA_TEXT as the
+ * media caption — WhatsApp/Gmail keep the score copy AND the download link there.
+ * Only ACTION_SEND_MULTIPLE mixes a URL with files unpredictably (Android's
+ * Sharesheet docs warn against combining EXTRA_TEXT with multiple streams), so we
+ * strip links only on that path. Single-item shares keep the app link.
  */
 internal fun shareTextForIntent(text: String, attachments: List<ShareAttachment>): String {
-    if (attachments.isEmpty()) return text
+    if (!shareUsesSendMultiple(attachments)) return text
     return text.lineSequence()
         .filterNot { line ->
             val lower = line.lowercase()

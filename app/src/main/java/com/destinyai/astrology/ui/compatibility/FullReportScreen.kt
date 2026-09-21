@@ -86,7 +86,9 @@ internal fun buildCompatibilityShareText(result: CompatibilityResult): String {
     val score = result.adjustedScore ?: result.totalScore
     val pct = if (result.maxScore > 0) (score.toDouble() / result.maxScore * 100).toInt() else 0
     return "✨ ${result.boyName} & ${result.girlName} — Compatibility score: " +
-        "$score/${result.maxScore} ($pct%)\n\nAnalyzed with Destiny AI Astrology\n🔗 destinyaiastrology.com"
+        "$score/${result.maxScore} ($pct%)\n\nAnalyzed with Destiny AI Astrology\n" +
+        "📲 Get your own match — download the app: " +
+        "https://play.google.com/store/apps/details?id=com.destinyai.astrology"
 }
 
 @Composable
@@ -128,23 +130,12 @@ fun FullReportScreen(
                 }
             }.getOrNull()
 
-            // iOS parity (CompatibilityResultSheets.swift:107-151 shares text + PNG
-            // + PDF): render the full PDF report and attach it alongside the card.
-            val pdfUri = runCatching {
-                withContext(Dispatchers.IO) {
-                    val pdfBytes = buildCompatibilityPdfBytes(result, sections)
-                    val pdfFile = File(context.cacheDir, "report-$sessionTag.pdf")
-                    FileOutputStream(pdfFile).use { it.write(pdfBytes) }
-                    FileProvider.getUriForFile(context, authority, pdfFile)
-                }
-            }.getOrNull()
-
+            // Share a single image + caption. Attaching the PDF too would force
+            // ACTION_SEND_MULTIPLE + EXTRA_TEXT, which WhatsApp mishandles (drops
+            // files, keeps only text). The full PDF is available via Save-to-Files.
             val attachments = buildList {
                 pngUri?.let {
                     add(ShareAttachment(uri = it, mimeType = "image/png", label = "Compatibility score card"))
-                }
-                pdfUri?.let {
-                    add(ShareAttachment(uri = it, mimeType = "application/pdf", label = "Compatibility PDF report"))
                 }
             }
 
@@ -779,11 +770,30 @@ private fun ReportMarkdownContent(content: String) {
 
 @Composable
 private fun ReportTable(table: MdBlock.TableBlock) {
-    val colWidths = remember(table) {
+    // When this is the Ashtakoot table, append the orb label to each Koota cell
+    // (e.g. "Varna" → "Varna (Work)") so the table relates to the orb wheel.
+    val isKootaTable = isKootaColumnHeader(table.headers.getOrNull(0))
+    val kootaLabels: Map<String, String> = mapOf(
+        "varna" to stringResource(R.string.kuta_varna_label),
+        "vashya" to stringResource(R.string.kuta_vashya_label),
+        "tara" to stringResource(R.string.kuta_tara_label),
+        "yoni" to stringResource(R.string.kuta_yoni_label),
+        "maitri" to stringResource(R.string.kuta_maitri_label),
+        "gana" to stringResource(R.string.kuta_gana_label),
+        "bhakoot" to stringResource(R.string.kuta_bhakoot_label),
+        "nadi" to stringResource(R.string.kuta_nadi_label),
+    )
+    val displayRows: List<List<String>> = if (!isKootaTable) table.rows else table.rows.map { row ->
+        row.mapIndexed { idx, cell ->
+            if (idx != 0) cell
+            else kutaLabelKey(cell)?.let { key -> kootaLabels[key]?.let { "$cell ($it)" } } ?: cell
+        }
+    }
+    val colWidths = remember(displayRows, table.headers) {
         val cols = table.headers.size.coerceAtLeast(1)
         (0 until cols).map { col ->
             val headerLen = table.headers.getOrNull(col)?.length ?: 0
-            val maxRowLen = table.rows.maxOfOrNull { row -> row.getOrNull(col)?.length ?: 0 } ?: 0
+            val maxRowLen = displayRows.maxOfOrNull { row -> row.getOrNull(col)?.length ?: 0 } ?: 0
             ((headerLen.coerceAtLeast(maxRowLen) * 8) + 24).dp
         }
     }
@@ -805,7 +815,7 @@ private fun ReportTable(table: MdBlock.TableBlock) {
             }
         }
         // Data rows
-        table.rows.forEachIndexed { rowIdx, row ->
+        displayRows.forEachIndexed { rowIdx, row ->
             val bg = if (rowIdx % 2 == 0) Color.Transparent else Color.White.copy(alpha = 0.04f)
             androidx.compose.foundation.layout.Row(
                 modifier = Modifier.fillMaxWidth().background(bg),
@@ -823,6 +833,26 @@ private fun ReportTable(table: MdBlock.TableBlock) {
 }
 
 // ─── Pure Helpers ─────────────────────────────────────────────────────────────
+
+// True when a markdown table's first column is the Ashtakoot "Koota"/"Kuta"
+// column, so we know to enrich its cells with the orb label. Pure/testable.
+internal fun isKootaColumnHeader(header: String?): Boolean {
+    val h = header?.trim()?.lowercase() ?: return false
+    return h == "koota" || h == "kuta"
+}
+
+// Canonical kuta key for a report-table cell name (e.g. "Varna" → "varna"), or
+// null if it isn't one of the eight kutas or already carries a "(label)". Lets
+// the renderer append the matching orb label (Work/Attraction/…) so the table
+// reads the same as the orbs. Pure/testable — label resolution stays in Compose.
+internal fun kutaLabelKey(cellName: String): String? {
+    if (cellName.contains('(')) return null
+    return when (cellName.trim().lowercase().substringBefore(' ')) {
+        "varna", "vashya", "tara", "yoni", "maitri", "gana", "bhakoot", "nadi" ->
+            cellName.trim().lowercase().substringBefore(' ')
+        else -> null
+    }
+}
 
 internal fun parseSections(summary: String): List<ReportSection> {
     if (summary.isEmpty()) return emptyList()

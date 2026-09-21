@@ -130,7 +130,13 @@ class CompatibilityViewModel @Inject constructor(
         // Reload "You" + saved-history bucket whenever the active profile flips.
         // Mirrors iOS CompatibilityView's `.onChange(of: activeProfileId)` path.
         viewModelScope.launch {
-            profileChangeBus.events.collect { loadUserData() }
+            profileChangeBus.events.collect {
+                // Switching the active profile ("You") must clear the stale partner form.
+                // Otherwise the previous partner — which may be the now-active profile
+                // itself — stays populated and the user ends up matching with themselves.
+                resetPartnerForm()
+                loadUserData()
+            }
         }
         // iOS parity (CompatibilityHistoryService.updateChatMessages): back the follow-up
         // history with durable storage so Ask-Destiny transcripts survive VM clear /
@@ -754,6 +760,11 @@ class CompatibilityViewModel @Inject constructor(
                     )
                 } else cached.result
                 _compatibilityResult.value = fixedResult
+                // Cache-hit re-match: adopt the cached analysis's server session id so
+                // Ask-Destiny follow-ups target THIS couple's thread — not a stale id
+                // left over from a previous match (which showed the old chat / "Session
+                // expired"). Mirrors loadFromHistory + the fresh-analyze path.
+                fixedResult.sessionId.takeIf { it.isNotBlank() }?.let { currentSessionId = it }
                 _uiState.update {
                     it.copy(
                         result = fixedResult.summary,
@@ -841,6 +852,13 @@ class CompatibilityViewModel @Inject constructor(
                                 return@collect
                             }
                             _compatibilityResult.value = result
+                            // iOS parity (AskDestiny keys off result.sessionId): adopt the
+                            // SERVER-returned session id ("compat_<hex>") so Ask-Destiny
+                            // follow-ups hit the SAME thread the backend cached this
+                            // analysis's context under. The client-minted "sess_<ts>" never
+                            // matches the server id, so the follow-up 3-tier lookup failed →
+                            // "Session expired. Please start a new analysis."
+                            result.sessionId.takeIf { it.isNotBlank() }?.let { currentSessionId = it }
                             saveToHistory(result, email, profile, s)
                             // R2-CM5: persist partner to user's birth charts when checkbox is set
                             if (s.savePartnerToBirthCharts && !s.partnerFromSaved) {

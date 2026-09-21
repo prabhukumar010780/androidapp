@@ -504,8 +504,17 @@ internal fun PlanetBubble(
                 text = bubbleLabel.uppercase(),
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.White.copy(alpha = 0.9f),
-                fontSize = 10.sp,
+                // 9sp so the longest labels (ATTRACTION, TEMPERAMENT, FRIENDSHIP)
+                // fit inside the 64dp orb instead of being clipped at its width.
+                fontSize = 9.sp,
                 maxLines = 1,
+                softWrap = false,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Visible,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                // Measure at the label's natural width and center it, so any label
+                // marginally wider than the orb overflows symmetrically rather than
+                // being cropped on one side by the 64dp bubble constraint.
+                modifier = Modifier.wrapContentWidth(unbounded = true),
             )
         }
         // Layer 7 — Dosha indicator badge (Issue 4: vector Icon on a

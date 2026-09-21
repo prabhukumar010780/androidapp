@@ -113,13 +113,27 @@ class ReportShareServiceTest {
     }
 
     @Test
-    fun `shareTextForIntent drops url lines when files are attached`() {
+    fun `shareTextForIntent keeps the app link for a single attachment`() {
+        // Regression: the download link must survive a single-image/-document share.
+        // A single-item ACTION_SEND renders the caption + link as the media caption
+        // (this is the reported "link removed" bug — it was stripped for any file).
         val pdf = ShareAttachment(uri = mockk(relaxed = true), mimeType = "application/pdf", label = "report")
-        val full = "✨ Ravi & Meera — Compatibility score: 29/36 (80%)\n\nAnalyzed with Destiny AI Astrology\n🔗 destinyaiastrology.com"
-        val caption = shareTextForIntent(full, listOf(pdf))
+        val full = "✨ Ravi & Meera — Compatibility score: 29/36 (80%)\n\nAnalyzed with Destiny AI Astrology\n📲 https://destinyaiastrology.com/app"
+        assertTrue(shareTextForIntent(full, listOf(pdf)).contains("destinyaiastrology.com/app"))
+        // No attachment: unchanged.
+        assertEquals(full, shareTextForIntent(full, emptyList()))
+    }
+
+    @Test
+    fun `shareTextForIntent drops url lines only on the multi-file path`() {
+        // ACTION_SEND_MULTIPLE + a URL is the one combination Android's Sharesheet
+        // docs warn against; strip links there so WhatsApp keeps the files.
+        val png = ShareAttachment(uri = mockk(relaxed = true), mimeType = "image/png", label = "card")
+        val pdf = ShareAttachment(uri = mockk(relaxed = true), mimeType = "application/pdf", label = "report")
+        val full = "✨ Ravi & Meera — Compatibility score: 29/36 (80%)\n\nAnalyzed with Destiny AI Astrology\n📲 https://destinyaiastrology.com/app"
+        val caption = shareTextForIntent(full, listOf(png, pdf))
         assertFalse(caption.contains("destinyaiastrology.com"))
         assertTrue(caption.contains("29/36"))
-        assertEquals(full, shareTextForIntent(full, emptyList()))
     }
 
     @Test

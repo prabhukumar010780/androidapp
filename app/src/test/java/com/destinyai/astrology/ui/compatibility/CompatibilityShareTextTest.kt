@@ -71,4 +71,16 @@ class CompatibilityShareTextTest {
         val text = buildCompatibilityShareText(result(total = 0, max = 0, adjusted = null))
         assertTrue(text.contains("(0%)"), "zero max must not crash and reads 0%: $text")
     }
+
+    @Test
+    fun `includes the app download link`() {
+        // Regression: the share caption must carry a download link so WhatsApp
+        // shares give recipients a way to get the app. Android launch uses the
+        // Play Store listing; swap to a UA-detecting redirect once iOS is live.
+        val text = buildCompatibilityShareText(result(total = 29, max = 36, adjusted = null))
+        assertTrue(
+            text.contains("play.google.com/store/apps/details?id=com.destinyai.astrology"),
+            "must include the Play Store download link: $text",
+        )
+    }
 }

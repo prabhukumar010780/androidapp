@@ -165,12 +165,16 @@ fun SynergyGaugeView(
                 )
             }
 
-            // Issue 4 + 16: SF-Symbol-equivalent icon + localized hint key
+            // Issue 4 + 16: SF-Symbol-equivalent icon + localized hint key.
+            // Right-aligned and pinned to the end so the wrapped hint clears the
+            // bottom-left Temperament orb it previously overlapped in the orbit view.
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
                 modifier = Modifier
+                    .align(Alignment.CenterEnd)
                     .offset(y = size * 0.48f)
+                    .widthIn(max = size * 0.72f)
                     .semantics { contentDescription = "tap_orbs_hint" },
             ) {
                 Icon(
@@ -184,6 +188,7 @@ fun SynergyGaugeView(
                     style = MaterialTheme.typography.labelSmall.copy(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic),
                     color = CreamDim.copy(alpha = 0.8f),
                     fontSize = AppType.caption,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.End,
                 )
             }
         }

@@ -19,15 +19,22 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckBox
+import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
@@ -56,6 +63,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -75,6 +83,11 @@ import com.destinyai.astrology.ui.theme.NavySurface
 import com.destinyai.astrology.ui.theme.NavyVariant
 import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.TouchMin
+import com.destinyai.astrology.ui.auth.PremiumFieldButton
+import com.destinyai.astrology.ui.components.PremiumInputField
+import com.destinyai.astrology.ui.components.ShimmerButton
+import com.destinyai.astrology.ui.components.DatePickerSheetStyled
+import com.destinyai.astrology.ui.components.TimePickerSheetStyled
 import com.destinyai.astrology.data.remote.PartnerDto
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -132,39 +145,35 @@ fun PartnersScreen(
         if (state.isGuest) onNavigateToAuth()
     }
 
-    // iOS parity (PartnerFormView.swift:284-303): native date picker dialog.
-    LaunchedEffect(state.showDatePicker) {
-        if (state.showDatePicker) {
-            val cal = Calendar.getInstance()
-            DatePickerDialog(
-                context,
-                { _, y, m, d ->
-                    val dob = "%04d-%02d-%02d".format(y, m + 1, d)
-                    viewModel.setFormDob(dob)
-                    viewModel.setShowDatePicker(false)
-                },
-                cal.get(Calendar.YEAR) - 25,
-                cal.get(Calendar.MONTH),
-                cal.get(Calendar.DAY_OF_MONTH),
-            ).apply {
-                setOnCancelListener { viewModel.setShowDatePicker(false) }
-            }.show()
-        }
+    // Styled wheel date/time pickers — same components the initial birth-data
+    // screen uses (consistency), replacing the old system DatePickerDialog/
+    // TimePickerDialog whose theme clashed and which sometimes failed to open.
+    if (state.showDatePicker) {
+        val cal = Calendar.getInstance()
+        val dobParts = state.formDob.split("-").mapNotNull { it.toIntOrNull() }
+        DatePickerSheetStyled(
+            initialYear = dobParts.getOrNull(0) ?: (cal.get(Calendar.YEAR) - 25),
+            initialMonth = dobParts.getOrNull(1)?.minus(1) ?: cal.get(Calendar.MONTH),
+            initialDay = dobParts.getOrNull(2) ?: cal.get(Calendar.DAY_OF_MONTH),
+            onDateSelected = { y, m, d ->
+                viewModel.setFormDob("%04d-%02d-%02d".format(y, m + 1, d))
+                viewModel.setShowDatePicker(false)
+            },
+            onDismiss = { viewModel.setShowDatePicker(false) },
+        )
     }
-    LaunchedEffect(state.showTimePicker) {
-        if (state.showTimePicker) {
-            TimePickerDialog(
-                context,
-                { _, h, min ->
-                    val t = "%02d:%02d".format(h, min)
-                    viewModel.setFormTime(t)
-                    viewModel.setShowTimePicker(false)
-                },
-                12, 0, true,
-            ).apply {
-                setOnCancelListener { viewModel.setShowTimePicker(false) }
-            }.show()
-        }
+    if (state.showTimePicker) {
+        val timeParts = state.formTime.split(":").mapNotNull { it.toIntOrNull() }
+        TimePickerSheetStyled(
+            initialHour = timeParts.getOrNull(0) ?: 12,
+            initialMinute = timeParts.getOrNull(1) ?: 0,
+            is24Hour = android.text.format.DateFormat.is24HourFormat(context),
+            onTimeSelected = { h, min ->
+                viewModel.setFormTime("%02d:%02d".format(h, min))
+                viewModel.setShowTimePicker(false)
+            },
+            onDismiss = { viewModel.setShowTimePicker(false) },
+        )
     }
 
     CosmicBackground {
@@ -715,9 +724,27 @@ private fun LocationSearchSheet(
     onDismiss: () -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
+    // Consistency with the initial birth-data screen's city search: auto-focus +
+    // keyboard on open, centered "Select City" title with a Cancel action, and the
+    // gold drag handle. (Type-ahead search was already shared behaviour.)
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+        keyboardController?.show()
+    }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = NavySurface,
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .padding(vertical = 8.dp)
+                    .size(36.dp, 4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(Gold.copy(alpha = 0.3f)),
+            )
+        },
     ) {
         Column(
             modifier = Modifier
@@ -727,6 +754,30 @@ private fun LocationSearchSheet(
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 32.dp),
         ) {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = stringResource(R.string.select_city_title),
+                    color = Gold,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .testTag("location_search_cancel"),
+                ) {
+                    Text(
+                        text = stringResource(R.string.cancel_action),
+                        color = CreamText,
+                        fontSize = 15.sp,
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
             OutlinedTextField(
                 value = query,
                 onValueChange = {
@@ -738,7 +789,9 @@ private fun LocationSearchSheet(
                 },
                 leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = Gold) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester),
                 shape = RoundedCornerShape(12.dp),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -980,6 +1033,10 @@ internal fun PartnerFormSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                // Without this the tall form (Name→…→Place of Birth→Save) is clipped:
+                // fields below the fold, and the Save button, are unreachable once the
+                // keyboard is up. Make the sheet body scrollable.
+                .verticalScroll(rememberScrollState())
                 .imePadding()
                 .navigationBarsPadding()
                 .padding(horizontal = 20.dp)
@@ -1019,44 +1076,100 @@ internal fun PartnerFormSheet(
                 fontWeight = FontWeight.Bold,
                 color = Gold,
             )
-            PartnerTextField(
+            // Consistency: reuse the exact field components from the initial
+            // "Create your birth chart" screen (BirthDataScreen) — PremiumInputField,
+            // PremiumFieldButton, Date/Time side-by-side, styled wheel pickers.
+            PremiumInputField(
                 value = state.formName,
                 onValueChange = viewModel::setFormName,
                 label = stringResource(R.string.partner_form_name_label),
+                placeholder = stringResource(R.string.enter_your_name),
+                icon = Icons.Filled.Person,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Words,
+                    keyboardType = KeyboardType.Text,
+                ),
                 modifier = Modifier
                     .focusRequester(nameFocusRequester)
                     .testTag("partner_form_name_field"),
             )
-            // iOS parity (PartnerFormView.swift:120-128): tappable selection row that
-            // opens a ModalBottomSheet hosting the four gender options (Issues 2, 3).
-            GenderSelectionRow(
-                selected = state.formGender,
+            val genderDisplay = when (state.formGender) {
+                "male" -> stringResource(R.string.gender_male)
+                "female" -> stringResource(R.string.gender_female)
+                "non-binary" -> stringResource(R.string.gender_non_binary)
+                "prefer_not_to_say" -> stringResource(R.string.gender_prefer_not_say)
+                else -> stringResource(R.string.select_gender)
+            }
+            PremiumFieldButton(
+                icon = Icons.Filled.Person,
+                text = genderDisplay,
+                isPlaceholder = state.formGender.isBlank(),
+                contentDescription = "Gender identity",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("partner_form_gender_selector"),
                 onClick = {
                     haptic.light()
                     keyboardController?.hide()
                     showGenderSheet = true
                 },
             )
-            PickerRow(
-                label = stringResource(R.string.partner_form_dob_label),
-                value = state.formDob.ifBlank { stringResource(R.string.partner_form_select_date) },
-                isPlaceholder = state.formDob.isBlank(),
-                onClick = { viewModel.setShowDatePicker(true) },
-            )
+            // Date + Time side by side (mirrors BirthDataScreen)
             Row(
                 modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                PremiumFieldButton(
+                    icon = Icons.Filled.CalendarMonth,
+                    text = state.formDob.ifBlank { stringResource(R.string.partner_form_select_date) },
+                    isPlaceholder = state.formDob.isBlank(),
+                    contentDescription = "Date of birth",
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("partner_form_dob_field"),
+                    onClick = {
+                        keyboardController?.hide()
+                        viewModel.setShowDatePicker(true)
+                    },
+                )
+                PremiumFieldButton(
+                    icon = Icons.Filled.Schedule,
+                    text = if (state.formBirthTimeUnknown) stringResource(R.string.birth_time_unknown)
+                    else state.formTime.ifBlank { stringResource(R.string.partner_form_select_time) },
+                    isPlaceholder = state.formTime.isBlank() && !state.formBirthTimeUnknown,
+                    enabled = !state.formBirthTimeUnknown,
+                    contentDescription = "Time of birth",
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("partner_form_time_field"),
+                    onClick = {
+                        if (!state.formBirthTimeUnknown) {
+                            keyboardController?.hide()
+                            viewModel.setShowTimePicker(true)
+                        }
+                    },
+                )
+            }
+            // Birth-time-unknown toggle — icon-checkbox style matching BirthDataScreen.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = TouchMin)
+                    .clickable {
+                        haptic.light()
+                        viewModel.setFormBirthTimeUnknown(!state.formBirthTimeUnknown)
+                    }
+                    .testTag("partner_form_birth_time_unknown_checkbox"),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // iOS parity (PartnerFormView.swift:157-173): checkbox-style toggle, not switch.
-                Checkbox(
-                    checked = state.formBirthTimeUnknown,
-                    onCheckedChange = viewModel::setFormBirthTimeUnknown,
-                    colors = CheckboxDefaults.colors(
-                        checkedColor = Gold,
-                        uncheckedColor = CreamDim,
-                    ),
-                    modifier = Modifier.testTag("partner_form_birth_time_unknown_checkbox"),
+                Icon(
+                    imageVector = if (state.formBirthTimeUnknown) Icons.Filled.CheckBox
+                    else Icons.Filled.CheckBoxOutlineBlank,
+                    contentDescription = null,
+                    tint = if (state.formBirthTimeUnknown) Gold else CreamDim,
+                    modifier = Modifier.size(20.dp),
                 )
+                Spacer(Modifier.width(8.dp))
                 Text(
                     text = stringResource(R.string.partner_form_birth_time_unknown_toggle),
                     color = CreamDim,
@@ -1064,18 +1177,6 @@ internal fun PartnerFormSheet(
                     modifier = Modifier.weight(1f),
                 )
             }
-            // iOS parity (PartnerFormView.swift:143-154): time row stays visible even when
-            // unknown=true — disabled / placeholder rather than removed.
-            PickerRow(
-                label = stringResource(R.string.partner_form_time_label),
-                value = state.formTime.ifBlank { stringResource(R.string.partner_form_select_time) },
-                isPlaceholder = state.formTime.isBlank() || state.formBirthTimeUnknown,
-                onClick = {
-                    if (!state.formBirthTimeUnknown) viewModel.setShowTimePicker(true)
-                },
-            )
-            // iOS parity (PartnerFormView.swift:175-181): warning text rendered below the
-            // disabled time row when birth-time-unknown is checked.
             if (state.formBirthTimeUnknown) {
                 Text(
                     text = stringResource(R.string.birth_time_warning),
@@ -1083,15 +1184,22 @@ internal fun PartnerFormSheet(
                     fontSize = AppType.caption,
                     lineHeight = AppType.captionLh,
                     modifier = Modifier
-                        .padding(start = 4.dp)
+                        .padding(start = 28.dp)
                         .testTag("partner_form_birth_time_warning"),
                 )
             }
-            PickerRow(
-                label = stringResource(R.string.partner_form_city_label),
-                value = state.formCity.ifBlank { stringResource(R.string.partner_form_search_city) },
+            PremiumFieldButton(
+                icon = Icons.Filled.LocationOn,
+                text = state.formCity.ifBlank { stringResource(R.string.partner_form_search_city) },
                 isPlaceholder = state.formCity.isBlank(),
-                onClick = { viewModel.setShowLocationSearch(true) },
+                contentDescription = "Place of birth",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("partner_form_city_field"),
+                onClick = {
+                    keyboardController?.hide()
+                    viewModel.setShowLocationSearch(true)
+                },
             )
             if (state.isUnder13) {
                 GuardianConsentRow(
@@ -1143,83 +1251,21 @@ internal fun PartnerFormSheet(
                     fontSize = 13.sp,
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(
-                    onClick = {
-                        haptic.light()
-                        onDismiss()
-                    },
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = TouchMin)
-                        .testTag("partner_form_cancel_footer"),
-                    shape = RoundedCornerShape(10.dp),
-                    border = ButtonDefaults.outlinedButtonBorder(enabled = true),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = CreamDim),
-                ) { Text(stringResource(R.string.cancel)) }
-                Button(
-                    onClick = {
-                        haptic.light()
-                        viewModel.addPartner()
-                    },
-                    enabled = state.isFormValid && !state.isSaving,
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = TouchMin)
-                        .testTag("partner_form_save")
-                        .testTag("partner_form_save_button"),
-                    shape = RoundedCornerShape(10.dp),
-                    contentPadding = PaddingValues(horizontal = 0.dp),
-                    // iOS parity (PartnerFormView.swift:252-256 ShimmerButton): leading
-                    // checkmark icon and a shimmering gold gradient background.
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = Color(0xFF0D0D1A),
-                        disabledContainerColor = Color.Transparent,
-                        disabledContentColor = CreamDim,
-                    ),
-                ) {
-                    val isEnabled = state.isFormValid && !state.isSaving
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(10.dp))
-                            .then(
-                                if (isEnabled) {
-                                    Modifier.background(brush = shimmeringGoldBrush())
-                                } else {
-                                    Modifier.background(NavyVariant)
-                                }
-                            ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        if (state.isSaving) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                color = Color(0xFF0D0D1A),
-                                strokeWidth = 2.dp,
-                            )
-                        } else {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Check,
-                                    contentDescription = null,
-                                    tint = Color(0xFF0D0D1A),
-                                    modifier = Modifier.size(16.dp),
-                                )
-                                Text(
-                                    stringResource(R.string.partner_form_save_button),
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF0D0D1A),
-                                )
-                            }
-                        }
-                    }
-                }
-            }
+            // Single primary action, same ShimmerButton as the initial birth-data
+            // screen. Cancel lives once, in the top bar (a footer Cancel duplicated it).
+            ShimmerButton(
+                text = if (state.isSaving) "…" else stringResource(R.string.partner_form_save_button),
+                onClick = {
+                    haptic.light()
+                    viewModel.addPartner()
+                },
+                enabled = state.isFormValid && !state.isSaving,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp)
+                    .testTag("partner_form_save")
+                    .testTag("partner_form_save_button"),
+            )
         }
     }
 
@@ -1370,7 +1416,7 @@ private fun GenderSelectionRow(
         else -> null
     }
     val display = labelRes?.let { stringResource(it) }
-        ?: stringResource(R.string.partner_form_gender_label)
+        ?: stringResource(R.string.select_gender)
     PickerRow(
         label = stringResource(R.string.partner_form_gender_label),
         value = display,
