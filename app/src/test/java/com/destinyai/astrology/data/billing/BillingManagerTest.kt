@@ -1,9 +1,12 @@
 package com.destinyai.astrology.data.billing
 
+import com.android.billingclient.api.AcknowledgePurchaseResponseListener
 import com.android.billingclient.api.BillingClient
 import com.android.billingclient.api.BillingResult
 import com.android.billingclient.api.ProductDetails
 import com.android.billingclient.api.Purchase
+import com.android.billingclient.api.PurchasesResponseListener
+import com.android.billingclient.api.QueryPurchasesParams
 import com.destinyai.astrology.data.local.prefs.UserPreferences
 import com.destinyai.astrology.data.remote.AstroApiService
 import com.destinyai.astrology.data.remote.VerifyRequest
@@ -12,6 +15,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -206,6 +210,88 @@ class BillingManagerTest {
         advanceUntilIdle()
 
         coVerify { api.verifyPurchase(any()) }
+    }
+
+    // ── Acknowledgement (Play auto-refunds un-acknowledged purchases in 3 days) ──
+
+    private fun okResult(): BillingResult =
+        BillingResult.newBuilder()
+            .setResponseCode(BillingClient.BillingResponseCode.OK)
+            .build()
+
+    private fun mockPurchase(
+        token: String,
+        productId: String,
+        acknowledged: Boolean,
+    ): Purchase = mockk(relaxed = true) {
+        every { purchaseToken } returns token
+        every { purchaseState } returns Purchase.PurchaseState.PURCHASED
+        every { isAcknowledged } returns acknowledged
+        every { products } returns listOf(productId)
+        every { orderId } returns "GPA.$token"
+        every { isAutoRenewing } returns true
+    }
+
+    private fun stubAcknowledgeOk() {
+        every { billingClient.acknowledgePurchase(any(), any()) } answers {
+            secondArg<AcknowledgePurchaseResponseListener>()
+                .onAcknowledgePurchaseResponse(okResult())
+        }
+    }
+
+    private fun stubQueryPurchases(purchases: List<Purchase>) {
+        every { billingClient.queryPurchasesAsync(any<QueryPurchasesParams>(), any()) } answers {
+            secondArg<PurchasesResponseListener>()
+                .onQueryPurchasesResponse(okResult(), purchases)
+        }
+    }
+
+    @Test
+    fun `reconcile acknowledges an unacknowledged verified purchase`() = runTest(testDispatcher) {
+        // The reported "Developer hasn't acknowledged your purchase" bug: reconcile
+        // is a verify path (fires on foreground + billing-connect) that must
+        // acknowledge, or Play auto-refunds. Regression guard.
+        val purchase = mockPurchase("tok_recon", "com.daa.plus.monthly", acknowledged = false)
+        stubQueryPurchases(listOf(purchase))
+        stubAcknowledgeOk()
+        coEvery {
+            api.verifyPurchase(any())
+        } returns VerifyResponse(success = true, planId = "plus", isPremium = true)
+
+        manager.reconcileEntitlements()
+        advanceUntilIdle()
+
+        verify { billingClient.acknowledgePurchase(any(), any()) }
+    }
+
+    @Test
+    fun `verify success does not acknowledge an already-acknowledged purchase`() = runTest(testDispatcher) {
+        // Guard against double-acknowledge (Play returns an error on the 2nd ack).
+        val purchase = mockPurchase("tok_ack", "com.daa.plus.monthly", acknowledged = true)
+        stubQueryPurchases(listOf(purchase))
+        stubAcknowledgeOk()
+        coEvery {
+            api.verifyPurchase(any())
+        } returns VerifyResponse(success = true, planId = "plus", isPremium = true)
+
+        manager.reconcileEntitlements()
+        advanceUntilIdle()
+
+        verify(exactly = 0) { billingClient.acknowledgePurchase(any(), any()) }
+    }
+
+    @Test
+    fun `verify failure does not acknowledge the purchase`() = runTest(testDispatcher) {
+        // Unverified purchases must stay un-acknowledged so Play retries delivery.
+        val purchase = mockPurchase("tok_fail", "com.daa.plus.monthly", acknowledged = false)
+        stubQueryPurchases(listOf(purchase))
+        stubAcknowledgeOk()
+        coEvery { api.verifyPurchase(any()) } returns VerifyResponse(success = false, message = "nope")
+
+        manager.reconcileEntitlements()
+        advanceUntilIdle()
+
+        verify(exactly = 0) { billingClient.acknowledgePurchase(any(), any()) }
     }
 
     // ── SubscriptionConflict ───────────────────────────────────────────────────

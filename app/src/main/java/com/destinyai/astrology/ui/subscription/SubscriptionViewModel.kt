@@ -283,6 +283,14 @@ class SubscriptionViewModel @Inject constructor(
     private val _isRestoring = MutableStateFlow(false)
     val isRestoring: StateFlow<Boolean> = _isRestoring.asStateFlow()
 
+    /** Drives the pull-to-refresh + toolbar-refresh indicator. Owned by
+     *  [refreshStatus] so the indicator starts on the user's gesture and clears
+     *  when the refresh completes — independent of the shared billing isLoading,
+     *  which can be held true by an in-flight purchase and would freeze the
+     *  indicator (Issue 3: "refresh icon freezes / not clickable"). */
+    private val _isManualRefreshing = MutableStateFlow(false)
+    val isManualRefreshing: StateFlow<Boolean> = _isManualRefreshing.asStateFlow()
+
     /** iOS parity (SubscriptionView.swift:621-635, 720-725 — pendingUpgradeProductId
      *  + pendingUpgradeEffectiveDate). UI renders a "Scheduled" badge + effective
      *  date when the user has scheduled a Core→Plus auto-renew change. */
@@ -434,9 +442,17 @@ class SubscriptionViewModel @Inject constructor(
      *  on user-initiated refresh, mirroring iOS QuotaManager.syncStatus(force:true). */
     fun refreshStatus() {
         viewModelScope.launch {
-            billingManager.reconcileEntitlements()
-            loadCurrentPlan(force = true)
-            loadPlans()
+            _isManualRefreshing.value = true
+            try {
+                // force=true bypasses reconcile's 5s debounce so a user-initiated
+                // refresh always runs (Issue 3: toolbar refresh felt "not clickable"
+                // when swallowed by the debounce after an auto-reconcile).
+                billingManager.reconcileEntitlements(force = true)
+                loadCurrentPlan(force = true)
+                loadPlans()
+            } finally {
+                _isManualRefreshing.value = false
+            }
         }
     }
 }

@@ -541,19 +541,17 @@ class BillingManager @Inject constructor(
             return
         }
 
-        // iOS parity: verify with backend FIRST. Only acknowledge after the
-        // backend confirms entitlement (success=true). On failure, leave the
-        // purchase un-acknowledged — Google Play will auto-retry delivery for
-        // up to 3 days, mirroring StoreKit's Transaction.updates replay.
-        val verified = verifyWithBackend(
+        // iOS parity: verify with backend FIRST. Acknowledgement happens inside
+        // verifyWithBackend on success (single choke point that both the purchase
+        // and reconcile paths funnel through — see the isAcknowledged param).
+        // On failure the purchase is left un-acknowledged so Google Play auto-
+        // retries delivery for up to 3 days, mirroring StoreKit's Transaction.updates.
+        verifyWithBackend(
             purchaseToken = purchase.purchaseToken,
             productId = productId,
             userEmail = email,
+            isAcknowledged = purchase.isAcknowledged,
         )
-
-        if (verified && !purchase.isAcknowledged) {
-            acknowledgePurchase(purchase.purchaseToken)
-        }
     }
 
     // ── Acknowledge ─────────────────────────────────────────────────────────────
@@ -575,7 +573,16 @@ class BillingManager @Inject constructor(
 
     // ── Verify with backend ─────────────────────────────────────────────────────
 
-    suspend fun verifyWithBackend(purchaseToken: String, productId: String, userEmail: String): Boolean {
+    suspend fun verifyWithBackend(
+        purchaseToken: String,
+        productId: String,
+        userEmail: String,
+        // Play auto-refunds subscriptions not acknowledged within 3 days. Acknowledge
+        // here — the single point where the backend has confirmed entitlement — so BOTH
+        // the direct-purchase and reconcile paths acknowledge. Defaults true (caller
+        // asserts "already handled") so existing callers/tests don't trigger an ack.
+        isAcknowledged: Boolean = true,
+    ): Boolean {
         // iOS parity (SubscriptionManager.swift:71, 595-601): per-transaction
         // in-flight guard. Reconcile + PurchasesUpdatedListener can race-fire
         // verify for the same purchase token; without this guard the backend
@@ -608,6 +615,15 @@ class BillingManager @Inject constructor(
             if (response.success) {
                 val previous = previousObservedPlanId
                 _purchasedProductIds.value = _purchasedProductIds.value + productId
+
+                // Play requires acknowledgement of every entitlement within 3 days or
+                // it auto-refunds ("Developer hasn't acknowledged your purchase"). Do it
+                // now that the backend has confirmed the purchase. Only the winner of the
+                // verifyInFlight de-dup reaches this branch, so a concurrent purchase +
+                // reconcile can no longer both skip the ack.
+                if (!isAcknowledged) {
+                    acknowledgePurchase(purchaseToken)
+                }
                 // D16: never store the raw Play product id (e.g. com.daa.plus.monthly) as
                 // plan_id — QuotaManager.isPlus does an exact `== "plus"` compare, so a raw
                 // product id would read as free. Map SKU→tier; the following syncStatus is
@@ -690,17 +706,20 @@ class BillingManager @Inject constructor(
 
     // ── Reconcile entitlements ──────────────────────────────────────────────────
 
-    suspend fun reconcileEntitlements() {
+    suspend fun reconcileEntitlements(force: Boolean = false) {
         // iOS parity (SubscriptionManager.swift:462-477): re-entry guard +
         // 5-second debounce. Multiple call sites (init, resume, restore) can
         // race-fire reconcile; without this guard each verifies every active
         // purchase in parallel, hitting backend N times.
+        //
+        // force=true (user-initiated refresh — toolbar button / pull-to-refresh)
+        // bypasses the 5s debounce so a manual refresh is never silently swallowed.
         if (!isReconciling.compareAndSet(false, true)) {
             return
         }
         try {
             val now = System.currentTimeMillis()
-            if (now - lastReconcileTime < 5_000L) {
+            if (!force && now - lastReconcileTime < 5_000L) {
                 return
             }
             lastReconcileTime = now
@@ -779,6 +798,7 @@ class BillingManager @Inject constructor(
                     purchaseToken = purchase.purchaseToken,
                     productId = productId,
                     userEmail = email,
+                    isAcknowledged = purchase.isAcknowledged,
                 )
             }
 

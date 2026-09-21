@@ -419,4 +419,16 @@ class SubscriptionViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    // ── Issue 3: user-initiated refresh must bypass the reconcile debounce ───────
+
+    @Test
+    fun `refreshStatus reconciles with force to bypass the 5s debounce`() = runTest(testDispatcher) {
+        vm.refreshStatus()
+
+        coVerify { billingManager.reconcileEntitlements(force = true) }
+        // Indicator state is VM-owned and resolves once the refresh completes,
+        // so it can never freeze on a stuck billing isLoading (Issue 3).
+        assertFalse(vm.isManualRefreshing.value)
+    }
 }

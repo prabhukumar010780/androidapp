@@ -69,7 +69,7 @@ fun SubscriptionScreen(
     val hasActiveSub by viewModel.hasActiveSubscription.collectAsStateWithLifecycle()
     val activePlanId by viewModel.activePlanId.collectAsStateWithLifecycle()
     val conflict by viewModel.subscriptionConflict.collectAsStateWithLifecycle()
-    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val isManualRefreshing by viewModel.isManualRefreshing.collectAsStateWithLifecycle()
     // E2/J1: gate the trial CTA/badge on the server-authoritative shouldShowTrialButton
     // (billing-eligible AND !hasEverSubscribed) so a lapsed/previously-subscribed user is
     // never re-shown a "free trial" that Play would actually charge.
@@ -301,7 +301,7 @@ fun SubscriptionScreen(
                 // wrapper so users with a redeemed offer code or lagged Play
                 // webhook have a manual recovery path without app restart.
                 PullToRefreshBox(
-                    isRefreshing = isLoading,
+                    isRefreshing = isManualRefreshing,
                     onRefresh = { viewModel.refreshStatus() },
                     modifier = Modifier.fillMaxSize(),
                 ) {
