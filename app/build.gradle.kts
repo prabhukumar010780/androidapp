@@ -140,7 +140,6 @@ android {
             buildConfigField("String", "API_KEY", "\"$apiKeyStaging\"")
             buildConfigField("String", "ENV", "\"staging\"")
             buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"$googleServerClientId\"")
-            ndk { debugSymbolLevel = "SYMBOL_TABLE" }
         }
         release {
             isMinifyEnabled = true
@@ -150,7 +149,6 @@ android {
                 "proguard-rules.pro"
             )
             signingConfig = signingConfigs.getByName("release")
-            ndk { debugSymbolLevel = "SYMBOL_TABLE" }
             buildConfigField("String", "API_BASE_URL", "\"https://astroapi-prod-dsqvza5jza-ul.a.run.app\"")
             buildConfigField("String", "API_KEY", "\"$apiKeyProduction\"")
             buildConfigField("String", "ENV", "\"production\"")

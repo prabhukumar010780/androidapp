@@ -136,7 +136,6 @@ jobs:
           track: ${{ steps.config.outputs.play_track }}
           status: ${{ steps.config.outputs.release_status }}
           mappingFile: app/build/outputs/mapping/${{ steps.config.outputs.aab_dir }}/mapping.txt
-          debugSymbols: app/build/outputs/native-debug-symbols/${{ steps.config.outputs.aab_dir }}/native-debug-symbols.zip
 
       - name: Wait before retry 2
         if: steps.upload1.outcome == 'failure'
@@ -154,7 +153,6 @@ jobs:
           track: ${{ steps.config.outputs.play_track }}
           status: ${{ steps.config.outputs.release_status }}
           mappingFile: app/build/outputs/mapping/${{ steps.config.outputs.aab_dir }}/mapping.txt
-          debugSymbols: app/build/outputs/native-debug-symbols/${{ steps.config.outputs.aab_dir }}/native-debug-symbols.zip
 
       - name: Wait before retry 3
         if: steps.upload1.outcome == 'failure' && steps.upload2.outcome == 'failure'
@@ -170,7 +168,6 @@ jobs:
           track: ${{ steps.config.outputs.play_track }}
           status: ${{ steps.config.outputs.release_status }}
           mappingFile: app/build/outputs/mapping/${{ steps.config.outputs.aab_dir }}/mapping.txt
-          debugSymbols: app/build/outputs/native-debug-symbols/${{ steps.config.outputs.aab_dir }}/native-debug-symbols.zip
 
       - name: Cleanup keystore
         if: always()
