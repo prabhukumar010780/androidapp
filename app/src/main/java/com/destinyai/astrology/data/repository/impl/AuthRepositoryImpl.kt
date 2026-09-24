@@ -35,6 +35,13 @@ class AuthRepositoryImpl @Inject constructor(
     // otherwise persist as bloat and server-deleted compat matches can reappear (F6).
     private val astroDataCacheDao: com.destinyai.astrology.data.local.db.AstroDataCacheDao,
     private val compatibilityHistoryDao: com.destinyai.astrology.data.local.db.CompatibilityHistoryDao,
+    // Chat is owner_email-scoped too. On a deleted-account forced sign-out the server
+    // fetch throws, so ChatRepositoryImpl.syncThreadsFromApi() bails without pruning and
+    // stale local threads/messages survive into the next sign-in (vamshi repro). Wiping
+    // here on teardown guarantees re-entry starts empty and repopulates only from the
+    // authoritative server list.
+    private val chatThreadDao: com.destinyai.astrology.data.local.db.ChatThreadDao,
+    private val chatMessageDao: com.destinyai.astrology.data.local.db.ChatMessageDao,
 ) : AuthRepository {
 
     override suspend fun getSavedUser(): User? {
@@ -406,6 +413,10 @@ class AuthRepositoryImpl @Inject constructor(
             runCatching {
                 astroDataCacheDao.deleteForUser(departingEmail)
                 compatibilityHistoryDao.deleteAllForUser(departingEmail)
+                // Messages first: deleteAllForUser filters via a subquery over
+                // chat_threads.owner_email, so the thread rows must still exist.
+                chatMessageDao.deleteAllForUser(departingEmail)
+                chatThreadDao.deleteAllForUser(departingEmail)
             }
         }
         sessionStore.clearActiveSession()

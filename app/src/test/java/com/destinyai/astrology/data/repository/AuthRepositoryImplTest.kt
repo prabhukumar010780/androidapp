@@ -27,6 +27,8 @@ class AuthRepositoryImplTest {
     private lateinit var sessionStore: com.destinyai.astrology.data.local.prefs.SessionTokenStore
     private lateinit var exchangeClient: com.destinyai.astrology.data.remote.AuthExchangeClient
     private lateinit var quotaManager: QuotaManager
+    private lateinit var chatThreadDao: com.destinyai.astrology.data.local.db.ChatThreadDao
+    private lateinit var chatMessageDao: com.destinyai.astrology.data.local.db.ChatMessageDao
     private lateinit var repo: AuthRepositoryImpl
 
     @BeforeEach
@@ -37,7 +39,9 @@ class AuthRepositoryImplTest {
         sessionStore = mockk(relaxed = true)
         exchangeClient = mockk(relaxed = true)
         quotaManager = mockk(relaxed = true)
-        repo = AuthRepositoryImpl(api, secure, prefs, sessionStore, exchangeClient, Provider { quotaManager }, Provider { mockk(relaxed = true) }, mockk(relaxed = true), mockk(relaxed = true))
+        chatThreadDao = mockk(relaxed = true)
+        chatMessageDao = mockk(relaxed = true)
+        repo = AuthRepositoryImpl(api, secure, prefs, sessionStore, exchangeClient, Provider { quotaManager }, Provider { mockk(relaxed = true) }, mockk(relaxed = true), mockk(relaxed = true), chatThreadDao, chatMessageDao)
     }
 
     // ── getSavedUser ──────────────────────────────────────────────────────────
@@ -446,6 +450,22 @@ class AuthRepositoryImplTest {
         repo.clearSession()
 
         verify { quotaManager.resetForSignOut() }
+    }
+
+    @Test
+    fun `clearSession wipes local chat store for the departing account`() = runTest {
+        // vamshi repro: a deleted-account forced sign-out makes syncThreadsFromApi bail
+        // (server fetch throws), so stale chat_threads/chat_messages would otherwise
+        // survive into the next sign-in. Teardown must clear them; messages first,
+        // since deleteAllForUser filters via a subquery over chat_threads.owner_email.
+        every { secure.getEmail() } returns "vamshi@x.com"
+
+        repo.clearSession()
+
+        coVerifyOrder {
+            chatMessageDao.deleteAllForUser("vamshi@x.com")
+            chatThreadDao.deleteAllForUser("vamshi@x.com")
+        }
     }
 
     // ── signInWithApple dual-store recovery ───────────────────────────────────
