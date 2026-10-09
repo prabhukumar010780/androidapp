@@ -188,11 +188,29 @@ fun ChatScreen(
     }
     LaunchedEffect(lastUserMsgId) {
         val id = lastUserMsgId ?: return@LaunchedEffect
+        // Only pin-to-top on a genuine Send — i.e. the last user message is the LAST
+        // row, with the answer about to stream below it. When a conversation is opened
+        // from History it ends with an assistant message, so the last user message is
+        // NOT the last row: skip here and let the activeThreadId effect below land the
+        // user at the bottom of the thread instead.
+        if (state.messages.lastOrNull()?.id != id) return@LaunchedEffect
         val mIndex = state.messages.indexOfFirst { it.id == id }
         if (mIndex < 0) return@LaunchedEffect
         val leadingCount = if (state.hasOlderMessages) 1 else 0
         delay(80) // let the new rows + tail spacer commit (mirrors iOS 0.05s defer)
         listState.animateScrollToItem(leadingCount + mIndex)
+    }
+
+    // Opening a conversation from History (or resuming the most recent thread on launch)
+    // should land the user at the BOTTOM of the thread — the end of the last answer, like
+    // Claude/ChatGPT — not pinned to the last question. activeThreadId only becomes non-null
+    // via openThread / loadDefaultState (ChatViewModel:1049, 978), never on Send, so this
+    // fires exactly once per thread-open and does not fight the pin-to-top effect above.
+    LaunchedEffect(state.activeThreadId) {
+        if (state.activeThreadId.isNullOrBlank() || state.messages.isEmpty()) return@LaunchedEffect
+        delay(100) // let the loaded rows commit so totalItemsCount is populated
+        val last = listState.layoutInfo.totalItemsCount.coerceAtLeast(1) - 1
+        listState.scrollToItem(last)
     }
 
     // Mirrors iOS ChatView (initialThreadId path: ChatView.swift:14-15, 126-138, 149-153) —
