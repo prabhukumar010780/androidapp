@@ -84,8 +84,18 @@ class DestinyApp : Application() {
                             try {
                                 quotaManager.syncStatus(email, force = true)
                             } catch (e: AccountDeletedError) {
-                                Log.w("DestinyApp", "foreground syncStatus: account_deleted — forcing sign-out")
-                                runCatching { authRepository.clearSession() }
+                                // Guest accounts are local-only; the backend register is
+                                // best-effort and may legitimately 404/403 for a guest email.
+                                // Never force-sign-out a guest on that signal — it would wipe
+                                // their active session on every foreground. Mirrors the guest
+                                // guard in AuthRepositoryImpl (404 -> keep local guest user).
+                                val isGuest = runCatching { userPreferences.isGuestUser() }.getOrDefault(false)
+                                if (isGuest) {
+                                    Log.w("DestinyApp", "foreground syncStatus: account_deleted for guest — ignoring")
+                                } else {
+                                    Log.w("DestinyApp", "foreground syncStatus: account_deleted — forcing sign-out")
+                                    runCatching { authRepository.clearSession() }
+                                }
                             } catch (_: Exception) {
                                 // Transient / network errors — swallow as before.
                             }

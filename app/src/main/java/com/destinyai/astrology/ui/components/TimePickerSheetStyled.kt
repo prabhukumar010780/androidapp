@@ -44,6 +44,7 @@ import com.destinyai.astrology.ui.theme.NavyDeep
 import com.destinyai.astrology.ui.theme.Radius
 import com.destinyai.astrology.ui.theme.Spacing
 import com.destinyai.astrology.ui.theme.TouchMin
+import java.text.DateFormatSymbols
 import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,13 +61,32 @@ fun TimePickerSheetStyled(
         confirmValueChange = { it != SheetValue.Hidden },
     )
 
-    var selectedHour by rememberSaveable { mutableIntStateOf(initialHour) }
+    // In 12-hour mode the hour wheel holds a 1..12 display value and a separate
+    // AM/PM wheel carries the period. `initialHour` is always 24-hour (0..23);
+    // onTimeSelected also returns 24-hour, so the 12h↔24h conversion is confined
+    // to this sheet and the call site never changes.
+    val amPmLabels = remember { DateFormatSymbols.getInstance().amPmStrings.toList() }
+
+    var selectedHour by rememberSaveable {
+        mutableIntStateOf(if (is24Hour) initialHour else ((initialHour + 11) % 12) + 1)
+    }
     var selectedMinute by rememberSaveable { mutableIntStateOf(initialMinute) }
+    // 0 = AM, 1 = PM (unused in 24-hour mode).
+    var selectedPeriod by rememberSaveable { mutableIntStateOf(if (initialHour >= 12) 1 else 0) }
 
     val hourRange = if (is24Hour) (0..23).toList() else (1..12).toList()
     val minuteRange = (0..59).toList()
     val hourLabels = hourRange.map { it.toString().padStart(2, '0') }
     val minuteLabels = minuteRange.map { it.toString().padStart(2, '0') }
+
+    // Resolve the selected wheel values back to a 24-hour hour.
+    fun resolvedHour24(): Int =
+        if (is24Hour) {
+            selectedHour
+        } else {
+            val h = selectedHour % 12 // 12 -> 0
+            if (selectedPeriod == 1) h + 12 else h
+        }
 
     // Prevent wheel scroll from leaking up to the ModalBottomSheet and dismissing it.
     val blockSheetScroll = remember {
@@ -118,7 +138,7 @@ fun TimePickerSheetStyled(
                     modifier = Modifier
                         .clip(RoundedCornerShape(Radius.button))
                         .clickable {
-                            onTimeSelected(selectedHour, selectedMinute)
+                            onTimeSelected(resolvedHour24(), selectedMinute)
                         }
                         .heightIn(min = TouchMin)
                         .padding(horizontal = Spacing.md),
@@ -144,6 +164,14 @@ fun TimePickerSheetStyled(
                     onSelectionChanged = { selectedMinute = minuteRange[it] },
                     modifier = Modifier.weight(1f),
                 )
+                if (!is24Hour) {
+                    WheelColumn(
+                        items = amPmLabels,
+                        selectedIndex = selectedPeriod.coerceIn(0, amPmLabels.lastIndex),
+                        onSelectionChanged = { selectedPeriod = it },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
             Spacer(Modifier.height(32.dp))
         }

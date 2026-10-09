@@ -64,6 +64,11 @@ class SplashViewModel @Inject constructor(
         if (!prefs.isAuthenticated()) return false
         val email = secure.getEmail() ?: prefs.getUserEmail() ?: return false
         if (email.isEmpty()) return false
+        // Guests are local-only and never subject to the waitlist. Their best-effort
+        // backend register can legitimately 403/404 for a guest email — treating that
+        // as account_deleted would force-sign-out a returning guest on every cold
+        // launch (then onboarding would reappear). Skip the recheck for guests.
+        if (prefs.isGuestUser()) return false
         return try {
             val resp = api.register(
                 RegisterRequest(

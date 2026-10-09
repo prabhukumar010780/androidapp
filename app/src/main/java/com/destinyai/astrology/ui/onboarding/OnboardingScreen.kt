@@ -52,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.destinyai.astrology.R
@@ -109,6 +110,11 @@ fun OnboardingScreen(
                     },
                     modifier = Modifier
                         .align(Alignment.TopStart)
+                        // Raise above the Column/HorizontalPager (declared later in
+                        // this Box, so drawn + hit-tested on top). Without this the
+                        // pager's gesture detector swallows taps on Skip, since Skip
+                        // overlaps the pager's top edge. This is why Skip "did nothing".
+                        .zIndex(1f)
                         .padding(top = 16.dp, start = 24.dp)
                         .testTag("onboarding_skip")
                         .semantics { contentDescription = "onboarding_skip" },

@@ -602,7 +602,22 @@ class UserPreferences @Inject constructor(
     }
 
     suspend fun clearAll() {
-        store.edit { it.clear() }
+        // Device-scoped prefs are per-install, NOT per-account. A sign-out /
+        // account teardown must not re-trigger language selection or the
+        // welcome/onboarding flow for the next session on this device —
+        // otherwise a returning (or signed-out) user is wrongly sent back
+        // through onboarding. Snapshot these, wipe everything else, restore.
+        // Mirrors iOS, where these live in @AppStorage that signOut never clears.
+        val snapshot = store.data.first()
+        val seenOnboarding = snapshot[Keys.HAS_SEEN_ONBOARDING]
+        val completedLanguage = snapshot[Keys.HAS_COMPLETED_LANGUAGE_SELECTION]
+        val selectedLanguage = snapshot[Keys.SELECTED_LANGUAGE]
+        store.edit { prefs ->
+            prefs.clear()
+            seenOnboarding?.let { prefs[Keys.HAS_SEEN_ONBOARDING] = it }
+            completedLanguage?.let { prefs[Keys.HAS_COMPLETED_LANGUAGE_SELECTION] = it }
+            selectedLanguage?.let { prefs[Keys.SELECTED_LANGUAGE] = it }
+        }
     }
 
     // History opt-in — mirrors iOS HistorySettingsManager.isHistoryEnabled
