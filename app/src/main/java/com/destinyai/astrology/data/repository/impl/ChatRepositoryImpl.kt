@@ -473,6 +473,13 @@ class ChatRepositoryImpl @Inject constructor(
                         role = "assistant",
                         content = capPersistedContent(answer),
                         createdAt = java.time.Instant.now().toString(),
+                        // Persist follow-up chips inline, same as the streaming path (line 325).
+                        // Without this the row saves with follow_ups=NULL and reopening the
+                        // thread from History shows no chips — the suggestions were only emitted
+                        // live via _progressEvents below. Affects every non-streaming / stream-
+                        // fallback response (guest or registered).
+                        followUps = resp.followUpSuggestions?.takeIf { it.isNotEmpty() }
+                            ?.let { com.google.gson.Gson().toJson(it) },
                         traceId = resp.predictionId,
                     ),
                 )

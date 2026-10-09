@@ -28,6 +28,7 @@ class ChatRepositoryImplTest {
     private lateinit var threadDao: ChatThreadDao
     private lateinit var messageDao: ChatMessageDao
     private lateinit var prefs: UserPreferences
+    private lateinit var profileContextManager: com.destinyai.astrology.services.ProfileContextManager
     private lateinit var repo: ChatRepositoryImpl
 
     @BeforeEach
@@ -37,7 +38,8 @@ class ChatRepositoryImplTest {
         threadDao = mockk(relaxed = true)
         messageDao = mockk(relaxed = true)
         prefs = mockk(relaxed = true)
-        repo = ChatRepositoryImpl(api, streamingApi, threadDao, messageDao, prefs, mockk(relaxed = true))
+        profileContextManager = mockk(relaxed = true)
+        repo = ChatRepositoryImpl(api, streamingApi, threadDao, messageDao, prefs, profileContextManager)
     }
 
     // ── loadHistory ───────────────────────────────────────────────────────────
@@ -181,6 +183,41 @@ class ChatRepositoryImplTest {
         val results = repo.sendMessage("s1", "hi").toList()
         val ex = results.firstOrNull { it.isFailure }?.exceptionOrNull()
         assertTrue(ex is com.destinyai.astrology.ui.chat.BackpressureException)
+    }
+
+    // ── sendMessageSync follow-up persistence (reopen-from-History bug) ─────────
+
+    @Test
+    fun `sendMessageSync persists follow_ups onto the assistant row`() = runTest {
+        // Regression: on the non-streaming / stream-fallback path the assistant row
+        // was inserted WITHOUT follow_ups, so reopening the thread from History showed
+        // no chips (they were only emitted live). Verify the persisted row carries them.
+        coEvery { prefs.getUserEmail() } returns "u@x.com"
+        coEvery { prefs.isHistoryEnabled() } returns true
+        coEvery { profileContextManager.activeBirthData() } returns BirthProfileDto(
+            dateOfBirth = "1980-07-01",
+            timeOfBirth = "06:32",
+            cityOfBirth = "Bhilai",
+            latitude = 21.21,
+            longitude = 81.39,
+        )
+        coEvery { api.predict(any(), any()) } returns com.destinyai.astrology.data.remote.PredictResponse(
+            answer = "Your Moon is in Scorpio.",
+            predictionId = "pred-1",
+            followUpSuggestions = listOf("What about my career?", "Tell me about my relationships"),
+        )
+
+        val inserted = mutableListOf<LocalChatMessageEntity>()
+        coEvery { messageDao.insert(capture(inserted)) } just Runs
+
+        val result = repo.sendMessageSync("thread-fu", "How is my emotional nature?", null, "assistant-row-1")
+
+        assertTrue(result.isSuccess)
+        val assistantRow = inserted.first { it.role == "assistant" }
+        assertEquals("assistant-row-1", assistantRow.id)
+        assertNotNull(assistantRow.followUps, "assistant row must persist follow_ups for reopen")
+        assertTrue(assistantRow.followUps!!.contains("What about my career?"))
+        assertTrue(assistantRow.followUps!!.contains("Tell me about my relationships"))
     }
 
     // ── deleteThread ──────────────────────────────────────────────────────────
