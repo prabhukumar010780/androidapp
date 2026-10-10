@@ -1,5 +1,7 @@
 package com.destinyai.astrology.ui.compatibility
 
+import android.util.Log
+import android.widget.Toast
 import com.destinyai.astrology.BuildConfig
 import com.destinyai.astrology.R
 import androidx.compose.foundation.Image
@@ -145,6 +147,7 @@ fun ComparisonOverviewView(
     // iOS parity (ComparisonOverviewView.swift:17, 173, 751-768): gate Save button while
     // PDF renders so rapid taps cannot enqueue duplicate save intents.
     var isGeneratingPDF by remember { mutableStateOf(false) }
+    var isSharing by remember { mutableStateOf(false) }
 
     // Collect all cancelled kutas across all results for the overlay
     val cancellationTitle = stringResource(R.string.dosha_cancellation_title)
@@ -197,20 +200,39 @@ fun ComparisonOverviewView(
         runCatching { buildComparisonPdf(context, userName, sortedResults) }.getOrNull()
     }
     val sharePdfWithText: () -> Unit = {
-        scope.launch {
-            val uri: Uri? = withContext(Dispatchers.IO) {
-                runCatching { buildComparisonPdf(context, userName, sortedResults) }.getOrNull()
+        if (!isSharing) {
+            isSharing = true
+            scope.launch {
+                try {
+                    val uri: Uri? = withContext(Dispatchers.IO) {
+                        runCatching { buildComparisonPdf(context, userName, sortedResults) }.getOrNull()
+                    }
+                    // Never degrade to a text-only share: if the PDF failed to build,
+                    // abort with a visible error instead of silently sending just the
+                    // caption.
+                    if (uri == null) {
+                        Log.w("CompatShare", "comparison PDF build failed; aborting share")
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.compat_share_failed),
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                        return@launch
+                    }
+                    val attachments = listOf(
+                        ShareAttachment(uri = uri, mimeType = "application/pdf", label = "Compatibility comparison PDF"),
+                    )
+                    val intent = buildDestinyShareIntent(
+                        text = shareText,
+                        attachments = attachments,
+                        subject = "$userName — Compatibility Report",
+                        title = "Share Results",
+                    )
+                    presentShareChooser(context, intent, "Share Results")
+                } finally {
+                    isSharing = false
+                }
             }
-            val attachments = uri?.let {
-                listOf(ShareAttachment(uri = it, mimeType = "application/pdf", label = "Compatibility comparison PDF"))
-            } ?: emptyList()
-            val intent = buildDestinyShareIntent(
-                text = shareText,
-                attachments = attachments,
-                subject = "$userName — Compatibility Report",
-                title = "Share Results",
-            )
-            presentShareChooser(context, intent, "Share Results")
         }
     }
     val saveToFiles: () -> Unit

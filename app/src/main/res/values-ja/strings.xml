@@ -2834,4 +2834,5 @@ Until then: Use this period for strategic positioning.</string>
     <string name="pref_sound_title">サウンド</string>
     <string name="pref_haptics_title">触覚フィードバック</string>
     <string name="pref_haptics_subtitle">操作に対する触覚的なフィードバック</string>
+    <string name="compat_share_failed">共有するレポートを準備できませんでした。もう一度お試しください。</string>
 </resources>

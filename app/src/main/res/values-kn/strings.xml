@@ -2836,4 +2836,5 @@ Until then: Use this period for strategic positioning.</string>
     <string name="pref_sound_title">ಧ್ವನಿ</string>
     <string name="pref_haptics_title">ಹ್ಯಾಪ್ಟಿಕ್ಸ್</string>
     <string name="pref_haptics_subtitle">ಇಂಟರ್ಯಾಕ್ಷನ್‌ಗಳಿಗೆ ಸ್ಪರ್ಶ ಪ್ರತಿಕ್ರಿಯೆ</string>
+    <string name="compat_share_failed">ಹಂಚಿಕೊಳ್ಳಲು ವರದಿಯನ್ನು ಸಿದ್ಧಪಡಿಸಲಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.</string>
 </resources>

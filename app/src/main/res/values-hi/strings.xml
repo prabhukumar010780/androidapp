@@ -2819,4 +2819,5 @@ Until then: Use this period for strategic positioning.</string>
     <string name="pref_sound_title">ध्वनि</string>
     <string name="pref_haptics_title">हैप्टिक्स</string>
     <string name="pref_haptics_subtitle">इंटरैक्शन के लिए स्पर्श प्रतिक्रिया</string>
+    <string name="compat_share_failed">रिपोर्ट साझा करने के लिए तैयार नहीं की जा सकी। कृपया पुनः प्रयास करें।</string>
 </resources>

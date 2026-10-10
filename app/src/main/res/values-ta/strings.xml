@@ -2837,4 +2837,5 @@ Until then: Use this period for strategic positioning.</string>
     <string name="pref_sound_title">ஒலி</string>
     <string name="pref_haptics_title">ஹேப்டிக்ஸ்</string>
     <string name="pref_haptics_subtitle">தொடர்புகளுக்கான தொட்டுணர் கருத்து</string>
+    <string name="compat_share_failed">அறிக்கையைப் பகிர தயார் செய்ய இயலவில்லை. மீண்டும் முயற்சிக்கவும்.</string>
 </resources>

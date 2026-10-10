@@ -3,6 +3,8 @@ package com.destinyai.astrology.ui.compatibility
 import android.graphics.Bitmap
 import android.graphics.pdf.PdfDocument
 import android.net.Uri
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
@@ -137,6 +139,7 @@ fun CompatibilityResultScreen(
     var showHistorySheet by remember { mutableStateOf(false) }
     var askDestinyPrompt by remember { mutableStateOf<String?>(null) }
     var selectedKuta by remember { mutableStateOf<KutaDetail?>(null) }
+    var isSharing by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     // iOS parity (CompatibilityResultView.swift:240): HapticManager.shared.play(.medium)
@@ -170,49 +173,66 @@ fun CompatibilityResultScreen(
     // iOS parity (CompatibilityResultSheets.swift:107-152 presentNativeShareSheet):
     // share shareText + PNG social card + PDF report via ACTION_SEND_MULTIPLE.
     fun shareBitmap() {
+        if (isSharing) return
+        isSharing = true
         scope.launch {
-            val shareText = buildCompatibilityShareText(result)
-            val authority = "${context.packageName}.fileprovider"
-            val sessionTag = result.boyName.take(4) + result.girlName.take(4)
+            try {
+                val shareText = buildCompatibilityShareText(result)
+                val authority = "${context.packageName}.fileprovider"
+                val sessionTag = result.boyName.take(4) + result.girlName.take(4)
 
-            val pngUri = runCatching {
-                val bitmap = captureComposableAsBitmap(context, 1080, 1080) {
-                    ShareCardView(
-                        boyName = result.boyName,
-                        girlName = result.girlName,
-                        totalScore = result.totalScore,
-                        maxScore = result.maxScore,
-                        percentage = result.adjustedPercentage,
-                        isRecommended = result.isRecommended,
-                        adjustedScore = result.adjustedScore,
-                        forSharing = true,
-                    )
-                }
-                withContext(Dispatchers.IO) {
-                    val file = File(context.cacheDir, "compat-$sessionTag.png")
-                    FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 90, it) }
-                    FileProvider.getUriForFile(context, authority, file)
-                }
-            }.getOrNull()
+                val pngUri = runCatching {
+                    val bitmap = captureComposableAsBitmap(context, 1080, 1080) {
+                        ShareCardView(
+                            boyName = result.boyName,
+                            girlName = result.girlName,
+                            totalScore = result.totalScore,
+                            maxScore = result.maxScore,
+                            percentage = result.adjustedPercentage,
+                            isRecommended = result.isRecommended,
+                            adjustedScore = result.adjustedScore,
+                            forSharing = true,
+                        )
+                    }
+                    withContext(Dispatchers.IO) {
+                        val file = File(context.cacheDir, "compat-$sessionTag.png")
+                        FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 90, it) }
+                        FileProvider.getUriForFile(context, authority, file)
+                    }
+                }.getOrNull()
 
-            // Share a single image + caption. Attaching the PDF too would force
-            // ACTION_SEND_MULTIPLE + EXTRA_TEXT, which WhatsApp mishandles (drops
-            // files, keeps only text — the reported failure). The full PDF stays
-            // available via the report screen's Save-to-Files action.
-            val attachments = buildList {
-                pngUri?.let {
-                    add(ShareAttachment(uri = it, mimeType = "image/png", label = "Compatibility score card"))
+                // Never degrade to a text-only share. If the score card failed to
+                // render/encode, abort with a visible error instead of silently
+                // sending just the caption (the recurring "only text, no card" bug).
+                if (pngUri == null) {
+                    Log.w("CompatShare", "share card capture failed; aborting share")
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.compat_share_failed),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                    return@launch
                 }
+
+                // Share a single image + caption. A single-item ACTION_SEND renders
+                // EXTRA_TEXT as the image caption; mixing the PDF in via
+                // ACTION_SEND_MULTIPLE is unreliable on WhatsApp, so the full PDF
+                // stays available via the report screen's Save-to-Files action.
+                val attachments = listOf(
+                    ShareAttachment(uri = pngUri, mimeType = "image/png", label = "Compatibility score card"),
+                )
+
+                val chooserTitle = context.getString(R.string.compat_share_compat_chooser)
+                val intent = buildDestinyShareIntent(
+                    text = shareText,
+                    attachments = attachments,
+                    subject = "${result.boyName} & ${result.girlName} — Compatibility Report",
+                    title = chooserTitle,
+                )
+                presentShareChooser(context, intent, chooserTitle)
+            } finally {
+                isSharing = false
             }
-
-            val chooserTitle = context.getString(R.string.compat_share_compat_chooser)
-            val intent = buildDestinyShareIntent(
-                text = shareText,
-                attachments = attachments,
-                subject = "${result.boyName} & ${result.girlName} — Compatibility Report",
-                title = chooserTitle,
-            )
-            presentShareChooser(context, intent, chooserTitle)
         }
     }
 

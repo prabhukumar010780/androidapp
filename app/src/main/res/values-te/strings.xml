@@ -2836,4 +2836,5 @@ Until then: Use this period for strategic positioning.</string>
     <string name="pref_sound_title">ధ్వని</string>
     <string name="pref_haptics_title">హాప్టిక్స్</string>
     <string name="pref_haptics_subtitle">పరస్పర చర్యలకు స్పర్శ అభిప్రాయం</string>
+    <string name="compat_share_failed">షేర్ చేయడానికి నివేదికను సిద్ధం చేయలేకపోయాము. దయచేసి మళ్లీ ప్రయత్నించండి.</string>
 </resources>

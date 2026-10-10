@@ -3023,4 +3023,5 @@ Until then: Use this period for strategic positioning.</string>
     <string name="notif_unsaved_changes_message">You have unsaved notification changes. Discard them?</string>
     <string name="notif_discard_changes">Discard</string>
 
+    <string name="compat_share_failed">Couldn\'t prepare the report to share. Please try again.</string>
 </resources>

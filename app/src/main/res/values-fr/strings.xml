@@ -2839,4 +2839,5 @@ Until then: Use this period for strategic positioning.</string>
     <string name="pref_sound_title">Son</string>
     <string name="pref_haptics_title">Haptique</string>
     <string name="pref_haptics_subtitle">Retour tactile pour les interactions</string>
+    <string name="compat_share_failed">Impossible de préparer le rapport à partager. Réessaie.</string>
 </resources>

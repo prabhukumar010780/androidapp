@@ -22,10 +22,12 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.destinyai.astrology.R
@@ -37,6 +39,13 @@ import kotlin.math.sin
 import java.util.Locale
 
 private val GoldColor = Color(0xFFD4B03A)
+
+// Stable, locale-independent handles so capture/regression tests can locate the
+// elements most at risk of being clipped off the bottom of the exported card.
+internal const val SHARE_CARD_FRACTION_TAG = "share_card_fraction"
+internal const val SHARE_CARD_STARS_TAG = "share_card_stars"
+internal const val SHARE_CARD_RATING_TAG = "share_card_rating"
+internal const val SHARE_CARD_FOOTER_TAG = "share_card_footer"
 
 // Pure helpers — unit testable
 internal fun shareCardStarCount(isRecommended: Boolean, percentage: Double): Int {
@@ -197,6 +206,8 @@ fun ShareCardView(
                 fontFamily = CanelaFontFamily,
                 color = Color.White,
                 textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
 
             Row(
@@ -221,6 +232,8 @@ fun ShareCardView(
                 fontFamily = CanelaFontFamily,
                 color = Color.White,
                 textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
 
             Spacer(Modifier.height(20.dp))
@@ -259,14 +272,14 @@ fun ShareCardView(
                         color = Color.White,
                         lineHeight = 42.sp,
                     )
-                    Text("/$maxScore", fontSize = 14.sp, color = GoldColor)
+                    Text("/$maxScore", fontSize = 14.sp, color = GoldColor, modifier = Modifier.testTag(SHARE_CARD_FRACTION_TAG))
                 }
             }
 
             Spacer(Modifier.height(16.dp))
 
             // Stars
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.testTag(SHARE_CARD_STARS_TAG)) {
                 for (i in 0 until 5) {
                     Icon(
                         imageVector = if (i < starCount) Icons.Default.Star else Icons.Outlined.StarOutline,
@@ -283,7 +296,7 @@ fun ShareCardView(
                 fontWeight = FontWeight.Bold,
                 color = if (!isRecommended) Color(0xFFFC8181) else GoldColor,
                 letterSpacing = 3.sp,
-                modifier = Modifier.padding(top = 6.dp),
+                modifier = Modifier.testTag(SHARE_CARD_RATING_TAG).padding(top = 6.dp),
             )
 
             // Transparency: always render a score caption (iOS parity). Use the
@@ -336,6 +349,7 @@ fun ShareCardView(
                 fontSize = 12.sp,
                 color = GoldColor.copy(alpha = 0.6f),
                 letterSpacing = 2.sp,
+                modifier = Modifier.testTag(SHARE_CARD_FOOTER_TAG),
             )
         }
     }

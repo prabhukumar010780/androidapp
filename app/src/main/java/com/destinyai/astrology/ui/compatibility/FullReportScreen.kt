@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -97,6 +98,7 @@ fun FullReportScreen(
     onBack: () -> Unit,
 ) {
     var showAskDestiny by remember { mutableStateOf(false) }
+    var isSharing by remember { mutableStateOf(false) }
     val sections = remember(result.summary) { parseSections(result.summary) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -106,47 +108,65 @@ fun FullReportScreen(
     // iOS parity (CompatibilityResultSheets.swift:107-152): render branded
     // ShareCardView to a 1080x1080 PNG and attach to the share intent.
     fun shareWithImage() {
+        if (isSharing) return
+        isSharing = true
         scope.launch {
-            val sessionTag = result.boyName.take(4) + result.girlName.take(4)
-            val authority = "${context.packageName}.fileprovider"
+            try {
+                val sessionTag = result.boyName.take(4) + result.girlName.take(4)
+                val authority = "${context.packageName}.fileprovider"
 
-            val pngUri = runCatching {
-                val bitmap = captureComposableAsBitmap(context, 1080, 1080) {
-                    ShareCardView(
-                        boyName = result.boyName,
-                        girlName = result.girlName,
-                        totalScore = result.totalScore,
-                        maxScore = result.maxScore,
-                        percentage = result.adjustedPercentage,
-                        isRecommended = result.isRecommended,
-                        adjustedScore = result.adjustedScore,
-                        forSharing = true,
-                    )
-                }
-                withContext(Dispatchers.IO) {
-                    val file = File(context.cacheDir, "report-$sessionTag.png")
-                    FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 90, it) }
-                    FileProvider.getUriForFile(context, authority, file)
-                }
-            }.getOrNull()
+                val pngUri = runCatching {
+                    val bitmap = captureComposableAsBitmap(context, 1080, 1080) {
+                        ShareCardView(
+                            boyName = result.boyName,
+                            girlName = result.girlName,
+                            totalScore = result.totalScore,
+                            maxScore = result.maxScore,
+                            percentage = result.adjustedPercentage,
+                            isRecommended = result.isRecommended,
+                            adjustedScore = result.adjustedScore,
+                            forSharing = true,
+                        )
+                    }
+                    withContext(Dispatchers.IO) {
+                        val file = File(context.cacheDir, "report-$sessionTag.png")
+                        FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 90, it) }
+                        FileProvider.getUriForFile(context, authority, file)
+                    }
+                }.getOrNull()
 
-            // Share a single image + caption. Attaching the PDF too would force
-            // ACTION_SEND_MULTIPLE + EXTRA_TEXT, which WhatsApp mishandles (drops
-            // files, keeps only text). The full PDF is available via Save-to-Files.
-            val attachments = buildList {
-                pngUri?.let {
-                    add(ShareAttachment(uri = it, mimeType = "image/png", label = "Compatibility score card"))
+                // Never degrade to a text-only share. If the score card failed to
+                // render/encode, abort with a visible error instead of silently
+                // sending just the caption (the recurring "only text, no card" bug).
+                if (pngUri == null) {
+                    Log.w("CompatShare", "full-report share card capture failed; aborting share")
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.compat_share_failed),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                    return@launch
                 }
+
+                // Share a single image + caption. A single-item ACTION_SEND renders
+                // EXTRA_TEXT as the image caption; mixing the PDF in via
+                // ACTION_SEND_MULTIPLE is unreliable on WhatsApp. The full PDF is
+                // available via Save-to-Files.
+                val attachments = listOf(
+                    ShareAttachment(uri = pngUri, mimeType = "image/png", label = "Compatibility score card"),
+                )
+
+                val chooserTitle = context.getString(R.string.full_report_share_chooser)
+                val intent = buildDestinyShareIntent(
+                    text = shareText,
+                    attachments = attachments,
+                    subject = "${result.boyName} & ${result.girlName} — Compatibility Report",
+                    title = chooserTitle,
+                )
+                presentShareChooser(context, intent, chooserTitle)
+            } finally {
+                isSharing = false
             }
-
-            val chooserTitle = context.getString(R.string.full_report_share_chooser)
-            val intent = buildDestinyShareIntent(
-                text = shareText,
-                attachments = attachments,
-                subject = "${result.boyName} & ${result.girlName} — Compatibility Report",
-                title = chooserTitle,
-            )
-            presentShareChooser(context, intent, chooserTitle)
         }
     }
 

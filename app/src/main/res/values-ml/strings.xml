@@ -2836,4 +2836,5 @@ Until then: Use this period for strategic positioning.</string>
     <string name="pref_sound_title">ശബ്ദം</string>
     <string name="pref_haptics_title">ഹാപ്റ്റിക്‌സ്</string>
     <string name="pref_haptics_subtitle">ഇടപെടലുകൾക്കുള്ള സ്പർശ പ്രതിക്രിയ</string>
+    <string name="compat_share_failed">പങ്കിടാൻ റിപ്പോർട്ട് തയ്യാറാക്കാൻ കഴിഞ്ഞില്ല. വീണ്ടും ശ്രമിക്കുക.</string>
 </resources>
