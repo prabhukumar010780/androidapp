@@ -145,36 +145,10 @@ fun PartnersScreen(
         if (state.isGuest) onNavigateToAuth()
     }
 
-    // Styled wheel date/time pickers — same components the initial birth-data
-    // screen uses (consistency), replacing the old system DatePickerDialog/
-    // TimePickerDialog whose theme clashed and which sometimes failed to open.
-    if (state.showDatePicker) {
-        val cal = Calendar.getInstance()
-        val dobParts = state.formDob.split("-").mapNotNull { it.toIntOrNull() }
-        DatePickerSheetStyled(
-            initialYear = dobParts.getOrNull(0) ?: (cal.get(Calendar.YEAR) - 25),
-            initialMonth = dobParts.getOrNull(1)?.minus(1) ?: cal.get(Calendar.MONTH),
-            initialDay = dobParts.getOrNull(2) ?: cal.get(Calendar.DAY_OF_MONTH),
-            onDateSelected = { y, m, d ->
-                viewModel.setFormDob("%04d-%02d-%02d".format(y, m + 1, d))
-                viewModel.setShowDatePicker(false)
-            },
-            onDismiss = { viewModel.setShowDatePicker(false) },
-        )
-    }
-    if (state.showTimePicker) {
-        val timeParts = state.formTime.split(":").mapNotNull { it.toIntOrNull() }
-        TimePickerSheetStyled(
-            initialHour = timeParts.getOrNull(0) ?: 12,
-            initialMinute = timeParts.getOrNull(1) ?: 0,
-            is24Hour = android.text.format.DateFormat.is24HourFormat(context),
-            onTimeSelected = { h, min ->
-                viewModel.setFormTime("%02d:%02d".format(h, min))
-                viewModel.setShowTimePicker(false)
-            },
-            onDismiss = { viewModel.setShowTimePicker(false) },
-        )
-    }
+    // Styled wheel date/time pickers and the city-search sheet are self-hosted
+    // inside PartnerFormSheet (search for "self-hosted ModalBottomSheets"), so
+    // they open over the form from every entry point. They are intentionally NOT
+    // hosted here at screen scope to avoid double-rendering.
 
     CosmicBackground {
         Box(
@@ -586,16 +560,8 @@ fun PartnersScreen(
         }
     }
 
-    // iOS parity (PartnerFormView.swift:276-283 LocationSearchView): debounced city lookup with results list.
-    if (state.showLocationSearch) {
-        LocationSearchSheet(
-            results = state.locationResults,
-            isSearching = state.isSearchingLocation,
-            onQueryChange = { viewModel.searchLocation(it) },
-            onSelect = { viewModel.selectLocation(it) },
-            onDismiss = { viewModel.setShowLocationSearch(false) },
-        )
-    }
+    // City-search sheet is self-hosted inside PartnerFormSheet (see
+    // "self-hosted ModalBottomSheets"); not hosted here to avoid double-rendering.
 
     // iOS parity (PartnerManagerView.swift:61-77): confirmationDialog with destructive action.
     partnerToDelete?.let { target ->
@@ -1114,42 +1080,40 @@ internal fun PartnerFormSheet(
                     showGenderSheet = true
                 },
             )
-            // Date + Time side by side (mirrors BirthDataScreen)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                PremiumFieldButton(
-                    icon = Icons.Filled.CalendarMonth,
-                    text = state.formDob.ifBlank { stringResource(R.string.partner_form_select_date) },
-                    isPlaceholder = state.formDob.isBlank(),
-                    contentDescription = "Date of birth",
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("partner_form_dob_field"),
-                    onClick = {
+            // Date and Time stacked full-width (iOS parity: PartnerFormView.swift
+            // VStack(spacing: 24) — each its own row). Full-width avoids cropping
+            // the "Select date of birth" / "Select time of birth" labels, which a
+            // side-by-side weighted Row truncated (worse in longer locales).
+            PremiumFieldButton(
+                icon = Icons.Filled.CalendarMonth,
+                text = state.formDob.ifBlank { stringResource(R.string.partner_form_select_date) },
+                isPlaceholder = state.formDob.isBlank(),
+                contentDescription = "Date of birth",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("partner_form_dob_field"),
+                onClick = {
+                    keyboardController?.hide()
+                    viewModel.setShowDatePicker(true)
+                },
+            )
+            PremiumFieldButton(
+                icon = Icons.Filled.Schedule,
+                text = if (state.formBirthTimeUnknown) stringResource(R.string.birth_time_unknown)
+                else state.formTime.ifBlank { stringResource(R.string.partner_form_select_time) },
+                isPlaceholder = state.formTime.isBlank() && !state.formBirthTimeUnknown,
+                enabled = !state.formBirthTimeUnknown,
+                contentDescription = "Time of birth",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("partner_form_time_field"),
+                onClick = {
+                    if (!state.formBirthTimeUnknown) {
                         keyboardController?.hide()
-                        viewModel.setShowDatePicker(true)
-                    },
-                )
-                PremiumFieldButton(
-                    icon = Icons.Filled.Schedule,
-                    text = if (state.formBirthTimeUnknown) stringResource(R.string.birth_time_unknown)
-                    else state.formTime.ifBlank { stringResource(R.string.partner_form_select_time) },
-                    isPlaceholder = state.formTime.isBlank() && !state.formBirthTimeUnknown,
-                    enabled = !state.formBirthTimeUnknown,
-                    contentDescription = "Time of birth",
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("partner_form_time_field"),
-                    onClick = {
-                        if (!state.formBirthTimeUnknown) {
-                            keyboardController?.hide()
-                            viewModel.setShowTimePicker(true)
-                        }
-                    },
-                )
-            }
+                        viewModel.setShowTimePicker(true)
+                    }
+                },
+            )
             // Birth-time-unknown toggle — icon-checkbox style matching BirthDataScreen.
             Row(
                 modifier = Modifier
@@ -1279,6 +1243,50 @@ internal fun PartnerFormSheet(
                 viewModel.setFormGender(value)
             },
             onDismiss = { showGenderSheet = false },
+        )
+    }
+
+    // iOS parity (PartnerFormView.swift): the DOB / time / city pickers are owned
+    // by the form itself (self-hosted ModalBottomSheets, like the gender sheet
+    // above) so they render over the form from EVERY entry point — the Partners
+    // screen, the ProfileSwitcher "Add birth chart" flow, and the compatibility
+    // PartnerPicker. Previously these hosts lived only in the PartnersScreen
+    // composable, so taps from the other two entry points flipped the flag but
+    // drew nothing (the date/time/city pickers never opened).
+    if (state.showDatePicker) {
+        val cal = Calendar.getInstance()
+        val dobParts = state.formDob.split("-").mapNotNull { it.toIntOrNull() }
+        DatePickerSheetStyled(
+            initialYear = dobParts.getOrNull(0) ?: (cal.get(Calendar.YEAR) - 25),
+            initialMonth = dobParts.getOrNull(1)?.minus(1) ?: cal.get(Calendar.MONTH),
+            initialDay = dobParts.getOrNull(2) ?: cal.get(Calendar.DAY_OF_MONTH),
+            onDateSelected = { y, m, d ->
+                viewModel.setFormDob("%04d-%02d-%02d".format(y, m + 1, d))
+                viewModel.setShowDatePicker(false)
+            },
+            onDismiss = { viewModel.setShowDatePicker(false) },
+        )
+    }
+    if (state.showTimePicker) {
+        val timeParts = state.formTime.split(":").mapNotNull { it.toIntOrNull() }
+        TimePickerSheetStyled(
+            initialHour = timeParts.getOrNull(0) ?: 12,
+            initialMinute = timeParts.getOrNull(1) ?: 0,
+            is24Hour = android.text.format.DateFormat.is24HourFormat(context),
+            onTimeSelected = { h, min ->
+                viewModel.setFormTime("%02d:%02d".format(h, min))
+                viewModel.setShowTimePicker(false)
+            },
+            onDismiss = { viewModel.setShowTimePicker(false) },
+        )
+    }
+    if (state.showLocationSearch) {
+        LocationSearchSheet(
+            results = state.locationResults,
+            isSearching = state.isSearchingLocation,
+            onQueryChange = { viewModel.searchLocation(it) },
+            onSelect = { viewModel.selectLocation(it) },
+            onDismiss = { viewModel.setShowLocationSearch(false) },
         )
     }
 }

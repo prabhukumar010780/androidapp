@@ -267,7 +267,12 @@ class ProfileSwitcherViewModel @Inject constructor(
                 )
                 val overall = response.limits?.get("overall")
                 val limit = overall?.limit ?: -1
-                val current = _profiles.value.count { !it.isSelf }
+                // iOS parity (ProfileSwitcherSheet.swift:290 passes serverProfiles
+                // .count, incl. the is_self row; QuotaManager canAddProfile compares
+                // currentCount < limit). _profiles always carries the prepended self
+                // entry, so count total profiles — not partners-only — else Android
+                // permits one extra chart over the limit.
+                val current = _profiles.value.size
                 when {
                     // Not entitled + no positive limit (free/Core with no limits map, limit
                     // defaults to -1) → upgrade prompt. Previously fell through to the

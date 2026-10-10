@@ -81,6 +81,21 @@ fun ProfileSwitcherSheet(
     // ProfileSwitcherViewModel flips uiState.showAddForm true after the quota
     // check, open the shared PartnersViewModel's add-form so the existing
     // PartnerFormSheet composable can render inline below.
+    // iOS presents the add form via a view-local @State showAddForm that is fresh
+    // for each sheet presentation (ProfileSwitcherSheet.swift:17). On Android the
+    // inline form reads the nav-scoped PartnersViewModel, whose showAddForm can be
+    // left true by a PRIOR presentation (e.g. an add that errored keeps the form
+    // open — PartnersViewModel.addPartner error path). Clear it on open ONLY when
+    // it is stale — i.e. set without a matching in-flight trigger (uiState
+    // .showAddForm) — so the switcher opens on the switch list, not a leftover Add
+    // form. The legitimate open path (uiState.showAddForm == true) is left to the
+    // effect below, so this does not race it.
+    LaunchedEffect(Unit) {
+        if (partnersState.showAddForm && !uiState.showAddForm) {
+            partnersViewModel.toggleAddForm()
+        }
+    }
+
     LaunchedEffect(uiState.showAddForm) {
         if (uiState.showAddForm && !partnersState.showAddForm) {
             partnersViewModel.toggleAddForm()
@@ -105,14 +120,17 @@ fun ProfileSwitcherSheet(
         }
     }
 
-    // Auto-dismiss after a successful profile switch — observe the falling edge
-    // of isSwitching. iOS dismisses on completion; Android matches by tracking the
-    // transition true→false and closing the sheet (no upgrade prompt = success path).
+    // Auto-dismiss after a SUCCESSFUL profile switch — observe the falling edge
+    // of isSwitching. iOS dismisses only in the success branch (ProfileSwitcherSheet
+    // .swift:124-133), so we must stay open on failure: dismissing on a non-upgrade
+    // switchError would unmount the sheet together with its error AlertDialog
+    // (defined below), so the user would never see the failure — and the stale error
+    // would then pop on the next open. Guard on no upgrade prompt AND no switchError.
     var wasSwitching by remember { mutableStateOf(false) }
     LaunchedEffect(isSwitching) {
         if (isSwitching) {
             wasSwitching = true
-        } else if (wasSwitching && !uiState.upgradeRequiredPrompt) {
+        } else if (wasSwitching && !uiState.upgradeRequiredPrompt && uiState.switchError == null) {
             wasSwitching = false
             onDismiss()
         }

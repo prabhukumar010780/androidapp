@@ -92,7 +92,9 @@ data class PartnersUiState(
 
 /** Mirrors iOS PartnerFormView age helpers (lines 54-66) — DOB string `YYYY-MM-DD`. */
 private fun ageInYears(dob: String): Int? {
-    if (dob.length < 4) return null
+    // Guard the full `YYYY-MM-DD` width before the fixed-offset substrings below
+    // (substring(5,7)/substring(8,10) would throw on a length 4-9 partial DOB).
+    if (dob.length < 10) return null
     val year = dob.substring(0, 4).toIntOrNull() ?: return null
     val month = dob.substring(5, 7).toIntOrNull() ?: 1
     val day = dob.substring(8, 10).toIntOrNull() ?: 1
@@ -106,7 +108,7 @@ private fun ageInYears(dob: String): Int? {
 }
 
 private fun isUnder13(dob: String): Boolean = (ageInYears(dob) ?: 100) < 13
-private fun isUnder18(dob: String): Boolean = (ageInYears(dob) ?: 100) < 18
+private fun isUnder18(dob: String): Boolean = (ageInYears(dob) ?: 100) <= 18
 
 /**
  * One-shot success events emitted by [PartnersViewModel] after a save / delete
@@ -272,8 +274,11 @@ class PartnersViewModel @Inject constructor(
                         // iOS parity (PartnerFormView): birth place is optional —
                         // send null (not "") for city/lat/lon when left blank.
                         cityOfBirth = s.formCity.trim().takeIf { it.isNotBlank() },
-                        latitude = if (s.formCity.isBlank()) null else s.formLatitude,
-                        longitude = if (s.formCity.isBlank()) null else s.formLongitude,
+                        // iOS parity (PartnerFormView.swift:386-387): guard on the
+                        // coordinate value, not city-blankness — a city with unset
+                        // (0.0) coords must send null, not literal 0.0/0.0.
+                        latitude = s.formLatitude.takeIf { it != 0.0 },
+                        longitude = s.formLongitude.takeIf { it != 0.0 },
                         birthTimeUnknown = s.formBirthTimeUnknown,
                         forCompatibility = effectiveForCompat,
                         guardianConsentGiven = s.formGuardianConsentGiven,
