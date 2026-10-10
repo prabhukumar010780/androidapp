@@ -157,6 +157,57 @@ object NetworkModule {
     @Named("streaming")
     fun provideStreamingAstroApiService(@Named("streaming") retrofit: Retrofit): AstroApiService =
         retrofit.create(AstroApiService::class.java)
+
+    /**
+     * Billing-scoped Retrofit + AstroApiService — short, bounded timeouts (connect 15s,
+     * read/write/call 20s). verifyPurchase / reconcileEmpty must NOT ride the unqualified
+     * 600s prediction-tuned client: a cold Cloud Run instance can block a verify for ~10
+     * minutes, holding BillingManager's verifyInFlight de-dup key so a concurrent reconcile
+     * can't re-verify (and pinning the purchase spinner). A bounded verify fails fast and
+     * lets the next reconcile / ITEM_ALREADY_OWNED retry re-attempt.
+     */
+    @Provides
+    @Singleton
+    @Named("billing")
+    fun provideBillingOkHttpClient(
+        store: SessionTokenStore,
+        @Named("apiKey") apiKey: String,
+        @Named("userAgent") userAgent: String,
+        authExchangeProvider: Provider<AuthExchangeClient>,
+        prefs: UserPreferences,
+    ): OkHttpClient {
+        val logging = HttpLoggingInterceptor().apply {
+            // BASIC level — never HEADERS — so the Authorization header is never logged.
+            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BASIC
+            else HttpLoggingInterceptor.Level.NONE
+        }
+        return OkHttpClient.Builder()
+            .addInterceptor(AuthInterceptor(store, apiKey, userAgent))
+            .authenticator(SessionAuthenticator(store, authExchangeProvider, prefs, apiKey))
+            .addInterceptor(ErrorInterceptor())
+            .addInterceptor(logging)
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(20, TimeUnit.SECONDS)
+            .writeTimeout(20, TimeUnit.SECONDS)
+            .callTimeout(20, TimeUnit.SECONDS)
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    @Named("billing")
+    fun provideBillingRetrofit(@Named("billing") client: OkHttpClient): Retrofit =
+        Retrofit.Builder()
+            .baseUrl(BuildConfig.API_BASE_URL + "/")
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+
+    @Provides
+    @Singleton
+    @Named("billing")
+    fun provideBillingAstroApiService(@Named("billing") retrofit: Retrofit): AstroApiService =
+        retrofit.create(AstroApiService::class.java)
 }
 
 @Module
@@ -296,7 +347,7 @@ object BillingModule {
     @Singleton
     fun provideBillingManager(
         @ApplicationContext context: Context,
-        api: AstroApiService,
+        @Named("billing") api: AstroApiService,
         prefs: UserPreferences,
         quotaManager: dagger.Lazy<com.destinyai.astrology.services.QuotaManager>,
     ): BillingManager {

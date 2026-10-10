@@ -26,9 +26,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
@@ -67,6 +71,19 @@ class BillingManager @Inject constructor(
 
     private val _purchasedProductIds = MutableStateFlow<Set<String>>(emptySet())
     val purchasedProductIds: StateFlow<Set<String>> = _purchasedProductIds.asStateFlow()
+
+    /** Fix 3 — per-transaction terminal signal (iOS SubscriptionManager purchase()
+     *  Transaction result). SubscriptionViewModel.purchase() awaits THIS keyed to the
+     *  productId it is buying, instead of the shared multi-writer [isLoading] (which any
+     *  reconcile/verify also drives) — so a concurrent reconcile can neither prematurely
+     *  resolve nor indefinitely pin an individual CTA spinner (the "stuck Choose-a-plan
+     *  spinners" report). Emitted exactly once by the verifyInFlight de-dup WINNER in
+     *  verifyWithBackend's finally, carrying that verify's success. extraBufferCapacity so
+     *  the non-suspending tryEmit in finally never drops when a collector is slow; a missed
+     *  emit (collector not yet subscribed) is covered by purchase()'s 25s timeout +
+     *  purchasedProductIds re-read as source of truth. */
+    private val _purchaseOutcomes = MutableSharedFlow<PurchaseOutcome>(extraBufferCapacity = 16)
+    val purchaseOutcomes: SharedFlow<PurchaseOutcome> = _purchaseOutcomes.asSharedFlow()
 
     /** iOS parity (SubscriptionManager.swift:27-28, 501-555): pending upgrade
      *  product id (e.g. user on Core scheduled to switch to Plus at renewal).
@@ -541,11 +558,12 @@ class BillingManager @Inject constructor(
             return
         }
 
-        // iOS parity: verify with backend FIRST. Acknowledgement happens inside
-        // verifyWithBackend on success (single choke point that both the purchase
-        // and reconcile paths funnel through — see the isAcknowledged param).
-        // On failure the purchase is left un-acknowledged so Google Play auto-
-        // retries delivery for up to 3 days, mirroring StoreKit's Transaction.updates.
+        // iOS parity: verify with backend FIRST to grant entitlement. Acknowledgement
+        // happens in verifyWithBackend's finally — independent of the verify outcome —
+        // because Play auto-REFUNDS (and reports as owned → ITEM_ALREADY_OWNED meanwhile)
+        // any purchase left unacknowledged for 3 days. A brand-new purchase often fails
+        // the first verify (not yet propagated to Play's subscriptionsv2) yet is already
+        // owned+charged, so the ack must not wait on verify success.
         verifyWithBackend(
             purchaseToken = purchase.purchaseToken,
             productId = productId,
@@ -577,10 +595,10 @@ class BillingManager @Inject constructor(
         purchaseToken: String,
         productId: String,
         userEmail: String,
-        // Play auto-refunds subscriptions not acknowledged within 3 days. Acknowledge
-        // here — the single point where the backend has confirmed entitlement — so BOTH
-        // the direct-purchase and reconcile paths acknowledge. Defaults true (caller
-        // asserts "already handled") so existing callers/tests don't trigger an ack.
+        // When false, this purchase is acknowledged in the finally below — regardless of
+        // the verify outcome — because Play auto-refunds subscriptions not acknowledged
+        // within 3 days. Defaults true (caller asserts "already acknowledged") so existing
+        // callers/tests don't trigger a redundant ack.
         isAcknowledged: Boolean = true,
     ): Boolean {
         // iOS parity (SubscriptionManager.swift:71, 595-601): per-transaction
@@ -590,10 +608,18 @@ class BillingManager @Inject constructor(
         val flightKey = "$purchaseToken|$userEmail"
         synchronized(verifyInFlightLock) {
             if (verifyInFlight.contains(flightKey)) {
+                // Fix 3: the de-dup LOSER deliberately does NOT emit a PurchaseOutcome.
+                // A winner holding this flightKey is in flight by definition and WILL emit
+                // its terminal outcome (same productId) from the finally below, waking any
+                // purchase() waiter with the REAL verify result. Emitting a premature
+                // success here would race that real result (replay=0 SharedFlow) and could
+                // surface a false success if the winner's verify later fails. The 25s
+                // withTimeoutOrNull in purchase() is the backstop if the winner never emits.
                 return false
             }
             verifyInFlight.add(flightKey)
         }
+        var succeeded = false
         return try {
             val response = api.verifyPurchase(
                 VerifyRequest(
@@ -616,14 +642,8 @@ class BillingManager @Inject constructor(
                 val previous = previousObservedPlanId
                 _purchasedProductIds.value = _purchasedProductIds.value + productId
 
-                // Play requires acknowledgement of every entitlement within 3 days or
-                // it auto-refunds ("Developer hasn't acknowledged your purchase"). Do it
-                // now that the backend has confirmed the purchase. Only the winner of the
-                // verifyInFlight de-dup reaches this branch, so a concurrent purchase +
-                // reconcile can no longer both skip the ack.
-                if (!isAcknowledged) {
-                    acknowledgePurchase(purchaseToken)
-                }
+                // Acknowledgement is NOT done here — it happens unconditionally in the
+                // finally so an owned-but-unverified purchase is still acknowledged.
                 // D16: never store the raw Play product id (e.g. com.daa.plus.monthly) as
                 // plan_id — QuotaManager.isPlus does an exact `== "plus"` compare, so a raw
                 // product id would read as free. Map SKU→tier; the following syncStatus is
@@ -639,7 +659,13 @@ class BillingManager @Inject constructor(
                 // screens (Compat/Profile/Chat) unlock the instant a purchase verifies,
                 // without waiting for the next foreground/screen-load. Mirrors the
                 // reconcile/restore paths. force=true: a purchase is an explicit signal.
-                runCatching { quotaManager.get().syncStatus(userEmail, force = true) }
+                // Bounded: syncStatus→getStatus rides QuotaManager's unqualified (600s)
+                // OkHttpClient and sits BEFORE the finally that acknowledges the purchase.
+                // A cold-instance getStatus must not delay the ack, so cap it — on timeout
+                // the next foreground reconcile re-syncs. (acknowledgement is the money-path.)
+                runCatching {
+                    withTimeoutOrNull(8_000L) { quotaManager.get().syncStatus(userEmail, force = true) }
+                }
 
                 // iOS parity (SubscriptionManager.swift:501-555): track scheduled
                 // Core→Plus auto-renew preference change so the UI can render a
@@ -662,6 +688,7 @@ class BillingManager @Inject constructor(
                     _externalPlanChangeAlert.value = planId
                 }
                 previousObservedPlanId = planId
+                succeeded = true
                 true
             } else {
                 // iOS parity: surface cross-account conflict exactly once per
@@ -683,6 +710,23 @@ class BillingManager @Inject constructor(
             _errorMessage.value = e.message ?: "Verification failed"
             false
         } finally {
+            // Acknowledge regardless of the verify outcome (success, failure, OR thrown):
+            // the user has been charged and Play reports the product as owned the moment
+            // the purchase completes. An unacknowledged purchase is auto-REFUNDED after 3
+            // days and reported as owned meanwhile → ITEM_ALREADY_OWNED blocks re-purchase.
+            // A brand-new purchase routinely fails the first verify (not yet propagated to
+            // Play's subscriptionsv2) — gating ack on verify is exactly the money bug.
+            // Only the de-dup winner reaches this finally (the loser returned early at the
+            // verifyInFlight guard), so exactly one ack fires per in-flight token.
+            // runCatching: a transient ack failure must not crash cleanup — the next
+            // reconcile / ITEM_ALREADY_OWNED retry re-acknowledges.
+            if (!isAcknowledged) {
+                runCatching { acknowledgePurchase(purchaseToken) }
+            }
+            // Fix 3: wake SubscriptionViewModel.purchase() for THIS transaction, carrying
+            // the real verify result. Only the de-dup winner reaches here (the loser
+            // returned early), so exactly one terminal outcome is emitted per token.
+            _purchaseOutcomes.tryEmit(PurchaseOutcome(productId, succeeded))
             _isLoading.value = false
             // Direct purchase has resolved (success or failure) — clear the
             // flag so subsequent external activations can fire the alert.
@@ -693,15 +737,20 @@ class BillingManager @Inject constructor(
         }
     }
 
-    /** Finding 3 helper — true when [purchase] looks like a sandbox / license-test
-     *  purchase that should be skipped on production builds. Mirrors iOS
-     *  SubscriptionManager.swift:1012-1028 (URL-based env check). Real Play
-     *  orderIds start with "GPA.". Keyed on API_BASE_URL like the environment
-     *  label above: staging is non-prod even though DEBUG=false. */
-    private fun shouldSkipForProd(purchase: Purchase): Boolean {
-        if (!BuildConfig.API_BASE_URL.contains("astroapi-prod")) return false
-        val orderId = purchase.orderId
-        return orderId.isNullOrEmpty() || !orderId.startsWith("GPA.")
+    /** Fix 5 — never gate verification on orderId. Subscription purchases (free trials,
+     *  deferred/upgrade) legitimately lack a "GPA." orderId, so the old heuristic silently
+     *  dropped real production subs (never verified, never acknowledged → auto-refunded).
+     *  Sandbox-vs-Production is the backend's call: Google purchase tokens carry no Apple-style
+     *  environment field, so the client can't gate it reliably. The backend reads the
+     *  server-authoritative `testPurchase` marker from the Play Developer API
+     *  (subscriptionsv2.get) and refuses to grant a license-test purchase on the production
+     *  server (google_service INV-10) — so an always-attempt-verify client is correct and safe.
+     *  Kept `internal` (not private) so a variant-independent unit test can assert the
+     *  never-skip invariant directly rather than through BuildConfig; retained as a seam at
+     *  both call sites in case a reliable client-side signal is ever added. Today it never skips. */
+    @androidx.annotation.VisibleForTesting
+    internal fun shouldSkipForProd(purchase: Purchase): Boolean {
+        return false
     }
 
     // ── Reconcile entitlements ──────────────────────────────────────────────────
@@ -789,8 +838,16 @@ class BillingManager @Inject constructor(
                 _pendingUpgradeEffectiveDate.value = null
             }
 
-            // Reset purchased set and re-verify each
-            _purchasedProductIds.value = emptySet()
+            // Fix 2: do NOT blank _purchasedProductIds up front. Blanking opened a
+            // transient-empty window — a concurrent purchase-path verify holding the
+            // verifyInFlight key makes reconcile's own re-verify return false, so the
+            // productId never got re-added and the set was left empty (hasActiveSubscription
+            // flickered false, or a transient backend failure revoked a Play-owned
+            // entitlement). Instead, let verify's incremental adds stand and prune only
+            // entries Play no longer reports as owned (atomic end-swap, below).
+            val ownedProductIds = activePurchases
+                .mapNotNull { it.products.firstOrNull() }
+                .toSet()
 
             effectivePurchases.forEach { purchase ->
                 val productId = purchase.products.firstOrNull() ?: return@forEach
@@ -801,6 +858,11 @@ class BillingManager @Inject constructor(
                     isAcknowledged = purchase.isAcknowledged,
                 )
             }
+
+            // Prune stale entitlements: keep only ids Play still reports as owned. Never
+            // transiently empty — fails open on a Play-owned purchase whose re-verify lost
+            // the de-dup race or hit a transient backend error.
+            _purchasedProductIds.value = _purchasedProductIds.value.intersect(ownedProductIds)
 
             if (effectivePurchases.isEmpty()) {
                 _isLoading.value = false

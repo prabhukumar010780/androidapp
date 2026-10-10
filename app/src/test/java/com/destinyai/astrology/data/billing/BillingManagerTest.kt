@@ -249,6 +249,29 @@ class BillingManagerTest {
     }
 
     @Test
+    fun `shouldSkipForProd never skips regardless of orderId (Fix 5 invariant)`() {
+        // Subscription purchases (free trials, deferred/upgrade) legitimately have a null,
+        // empty, or non-"GPA." orderId. The old heuristic skipped those on prod → never
+        // verified / acknowledged → auto-refunded. The invariant is now "never skip"; the
+        // backend's server-authoritative testPurchase marker — not orderId — gates
+        // sandbox vs production.
+        //
+        // This is a DIRECT invariant assertion, not a reconcile-path behavioral test: CI
+        // runs only the staging variant, where the OLD code also returned false, so a
+        // behavioral test could not distinguish old from new (false-green). Integration
+        // coverage of the null-orderId verify+ack flow lives in the reconcile tests below.
+        for (order in listOf(null, "", "non-gpa-123", "GPA.1234567890")) {
+            val purchase = mockk<Purchase>(relaxed = true) {
+                every { orderId } returns order
+            }
+            assertFalse(
+                manager.shouldSkipForProd(purchase),
+                "shouldSkipForProd must never skip (orderId=$order)",
+            )
+        }
+    }
+
+    @Test
     fun `reconcile acknowledges an unacknowledged verified purchase`() = runTest(testDispatcher) {
         // The reported "Developer hasn't acknowledged your purchase" bug: reconcile
         // is a verify path (fires on foreground + billing-connect) that must
@@ -283,8 +306,15 @@ class BillingManagerTest {
     }
 
     @Test
-    fun `verify failure does not acknowledge the purchase`() = runTest(testDispatcher) {
-        // Unverified purchases must stay un-acknowledged so Play retries delivery.
+    fun `verify failure STILL acknowledges an unacknowledged purchase (the money bug)`() = runTest(testDispatcher) {
+        // THE MONEY BUG: a brand-new purchase isn't yet propagated to Play's
+        // subscriptionsv2 endpoint, so the backend returns success=false
+        // (google_service.py "subscription_not_active"). Acknowledgement must NOT be
+        // gated on that transient verify outcome — Play auto-REFUNDS (not "retries
+        // delivery") any purchase unacknowledged within 3 days, and reports it as
+        // owned meanwhile → ITEM_ALREADY_OWNED on retry. The user was charged; the
+        // product is owned; we MUST acknowledge regardless of verify. Entitlement is
+        // re-granted on the next reconcile once Play catches up.
         val purchase = mockPurchase("tok_fail", "com.daa.plus.monthly", acknowledged = false)
         stubQueryPurchases(listOf(purchase))
         stubAcknowledgeOk()
@@ -293,7 +323,22 @@ class BillingManagerTest {
         manager.reconcileEntitlements()
         advanceUntilIdle()
 
-        verify(exactly = 0) { billingClient.acknowledgePurchase(any(), any()) }
+        verify(exactly = 1) { billingClient.acknowledgePurchase(any(), any()) }
+    }
+
+    @Test
+    fun `verify throwing STILL acknowledges an unacknowledged purchase`() = runTest(testDispatcher) {
+        // Same contract as above for the exception path: a thrown verify (network /
+        // cold Cloud Run timeout) must not strand an owned purchase unacknowledged.
+        val purchase = mockPurchase("tok_throw", "com.daa.plus.monthly", acknowledged = false)
+        stubQueryPurchases(listOf(purchase))
+        stubAcknowledgeOk()
+        coEvery { api.verifyPurchase(any()) } throws RuntimeException("cold start timeout")
+
+        manager.reconcileEntitlements()
+        advanceUntilIdle()
+
+        verify(exactly = 1) { billingClient.acknowledgePurchase(any(), any()) }
     }
 
     @Test
@@ -304,8 +349,9 @@ class BillingManagerTest {
         // returns false. Before the fix, acknowledgement lived only in the purchase
         // path, so when reconcile won the race the purchase was entitled but never
         // acknowledged → Play auto-refunded ("Developer hasn't acknowledged...").
-        // Now acknowledgement is centralized in the verify-success branch, so the
-        // race-winner acknowledges regardless of which path wins.
+        // Now acknowledgement is centralized in verifyWithBackend's finally (keyed to
+        // the de-dup winner), so the race-winner acknowledges regardless of which path
+        // wins and regardless of the verify outcome.
         val purchase = mockPurchase("tok_race", "com.daa.plus.monthly", acknowledged = false)
         stubQueryPurchases(listOf(purchase))
         stubAcknowledgeOk()
@@ -335,6 +381,57 @@ class BillingManagerTest {
         verify(exactly = 1) { billingClient.acknowledgePurchase(any(), any()) }
         coVerify(exactly = 1) { prefs.setSubscription(true, "plus") }
         assertTrue(manager.purchasedProductIds.value.contains("com.daa.plus.monthly"))
+    }
+
+    @Test
+    fun `reconcile keeps a Play-owned entitlement when its re-verify fails`() = runTest(testDispatcher) {
+        // Fix 2: reconcile must not blank the set up front. Seed a prior verified
+        // entitlement, then run a reconcile whose backend verify fails transiently.
+        // Old code (blank-then-re-add) left the set empty → entitlement revoked even
+        // though Play still reports it owned. New code retains it (fail-open).
+        stubAcknowledgeOk()
+        coEvery {
+            api.verifyPurchase(any())
+        } returns VerifyResponse(success = true, planId = "plus", isPremium = true)
+        manager.verifyWithBackend("tok_live", "com.daa.plus.monthly", "test@example.com", isAcknowledged = true)
+        advanceUntilIdle()
+        assertTrue(manager.purchasedProductIds.value.contains("com.daa.plus.monthly"))
+
+        val owned = mockPurchase("tok_live", "com.daa.plus.monthly", acknowledged = true)
+        stubQueryPurchases(listOf(owned))
+        coEvery { api.verifyPurchase(any()) } returns VerifyResponse(success = false, message = "transient")
+
+        manager.reconcileEntitlements(force = true)
+        advanceUntilIdle()
+
+        // Still owned per Play → retained despite the failed re-verify (never blanked).
+        assertTrue(manager.purchasedProductIds.value.contains("com.daa.plus.monthly"))
+    }
+
+    @Test
+    fun `reconcile prunes an entitlement Play no longer reports as owned`() = runTest(testDispatcher) {
+        // Fix 2 corollary: the end-of-loop intersect must drop entitlements Play no
+        // longer owns (expired / cancelled), while re-verifying the currently-owned one.
+        stubAcknowledgeOk()
+        coEvery {
+            api.verifyPurchase(any())
+        } returns VerifyResponse(success = true, planId = "plus", isPremium = true)
+        manager.verifyWithBackend("tok_old", "com.daa.plus.monthly", "test@example.com", isAcknowledged = true)
+        advanceUntilIdle()
+        assertTrue(manager.purchasedProductIds.value.contains("com.daa.plus.monthly"))
+
+        // Play now reports only a different owned product; plus.monthly is gone.
+        val owned = mockPurchase("tok_new", "com.daa.core.monthly", acknowledged = true)
+        stubQueryPurchases(listOf(owned))
+        coEvery {
+            api.verifyPurchase(any())
+        } returns VerifyResponse(success = true, planId = "core", isPremium = true)
+
+        manager.reconcileEntitlements(force = true)
+        advanceUntilIdle()
+
+        assertFalse(manager.purchasedProductIds.value.contains("com.daa.plus.monthly")) // pruned
+        assertTrue(manager.purchasedProductIds.value.contains("com.daa.core.monthly")) // re-verified
     }
 
     // ── SubscriptionConflict ───────────────────────────────────────────────────

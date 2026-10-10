@@ -4,6 +4,7 @@ import android.app.Activity
 import app.cash.turbine.test
 import com.android.billingclient.api.ProductDetails
 import com.destinyai.astrology.data.billing.BillingManager
+import com.destinyai.astrology.data.billing.PurchaseOutcome
 import com.destinyai.astrology.data.billing.StoreBillingGate
 import com.destinyai.astrology.data.billing.SubscriptionConflict
 import com.destinyai.astrology.data.local.prefs.UserPreferences
@@ -16,8 +17,10 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -49,10 +52,12 @@ class SubscriptionViewModelTest {
     private val loadingFlow = MutableStateFlow(false)
     private val hasEverSubscribedFlow = MutableStateFlow(false)
     private val isPremiumFlow = MutableStateFlow(false)
+    private val currentPlanIdFlow = MutableStateFlow<String?>(null)
     private val subscriptionPlatformFlow = MutableStateFlow<String?>(null)
     private val errorFlow = MutableStateFlow<String?>(null)
     private val conflictFlow = MutableStateFlow<SubscriptionConflict?>(null)
     private val isPlusTrialEligibleFlow = MutableStateFlow(false)
+    private val outcomesFlow = MutableSharedFlow<PurchaseOutcome>(extraBufferCapacity = 16)
 
     @BeforeAll
     fun setMainDispatcher() {
@@ -78,9 +83,11 @@ class SubscriptionViewModelTest {
         every { billingManager.subscriptionConflict } returns conflictFlow
         every { billingManager.isPlusTrialEligible } returns isPlusTrialEligibleFlow
         every { billingManager.shouldShowTrialButton } returns MutableStateFlow(false)
+        every { billingManager.purchaseOutcomes } returns outcomesFlow
         quotaManager = mockk(relaxed = true)
         every { quotaManager.hasEverSubscribed } returns hasEverSubscribedFlow
         every { quotaManager.isPremium } returns isPremiumFlow
+        every { quotaManager.currentPlanId } returns currentPlanIdFlow
         every { quotaManager.subscriptionPlatform } returns subscriptionPlatformFlow
 
         productsFlow.value = emptyList()
@@ -90,6 +97,7 @@ class SubscriptionViewModelTest {
         conflictFlow.value = null
         isPlusTrialEligibleFlow.value = false
         isPremiumFlow.value = false
+        currentPlanIdFlow.value = null
         subscriptionPlatformFlow.value = null
 
         vm = SubscriptionViewModel(api, prefs, billingManager, quotaManager)
@@ -243,6 +251,45 @@ class SubscriptionViewModelTest {
     }
 
     @Test
+    fun `purchase resolves from its PurchaseOutcome, not the shared isLoading`() = runTest(testDispatcher) {
+        // Fix 3 (the stuck-spinner report): purchase() must resolve on THIS transaction's
+        // PurchaseOutcome, not the shared multi-writer isLoading. A concurrent reconcile
+        // thrashing isLoading must neither resolve nor pin this card's spinner.
+        val activity = mockk<Activity>(relaxed = true)
+        val productDetails = mockk<ProductDetails>(relaxed = true)
+        every { productDetails.productId } returns "com.daa.plus.monthly"
+        purchasedIdsFlow.value = setOf("com.daa.plus.monthly") // winner populated entitlement
+        isPremiumFlow.value = true // backoff loop exits immediately
+
+        vm.purchase(productDetails, activity)
+        // Shared isLoading thrashes (a concurrent reconcile) — must be ignored by purchase().
+        loadingFlow.value = true
+        loadingFlow.value = false
+        // This transaction's terminal signal arrives → purchase() resolves.
+        outcomesFlow.emit(PurchaseOutcome("com.daa.plus.monthly", true))
+        advanceUntilIdle()
+
+        assertTrue(vm.purchaseSuccess.value)
+        assertNull(vm.purchasingProductId.value)
+    }
+
+    @Test
+    fun `purchase clears the spinner on timeout when no outcome arrives`() = runTest(testDispatcher) {
+        // Fix 3: the 25s bounded wait guarantees the per-card spinner clears even if no
+        // PurchaseOutcome is ever emitted (e.g. user dismissed the Play sheet) — never
+        // the indefinite hang the old isLoading.first { !it } wait could produce.
+        val activity = mockk<Activity>(relaxed = true)
+        val productDetails = mockk<ProductDetails>(relaxed = true)
+        every { productDetails.productId } returns "com.daa.plus.monthly"
+
+        vm.purchase(productDetails, activity)
+        advanceUntilIdle() // advance past the 25s virtual-time bound
+
+        assertFalse(vm.purchaseSuccess.value)
+        assertNull(vm.purchasingProductId.value)
+    }
+
+    @Test
     fun `purchase is blocked when account is already plus on apple`() = runTest {
         isPremiumFlow.value = true
         subscriptionPlatformFlow.value = "apple"
@@ -289,6 +336,52 @@ class SubscriptionViewModelTest {
         vm.restorePurchases()
 
         coVerify { billingManager.reconcileEntitlements() }
+    }
+
+    // ── C12: status card reacts live to QuotaManager entitlement changes ───────
+
+    @Test
+    fun `uiState reflects QuotaManager plan and premium changes live`() = runTest {
+        vm.uiState.test {
+            // Initial projection from QuotaManager (null plan, not premium).
+            val initial = awaitItem()
+            assertEquals("", initial.currentPlanId)
+            assertFalse(initial.isPremium)
+
+            // Background entitlement change (e.g. webhook reconcile) must flow through
+            // without a loadCurrentPlan() network call.
+            currentPlanIdFlow.value = "plus"
+            isPremiumFlow.value = true
+            advanceUntilIdle()
+
+            val updated = expectMostRecentItem()
+            assertEquals("plus", updated.currentPlanId)
+            assertTrue(updated.isPremium)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `effectiveCurrentPlanId empties live when QuotaManager reports lapsed paid plan`() = runTest {
+        // Start as an active Plus subscriber projected from QuotaManager.
+        currentPlanIdFlow.value = "plus"
+        isPremiumFlow.value = true
+        advanceUntilIdle()
+
+        vm.effectiveCurrentPlanId.test {
+            // Active paid → plan is current ("plus"). May emit initial null first.
+            var v = awaitItem()
+            if (v == null) v = awaitItem()
+            assertEquals("plus", v)
+
+            // Entitlement lapses out-of-band (webhook) — isPremium flips false with
+            // plan_id kept as history. Paywall must become renewable ("") WITHOUT a
+            // loadCurrentPlan() network call.
+            isPremiumFlow.value = false
+            advanceUntilIdle()
+            assertEquals("", expectMostRecentItem())
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     // ── hasActiveSubscription derived flow ────────────────────────────────────

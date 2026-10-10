@@ -183,6 +183,34 @@ class ProfileViewModel @Inject constructor(
                 _uiState.update { it.copy(trialEligible = eligible) }
             }
         }
+        // C9 — live-refresh the terminal-aware Plus gates. loadProfile() computes these
+        // once per load, but QuotaManager's StateFlows also change out-of-band (a webhook
+        // reconcile, an external plan change, or a purchase verify on another screen).
+        // Observe the underlying entitlement StateFlows and re-project ONLY the derived
+        // gate fields so Profile's Plus-only rows unlock/lock the instant entitlement
+        // changes — without issuing a network sync here (which would feed back into these
+        // flows and loop). Mirrors iOS binding the view to @Published QuotaManager props.
+        viewModelScope.launch {
+            combine(
+                quotaManager.currentPlanId,
+                quotaManager.subscriptionStatus,
+                quotaManager.availableFeatures,
+                quotaManager.isPremium,
+            ) { _, _, _, isPremium -> isPremium }
+                .collect { isPremium ->
+                    val notTerminal = !quotaManager.isInTerminalPaidStatus
+                    _uiState.update {
+                        it.copy(
+                            isPremium = isPremium,
+                            planId = quotaManager.currentPlanId.value ?: "",
+                            isPlusEntitled = quotaManager.isPlus,
+                            hasSwitchProfile = quotaManager.hasFeature(QuotaManager.FeatureID.SWITCH_PROFILE) && notTerminal,
+                            hasMaintainProfile = quotaManager.hasFeature(QuotaManager.FeatureID.MAINTAIN_PROFILE) && notTerminal,
+                            hasAlerts = quotaManager.hasFeature(QuotaManager.FeatureID.ALERTS) && notTerminal,
+                        )
+                    }
+                }
+        }
         // Profile. The bus emits the new profile id; we resolve it to a display
         // name via the locally-cached partner list (Room) or, for self, the
         // current account name in prefs. Mirrors iOS NotificationCenter

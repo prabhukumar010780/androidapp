@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 data class SubscriptionUiState(
@@ -107,6 +108,25 @@ class SubscriptionViewModel @Inject constructor(
                     _cachedAvailableFeatures.value = features
                 }
             }
+        }
+        // C12 — keep the status card + effectiveCurrentPlanId live. The paywall previously
+        // reflected a plan/entitlement change only when THIS screen's loadCurrentPlan()
+        // network write ran; a background change (webhook reconcile, external Play
+        // activation, a verify on another screen) left currentPlanId/isPremium stale until
+        // a manual refresh. Mirror QuotaManager's authoritative currentPlanId + isPremium
+        // (the single source of truth) into _uiState so effectiveCurrentPlanId recomputes
+        // instantly. Both fields are fed because the lapsed-paid → "" renewability logic in
+        // effectiveCurrentPlanId keys off BOTH (raw plan_id stays "plus" after expiry;
+        // isPremium is the canonical entitlement flag). No network sync here → no feedback
+        // loop. Mirrors shouldShowTrialButton already collecting hasEverSubscribed.
+        viewModelScope.launch {
+            combine(
+                quotaManager.currentPlanId,
+                quotaManager.isPremium,
+            ) { planId, premium -> planId to premium }
+                .collect { (planId, premium) ->
+                    _uiState.update { it.copy(currentPlanId = planId ?: "", isPremium = premium) }
+                }
         }
     }
 
@@ -388,14 +408,16 @@ class SubscriptionViewModel @Inject constructor(
             // signed-in account via obfuscatedAccountId. Fetch the email (suspend) first.
             val email = prefs.getUserEmail()
             billingManager.launchBillingFlow(activity, productDetails, offerToken, email)
-            // Wait until BillingManager finishes processing (isLoading flips
-            // back to false). Then check whether the productId landed in
-            // purchasedProductIds (success) or errorMessage was set (failure).
-            try {
-                // Skip the initial false → true transition.
-                billingManager.isLoading.first { it }
-                billingManager.isLoading.first { !it }
-            } catch (_: Exception) {}
+            // Fix 3: resolve on THIS transaction's PurchaseOutcome (keyed by productId),
+            // NOT the shared multi-writer isLoading that any reconcile/verify also drives.
+            // A slow verify used to pin isLoading true (both CTA spinners spun for minutes);
+            // a debounced reconcile used to flip it false early (read purchased=false and
+            // reported a successful charge as failure). The outcome emit is the wake signal;
+            // purchasedProductIds is the source of truth. Bounded 25s so a missed emit
+            // (collector subscribed late) clears the spinner instead of hanging forever.
+            withTimeoutOrNull(25_000L) {
+                billingManager.purchaseOutcomes.first { it.productId == productId }
+            }
             val purchased = billingManager.purchasedProductIds.value.contains(productId)
             val err = billingManager.errorMessage.value
             if (purchased) {
@@ -427,7 +449,11 @@ class SubscriptionViewModel @Inject constructor(
             _isRestoring.value = true
             try {
                 billingManager.reconcileEntitlements()
-                loadCurrentPlan()
+                // B7: force=true so the QuotaManager status sync bypasses its 60s cache.
+                // Restore is an explicit user action taken right after reconcile re-verified
+                // entitlements; a cached (stale) status would leave currentPlanId/isPremium
+                // showing the pre-restore state. Mirrors refreshStatus() + iOS force:true.
+                loadCurrentPlan(force = true)
             } finally {
                 _isRestoring.value = false
             }
