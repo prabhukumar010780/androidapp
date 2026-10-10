@@ -14,6 +14,12 @@
 .cxx
 local.properties
 
+# Kotlin daemon error logs (transient)
+.kotlin/
+
+# CI build output dir
+/build-ci
+
 # Claude Code local settings
 .claude/settings.local.json
 
