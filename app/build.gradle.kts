@@ -316,6 +316,14 @@ dependencies {
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.test.junit4)
     debugImplementation(libs.compose.ui.test.manifest)
+    // Robolectric-backed Compose tests use createComposeRule, which launches an
+    // androidx.activity.ComponentActivity. That activity is contributed by
+    // ui-test-manifest, which AGP merges into the variant manifest Robolectric reads.
+    // CI's unit-test gate runs `testStagingUnitTest` (staging variant), so the manifest
+    // must be present there too — not only debug — or the launch fails with
+    // "Unable to resolve activity for ComponentActivity". Scoped to staging (an internal
+    // alpha test track); the production `release` bundle stays free of test manifests.
+    "stagingImplementation"(libs.compose.ui.test.manifest)
 
     // Cold-start perf (Cat 5): runtime that installs the baseline profile on first
     // launch, plus the generated profile from the :baselineprofile module.

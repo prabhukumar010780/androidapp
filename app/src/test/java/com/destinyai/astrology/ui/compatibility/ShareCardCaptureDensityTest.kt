@@ -48,13 +48,17 @@ class ShareCardCaptureDensityTest {
      * seam, then asserts every bottom-of-card element renders fully within the 1080px
      * exported bitmap. [cardDp] must equal 1080 / density for the box to be 1080px.
      */
-    private fun assertWholeCardRenders(cardDp: Int) {
+    private fun assertWholeCardRenders(
+        cardDp: Int,
+        boyName: String = "Vamshi",
+        girlName: String = "Soumya 01",
+    ) {
         compose.setContent {
             Box(Modifier.size(cardDp.dp)) {
                 CaptureAtDesignDensity(widthPx = CARD_PX) {
                     ShareCardView(
-                        boyName = "Vamshi",
-                        girlName = "Soumya 01",
+                        boyName = boyName,
+                        girlName = girlName,
                         totalScore = 31,
                         maxScore = 36,
                         percentage = 0.86,
@@ -101,6 +105,21 @@ class ShareCardCaptureDensityTest {
     @Test
     @Config(sdk = [34], qualifiers = "w411dp-h891dp-640dpi") // density 4.0 -> 270dp == 1080px
     fun rendersWholeCard_atDensity4_xxxhdpi() = assertWholeCardRenders(cardDp = 270)
+
+    /**
+     * Guards the maxLines=2 + ellipsis fix on the name Texts (ShareCardView). Without it,
+     * very long multi-word names wrap unbounded and push the footer off the bottom of the
+     * 1080px export. The names below each wrap well past two lines when uncapped; the test
+     * asserts the footer still lands within (and near the bottom of) the card — which only
+     * holds while the names are capped at two lines.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "w411dp-h891dp-480dpi") // density 3.0 (tester's device)
+    fun rendersWholeCard_withVeryLongNames_footerNotPushedOff() = assertWholeCardRenders(
+        cardDp = 360,
+        boyName = "Alexandrina Wilhelmina Konstantin",
+        girlName = "Bartholomew Maximilian Theophilus",
+    )
 
     private companion object {
         const val CARD_PX = 1080
