@@ -23,6 +23,7 @@ class SessionAuthenticator(
     private val store: SessionTokenStore,
     private val exchangeClient: Provider<AuthExchangeClient>,
     private val prefs: UserPreferences,
+    private val apiKey: String,
 ) : Authenticator {
     @Synchronized
     override fun authenticate(route: Route?, response: Response): Request? {
@@ -34,6 +35,14 @@ class SessionAuthenticator(
 
         val sentBearer = response.request.header("Authorization") ?: return null
         val currentJwt = store.currentSessionJwt() ?: return null
+
+        // Not our session to refresh: AuthInterceptor attaches the bundled API key as
+        // the bearer ONLY when no session exists (unauthenticated bootstrap), so an
+        // api-key-bearer 401 is never a session request. Decline it — otherwise the
+        // single-flight branch below (sentBearer != the session JWT) would hijack it and
+        // retry with the stored session bearer, silently escalating an api-key-scoped
+        // request to session scope (and, with no second response to read, hanging it).
+        if (apiKey.isNotBlank() && sentBearer == "Bearer $apiKey") return null
 
         // Single-flight (authenticate() is @Synchronized): on a cold-start burst of
         // authenticated requests, several 401 at once. Without this, each thread would

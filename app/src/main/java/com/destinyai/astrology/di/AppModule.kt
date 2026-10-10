@@ -78,7 +78,7 @@ object NetworkModule {
         }
         return OkHttpClient.Builder()
             .addInterceptor(AuthInterceptor(store, apiKey, userAgent))
-            .authenticator(SessionAuthenticator(store, authExchangeProvider, prefs))
+            .authenticator(SessionAuthenticator(store, authExchangeProvider, prefs, apiKey))
             .addInterceptor(ErrorInterceptor())
             .addInterceptor(logging)
             .connectTimeout(30, TimeUnit.SECONDS)
@@ -109,7 +109,7 @@ object NetworkModule {
         }
         return OkHttpClient.Builder()
             .addInterceptor(AuthInterceptor(store, apiKey, userAgent))
-            .authenticator(SessionAuthenticator(store, authExchangeProvider, prefs))
+            .authenticator(SessionAuthenticator(store, authExchangeProvider, prefs, apiKey))
             .addInterceptor(ErrorInterceptor())
             .addInterceptor(logging)
             .connectTimeout(30, TimeUnit.SECONDS)

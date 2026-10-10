@@ -54,7 +54,7 @@ class SessionAuthenticatorTest {
 
     private fun clientWith(): OkHttpClient =
         OkHttpClient.Builder()
-            .authenticator(SessionAuthenticator(store, Provider { exchange }, prefs))
+            .authenticator(SessionAuthenticator(store, Provider { exchange }, prefs, apiKey = "API_KEY"))
             .build()
 
     /** Enqueue a 401 with the given code, then a 200 for the retried request. */
@@ -159,5 +159,27 @@ class SessionAuthenticatorTest {
         resp.close()
 
         verify(exactly = 0) { runBlocking { exchange.refresh() } }
+    }
+
+    @Test
+    fun `single-flight — retries with the already-refreshed session jwt without refreshing again`() {
+        // Cold-start burst: this request went out carrying the OLD session JWT, but a
+        // sibling thread refreshed first, so the store now holds a NEWER JWT. The retry
+        // must reuse that stored JWT and must NOT burn a second refresh (a second refresh
+        // on the rotated token triggers server-side refresh_reused → whole-session
+        // revocation — the "signed out after a couple of days" bug). The api-key guard
+        // must not suppress this legitimate session retry.
+        every { store.currentSessionJwt() } returns freshJwt // store already rotated
+        server.enqueue(MockResponse().setResponseCode(401).setBody(body("session_required")))
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+
+        val resp = callWithStaleBearer() // still sends the OLD Bearer STALE_JWT
+        assertEquals(200, resp.code)
+        resp.close()
+
+        verify(exactly = 0) { runBlocking { exchange.refresh() } }
+        server.takeRequest() // original 401 (Bearer STALE_JWT)
+        val retried = server.takeRequest()
+        assertEquals("Bearer $freshJwt", retried.getHeader("Authorization"))
     }
 }
