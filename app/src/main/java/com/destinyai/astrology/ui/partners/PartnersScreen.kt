@@ -587,7 +587,7 @@ fun PartnersScreen(
                     partnerToDelete = null
                 }) {
                     Text(
-                        stringResource(R.string.delete),
+                        stringResource(R.string.delete_partner_action_format, target.name),
                         color = Color(0xFFFF5252),
                         fontWeight = FontWeight.Bold,
                     )

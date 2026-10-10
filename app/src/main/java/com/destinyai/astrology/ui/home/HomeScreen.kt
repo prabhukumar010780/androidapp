@@ -90,7 +90,7 @@ import com.destinyai.astrology.util.DoshaDescriptions
 import com.destinyai.astrology.ui.components.GoldGradientText
 import com.destinyai.astrology.ui.components.SkeletonCard
 import com.destinyai.astrology.ui.components.SkeletonOrbRow
-import com.destinyai.astrology.ui.profile.ProfileSwitcherViewModel
+import com.destinyai.astrology.ui.profile.ProfileSwitcherSheet
 import com.destinyai.astrology.ui.theme.AppType
 import com.destinyai.astrology.ui.theme.adaptiveContentWidth
 import com.destinyai.astrology.ui.theme.CosmicBackground
@@ -134,6 +134,8 @@ fun HomeScreen(
     onNavigateToHistory: () -> Unit,
     onNavigateToNotifications: () -> Unit,
     onNavigateToProfile: () -> Unit,
+    onNavigateToPartners: () -> Unit = {},
+    onNavigateToSubscription: () -> Unit = {},
     onAskDestiny: (String) -> Unit = {},
     // Scroll-to-top tick — incremented by the host (MainScreen) when the Home tab
     // is re-tapped. iOS UITabBar gives this for free; Compose NavigationBar does not.
@@ -163,9 +165,13 @@ fun HomeScreen(
     if (showProfileSwitcher) {
         ProfileSwitcherSheet(
             onDismiss = { showProfileSwitcher = false },
-            onOpenFullProfile = {
+            onNavigateToPartners = {
                 showProfileSwitcher = false
-                onNavigateToProfile()
+                onNavigateToPartners()
+            },
+            onNavigateToSubscription = {
+                showProfileSwitcher = false
+                onNavigateToSubscription()
             },
         )
     }
@@ -2664,157 +2670,6 @@ private fun OfflineBanner(modifier: Modifier = Modifier) {
             fontSize = 12.sp,
             fontWeight = FontWeight.Normal,
         )
-    }
-}
-
-// ─── ProfileSwitcherSheet ──────────────────────────────────────────────────
-// Parity with iOS HomeView .sheet(isPresented: $showProfileSwitcher) {
-// ProfileSwitcherSheet() }. Tapping the gold avatar in the header opens this
-// bottom-sheet picker instead of switching to the Profile tab. Reuses the
-// existing ProfileSwitcher composable (ui/compatibility/ProfileSwitcher.kt) and
-// the ProfileSwitcherViewModel that already powers the Compatibility flow.
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ProfileSwitcherSheet(
-    onDismiss: () -> Unit,
-    onOpenFullProfile: () -> Unit,
-    viewModel: ProfileSwitcherViewModel = hiltViewModel(),
-) {
-    val context = LocalContext.current
-    val haptic = remember { HapticManager(context) }
-    val profiles by viewModel.profiles.collectAsStateWithLifecycle()
-    val activeProfileId by viewModel.activeProfileId.collectAsStateWithLifecycle()
-    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor = SurfaceElevated,
-        dragHandle = {
-            Box(
-                modifier = Modifier
-                    .padding(top = 12.dp, bottom = 4.dp)
-                    .size(36.dp, 4.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(Gold.copy(alpha = 0.3f)),
-            )
-        },
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .navigationBarsPadding()
-                .padding(bottom = 12.dp),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    text = stringResource(R.string.switch_birth_chart),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = CanelaFontFamily,
-                    color = CreamText,
-                    modifier = Modifier.weight(1f),
-                )
-                Box(
-                    modifier = Modifier
-                        .sizeIn(minWidth = TouchMin, minHeight = TouchMin)
-                        .clickable {
-                            haptic.light()
-                            onDismiss()
-                        },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.1f)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = stringResource(R.string.home_profile_switcher_close_cd),
-                            tint = CreamDim,
-                            modifier = Modifier.size(16.dp),
-                        )
-                    }
-                }
-            }
-            Spacer(Modifier.height(16.dp))
-
-            if (isLoading && profiles.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 32.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator(color = Gold, modifier = Modifier.size(28.dp))
-                }
-            } else {
-                profiles.forEach { entry ->
-                    val isActive = entry.id == activeProfileId
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(
-                                if (isActive) Gold.copy(alpha = 0.15f) else NavySurface
-                            )
-                            .border(
-                                0.5.dp,
-                                if (isActive) Gold.copy(alpha = 0.5f) else Gold.copy(alpha = 0.15f),
-                                RoundedCornerShape(12.dp),
-                            )
-                            .clickable {
-                                haptic.light()
-                                if (!isActive) viewModel.switchProfile(entry.id)
-                            }
-                            .padding(horizontal = 14.dp, vertical = 12.dp),
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = if (entry.isSelf) "★" else "•",
-                                color = Gold,
-                                fontSize = 14.sp,
-                            )
-                            Spacer(Modifier.width(10.dp))
-                            Text(
-                                text = entry.name,
-                                color = CreamText,
-                                fontSize = 14.sp,
-                                fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
-                                modifier = Modifier.weight(1f),
-                            )
-                            if (isActive) {
-                                Text(text = "✓", color = Gold, fontSize = 14.sp)
-                            }
-                        }
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-            // "Manage profiles" jump-off — opens the full ProfileScreen for editing.
-            TextButton(
-                onClick = {
-                    haptic.light()
-                    onOpenFullProfile()
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    text = stringResource(R.string.profile_switch_profile),
-                    color = Gold,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        }
     }
 }
 

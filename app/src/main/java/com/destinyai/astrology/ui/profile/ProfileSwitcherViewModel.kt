@@ -165,6 +165,10 @@ class ProfileSwitcherViewModel @Inject constructor(
         try {
             partners.forEach { p ->
                 partnerDao.insertOrReplace(
+                    // iOS parity + Android PartnersViewModel.saveToCache: write the FULL
+                    // record. insertOrReplace is OnConflictStrategy.REPLACE, so omitting
+                    // columns here would reset isSelf/isActive/firstSwitchedAt/gender/flags
+                    // to their entity defaults and defeat the offline isProtected guard.
                     PartnerProfileEntity(
                         id = p.id,
                         ownerEmail = ownerEmail,
@@ -174,6 +178,14 @@ class ProfileSwitcherViewModel @Inject constructor(
                         cityOfBirth = p.cityOfBirth ?: "",
                         latitude = p.latitude ?: 0.0,
                         longitude = p.longitude ?: 0.0,
+                        gender = p.gender,
+                        birthTimeUnknown = p.birthTimeUnknown,
+                        forCompatibility = p.forCompatibility,
+                        guardianConsentGiven = p.guardianConsentGiven,
+                        isSelf = p.isSelf,
+                        isActive = p.isActive,
+                        firstSwitchedAt = p.firstSwitchedAt,
+                        timezone = p.timezone,
                     ),
                 )
             }
@@ -185,14 +197,25 @@ class ProfileSwitcherViewModel @Inject constructor(
     private suspend fun loadPartnersFromCache(ownerEmail: String): List<PartnerDto> {
         return try {
             partnerDao.getPartnersForUser(ownerEmail).map { e ->
+                // Lossless rehydrate (matches PartnersViewModel.loadFromCache) so the
+                // offline fallback keeps isSelf — else loadProfiles misidentifies self
+                // and duplicates the self row (and inflates the add-profile count).
                 PartnerDto(
                     id = e.id,
                     name = e.name,
+                    gender = e.gender,
                     dateOfBirth = e.dateOfBirth,
                     timeOfBirth = e.timeOfBirth.takeIf { it.isNotBlank() },
                     cityOfBirth = e.cityOfBirth.takeIf { it.isNotBlank() },
                     latitude = e.latitude,
                     longitude = e.longitude,
+                    timezone = e.timezone,
+                    birthTimeUnknown = e.birthTimeUnknown,
+                    forCompatibility = e.forCompatibility,
+                    guardianConsentGiven = e.guardianConsentGiven,
+                    isSelf = e.isSelf,
+                    isActive = e.isActive,
+                    firstSwitchedAt = e.firstSwitchedAt,
                 )
             }
         } catch (_: Exception) {
@@ -204,7 +227,15 @@ class ProfileSwitcherViewModel @Inject constructor(
         viewModelScope.launch {
             _isSwitching.value = true
             try {
-                val selfEmail = prefs.getUserEmail() ?: return@launch
+                val selfEmail = prefs.getUserEmail()
+                if (selfEmail == null) {
+                    // Don't silently early-return: the falling-edge auto-dismiss effect
+                    // would just close the sheet with no feedback. Surface the generic
+                    // failure alert instead (blank → profile_switch_failed_message).
+                    // iOS never silently early-returns from switchTo.
+                    _uiState.value = _uiState.value.copy(switchError = "")
+                    return@launch
+                }
                 // D15 (iOS parity canSwitchProfiles): pre-flight the switch_profile
                 // entitlement via QuotaManager. The old `status.accessState=="upgrade_required"`
                 // check was dead code — /status never sets access_state (defaults "granted").
@@ -260,38 +291,25 @@ class ProfileSwitcherViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(showAddForm = true)
                 return@launch
             }
-            try {
-                val response = quotaManager.canAccessFeature(
-                    QuotaManager.FeatureID.MAINTAIN_PROFILE,
-                    email,
-                )
-                val overall = response.limits?.get("overall")
-                val limit = overall?.limit ?: -1
-                // iOS parity (ProfileSwitcherSheet.swift:290 passes serverProfiles
-                // .count, incl. the is_self row; QuotaManager canAddProfile compares
-                // currentCount < limit). _profiles always carries the prepended self
-                // entry, so count total profiles — not partners-only — else Android
-                // permits one extra chart over the limit.
-                val current = _profiles.value.size
-                when {
-                    // Not entitled + no positive limit (free/Core with no limits map, limit
-                    // defaults to -1) → upgrade prompt. Previously fell through to the
-                    // limitMessage branch and rendered "up to -1 profiles".
-                    !response.canAccess && limit <= 0 -> {
+            // iOS parity (ProfileSwitcherSheet.swift:290 + QuotaManager.canAddProfile):
+            // delegate the gate to the shared QuotaManager so the switcher, the Partner
+            // Manager, and iOS share one "can add profile" source of truth. The old
+            // inline branch only showed the upgrade prompt when limit <= 0, so a
+            // non-entitled user with a positive limit fell through and reached the add
+            // form. canAddProfile returns Blocked(limit = 0) whenever !canAccess
+            // (matching iOS), so route that to the upgrade prompt. _profiles includes
+            // the self row, matching iOS serverProfiles.count.
+            when (val result = quotaManager.canAddProfile(email, _profiles.value.size)) {
+                is QuotaManager.CanAddProfileResult.Blocked ->
+                    if (result.limit <= 0) {
                         _uiState.value = _uiState.value.copy(upgradeRequiredPrompt = true)
-                    }
-                    limit > 0 && current >= limit -> {
+                    } else {
                         _uiState.value = _uiState.value.copy(
-                            limitMessage = formatLimitMessage(limit),
+                            limitMessage = formatLimitMessage(result.limit),
                         )
                     }
-                    else -> {
-                        _uiState.value = _uiState.value.copy(showAddForm = true)
-                    }
-                }
-            } catch (_: Exception) {
-                // Fail-open parity with iOS canAddProfile catch (QuotaManager.swift:813-816).
-                _uiState.value = _uiState.value.copy(showAddForm = true)
+                QuotaManager.CanAddProfileResult.Allowed ->
+                    _uiState.value = _uiState.value.copy(showAddForm = true)
             }
         }
     }

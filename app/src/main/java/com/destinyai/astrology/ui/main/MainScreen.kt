@@ -446,6 +446,8 @@ fun MainScreen(
                             onNavigateToHistory = { showHistory = true },
                             onNavigateToNotifications = onNavigateToNotifications,
                             onNavigateToProfile = { showProfile = true },
+                            onNavigateToPartners = onNavigateToPartners,
+                            onNavigateToSubscription = onNavigateToSubscription,
                             onAskDestiny = { prompt ->
                                 pendingQuestion = prompt
                                 selectedTab = 1

@@ -65,6 +65,7 @@ import com.destinyai.astrology.R
 import com.destinyai.astrology.domain.model.AnalysisStep
 import com.destinyai.astrology.domain.model.PartnerData
 import com.destinyai.astrology.ui.charts.ChartComparisonSheet
+import com.destinyai.astrology.ui.partners.PartnerPickerSheet
 import com.destinyai.astrology.ui.subscription.SubscriptionScreen
 import com.destinyai.astrology.ui.theme.CanelaFontFamily
 import com.destinyai.astrology.ui.theme.CosmicBackground
@@ -775,18 +776,16 @@ fun CompatibilityScreen(
             }
         }
         PartnerPickerSheet(
-            viewModel = viewModel,
+            onDismiss = { viewModel.dismissPartnerPicker() },
+            onSelect = { partner -> viewModel.selectSavedPartner(partner) },
             excludeIds = excluded,
             forCompatibilityOnly = true,
-            onDismiss = { viewModel.dismissPartnerPicker() },
-            // iOS parity (PartnerPickerSheet always shows an "Add new birth chart"
-            // action): route to the Partners screen so an empty picker isn't a
-            // dead-end. Without this the add-new row was omitted and users with no
-            // saved charts saw only "No matches found" with no way forward.
-            onAddNew = {
-                viewModel.dismissPartnerPicker()
-                onNavigateToPartners()
-            },
+            // iOS parity (PartnerPickerSheet.swift:270-295): the picker hosts its
+            // own add-new flow inline (quota check → form / upgrade / limit alert)
+            // via PartnersViewModel. Omitting onAddNew lets it drive that flow in
+            // place instead of navigating away to the Partners screen — so a user
+            // with no saved charts can add one without leaving the compatibility
+            // match, and the new chart appears in the picker immediately.
         )
     }
 
