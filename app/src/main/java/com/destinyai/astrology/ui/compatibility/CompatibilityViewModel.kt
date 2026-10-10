@@ -434,6 +434,11 @@ class CompatibilityViewModel @Inject constructor(
     /** Reset the partner form back to its blank state. */
     fun resetPartnerForm() {
         _compatibilityResult.value = null  // clear result so a re-analysis always hits fresh API
+        // Drop the previous match's AMA transcript and session id. This runs on the
+        // profileChangeBus collector, so switching the active profile re-grounds the
+        // Ask-Destiny chat instead of carrying the old couple's thread into the new one.
+        clearFollowUpMessages()
+        currentSessionId = null
         _uiState.update {
             it.copy(
                 partnerName = "",
@@ -717,6 +722,14 @@ class CompatibilityViewModel @Inject constructor(
             val profile = personAProfile ?: return@launch
             val email = personAEmail ?: return@launch
 
+            // Re-ground AMA state for the new pair BEFORE the cache lookup. Nulling the
+            // session here (rather than only at the mint on :796, which the cache-hit path
+            // returns before reaching) means a cache-hit with a blank stored sessionId
+            // leaves currentSessionId == null and a follow-up fails closed, instead of
+            // silently targeting the previous couple's thread.
+            clearFollowUpMessages()
+            currentSessionId = null
+
             // STEP 1: Local cache lookup — if matching match exists, load from history (FREE, no API call)
             // Mirrors iOS CompatibilityHistoryService.findExistingMatch behaviour.
             // Also match on girlName to prevent cross-contamination when different partners
@@ -983,14 +996,18 @@ class CompatibilityViewModel @Inject constructor(
      * first follow-up question.
      */
     fun loadStoredFollowUpMessages() {
-        val sessionId = currentSessionId ?: return
+        // Clear on every early-return path, not just the non-empty assign. Otherwise a
+        // previous match's _followUpMessages survives when the new pair has no stored
+        // history (null session, no raw entry, or empty parse), rendering the OLD
+        // Vamshi<->Sam transcript under the new Sam<->Tom match. iOS reloads from scratch.
+        val sessionId = currentSessionId ?: run { _followUpMessages.value = emptyList(); return }
         val prefixed = if (sessionId.startsWith("compat_")) sessionId else "compat_$sessionId"
         val raw = readFollowUpHistory(prefixed) ?: readFollowUpHistory(sessionId)
-        if (raw.isNullOrEmpty()) return
+        if (raw.isNullOrEmpty()) { _followUpMessages.value = emptyList(); return }
         val msgs = runCatching {
             gson.fromJson(raw, Array<FollowUpMessage>::class.java).toList()
         }.getOrNull().orEmpty()
-        if (msgs.isEmpty()) return
+        if (msgs.isEmpty()) { _followUpMessages.value = emptyList(); return }
         val filtered = msgs.filter { m ->
             !(m.text.contains("---|") ||
                 m.text.contains("|---") ||

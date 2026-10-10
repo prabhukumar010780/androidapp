@@ -663,4 +663,68 @@ class CompatibilityViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    // --- AMA context-leak regression (compat Ask-Destiny carried the previous match's
+    // transcript/session into a new match). Fix: clear _followUpMessages on every
+    // early-return of loadStoredFollowUpMessages, and re-ground transcript + session on
+    // resetPartnerForm and at the top of analyze(). ---
+
+    private val oldMsgJson =
+        """[{"text":"Vamshi and Sam question","isUser":true,"suggestions":[],"timestampMs":1,"executionTimeMs":0,"isInfo":false}]"""
+
+    private fun seedStaleTranscript() {
+        // Reader returns stored history ONLY for the old couple's session.
+        vm.setFollowUpHistoryPersistence(
+            reader = { key -> if (key == "compat_OLD") oldMsgJson else null },
+            writer = { _, _ -> },
+        )
+        vm.setSessionId("compat_OLD")
+        vm.loadStoredFollowUpMessages()
+    }
+
+    @Test
+    fun `loadStoredFollowUpMessages clears stale transcript when new session has no history`() = runTest {
+        seedStaleTranscript()
+        assertEquals(1, vm.followUpMessages.value.size, "old transcript should load first")
+
+        // Switch to a new couple's session with no stored history.
+        vm.setSessionId("compat_NEW")
+        vm.loadStoredFollowUpMessages()
+
+        assertTrue(
+            vm.followUpMessages.value.isEmpty(),
+            "transcript must be cleared when the new session has no stored history",
+        )
+    }
+
+    @Test
+    fun `resetPartnerForm clears follow-up transcript and session`() = runTest {
+        seedStaleTranscript()
+        assertEquals(1, vm.followUpMessages.value.size)
+
+        vm.resetPartnerForm()
+
+        assertTrue(vm.followUpMessages.value.isEmpty(), "transcript cleared on profile switch / reset")
+
+        // Session was nulled too: re-loading does not resurrect the old couple's history,
+        // because loadStoredFollowUpMessages early-returns on a null session.
+        vm.loadStoredFollowUpMessages()
+        assertTrue(vm.followUpMessages.value.isEmpty(), "null session must fail closed, not reload old thread")
+    }
+
+    @Test
+    fun `analyze clears a stale transcript before running the new match`() = runTest(testDispatcher) {
+        seedStaleTranscript()
+        assertEquals(1, vm.followUpMessages.value.size)
+
+        vm.loadUserData()
+        assertTrue(vm.uiState.value.personALoaded)
+        setValidPartner()
+        vm.analyze()
+
+        assertTrue(
+            vm.followUpMessages.value.isEmpty(),
+            "analyze() must drop the previous match's transcript before the new analysis",
+        )
+    }
 }
