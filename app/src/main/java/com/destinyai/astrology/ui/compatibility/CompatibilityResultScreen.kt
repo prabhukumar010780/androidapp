@@ -1582,19 +1582,6 @@ private fun AskChatBubble(
                             .removePrefix("Answer")
                             .trimStart('\n', ' ', ':', '*')
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            ) {
-                                Text("✦", color = Gold, fontSize = 13.sp)
-                                Text(
-                                    text = "Cosmic Insight",
-                                    color = Gold,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    letterSpacing = 0.5.sp,
-                                )
-                            }
                             com.destinyai.astrology.ui.chat.MarkdownText(
                                 content = cleanedText,
                                 modifier = Modifier.fillMaxWidth(),
